@@ -54,16 +54,9 @@ export function HomePage() {
     image: settings.bestSellerImageOverrides[product.id] ?? product.image,
   }));
   const newArrivals = products.slice(4, 8);
-  const [activeStyleTab, setActiveStyleTab] = useState("Váy");
   const styleProducts = useMemo(() => {
-    const filtered = products.filter(p => p.category?.toLowerCase() === activeStyleTab.toLowerCase());
-    const remaining = 4 - filtered.length;
-    if (remaining > 0) {
-      const otherProducts = products.filter(p => p.category?.toLowerCase() !== activeStyleTab.toLowerCase());
-      return [...filtered, ...otherProducts.slice(0, remaining)];
-    }
-    return filtered.slice(0, 4);
-  }, [products, activeStyleTab]);
+    return products.slice(0, 4);
+  }, [products]);
   const heroImages = useMemo(() => {
     const main = settings.heroImage.trim();
     const extras = (settings.heroImages ?? []).map((value) => value.trim()).filter(Boolean);
@@ -325,22 +318,7 @@ export function HomePage() {
               <h2 className="text-3xl sm:text-4xl font-bold mb-2">Tạo Nên Phong Cách Riêng</h2>
               <p className="text-muted-foreground text-sm sm:text-base">Những thiết kế mới nhất để bạn tự do phối đồ</p>
             </div>
-            
-            <div className="flex flex-wrap justify-center gap-2 sm:gap-3 p-1.5 bg-background rounded-full border shadow-sm">
-              {["Váy", "Áo Thun", "Áo Khoác"].map((tab) => (
-                <button
-                  key={tab}
-                  onClick={() => setActiveStyleTab(tab)}
-                  className={`px-5 py-2 text-sm font-medium rounded-full transition-all duration-300 ${
-                    activeStyleTab === tab 
-                      ? "bg-primary text-primary-foreground shadow-md" 
-                      : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
-                  }`}
-                >
-                  {tab}
-                </button>
-              ))}
-            </div>
+
           </div>
 
           <div className="grid grid-cols-2 gap-4 sm:gap-6 lg:grid-cols-4">
