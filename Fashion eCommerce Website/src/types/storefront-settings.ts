@@ -6,6 +6,7 @@ export interface StorefrontSettings {
   storeAddress: string;
   heroImage: string;
   heroImages: string[];
+  heroImageScalePercent: number;
   heroSlideIntervalMs: number;
   heroBadgeText: string;
   heroTitleLine1: string;

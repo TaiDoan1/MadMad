@@ -14,6 +14,7 @@ export const DEFAULT_STOREFRONT_SETTINGS: StorefrontSettings = {
   heroImage:
     "https://i.pinimg.com/1200x/fb/f2/73/fbf2733c931be4e147263be4c26dc226.jpg",
   heroImages: [],
+  heroImageScalePercent: 100,
   heroSlideIntervalMs: 6000,
   heroBadgeText: "BỘ SƯU TẬP MỚI 2026",
   heroTitleLine1: "THỜI TRANG",
@@ -103,6 +104,10 @@ function readStoredSettings(): StorefrontSettings {
         Array.isArray(parsed.heroImages)
           ? parsed.heroImages.map((value) => String(value).trim()).filter(Boolean)
           : DEFAULT_STOREFRONT_SETTINGS.heroImages,
+      heroImageScalePercent:
+        typeof parsed.heroImageScalePercent === "number"
+          ? parsed.heroImageScalePercent
+          : DEFAULT_STOREFRONT_SETTINGS.heroImageScalePercent,
       heroSlideIntervalMs:
         typeof parsed.heroSlideIntervalMs === "number"
           ? parsed.heroSlideIntervalMs

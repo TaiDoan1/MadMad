@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useParams, useNavigate } from "react-router";
-import { Search, ShoppingCart, User, Heart, Share2, ArrowLeft } from "lucide-react";
+import { Search, ShoppingCart, User, Share2, ArrowLeft } from "lucide-react";
 
 import { ImageWithFallback } from "@/components/common/image-with-fallback";
 import { useCart } from "@/features/cart/context/cart-context";
@@ -244,7 +244,7 @@ export function ProductDetailPage() {
 
               {/* Actions */}
               <div className="w-full space-y-3 pt-4">
-                <div className="flex gap-2 w-full">
+                <div className="flex w-full gap-2">
                   <button
                     onClick={() => {
                       if (!selectedSize || !selectedColor) {
@@ -260,14 +260,12 @@ export function ProductDetailPage() {
                       });
                       window.alert(`Đã thêm vào giỏ hàng!`);
                     }}
-                    className="flex-1 h-12 bg-[#1a1a1a] text-white flex items-center justify-center gap-2 text-[13px] font-bold uppercase hover:bg-black transition-colors rounded-sm"
+                    className="flex min-h-12 min-w-0 flex-1 items-center justify-center gap-2 rounded-sm bg-[#1a1a1a] px-3 py-2 text-[11px] font-bold uppercase text-white transition-colors hover:bg-black sm:px-4 sm:text-[12px] lg:text-[13px]"
                   >
-                    <ShoppingCart className="w-4 h-4" /> THÊM VÀO GIỎ
+                    <ShoppingCart className="h-4 w-4 shrink-0" />
+                    <span className="text-center leading-tight whitespace-normal">THÊM VÀO GIỎ</span>
                   </button>
-                  <button className="w-12 h-12 border border-border flex items-center justify-center hover:bg-muted transition-colors rounded-sm">
-                    <Heart className="w-4 h-4" />
-                  </button>
-                  <button className="w-12 h-12 border border-border flex items-center justify-center hover:bg-muted transition-colors rounded-sm">
+                  <button className="h-12 w-12 shrink-0 rounded-sm border border-border transition-colors hover:bg-muted flex items-center justify-center">
                     <Share2 className="w-4 h-4" />
                   </button>
                 </div>

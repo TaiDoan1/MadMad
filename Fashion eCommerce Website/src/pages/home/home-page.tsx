@@ -58,10 +58,10 @@ export function HomePage() {
     return products.slice(0, 4);
   }, [products]);
   const heroImages = useMemo(() => {
-    const main = settings.heroImage.trim();
+    const main = "/assets/categories/banner.png";
     const extras = (settings.heroImages ?? []).map((value) => value.trim()).filter(Boolean);
-    return [main, ...extras].filter(Boolean);
-  }, [settings.heroImage, settings.heroImages]);
+    return [main, ...extras.filter((value) => value !== main)].filter(Boolean);
+  }, [settings.heroImages]);
   const popularCategoryImages = useMemo(
     () => (settings.popularCategoryImages ?? []).map((value) => value.trim()).filter(Boolean),
     [settings.popularCategoryImages],
@@ -70,6 +70,7 @@ export function HomePage() {
   const overlayLeft = Math.min(100, Math.max(0, settings.heroOverlayOpacityLeft ?? 60)) / 100;
   const overlayMid = Math.min(100, Math.max(0, settings.heroOverlayOpacityMiddle ?? 40)) / 100;
   const overlayRight = Math.min(100, Math.max(0, settings.heroOverlayOpacityRight ?? 60)) / 100;
+  const heroScale = Math.min(200, Math.max(60, settings.heroImageScalePercent ?? 100)) / 100;
   const heroFontClass = "font-mono";
   const heroJustifyClass = "justify-start";
   const heroTextAlignClass = "text-left";
@@ -102,7 +103,8 @@ export function HomePage() {
           {heroImages.map((mediaUrl, index) => {
             const isActive = index === Math.min(heroIndex, heroImages.length - 1);
             const isVideo = mediaUrl.match(/\.(mp4|webm|ogg)$/i);
-            const mediaClass = `absolute inset-0 h-full w-full object-cover transition-all duration-700 ease-in-out ${isActive ? "scale-100 opacity-100" : "scale-105 opacity-0"}`;
+            const mediaClass = `absolute inset-0 h-full w-full object-cover transition-all duration-700 ease-in-out ${isActive ? "opacity-100" : "opacity-0"}`;
+            const mediaScale = isActive ? heroScale : heroScale + 0.05;
             
             if (isVideo) {
               return (
@@ -110,6 +112,7 @@ export function HomePage() {
                   key={`${mediaUrl}-${index}`}
                   src={mediaUrl}
                   className={mediaClass}
+                  style={{ transform: `scale(${mediaScale})` }}
                   autoPlay
                   muted
                   loop
@@ -124,6 +127,7 @@ export function HomePage() {
                 src={mediaUrl}
                 alt={`Street Fashion ${index + 1}`}
                 className={mediaClass}
+                style={{ transform: `scale(${mediaScale})` }}
               />
             );
           })}
@@ -229,7 +233,7 @@ export function HomePage() {
         </div>
       </div>
 
-      <section className="py-16">
+      <section className="bg-white py-16">
         <div className="px-8 sm:px-12 lg:px-16">
           <div className="mb-8 flex items-center justify-between animate-fadeIn">
             <h2 className="font-sans text-3xl font-bold tracking-tight text-black">Nổi Bật</h2>

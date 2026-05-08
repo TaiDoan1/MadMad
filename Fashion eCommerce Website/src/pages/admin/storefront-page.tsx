@@ -20,6 +20,8 @@ export function AdminStorefrontPage() {
   const overlayLeft = Math.min(100, Math.max(0, settings.heroOverlayOpacityLeft ?? 60)) / 100;
   const overlayMid = Math.min(100, Math.max(0, settings.heroOverlayOpacityMiddle ?? 40)) / 100;
   const overlayRight = Math.min(100, Math.max(0, settings.heroOverlayOpacityRight ?? 60)) / 100;
+  const heroScalePercent = Math.min(200, Math.max(60, settings.heroImageScalePercent ?? 100));
+  const heroScale = heroScalePercent / 100;
   const heroFontClass = settings.heroFontStyle === "serif" ? "font-serif" : settings.heroFontStyle === "mono" ? "font-mono" : "";
   const heroJustifyClass = settings.heroContentAlign === "left" ? "justify-start" : settings.heroContentAlign === "right" ? "justify-end" : "justify-center";
   const heroTextAlignClass = settings.heroContentAlign === "left" ? "text-left" : settings.heroContentAlign === "right" ? "text-right" : "text-center";
@@ -167,6 +169,7 @@ export function AdminStorefrontPage() {
                     heroOverlayOpacityLeft: DEFAULT_STOREFRONT_SETTINGS.heroOverlayOpacityLeft,
                     heroOverlayOpacityMiddle: DEFAULT_STOREFRONT_SETTINGS.heroOverlayOpacityMiddle,
                     heroOverlayOpacityRight: DEFAULT_STOREFRONT_SETTINGS.heroOverlayOpacityRight,
+                    heroImageScalePercent: DEFAULT_STOREFRONT_SETTINGS.heroImageScalePercent,
                     heroContentAlign: DEFAULT_STOREFRONT_SETTINGS.heroContentAlign,
                     heroFontStyle: DEFAULT_STOREFRONT_SETTINGS.heroFontStyle,
                     heroSlideIntervalMs: DEFAULT_STOREFRONT_SETTINGS.heroSlideIntervalMs,
@@ -182,11 +185,11 @@ export function AdminStorefrontPage() {
               </p>
             </div>
             <div>
-              <p className="mb-1 text-sm text-muted-foreground">Ảnh banner (URL)</p>
-              <input
+              <p className="mb-1 text-sm text-muted-foreground">Ảnh banner (Upload hoặc URL)</p>
+              <ImageUploadInput
                 value={settings.heroImage}
-                onChange={(event) => updateSettings({ heroImage: event.target.value })}
-                className="w-full rounded border border-border px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
+                onChange={(value) => updateSettings({ heroImage: value })}
+                placeholder="Dán URL banner hoặc bấm Upload"
               />
               <p className="mt-1 text-xs text-muted-foreground">Khuyến nghị: 1920x1080 (tỉ lệ 16:9), dung lượng dưới 500KB.</p>
             </div>
@@ -246,6 +249,32 @@ export function AdminStorefrontPage() {
                 <div>
                   <p className="mb-1 text-xs text-muted-foreground">Gợi ý</p>
                   <p className="rounded border border-border bg-white px-3 py-2 text-xs text-muted-foreground">6000ms (6 giây) là hợp lý.</p>
+                </div>
+              </div>
+              <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
+                <div>
+                  <p className="mb-1 text-xs text-muted-foreground">Kích thước banner ({heroScalePercent}%)</p>
+                  <input
+                    type="range"
+                    min={60}
+                    max={200}
+                    step={5}
+                    value={heroScalePercent}
+                    onChange={(event) => updateSettings({ heroImageScalePercent: Number(event.target.value) })}
+                    className="w-full"
+                  />
+                </div>
+                <div>
+                  <p className="mb-1 text-xs text-muted-foreground">Nhập nhanh (%)</p>
+                  <input
+                    type="number"
+                    min={60}
+                    max={200}
+                    step={5}
+                    value={heroScalePercent}
+                    onChange={(event) => updateSettings({ heroImageScalePercent: Number(event.target.value) })}
+                    className="w-full rounded border border-border bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                  />
                 </div>
               </div>
             </div>
@@ -539,14 +568,16 @@ export function AdminStorefrontPage() {
             <div className="relative h-[420px]">
               {previewHeroImages.map((imageUrl, index) => {
                 const isActive = index === Math.min(previewHeroIndex, previewHeroImages.length - 1);
+                const imageScale = isActive ? heroScale : heroScale + 0.05;
                 return (
                   <ImageWithFallback
                     key={`${imageUrl}-${index}`}
                     src={imageUrl}
                     alt={`Hero preview ${index + 1}`}
                     className={`absolute inset-0 h-full w-full object-cover transition-all duration-700 ease-in-out ${
-                      isActive ? "scale-100 opacity-100" : "scale-105 opacity-0"
+                      isActive ? "opacity-100" : "opacity-0"
                     }`}
+                    style={{ transform: `scale(${imageScale})` }}
                   />
                 );
               })}
