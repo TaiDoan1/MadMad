@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from "react";
-import { ArrowLeft, ArrowRight } from "lucide-react";
 import { Link } from "react-router";
 
 import { ImageWithFallback } from "@/components/common/image-with-fallback";
@@ -7,368 +6,324 @@ import { ProductCard } from "@/components/shared/product-card";
 import { useProducts } from "@/features/products/context/product-context";
 import { useStorefrontSettings } from "@/features/settings/context/storefront-settings-context";
 
-export function HomePage() {
-  const { products } = useProducts();
-  const { settings } = useStorefrontSettings();
-
-  const words1 = ["Coming", "Soon"];
-  const words2 = ["10/05/2026"];
-  const totalWords = words1.length + words2.length;
-  const loopDurationMs = totalWords * 1500 + 2000;
-  const [drawKey, setDrawKey] = useState(0);
-
-  useEffect(() => {
-    const timer = window.setInterval(() => {
-      setDrawKey((k) => k + 1);
-    }, loopDurationMs);
-    return () => window.clearInterval(timer);
-  }, [loopDurationMs]);
-
-  const [timeLeft, setTimeLeft] = useState({
-    days: 69,
-    hours: 3,
-    minutes: 18,
-    seconds: 32,
+// ─── Countdown Timer ───────────────────────────────────────────────────────────
+function useCountdown(targetMs: number) {
+  const [timeLeft, setTimeLeft] = useState(() => {
+    const diff = Math.max(0, targetMs - Date.now());
+    return {
+      days: Math.floor(diff / 86_400_000),
+      hours: Math.floor((diff % 86_400_000) / 3_600_000),
+      minutes: Math.floor((diff % 3_600_000) / 60_000),
+      seconds: Math.floor((diff % 60_000) / 1_000),
+    };
   });
 
   useEffect(() => {
     const timer = window.setInterval(() => {
-      setTimeLeft((previousTime) => {
-        if (previousTime.seconds > 0) return { ...previousTime, seconds: previousTime.seconds - 1 };
-        if (previousTime.minutes > 0) return { ...previousTime, minutes: previousTime.minutes - 1, seconds: 59 };
-        if (previousTime.hours > 0) return { ...previousTime, hours: previousTime.hours - 1, minutes: 59, seconds: 59 };
-        if (previousTime.days > 0) return { ...previousTime, days: previousTime.days - 1, hours: 23, minutes: 59, seconds: 59 };
-        return previousTime;
+      const diff = Math.max(0, targetMs - Date.now());
+      setTimeLeft({
+        days: Math.floor(diff / 86_400_000),
+        hours: Math.floor((diff % 86_400_000) / 3_600_000),
+        minutes: Math.floor((diff % 3_600_000) / 60_000),
+        seconds: Math.floor((diff % 60_000) / 1_000),
       });
-    }, 1000);
-
+    }, 1_000);
     return () => window.clearInterval(timer);
-  }, []);
+  }, [targetMs]);
 
+  return timeLeft;
+}
+
+// ─── HomePage ──────────────────────────────────────────────────────────────────
+export function HomePage() {
+  const { products } = useProducts();
+  const { settings } = useStorefrontSettings();
+
+  // ── Hero slideshow ─────────────────────────────────────────────────────────
+  const heroImages = useMemo(() => {
+    const main = "/assets/categories/banner.png";
+    const extras = (settings.heroImages ?? []).map((v) => v.trim()).filter(Boolean);
+    return [main, ...extras.filter((v) => v !== main)].filter(Boolean);
+  }, [settings.heroImages]);
+
+  const [heroIndex, setHeroIndex] = useState(0);
+  const heroScale    = Math.min(200, Math.max(60,  settings.heroImageScalePercent    ?? 100)) / 100;
+  const overlayLeft  = Math.min(100, Math.max(0,   settings.heroOverlayOpacityLeft   ?? 55))  / 100;
+  const overlayMid   = Math.min(100, Math.max(0,   settings.heroOverlayOpacityMiddle ?? 30))  / 100;
+  const overlayRight = Math.min(100, Math.max(0,   settings.heroOverlayOpacityRight  ?? 55))  / 100;
+
+  useEffect(() => { setHeroIndex(0); }, [heroImages.length]);
+
+  useEffect(() => {
+    const ms = Math.max(2_000, Math.min(60_000, Number(settings.heroSlideIntervalMs ?? 6_000)));
+    if (heroImages.length <= 1) return;
+    const t = window.setInterval(() => setHeroIndex((i) => (i + 1) % heroImages.length), ms);
+    return () => window.clearInterval(t);
+  }, [heroImages.length, settings.heroSlideIntervalMs]);
+
+  // ── Products ───────────────────────────────────────────────────────────────
   const bestSellers = settings.bestSellerProductIds
-    .map((id) => products.find((product) => product.id === id))
-    .filter((product): product is NonNullable<typeof product> => Boolean(product));
-  const resolvedBestSellers = bestSellers.length > 0 ? bestSellers : products.slice(0, 4);
-  const bestSellersWithImages = resolvedBestSellers.map((product) => ({
+    .map((id) => products.find((p) => p.id === id))
+    .filter((p): p is NonNullable<typeof p> => Boolean(p));
+
+  const resolvedBestSellers = bestSellers.length > 0 ? bestSellers : products.slice(0, 6);
+
+  const featuredProducts = resolvedBestSellers.slice(0, 6).map((product) => ({
     ...product,
     image: settings.bestSellerImageOverrides[product.id] ?? product.image,
   }));
-  const newArrivals = products.slice(4, 8);
-  const styleProducts = useMemo(() => {
-    return products.slice(0, 4);
-  }, [products]);
-  const heroImages = useMemo(() => {
-    const main = "/assets/categories/banner.png";
-    const extras = (settings.heroImages ?? []).map((value) => value.trim()).filter(Boolean);
-    return [main, ...extras.filter((value) => value !== main)].filter(Boolean);
-  }, [settings.heroImages]);
+
+  // ── Popular category images ────────────────────────────────────────────────
   const popularCategoryImages = useMemo(
-    () => (settings.popularCategoryImages ?? []).map((value) => value.trim()).filter(Boolean),
+    () => (settings.popularCategoryImages ?? []).map((v) => v.trim()).filter(Boolean),
     [settings.popularCategoryImages],
   );
-  const [heroIndex, setHeroIndex] = useState(0);
-  const overlayLeft = Math.min(100, Math.max(0, settings.heroOverlayOpacityLeft ?? 60)) / 100;
-  const overlayMid = Math.min(100, Math.max(0, settings.heroOverlayOpacityMiddle ?? 40)) / 100;
-  const overlayRight = Math.min(100, Math.max(0, settings.heroOverlayOpacityRight ?? 60)) / 100;
-  const heroScale = Math.min(200, Math.max(60, settings.heroImageScalePercent ?? 100)) / 100;
-  const heroFontClass = "font-mono";
-  const heroJustifyClass = "justify-start";
-  const heroTextAlignClass = "text-left";
-  const goToPrevHero = () => {
-    if (heroImages.length <= 1) return;
-    setHeroIndex((current) => (current - 1 + heroImages.length) % heroImages.length);
-  };
-  const goToNextHero = () => {
-    if (heroImages.length <= 1) return;
-    setHeroIndex((current) => (current + 1) % heroImages.length);
-  };
 
-  useEffect(() => {
-    setHeroIndex(0);
-  }, [heroImages.length]);
+  // ── Countdown ─────────────────────────────────────────────────────────────
+  const dropDate = useMemo(() => new Date("2026-07-01T00:00:00").getTime(), []);
+  const timeLeft = useCountdown(dropDate);
 
-  useEffect(() => {
-    const intervalMs = Math.max(2000, Math.min(60000, Number(settings.heroSlideIntervalMs ?? 6000)));
-    if (heroImages.length <= 1) return;
-    const timer = window.setInterval(() => {
-      setHeroIndex((current) => (current + 1) % heroImages.length);
-    }, intervalMs);
-    return () => window.clearInterval(timer);
-  }, [heroImages.length, settings.heroSlideIntervalMs]);
+  // ── Editorial feed photos ──────────────────────────────────────────────────
+  const editorialPhotos = [
+    "/assets/categories/anh-pho-bien.jpg",
+    "/assets/products/ao-thun-m-den.jpg",
+    "/assets/products/sp2-den.jpg",
+    "/assets/products/sp3-navy.jpg",
+    "/assets/products/ao-thun-m-xam.jpg",
+  ];
 
   return (
     <div>
-      <section className="relative h-[calc(90vh-40px)] overflow-hidden bg-gradient-to-r from-secondary/30 to-muted">
+      {/* ═══ HERO ════════════════════════════════════════════════════════════ */}
+      <section className="relative h-screen overflow-hidden">
+        {/* Slides */}
         <div className="absolute inset-0">
           {heroImages.map((mediaUrl, index) => {
             const isActive = index === Math.min(heroIndex, heroImages.length - 1);
-            const isVideo = mediaUrl.match(/\.(mp4|webm|ogg)$/i);
-            const mediaClass = `absolute inset-0 h-full w-full object-cover transition-all duration-700 ease-in-out ${isActive ? "opacity-100" : "opacity-0"}`;
-            const mediaScale = isActive ? heroScale : heroScale + 0.05;
-            
-            if (isVideo) {
-              return (
-                <video
-                  key={`${mediaUrl}-${index}`}
-                  src={mediaUrl}
-                  className={mediaClass}
-                  style={{ transform: `scale(${mediaScale})` }}
-                  autoPlay
-                  muted
-                  loop
-                  playsInline
-                />
-              );
-            }
+            const isVideo  = /\.(mp4|webm|ogg)$/i.test(mediaUrl);
+            const cls      = `absolute inset-0 h-full w-full object-cover transition-all duration-700 ease-in-out ${isActive ? "opacity-100" : "opacity-0"}`;
+            const scale    = isActive ? heroScale : heroScale + 0.05;
 
-            return (
+            return isVideo ? (
+              <video
+                key={`${mediaUrl}-${index}`}
+                src={mediaUrl}
+                className={cls}
+                style={{ transform: `scale(${scale})` }}
+                autoPlay muted loop playsInline
+              />
+            ) : (
               <ImageWithFallback
                 key={`${mediaUrl}-${index}`}
                 src={mediaUrl}
-                alt={`Street Fashion ${index + 1}`}
-                className={mediaClass}
-                style={{ transform: `scale(${mediaScale})` }}
+                alt={`MADMAD ${index + 1}`}
+                className={cls}
+                style={{ transform: `scale(${scale})` }}
               />
             );
           })}
+
+          {/* Diagonal colour overlay */}
           <div
             className="absolute inset-0"
             style={{
               background: `linear-gradient(to right, rgba(0,0,0,${overlayLeft}), rgba(0,0,0,${overlayMid}), rgba(0,0,0,${overlayRight}))`,
             }}
           />
-          {heroImages.length > 1 && (
-            <>
-              <button
-                type="button"
-                onClick={goToPrevHero}
-                className="absolute left-4 top-1/2 z-20 -translate-y-1/2 rounded-full bg-black/40 p-3 text-white transition-bounce hover:bg-black/60 hover:scale-110 active:scale-125 active:bg-black/60"
-                title="Ảnh trước"
-              >
-                <ArrowLeft className="h-6 w-6" />
-              </button>
-              <button
-                type="button"
-                onClick={goToNextHero}
-                className="absolute right-4 top-1/2 z-20 -translate-y-1/2 rounded-full bg-black/40 p-3 text-white transition-bounce hover:bg-black/60 hover:scale-110 active:scale-125 active:bg-black/60"
-                title="Ảnh tiếp theo"
-              >
-                <ArrowRight className="h-6 w-6" />
-              </button>
-            </>
-          )}
-
-          <div className="absolute inset-0 flex items-center">
-            <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
-              <div className={`flex ${heroJustifyClass}`}>
-                <div className={`w-full max-w-xl space-y-4 sm:space-y-6 md:space-y-8 text-white ${heroTextAlignClass} ${heroFontClass}`}>
-                  <p className="animate-fadeIn text-sm sm:text-base uppercase tracking-widest opacity-90 md:text-lg font-mono">BỘ SƯU TẬP MỚI 2026</p>
-                  <div className="animate-fadeInUp stagger-1 w-full flex justify-start py-2">
-                    <svg key={drawKey} className="w-full overflow-visible" style={{ height: "3em", fontSize: "clamp(2.5rem, 10vw, 10rem)" }}>
-                      <text
-                        x="0"
-                        y="0.8em"
-                        dominantBaseline="middle"
-                        textAnchor="start"
-                        className="font-normal capitalize tracking-normal"
-                        style={{ fontFamily: "'Great Vibes', cursive" }}
-                      >
-                        {words1.map((word, i) => (
-                          <tspan key={i} className="text-draw-effect" style={{ animationDelay: `${i * 1.5}s` }}>
-                            {word}{" "}
-                          </tspan>
-                        ))}
-                      </text>
-                      <text
-                        x="0"
-                        y="2.2em"
-                        dominantBaseline="middle"
-                        textAnchor="start"
-                        className="font-normal capitalize tracking-normal"
-                        style={{ fontFamily: "'Great Vibes', cursive" }}
-                      >
-                        {words2.map((word, i) => (
-                          <tspan key={i} className="text-draw-effect" style={{ animationDelay: `${(words1.length + i) * 1.5}s` }}>
-                            {word}{" "}
-                          </tspan>
-                        ))}
-                      </text>
-                    </svg>
-                  </div>
-                  <p className="animate-fadeInUp stagger-2 text-base sm:text-lg opacity-90 md:text-xl font-mono leading-relaxed max-w-2xl">
-                    Khám phá phong cách street wear độc đáo.<br />
-                    Thể hiện cá tính với xu hướng thời trang urban hiện đại.
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-          {heroImages.length > 1 && (
-            <div className="absolute bottom-6 left-1/2 z-20 flex -translate-x-1/2 gap-2">
-              {heroImages.map((_, index) => (
-                <button
-                  key={index}
-                  type="button"
-                  onClick={() => setHeroIndex(index)}
-                  className={`h-2.5 w-8 rounded-full transition-colors ${index === heroIndex ? "bg-white" : "bg-white/40 hover:bg-white/70"
-                    }`}
-                  title={`Chuyển ảnh ${index + 1}`}
-                />
-              ))}
-            </div>
-          )}
+          {/* Bottom fade — frames the text */}
+          <div className="absolute inset-x-0 bottom-0 h-80 bg-gradient-to-t from-black/80 to-transparent" />
         </div>
+
+        {/* Hero text — Protect.LDN style: condensed bold ALL CAPS, bottom-center */}
+        <div className="absolute inset-x-0 bottom-20 z-10 flex flex-col items-center gap-4 px-4 text-center">
+          <h1
+            className="font-black uppercase text-white animate-fadeInUp"
+            style={{
+              fontSize: "clamp(2.2rem, 7vw, 5.5rem)",
+              letterSpacing: "0.12em",
+              lineHeight: 1.0,
+              textShadow: "0 2px 30px rgba(0,0,0,0.6)",
+            }}
+          >
+            NEW DROP OUT NOW
+          </h1>
+          <Link
+            to="/shop"
+            className="text-xs uppercase tracking-[0.3em] text-white/70 transition-colors duration-300 hover:text-white"
+          >
+            shop now
+          </Link>
+        </div>
+
+        {/* Slide dots */}
+        {heroImages.length > 1 && (
+          <div className="absolute bottom-7 left-1/2 z-20 flex -translate-x-1/2 gap-2">
+            {heroImages.map((_, index) => (
+              <button
+                key={index}
+                type="button"
+                onClick={() => setHeroIndex(index)}
+                className={`h-[3px] rounded-full transition-all duration-500 ${
+                  index === heroIndex ? "bg-white w-8" : "bg-white/40 hover:bg-white/70 w-3"
+                }`}
+                title={`Slide ${index + 1}`}
+              />
+            ))}
+          </div>
+        )}
       </section>
 
-      <div className="marquee-container flex items-center overflow-hidden bg-primary py-4 sm:py-6">
-        <div className="flex shrink-0 animate-marquee items-center whitespace-nowrap">
-          {Array.from({ length: 8 }).map((_, index) => (
-            <img key={index} src="/assets/marquee/linebe.png" alt="MADMAD - Make Your Mark" className="mx-4 sm:mx-10 md:mx-14 h-10 sm:h-14 md:h-16 shrink-0 object-contain" />
-          ))}
-        </div>
-        <div className="flex shrink-0 animate-marquee items-center whitespace-nowrap" aria-hidden="true">
-          {Array.from({ length: 8 }).map((_, index) => (
-            <img key={index + 8} src="/assets/marquee/linebe.png" alt="MADMAD - Make Your Mark" className="mx-4 sm:mx-10 md:mx-14 h-10 sm:h-14 md:h-16 shrink-0 object-contain" />
-          ))}
-        </div>
+      {/* ═══ MARQUEE ════════════════════════════════════════════════════════ */}
+      <div className="marquee-container flex items-center overflow-hidden bg-white border-y border-gray-100 py-4 sm:py-5">
+        {[0, 1].map((set) => (
+          <div key={set} className="flex shrink-0 animate-marquee items-center whitespace-nowrap" aria-hidden={set === 1}>
+            {Array.from({ length: 8 }).map((_, i) => (
+              <span
+                key={i + set * 8}
+                className="mx-8 sm:mx-12 flex items-center gap-3 text-primary font-black uppercase tracking-widest text-sm sm:text-base shrink-0"
+              >
+                MADMAD
+                <span className="text-primary/40 text-xs">✦</span>
+                MAKE YOUR MARK
+              </span>
+            ))}
+          </div>
+        ))}
       </div>
 
-      <section className="bg-white py-16">
-        <div className="px-8 sm:px-12 lg:px-16">
-          <div className="mb-8 flex items-center justify-between animate-fadeIn">
-            <h2 className="font-sans text-3xl font-bold tracking-tight text-black">Nổi Bật</h2>
+      {/* ═══ FEATURED PRODUCTS — 3-col Protect.LDN grid ════════════════════ */}
+      <section className="bg-white py-14 sm:py-20">
+        <div className="px-6 sm:px-10 lg:px-16">
+          {/* Section header */}
+          <div className="mb-8 flex items-end justify-between border-b border-black/10 pb-4">
+            <h2
+              className="font-black uppercase text-black tracking-wide"
+              style={{ fontSize: "clamp(1.6rem, 3.5vw, 2.8rem)" }}
+            >
+              NỔI BẬT
+            </h2>
+            <Link
+              to="/shop"
+              className="text-[11px] uppercase tracking-[0.25em] text-black/40 transition-colors hover:text-black"
+            >
+              Xem tất cả →
+            </Link>
           </div>
 
-          <div className="grid grid-cols-2 gap-3 sm:gap-6 lg:grid-cols-4">
-            {bestSellersWithImages.map((product, index) => (
+          {/* 3-column product grid */}
+          <div className="grid grid-cols-1 gap-px sm:grid-cols-2 lg:grid-cols-3">
+            {featuredProducts.map((product, index) => (
               <div key={product.id} className={`animate-fadeInUp stagger-${Math.min(index + 1, 6)}`}>
                 <ProductCard product={product} variant="home" />
               </div>
             ))}
           </div>
-
-          <div className="mt-8 text-center">
-            <Link to="/shop" className="inline-flex items-center gap-2 text-primary transition-all hover:gap-4">
-              Xem Tất Cả Sản Phẩm
-              <ArrowRight className="h-5 w-5" />
-            </Link>
-          </div>
         </div>
       </section>
 
-
-
-      <section className="flex min-h-[30vh] sm:min-h-[40vh] md:min-h-[50vh] items-center justify-center bg-card py-10">
-        <div className="mx-auto max-w-5xl px-4 text-center sm:px-6 lg:px-8">
-          <img src="/assets/marquee/slogan.png" alt="Slogan MADMAD" className="mx-auto w-full max-w-4xl animate-fadeIn object-contain" />
-        </div>
-      </section>
-
-      <section className="bg-primary py-4">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col items-center justify-between gap-4 md:flex-row">
-            <div className="text-white text-center md:text-left">
-              <h3 className="mb-1 text-lg sm:text-xl">Khuyến Mãi Có Hạn</h3>
-              <p className="text-xs sm:text-sm opacity-90">Ưu đãi đặc biệt tháng này</p>
-            </div>
-
-            <div className="flex gap-4 text-white">
-              {[
-                { label: "NGÀY", value: timeLeft.days },
-                { label: "GIỜ", value: timeLeft.hours },
-                { label: "PHÚT", value: timeLeft.minutes },
-                { label: "GIÂY", value: timeLeft.seconds, pulse: true },
-              ].map((item, index) => (
-                <div key={item.label} className="contents">
-                  {index > 0 && <div className="mt-2 self-start text-3xl">:</div>}
-                  <div className={`animate-fadeIn text-center stagger-${Math.min(index + 1, 6)}`}>
-                    <div className={`rounded-lg bg-white/20 px-3 py-1 sm:px-4 sm:py-2 text-xl sm:text-3xl backdrop-blur-sm ${item.pulse ? "animate-pulse-slow" : ""}`}>
-                      {item.value.toString().padStart(2, "0")}
-                    </div>
-                    <div className="mt-1 text-[10px] sm:text-xs opacity-75">{item.label}</div>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <button className="animate-fadeIn stagger-5 rounded bg-white px-6 py-2 text-primary transition-all hover:scale-105 hover:bg-white/90">
-              MUA NGAY
-            </button>
-          </div>
-        </div>
-      </section>
-
-      {popularCategoryImages.length > 0 ? (
-        <section className="bg-background pt-8 sm:pt-12 lg:pt-16">
+      {/* ═══ POPULAR CATEGORY IMAGES (admin-configurable) ═══════════════════ */}
+      {popularCategoryImages.length > 0 && (
+        <section className="bg-background">
           {popularCategoryImages.map((imageUrl, index) => (
-            <div
-              key={`${imageUrl}-${index}`}
-              className={`w-full animate-fadeIn ${index > 0 ? "mt-4 sm:mt-6" : ""}`}
-            >
+            <div key={`${imageUrl}-${index}`} className="w-full animate-fadeIn">
               <ImageWithFallback
                 src={imageUrl}
-                alt={`Ảnh nổi bật ${index + 1}`}
+                alt={`Featured ${index + 1}`}
                 className="h-auto w-full object-contain"
               />
             </div>
           ))}
         </section>
-      ) : null}
+      )}
 
-      <section className="bg-background py-16 sm:py-24">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="mb-10 flex flex-col items-center sm:flex-row sm:justify-between gap-6">
-            <div className="text-center sm:text-left">
-              <h2 className="text-3xl sm:text-4xl font-bold mb-2">Tạo Nên Phong Cách Riêng</h2>
-              <p className="text-muted-foreground text-sm sm:text-base">Những thiết kế mới nhất để bạn tự do phối đồ</p>
+      {/* ═══ SLOGAN ═════════════════════════════════════════════════════════ */}
+      <section className="flex min-h-[22vh] items-center justify-center bg-white py-10">
+        <div className="mx-auto max-w-4xl px-4 text-center">
+          <img
+            src="/assets/marquee/slogan.png"
+            alt="Slogan MADMAD"
+            className="mx-auto w-full animate-fadeIn object-contain"
+          />
+        </div>
+      </section>
+
+      {/* ═══ DROP COUNTDOWN ═════════════════════════════════════════════════ */}
+      <section className="bg-primary py-5">
+        <div className="mx-auto max-w-7xl px-6 sm:px-10 lg:px-16">
+          <div className="flex flex-col items-center justify-between gap-5 sm:flex-row">
+            <div className="text-white text-center sm:text-left">
+              <p className="text-xs uppercase tracking-[0.2em] opacity-70 mb-1">Next Drop</p>
+              <h3 className="text-lg sm:text-xl font-black uppercase tracking-wide">01 / 07 / 2026</h3>
             </div>
 
-          </div>
+            <div className="flex items-center gap-3 text-white">
+              {(
+                [
+                  { label: "NGÀY",  value: timeLeft.days },
+                  { label: "GIỜ",   value: timeLeft.hours },
+                  { label: "PHÚT",  value: timeLeft.minutes },
+                  { label: "GIÂY",  value: timeLeft.seconds },
+                ] as const
+              ).map((item, index) => (
+                <div key={item.label} className="flex items-center gap-3">
+                  {index > 0 && <span className="text-white/40 text-2xl font-thin">:</span>}
+                  <div className="text-center">
+                    <div className="rounded bg-white/15 px-3 py-2 text-2xl sm:text-3xl font-black tabular-nums backdrop-blur-sm">
+                      {item.value.toString().padStart(2, "0")}
+                    </div>
+                    <div className="mt-1 text-[9px] uppercase tracking-widest opacity-60">{item.label}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
 
-          <div className="grid grid-cols-2 gap-4 sm:gap-6 lg:grid-cols-4">
-            {styleProducts.map((product) => (
-              <div key={product.id} className="animate-fadeInUp">
-                <ProductCard product={product} variant="home" />
-              </div>
-            ))}
+            <Link
+              to="/shop"
+              className="rounded-none border border-white px-8 py-2.5 text-xs font-bold uppercase tracking-widest text-white transition-all duration-300 hover:bg-white hover:text-primary"
+            >
+              MUA NGAY
+            </Link>
           </div>
         </div>
       </section>
 
-      <section className="py-16">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 items-center gap-12 lg:grid-cols-2">
-            <div className="space-y-6">
-              <h2 className="text-4xl">
-                THỜI TRANG
-                <br />
-                BẢO VỆ HÀNH TINH
-              </h2>
-              <p className="text-base sm:text-lg text-muted-foreground">
-                Thời trang bền vững từ chất liệu thân thiện với môi trường. Mặc đẹp đồng thời bảo vệ hành tinh xanh.
-              </p>
-              <button className="rounded bg-foreground px-6 py-2 sm:px-8 sm:py-3 text-background transition-bounce hover:bg-foreground/90 hover:scale-105 active:scale-110 active:bg-foreground/90">
-                KHÁM PHÁ THÊM
-              </button>
-            </div>
+      {/* ═══ EDITORIAL FEED — @MADMAD ════════════════════════════════════════ */}
+      <section className="bg-white pt-14 pb-0">
+        {/* Feed header */}
+        <div className="px-6 sm:px-10 lg:px-16 mb-5 flex items-center justify-between">
+          <p
+            className="font-black uppercase text-black tracking-[0.15em]"
+            style={{ fontSize: "clamp(0.85rem, 1.5vw, 1.1rem)" }}
+          >
+            @MADMAD
+          </p>
+          <a
+            href="https://instagram.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-[11px] uppercase tracking-[0.25em] text-black/40 transition-colors hover:text-black"
+          >
+            Follow
+          </a>
+        </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-4">
-                <ImageWithFallback
-                  src="https://images.unsplash.com/photo-1761581444836-a01b1341cca3?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwyfHxtaW5pbWFsaXN0JTIwZmFzaGlvbiUyMHN1c3RhaW5hYmxlfGVufDF8fHx8MTc3Njc5NDY1N3ww&ixlib=rb-4.1.0&q=80&w=1080"
-                  alt="Thời trang bền vững 1"
-                  className="aspect-[3/4] w-full rounded-lg object-cover"
-                />
-              </div>
-              <div className="space-y-4 pt-8">
-                <ImageWithFallback
-                  src="https://images.unsplash.com/photo-1578747522731-9e5a179b02f7?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHw0fHxtaW5pbWFsaXN0JTIwZmFzaGlvbiUyMHN1c3RhaW5hYmxlfGVufDF8fHx8MTc3Njc5NDY1N3ww&ixlib=rb-4.1.0&q=80&w=1080"
-                  alt="Thời trang bền vững 2"
-                  className="aspect-[3/4] w-full rounded-lg object-cover"
-                />
+        {/* Photo grid — no gaps, full bleed */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-0.5">
+          {editorialPhotos.map((src, index) => (
+            <div key={index} className="relative overflow-hidden aspect-[2/3] group cursor-pointer">
+              <ImageWithFallback
+                src={src}
+                alt={`MADMAD editorial ${index + 1}`}
+                className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
+              />
+              {/* Hover overlay */}
+              <div className="absolute inset-0 bg-black/0 transition-all duration-500 group-hover:bg-black/25 flex items-center justify-center">
+                <span className="text-white text-xs uppercase tracking-widest opacity-0 transition-opacity duration-300 group-hover:opacity-100">
+                  @madmad
+                </span>
               </div>
             </div>
-          </div>
+          ))}
         </div>
       </section>
     </div>

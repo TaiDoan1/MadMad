@@ -5,6 +5,7 @@ import { Link, Outlet, useLocation, useNavigate } from "react-router";
 import { brandLogo } from "@/assets/images";
 import { LoadingBar } from "@/components/common/loading-bar";
 import { PageTransition } from "@/components/common/page-transition";
+import { SplashScreen } from "@/components/common/splash-screen";
 import { useAdminAuth } from "@/features/auth/context/admin-auth-context";
 import { useCart } from "@/features/cart/context/cart-context";
 
@@ -15,10 +16,14 @@ export function MainLayout() {
   const [adminUsername, setAdminUsername] = useState("");
   const [adminPassword, setAdminPassword] = useState("");
   const [adminLoginError, setAdminLoginError] = useState("");
+  const [isScrolled, setIsScrolled] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
   const { isAdminAuthenticated, loginAdmin, logoutAdmin } = useAdminAuth();
   const { itemCount: cartCount } = useCart();
+  const isHome = location.pathname === "/";
+  // Header transparent chỉ khi ở home page VÀ chưa scroll
+  const isTransparent = isHome && !isScrolled;
 
   const handleLogoClick = () => {
     setLogoBouncing(true);
@@ -62,57 +67,108 @@ export function MainLayout() {
     };
   }, [mobileMenuOpen]);
 
+  // Scroll listener — cập nhật isScrolled khi user kéo lên/xuống
+  useEffect(() => {
+    const onScroll = () => setIsScrolled(window.scrollY > 30);
+    window.addEventListener("scroll", onScroll, { passive: true });
+    onScroll(); // check ngay lần đầu
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  // Reset về top khi đổi route
+  useEffect(() => { setIsScrolled(window.scrollY > 30); }, [location.pathname]);
+
   return (
     <div className="min-h-screen bg-background">
       <LoadingBar />
-      <header className="sticky top-0 z-50 bg-card backdrop-blur-sm">
+      {/* Header: fixed — overlay lên trên content, transparent ở top home page */}
+      <header
+        className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ease-in-out ${
+          isTransparent
+            ? "bg-transparent"
+            : "bg-white border-b border-gray-100 shadow-sm"
+        }`}
+      >
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="flex h-16 items-center justify-between">
+
+            {/* Left — mobile menu + desktop nav */}
             <div className="flex flex-1 items-center gap-6">
-              <button className="transition-colors hover:text-primary lg:hidden" onClick={() => setMobileMenuOpen(true)}>
+              <button
+                className={`transition-colors lg:hidden ${
+                  isTransparent ? "text-white hover:text-white/70" : "text-foreground hover:text-primary"
+                }`}
+                onClick={() => setMobileMenuOpen(true)}
+              >
                 <Menu className="h-6 w-6" />
               </button>
 
-              <nav className="hidden items-center gap-6 text-xs font-semibold lg:flex">
-                <Link to="/" className={`transition-bounce hover:scale-110 hover:text-primary active:scale-110 active:text-primary ${isActive("/") ? "scale-110 text-primary" : ""}`}>
-                  TRANG CHỦ
-                </Link>
-                <Link
-                  to="/shop"
-                  className={`transition-bounce hover:scale-110 hover:text-primary active:scale-110 active:text-primary ${isActive("/shop") ? "scale-110 text-primary" : ""}`}
-                >
-                  CỬA HÀNG
-                </Link>
-                <Link
-                  to="/about"
-                  className={`transition-bounce hover:scale-110 hover:text-primary active:scale-110 active:text-primary ${isActive("/about") ? "scale-110 text-primary" : ""}`}
-                >
-                  GIỚI THIỆU
-                </Link>
-                <Link
-                  to="/contact"
-                  className={`transition-bounce hover:scale-110 hover:text-primary active:scale-110 active:text-primary ${isActive("/contact") ? "scale-110 text-primary" : ""}`}
-                >
-                  LIÊN HỆ
-                </Link>
+              <nav className="hidden items-center gap-6 text-sm font-bold tracking-widest lg:flex">
+                {[
+                  { path: "/",        label: "TRANG CHỦ" },
+                  { path: "/shop",    label: "CỬA HÀNG" },
+                  { path: "/about",   label: "GIỚI THIỆU" },
+                  { path: "/contact", label: "LIÊN HỆ" },
+                ].map((item) => (
+                  <Link
+                    key={item.path}
+                    to={item.path}
+                    className={`relative transition-colors ${
+                      isTransparent
+                        ? isActive(item.path)
+                          ? "text-white"
+                          : "text-white/70 hover:text-white"
+                        : isActive(item.path)
+                          ? "text-primary after:absolute after:-bottom-1 after:left-0 after:h-[2px] after:w-full after:bg-primary"
+                          : "text-foreground hover:text-primary"
+                    }`}
+                  >
+                    {item.label}
+                  </Link>
+                ))}
               </nav>
             </div>
 
-            <Link to="/" className="absolute left-1/2 flex -translate-x-1/2 items-center" onClick={handleLogoClick}>
-              <img src={brandLogo} alt="MADMAD Studio" className={`h-8 sm:h-10 w-auto transition-bounce hover:scale-125 sm:hover:scale-150 ${logoBouncing ? 'scale-[1.8] sm:scale-[2]' : ''}`} />
+            {/* Center — Logo */}
+            <Link
+              to="/"
+              className="absolute left-1/2 flex -translate-x-1/2 items-center"
+              onClick={handleLogoClick}
+            >
+              <img
+                src={brandLogo}
+                alt="MADMAD Studio"
+                className={`h-8 sm:h-10 w-auto transition-all duration-500 hover:scale-125 sm:hover:scale-150 ${
+                  logoBouncing ? 'scale-[1.8] sm:scale-[2]' : ''
+                } ${
+                  isTransparent ? "brightness-0 invert" : ""
+                }`}
+              />
             </Link>
 
-            <div className="flex flex-1 items-center justify-end gap-3 sm:gap-4">
-              <button className="transition-bounce hover:scale-110 hover:text-primary active:scale-125 active:text-primary">
+            {/* Right — Icons */}
+            <div className={`flex flex-1 items-center justify-end gap-3 sm:gap-4 ${
+              isTransparent ? "text-white" : "text-foreground"
+            }`}>
+              <button className={`transition-colors ${
+                isTransparent ? "hover:text-white/70" : "hover:text-primary"
+              }`}>
                 <Search className="h-5 w-5" />
               </button>
-              <button className="hidden sm:block transition-bounce hover:scale-110 hover:text-primary active:scale-125 active:text-primary" onClick={handleOpenAdmin}>
+              <button
+                className={`hidden sm:block transition-colors ${
+                  isTransparent ? "hover:text-white/70" : "hover:text-primary"
+                }`}
+                onClick={handleOpenAdmin}
+              >
                 <User className="h-5 w-5" />
               </button>
-              <button className="hidden sm:block transition-bounce hover:scale-110 hover:text-primary active:scale-125 active:text-primary">
-                <Heart className="h-5 w-5" />
-              </button>
-              <Link to="/cart" className="relative transition-bounce hover:scale-110 hover:text-primary active:scale-125 active:text-primary">
+              <Link
+                to="/cart"
+                className={`relative transition-colors ${
+                  isTransparent ? "hover:text-white/70" : "hover:text-primary"
+                }`}
+              >
                 <ShoppingCart className="h-5 w-5" />
                 {cartCount > 0 && (
                   <span className="absolute -right-2 -top-2 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-xs text-white animate-pulse-slow">
@@ -150,7 +206,7 @@ export function MainLayout() {
                     key={item.path}
                     to={item.path}
                     onClick={() => setMobileMenuOpen(false)}
-                    className={`block rounded-lg px-4 py-3 text-sm font-semibold transition-bounce hover:bg-primary hover:scale-105 hover:text-white active:scale-105 active:bg-primary active:text-white ${
+                    className={`block rounded-lg px-4 py-3 text-sm font-semibold tracking-wider transition-bounce hover:bg-primary hover:scale-105 hover:text-white active:scale-105 active:bg-primary active:text-white ${
                       isActive(item.path) ? "bg-primary text-white" : ""
                     }`}
                   >
@@ -243,7 +299,8 @@ export function MainLayout() {
         </div>
       )}
 
-      <main>
+      {/* pt-16 cho trang không phải home để không bị header che */}
+      <main className={isHome ? "" : "pt-16"}>
         <PageTransition>
           <Outlet />
         </PageTransition>
@@ -294,6 +351,7 @@ export function MainLayout() {
           </div>
         </div>
       </footer>
+      <SplashScreen />
     </div>
   );
 }

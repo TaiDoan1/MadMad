@@ -1,7 +1,7 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  --font-size: 16px;
+  --font-size: 17px;
   --background: #ffffff;
   --foreground: #1a1a1a;
   --card: #ffffff;
@@ -130,8 +130,8 @@
 
   body {
     @apply bg-background text-foreground;
-    font-family: 'Montserrat', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-    letter-spacing: 0.02em;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    letter-spacing: 0.01em;
   }
 
   /**
@@ -145,34 +145,38 @@
 
   h1 {
     font-size: var(--text-2xl);
-    font-weight: 700;
-    line-height: 1.3;
-    font-family: 'Montserrat', sans-serif;
-    letter-spacing: 0.02em;
+    font-weight: 400;
+    line-height: 1.1;
+    font-family: 'Bayon', sans-serif;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
   }
 
   h2 {
     font-size: var(--text-xl);
-    font-weight: 700;
-    line-height: 1.3;
-    font-family: 'Montserrat', sans-serif;
-    letter-spacing: 0.02em;
+    font-weight: 400;
+    line-height: 1.15;
+    font-family: 'Bayon', sans-serif;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
   }
 
   h3 {
     font-size: var(--text-lg);
-    font-weight: 600;
-    line-height: 1.4;
-    font-family: 'Montserrat', sans-serif;
-    letter-spacing: 0.02em;
+    font-weight: 400;
+    line-height: 1.2;
+    font-family: 'Bayon', sans-serif;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
   }
 
   h4 {
     font-size: var(--text-base);
-    font-weight: 600;
-    line-height: 1.4;
-    font-family: 'Montserrat', sans-serif;
-    letter-spacing: 0.02em;
+    font-weight: 400;
+    line-height: 1.3;
+    font-family: 'Bayon', sans-serif;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
   }
 
   label {
@@ -367,26 +371,145 @@
   }
 }
 
-.page-transition {
-  animation-duration: 0.3s;
-  animation-fill-mode: both;
+/* ── Page Curtain Transition — Protect.LDN style ────────────────────────── */
+/* Curtain slides IN from right (covers screen) */
+@keyframes curtainSlideIn {
+  from { transform: translateX(100%); }
+  to   { transform: translateX(0%);   }
 }
 
-.page-transition.fadeIn {
-  animation-name: pageIn;
+/* Curtain slides OUT to left (reveals new page) */
+@keyframes curtainSlideOut {
+  from { transform: translateX(0%);    }
+  to   { transform: translateX(-100%); }
 }
 
-.page-transition.fadeOut {
-  animation-name: pageOut;
+.curtain-slide-in {
+  animation: curtainSlideIn 0.4s cubic-bezier(0.76, 0, 0.24, 1) forwards;
 }
 
-.page-transition.slideIn {
-  animation-name: slideInRight;
+.curtain-slide-out {
+  animation: curtainSlideOut 0.4s cubic-bezier(0.76, 0, 0.24, 1) forwards;
 }
 
-.page-transition.slideOut {
-  animation-name: slideOutLeft;
+/* ── Curtain logo: dramatic slide-up + bounce on white curtain ── */
+@keyframes curtainLogoIn {
+  0%   { opacity: 0; transform: translateY(40px) scale(0.7); }
+  55%  { opacity: 1; transform: translateY(-8px) scale(1.08); }
+  75%  { transform: translateY(4px) scale(0.97); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
 }
+
+.curtain-logo {
+  animation: curtainLogoIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) 0.05s both;
+}
+
+/* ── Splash / Welcome Screen ──────────────────────────────────────────── */
+@keyframes splashEnter {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes splashExit {
+  0%   { opacity: 1; transform: scale(1); }
+  60%  { opacity: 1; transform: scale(1.04); }
+  100% { opacity: 0; transform: scale(1.08); }
+}
+
+@keyframes splashContentEnter {
+  0%   { opacity: 0; transform: translateY(24px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes splashContentExit {
+  0%   { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: scale(1.1); }
+}
+
+@keyframes splashPulse {
+  0%, 100% { opacity: 0.5; }
+  50%       { opacity: 1; }
+}
+
+@keyframes splashGrain {
+  0%   { transform: translate(0, 0); }
+  25%  { transform: translate(-2%, -2%); }
+  50%  { transform: translate(2%, 2%); }
+  75%  { transform: translate(-1%, 1%); }
+  100% { transform: translate(0, 0); }
+}
+
+.splash-enter {
+  animation: splashEnter 0.6s ease-out both;
+}
+
+.splash-exit {
+  animation: splashExit 0.9s cubic-bezier(0.76, 0, 0.24, 1) both;
+  pointer-events: none;
+}
+
+.splash-content-enter {
+  animation: splashContentEnter 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) 0.2s both;
+}
+
+.splash-content-exit {
+  animation: splashContentExit 0.5s ease-in both;
+}
+
+.splash-pulse {
+  animation: splashPulse 2s ease-in-out infinite;
+}
+
+.splash-grain {
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+  background-size: 256px;
+  animation: splashGrain 0.4s steps(1) infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .splash-enter, .splash-exit,
+  .splash-content-enter, .splash-content-exit { animation: none; }
+  .splash-pulse { animation: none; opacity: 0.7; }
+}
+
+/* ── Native View Transitions API (Chrome 111+) — exact Protect.LDN clone ── */
+@media (prefers-reduced-motion: no-preference) {
+  /* Disable default cross-fade */
+  ::view-transition-old(root),
+  ::view-transition-new(root) {
+    animation: none;
+    mix-blend-mode: normal;
+  }
+
+  /* Black background behind the transition */
+  ::view-transition-image-pair(root) {
+    isolation: isolate;
+    background: #000;
+  }
+
+  /* OLD page: slide out to the left */
+  ::view-transition-old(root) {
+    animation: curtainSlideOut 0.4s cubic-bezier(0.76, 0, 0.24, 1) forwards;
+  }
+
+  /* NEW page: slide in from the right */
+  ::view-transition-new(root) {
+    animation: curtainSlideIn 0.4s cubic-bezier(0.76, 0, 0.24, 1) forwards;
+  }
+}
+
+/* Respect reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-old(root),
+  ::view-transition-new(root) {
+    animation: none;
+  }
+}
+
+/* Legacy — no longer used */
+.page-transition { animation-duration: 0.3s; animation-fill-mode: both; }
+.page-transition.fadeIn  { animation-name: pageIn;  }
+.page-transition.fadeOut { animation-name: pageOut; }
 
 /* Link click ripple effect */
 @keyframes ripple {
