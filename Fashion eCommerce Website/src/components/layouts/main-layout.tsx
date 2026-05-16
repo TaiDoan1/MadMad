@@ -3,6 +3,7 @@ import { Heart, Menu, Search, ShoppingCart, User, X } from "lucide-react";
 import { Link, Outlet, useLocation, useNavigate } from "react-router";
 
 import { brandLogo } from "@/assets/images";
+import { CartDrawer } from "@/components/common/cart-drawer";
 import { LoadingBar } from "@/components/common/loading-bar";
 import { PageTransition } from "@/components/common/page-transition";
 import { SplashScreen } from "@/components/common/splash-screen";
@@ -11,6 +12,7 @@ import { useCart } from "@/features/cart/context/cart-context";
 
 export function MainLayout() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [cartDrawerOpen, setCartDrawerOpen] = useState(false);
   const [showAdminLoginModal, setShowAdminLoginModal] = useState(false);
   const [logoBouncing, setLogoBouncing] = useState(false);
   const [adminUsername, setAdminUsername] = useState("");
@@ -163,8 +165,9 @@ export function MainLayout() {
               >
                 <User className="h-5 w-5" />
               </button>
-              <Link
-                to="/cart"
+              <button
+                onClick={() => setCartDrawerOpen(true)}
+                aria-label="Mở giỏ hàng"
                 className={`relative transition-colors ${
                   isTransparent ? "hover:text-white/70" : "hover:text-primary"
                 }`}
@@ -175,7 +178,7 @@ export function MainLayout() {
                     {cartCount}
                   </span>
                 )}
-              </Link>
+              </button>
             </div>
           </div>
         </div>
@@ -351,6 +354,7 @@ export function MainLayout() {
           </div>
         </div>
       </footer>
+      <CartDrawer open={cartDrawerOpen} onClose={() => setCartDrawerOpen(false)} />
       <SplashScreen />
     </div>
   );

@@ -16,7 +16,7 @@ export function ProductCard({ product, variant = "shop" }: ProductCardProps) {
   const [added, setAdded] = useState(false);
 
   const isHome = variant === "home";
-  const imageFrameClass = isHome ? "aspect-square" : "aspect-square";
+  const imageFrameClass = isHome ? "aspect-square" : "aspect-[4/5]";
   const cardBg = isHome ? "bg-transparent" : "bg-white";
 
   const primaryTag = (product.tags ?? [])[0];
