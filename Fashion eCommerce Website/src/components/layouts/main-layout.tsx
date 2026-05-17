@@ -153,16 +153,21 @@ export function MainLayout() {
             <div className={`flex flex-1 items-center justify-end gap-3 sm:gap-4 ${
               isTransparent ? "text-white" : "text-foreground"
             }`}>
-              <button className={`transition-colors ${
-                isTransparent ? "hover:text-white/70" : "hover:text-primary"
-              }`}>
+              <button
+                className={`transition-colors ${
+                  isTransparent ? "hover:text-white/70" : "hover:text-primary"
+                }`}
+                onClick={() => navigate("/track-order")}
+                aria-label="Tra cứu đơn hàng"
+              >
                 <Search className="h-5 w-5" />
               </button>
               <button
-                className={`hidden sm:block transition-colors ${
+                className={`transition-colors ${
                   isTransparent ? "hover:text-white/70" : "hover:text-primary"
                 }`}
                 onClick={() => navigate("/membership")}
+                aria-label="Đăng ký thành viên"
               >
                 <User className="h-5 w-5" />
               </button>
@@ -236,6 +241,10 @@ export function MainLayout() {
                       </span>
                     )}
                   </Link>
+                  <button className="flex w-full items-center gap-3 rounded-lg px-4 py-3 transition-bounce hover:bg-muted hover:scale-105 active:scale-105 active:bg-muted" onClick={() => { setMobileMenuOpen(false); navigate("/track-order"); }}>
+                    <Search className="h-5 w-5" />
+                    <span className="font-medium text-xs">Tra cứu đơn hàng</span>
+                  </button>
                   <button className="flex w-full items-center gap-3 rounded-lg px-4 py-3 transition-bounce hover:bg-muted hover:scale-105 active:scale-105 active:bg-muted" onClick={() => { setMobileMenuOpen(false); navigate("/membership"); }}>
                     <User className="h-5 w-5" />
                     <span className="font-medium text-xs">Thành viên MADMAD</span>
