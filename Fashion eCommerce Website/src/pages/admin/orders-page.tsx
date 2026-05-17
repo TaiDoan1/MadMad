@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Eye,
   Printer,
@@ -22,7 +22,12 @@ import {
   ChevronRight,
   UserCheck,
   Sparkles,
-  Award
+  Award,
+  TrendingUp,
+  Boxes,
+  FileText,
+  QrCode,
+  Copy
 } from "lucide-react";
 
 import { brandLogo } from "@/assets/images";
@@ -37,6 +42,18 @@ export function AdminOrdersPage() {
   const { orders, updateOrderStatus, addOrder } = useOrders();
   const { products } = useProducts();
   const { members } = useMembership(); // Đọc danh sách tất cả thành viên VIP
+
+  // Local storage state cho danh sách thành viên để đồng bộ thăng hạng realtime
+  const [localMembers, setLocalMembers] = useState<any[]>([]);
+
+  useEffect(() => {
+    const raw = localStorage.getItem("madmad_members");
+    if (raw) {
+      setLocalMembers(JSON.parse(raw));
+    } else {
+      setLocalMembers(members);
+    }
+  }, [members]);
 
   // Search & Filter
   const [searchTerm, setSearchTerm] = useState("");
@@ -62,6 +79,12 @@ export function AdminOrdersPage() {
   const [manualDistrict, setManualDistrict] = useState("");
   const [manualProvince, setManualProvince] = useState("");
 
+  // Internal Packing Note
+  const [internalPackingNotes, setInternalPackingNotes] = useState<Record<string, string>>(() => {
+    const local = localStorage.getItem("madmad_internal_notes");
+    return local ? JSON.parse(local) : {};
+  });
+
   // Visual Product Selector States
   const [productSearchQuery, setProductSearchQuery] = useState("");
   const [selectedProductToAdd, setSelectedProductToAdd] = useState<Product | "">("");
@@ -77,15 +100,14 @@ export function AdminOrdersPage() {
   const [checkedMember, setCheckedMember] = useState<any | null>(null);
   const [vipCheckMessage, setVipCheckMessage] = useState("");
 
-  // Tìm kiếm sản phẩm trực quan có hình ảnh
-  const filteredProductsToSelect = products.filter((p) => {
-    return (
-      p.name.toLowerCase().includes(productSearchQuery.toLowerCase()) ||
-      p.category.toLowerCase().includes(productSearchQuery.toLowerCase())
-    );
-  });
+  // Lưu Internal Notes
+  const handleSaveInternalNote = (orderId: string, noteText: string) => {
+    const nextNotes = { ...internalPackingNotes, [orderId]: noteText };
+    setInternalPackingNotes(nextNotes);
+    localStorage.setItem("madmad_internal_notes", JSON.stringify(nextNotes));
+  };
 
-  // Lọc tìm kiếm đơn hàng theo mã đơn, tên, sđt và nguồn đơn hàng
+  // TÌM KIẾM & BỘ LỌC DOANH THU & KÊNH
   const filteredOrders = orders.filter((order) => {
     const matchesSearch =
       order.orderNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -93,7 +115,6 @@ export function AdminOrdersPage() {
       order.customerPhone.includes(searchTerm);
     const matchesStatus = filterStatus === "all" || order.status === filterStatus;
 
-    // Lọc theo nguồn đơn
     let matchesSource = true;
     if (filterSource !== "all") {
       const isFb = order.orderNumber.startsWith("DH-FB");
@@ -112,7 +133,51 @@ export function AdminOrdersPage() {
     return matchesSearch && matchesStatus && matchesSource;
   });
 
-  // Nhận diện nguồn từ Mã đơn hàng
+  // TÍNH TOÁN CÁC CHỈ SỐ DOANH THU CHO DASHBOARD
+  const totalRevenue = orders
+    .filter((o) => o.status === "completed")
+    .reduce((sum, o) => sum + o.total, 0);
+
+  const pendingOrdersCount = orders.filter((o) => o.status === "pending" || o.status === "processing").length;
+  const completedOrdersCount = orders.filter((o) => o.status === "completed").length;
+
+  // Tính số lượng đơn theo nguồn
+  const getSourceCounts = () => {
+    let website = 0;
+    let facebook = 0;
+    let instagram = 0;
+    let zalo = 0;
+    let pos = 0;
+
+    orders.forEach((o) => {
+      if (o.orderNumber.startsWith("DH-FB")) facebook++;
+      else if (o.orderNumber.startsWith("DH-IG")) instagram++;
+      else if (o.orderNumber.startsWith("DH-ZALO")) zalo++;
+      else if (o.orderNumber.startsWith("DH-POS")) pos++;
+      else website++;
+    });
+
+    const total = orders.length || 1;
+    return {
+      website: { count: website, pct: Math.round((website / total) * 100) },
+      facebook: { count: facebook, pct: Math.round((facebook / total) * 100) },
+      instagram: { count: instagram, pct: Math.round((instagram / total) * 100) },
+      zalo: { count: zalo, pct: Math.round((zalo / total) * 100) },
+      pos: { count: pos, pct: Math.round((pos / total) * 100) },
+    };
+  };
+
+  const channelStats = getSourceCounts();
+
+  // Tra cứu sản phẩm
+  const filteredProductsToSelect = products.filter((p) => {
+    return (
+      p.name.toLowerCase().includes(productSearchQuery.toLowerCase()) ||
+      p.category.toLowerCase().includes(productSearchQuery.toLowerCase())
+    );
+  });
+
+  // Nhận diện nguồn
   const getOrderSourceDetails = (orderNumber: string) => {
     if (orderNumber.startsWith("DH-FB")) {
       return { label: "Facebook", badgeClass: "bg-blue-50 text-blue-700 border-blue-200", icon: Facebook };
@@ -127,6 +192,207 @@ export function AdminOrdersPage() {
       return { label: "Cửa hàng (POS)", badgeClass: "bg-neutral-900 text-white border-neutral-800", icon: Store };
     }
     return { label: "Website", badgeClass: "bg-stone-100 text-stone-600 border-stone-200", icon: ShoppingBag };
+  };
+
+  // Tra cứu VIP
+  const handleCheckVIPMember = () => {
+    setVipCheckMessage("");
+    setCheckedMember(null);
+
+    const query = manualCustomerPhone.trim().replace(/\s+/g, "");
+    const emailQuery = manualCustomerEmail.trim().toLowerCase();
+
+    if (!query && !emailQuery) {
+      setVipCheckMessage("⚠️ Vui lòng nhập Số điện thoại hoặc Email để tra cứu VIP!");
+      return;
+    }
+
+    const found = localMembers.find(
+      (m) =>
+        (query && m.phone === query) ||
+        (emailQuery && m.email.toLowerCase() === emailQuery)
+    );
+
+    if (found) {
+      setCheckedMember(found);
+      setManualCustomerName(found.fullName);
+      if (found.email) setManualCustomerEmail(found.email);
+      
+      const discountVal = Math.round(manualSubtotal * 0.05);
+      setManualDiscount(discountVal);
+
+      setVipCheckMessage(`✓ Khách hàng VIP hạng ${found.tier} (MM Card: ${found.memberCardId}). Tích lũy: ${found.points} điểm. Tự động chiết khấu VIP 5%!`);
+    } else {
+      setVipCheckMessage("❌ Không tìm thấy thông tin thành viên VIP với SĐT/Email này.");
+    }
+  };
+
+  const manualSubtotal = manualItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  const manualShipping = manualSubtotal > 500000 || manualSource === "pos" ? 0 : 30000;
+  const finalDiscount = checkedMember ? Math.round(manualSubtotal * 0.05) : manualDiscount;
+  const manualTotal = Math.max(0, manualSubtotal - finalDiscount) + manualShipping;
+
+  const handleAddManualItem = () => {
+    if (!selectedProductToAdd) return;
+    
+    const colors = Object.keys(selectedProductToAdd.colorImages || {});
+    const finalColor = selectedColorToAdd || (colors.length > 0 ? colors[0] : "Default");
+
+    const newItem: OrderItem = {
+      product: selectedProductToAdd,
+      quantity: quantityToAdd,
+      size: selectedSizeToAdd,
+      color: finalColor,
+      price: selectedProductToAdd.price,
+    };
+
+    const existingIndex = manualItems.findIndex(
+      (item) =>
+        item.product.id === newItem.product.id &&
+        item.size === newItem.size &&
+        item.color === newItem.color
+    );
+
+    if (existingIndex > -1) {
+      const updated = [...manualItems];
+      updated[existingIndex].quantity += newItem.quantity;
+      setManualItems(updated);
+    } else {
+      setManualItems([...manualItems, newItem]);
+    }
+
+    setSelectedProductToAdd("");
+    setSelectedColorToAdd("");
+    setQuantityToAdd(1);
+    setProductSearchQuery("");
+  };
+
+  // Cập nhật trạng thái đơn hàng & Tự động cộng điểm VIP thăng hạng
+  const handleStatusUpdate = (order: Order, newStatus: Order["status"]) => {
+    updateOrderStatus(order.id, newStatus);
+    setSelectedOrder({ ...order, status: newStatus });
+
+    // Cộng điểm VIP tự động khi trạng thái chuyển sang Thành công (Completed)
+    if (newStatus === "completed") {
+      const targetPhone = order.customerPhone.trim().replace(/\s+/g, "");
+      const targetEmail = order.customerEmail.trim().toLowerCase();
+
+      let pointsEarned = Math.floor(order.total / 100000); // 100k = 1 điểm
+      if (pointsEarned === 0) pointsEarned = 1; // Tối thiểu được 1 điểm
+
+      const updatedMembersList = localMembers.map((m) => {
+        if (m.phone === targetPhone || m.email.toLowerCase() === targetEmail) {
+          const nextPoints = m.points + pointsEarned;
+          // Calculate new tier
+          let nextTier: "BRONZE" | "SILVER" | "GOLD" | "PLATINUM" = "BRONZE";
+          if (nextPoints >= 1500) nextTier = "PLATINUM";
+          else if (nextPoints >= 800) nextTier = "GOLD";
+          else if (nextPoints >= 300) nextTier = "SILVER";
+
+          window.alert(`👑 THÀNH VIÊN THÂN THIẾT! Đã tự động tích lũy thêm +${pointsEarned} điểm VIP cho khách hàng ${m.fullName}. (Tổng tích lũy hiện tại: ${nextPoints}đ - Hạng: ${nextTier})`);
+
+          return {
+            ...m,
+            points: nextPoints,
+            tier: nextTier,
+          };
+        }
+        return m;
+      });
+
+      setLocalMembers(updatedMembersList);
+      localStorage.setItem("madmad_members", JSON.stringify(updatedMembersList));
+    }
+  };
+
+  // Tạo đơn thủ công
+  const handleCreateManualOrderSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (manualItems.length === 0) {
+      window.alert("Vui lòng thêm ít nhất một sản phẩm vào đơn hàng!");
+      return;
+    }
+
+    const randomNum = Math.floor(1000 + Math.random() * 9000);
+    let orderPrefix = "DH";
+    if (manualSource === "facebook") orderPrefix = "DH-FB";
+    else if (manualSource === "instagram") orderPrefix = "DH-IG";
+    else if (manualSource === "zalo") orderPrefix = "DH-ZALO";
+    else if (manualSource === "pos") orderPrefix = "DH-POS";
+
+    const newOrderNumber = `${orderPrefix}${new Date().getFullYear().toString().slice(-2)}${String(
+      new Date().getMonth() + 1
+    ).padStart(2, "0")}${String(new Date().getDate()).padStart(2, "0")}-${randomNum}`;
+
+    const newOrder: Order = {
+      id: 0,
+      orderNumber: newOrderNumber,
+      customerName: manualCustomerName.trim(),
+      customerPhone: manualCustomerPhone.trim(),
+      customerEmail: manualCustomerEmail.trim() || `${manualCustomerPhone}@madmad-offline.vn`,
+      shippingAddress: {
+        street: manualStreet.trim() || "Mua trực tiếp tại Shop",
+        ward: manualWard.trim() || "",
+        district: manualDistrict.trim() || "",
+        province: manualProvince.trim() || "",
+      },
+      items: manualItems,
+      subtotal: manualSubtotal,
+      discount: finalDiscount,
+      shipping: manualShipping,
+      total: manualTotal,
+      paymentMethod: manualPaymentMethod,
+      status: manualSource === "pos" ? "completed" : "pending", // Đơn tại quầy hoàn thành luôn
+      createdAt: new Date().toISOString(),
+      notes: manualNotes.trim() || `Đơn hàng tạo thủ công qua kênh ${manualSource.toUpperCase()}${checkedMember ? ` (Thành viên VIP: ${checkedMember.memberCardId})` : ""}`,
+    };
+
+    addOrder(newOrder);
+
+    // Nếu đơn POS, cộng điểm VIP ngay lập tức
+    if (manualSource === "pos" && checkedMember) {
+      const pointsEarned = Math.max(1, Math.floor(manualTotal / 100000));
+      const updatedMembersList = localMembers.map((m) => {
+        if (m.phone === checkedMember.phone) {
+          const nextPoints = m.points + pointsEarned;
+          let nextTier: "BRONZE" | "SILVER" | "GOLD" | "PLATINUM" = "BRONZE";
+          if (nextPoints >= 1500) nextTier = "PLATINUM";
+          else if (nextPoints >= 800) nextTier = "GOLD";
+          else if (nextPoints >= 300) nextTier = "SILVER";
+
+          return { ...m, points: nextPoints, tier: nextTier };
+        }
+        return m;
+      });
+      setLocalMembers(updatedMembersList);
+      localStorage.setItem("madmad_members", JSON.stringify(updatedMembersList));
+      window.alert(`👑 Đơn hàng POS thành công! Đã tích +${pointsEarned} điểm VIP cho khách hàng.`);
+    }
+
+    // Lưu internal note nếu có
+    if (manualNotes) {
+      handleSaveInternalNote(newOrderNumber, manualNotes);
+    }
+
+    // Reset
+    setManualCustomerName("");
+    setManualCustomerPhone("");
+    setManualCustomerEmail("");
+    setManualSource("facebook");
+    setManualNotes("");
+    setManualStreet("");
+    setManualWard("");
+    setManualDistrict("");
+    setManualProvince("");
+    setManualItems([]);
+    setManualDiscount(0);
+    setManualPaymentMethod("cod");
+    setCheckedMember(null);
+    setVipCheckMessage("");
+    setShowCreateModal(false);
+
+    window.alert("Tạo đơn hàng thủ công thành công!");
   };
 
   const getStatusBadge = (status: string) => {
@@ -161,179 +427,14 @@ export function AdminOrdersPage() {
     }
   };
 
-  // Tra cứu thành viên VIP dựa trên SĐT / Email nhập vào
-  const handleCheckVIPMember = () => {
-    setVipCheckMessage("");
-    setCheckedMember(null);
-
-    const query = manualCustomerPhone.trim().replace(/\s+/g, "");
-    const emailQuery = manualCustomerEmail.trim().toLowerCase();
-
-    if (!query && !emailQuery) {
-      setVipCheckMessage("⚠️ Vui lòng nhập Số điện thoại hoặc Email để tra cứu VIP!");
-      return;
-    }
-
-    // Tìm trong database members
-    const found = members.find(
-      (m) =>
-        (query && m.phone === query) ||
-        (emailQuery && m.email.toLowerCase() === emailQuery)
-    );
-
-    if (found) {
-      setCheckedMember(found);
-      setManualCustomerName(found.fullName); // Auto fill tên
-      if (found.email) setManualCustomerEmail(found.email); // Auto fill email
-      
-      // Auto apply giảm giá VIP 5% trị giá đơn hàng tạm tính làm quà VIP
-      const discountVal = Math.round(manualSubtotal * 0.05);
-      setManualDiscount(discountVal);
-
-      setVipCheckMessage(`✓ Khách hàng VIP hạng ${found.tier} (MM Card: ${found.memberCardId}). Tích lũy: ${found.points} điểm. Tự động hoàn 5% chiết khấu VIP!`);
-    } else {
-      setVipCheckMessage("❌ Không tìm thấy thông tin thành viên VIP với SĐT/Email này.");
-    }
-  };
-
-  // Tính toán tiền cho đơn thủ công đang tạo
-  const manualSubtotal = manualItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
-  const manualShipping = manualSubtotal > 500000 || manualSource === "pos" ? 0 : 30000;
-  
-  // Tự động cập nhật giảm giá VIP 5% nếu đã check member thành công trước đó
-  const finalDiscount = checkedMember ? Math.round(manualSubtotal * 0.05) : manualDiscount;
-  const manualTotal = Math.max(0, manualSubtotal - finalDiscount) + manualShipping;
-
-  // Thêm sản phẩm vào giỏ hàng đơn thủ công
-  const handleAddManualItem = () => {
-    if (!selectedProductToAdd) {
-      window.alert("Vui lòng chọn một sản phẩm!");
-      return;
-    }
-    
-    // Kiểm tra nếu sản phẩm có màu sắc mà chưa chọn màu
-    const colors = Object.keys(selectedProductToAdd.colorImages || {});
-    const finalColor = selectedColorToAdd || (colors.length > 0 ? colors[0] : "Default");
-
-    const newItem: OrderItem = {
-      product: selectedProductToAdd,
-      quantity: quantityToAdd,
-      size: selectedSizeToAdd,
-      color: finalColor,
-      price: selectedProductToAdd.price,
-    };
-
-    // Kiểm tra trùng lắp thuộc tính trong đơn hàng đang tạo
-    const existingIndex = manualItems.findIndex(
-      (item) =>
-        item.product.id === newItem.product.id &&
-        item.size === newItem.size &&
-        item.color === newItem.color
-    );
-
-    if (existingIndex > -1) {
-      const updated = [...manualItems];
-      updated[existingIndex].quantity += newItem.quantity;
-      setManualItems(updated);
-    } else {
-      setManualItems([...manualItems, newItem]);
-    }
-
-    // Reset bộ chọn sản phẩm
-    setSelectedProductToAdd("");
-    setSelectedColorToAdd("");
-    setQuantityToAdd(1);
-    setProductSearchQuery(""); // Reset query tìm kiếm
-  };
-
-  // Tạo đơn hàng thủ công hoàn tất
-  const handleCreateManualOrderSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (manualItems.length === 0) {
-      window.alert("Vui lòng thêm ít nhất một sản phẩm vào đơn hàng!");
-      return;
-    }
-
-    // Tạo mã đơn hàng độc quyền dựa trên nguồn đơn
-    const randomNum = Math.floor(1000 + Math.random() * 9000);
-    let orderPrefix = "DH";
-    if (manualSource === "facebook") orderPrefix = "DH-FB";
-    else if (manualSource === "instagram") orderPrefix = "DH-IG";
-    else if (manualSource === "zalo") orderPrefix = "DH-ZALO";
-    else if (manualSource === "pos") orderPrefix = "DH-POS";
-
-    const newOrderNumber = `${orderPrefix}${new Date().getFullYear().toString().slice(-2)}${String(
-      new Date().getMonth() + 1
-    ).padStart(2, "0")}${String(new Date().getDate()).padStart(2, "0")}-${randomNum}`;
-
-    const newOrder: Order = {
-      id: 0, // Sẽ được sinh tự động bởi OrderProvider
-      orderNumber: newOrderNumber,
-      customerName: manualCustomerName.trim(),
-      customerPhone: manualCustomerPhone.trim(),
-      customerEmail: manualCustomerEmail.trim() || `${manualCustomerPhone}@madmad-offline.vn`,
-      shippingAddress: {
-        street: manualStreet.trim() || "Mua trực tiếp tại Shop",
-        ward: manualWard.trim() || "",
-        district: manualDistrict.trim() || "",
-        province: manualProvince.trim() || "",
-      },
-      items: manualItems,
-      subtotal: manualSubtotal,
-      discount: finalDiscount,
-      shipping: manualShipping,
-      total: manualTotal,
-      paymentMethod: manualPaymentMethod,
-      status: manualSource === "pos" ? "delivered" : "pending", // Đơn tại quầy POS mặc định là Thành công luôn
-      createdAt: new Date().toISOString(),
-      notes: manualNotes.trim() || `Đơn hàng tạo thủ công qua kênh ${manualSource.toUpperCase()}${checkedMember ? ` (Thành viên VIP: ${checkedMember.memberCardId})` : ""}`,
-    };
-
-    addOrder(newOrder);
-
-    // Reset toàn bộ form
-    setManualCustomerName("");
-    setManualCustomerPhone("");
-    setManualCustomerEmail("");
-    setManualSource("facebook");
-    setManualNotes("");
-    setManualStreet("");
-    setManualWard("");
-    setManualDistrict("");
-    setManualProvince("");
-    setManualItems([]);
-    setManualDiscount(0);
-    setManualPaymentMethod("cod");
-    setCheckedMember(null);
-    setVipCheckMessage("");
-    setShowCreateModal(false);
-
-    window.alert("Tạo đơn hàng thủ công thành công!");
-  };
-
-  // Xác định Class màu cho thẻ VIP dựa trên hạng
-  const getVIPBadgeColor = (tier: string) => {
-    switch (tier) {
-      case "PLATINUM":
-        return "bg-zinc-950 text-zinc-100 border-zinc-800";
-      case "GOLD":
-        return "bg-amber-600 text-amber-50 border-amber-500";
-      case "SILVER":
-        return "bg-slate-400 text-slate-900 border-slate-300";
-      default:
-        return "bg-neutral-800 text-white border-neutral-700";
-    }
-  };
-
   return (
     <div className="mx-auto max-w-7xl space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-black tracking-tight text-black uppercase">QUẢN LÝ ĐƠN HÀNG</h1>
+          <h1 className="text-2xl font-black tracking-tight text-black uppercase">HỆ THỐNG VẬN HÀNH ĐƠN HÀNG</h1>
           <p className="text-xs text-black/50">
-            Duyệt đơn tự động từ Web và Tạo hóa đơn thủ công từ Facebook, Instagram, Zalo, POS.
+            Trung tâm kiểm soát đơn hàng Realtime & Quản lý Loyalty thăng hạng VIP.
           </p>
         </div>
         <button
@@ -341,14 +442,83 @@ export function AdminOrdersPage() {
           className="flex items-center justify-center gap-2 rounded-xl bg-black hover:bg-red-700 text-white px-5 py-3 text-xs font-bold tracking-widest uppercase transition-all shadow-md shadow-black/10"
         >
           <Plus className="h-4 w-4" />
-          Tạo Đơn Offline / Thủ Công
+          Tạo Đơn Offline
         </button>
+      </div>
+
+      {/* 📊 MINI ANALYTICS DASHBOARD - ĐẲNG CẤP ERP NOIR */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        {/* Thẻ Doanh Thu */}
+        <div className="rounded-2xl border border-black/10 bg-white p-5 shadow-sm space-y-2.5">
+          <div className="flex justify-between items-center text-black/45">
+            <span className="text-[10px] font-extrabold tracking-widest uppercase">Doanh Thu Thực Tế</span>
+            <TrendingUp className="h-4.5 w-4.5 text-green-600" />
+          </div>
+          <div>
+            <p className="text-2xl font-black text-black tracking-tight">
+              {totalRevenue.toLocaleString("vi-VN")}₫
+            </p>
+            <p className="text-[10px] text-green-700 font-bold mt-1">✓ Chỉ tính đơn giao thành công</p>
+          </div>
+        </div>
+
+        {/* Thẻ Đơn Chờ Xử Lý */}
+        <div className="rounded-2xl border border-black/10 bg-white p-5 shadow-sm space-y-2.5">
+          <div className="flex justify-between items-center text-black/45">
+            <span className="text-[10px] font-extrabold tracking-widest uppercase">Đơn Cần Xử Lý</span>
+            <Boxes className="h-4.5 w-4.5 text-amber-600" />
+          </div>
+          <div>
+            <p className="text-2xl font-black text-black tracking-tight">{pendingOrdersCount} ĐƠN</p>
+            <p className="text-[10px] text-amber-700 font-bold mt-1">⚡ Đang chờ xác nhận / đóng hàng</p>
+          </div>
+        </div>
+
+        {/* Thẻ Đơn Hoàn Tất */}
+        <div className="rounded-2xl border border-black/10 bg-white p-5 shadow-sm space-y-2.5">
+          <div className="flex justify-between items-center text-black/45">
+            <span className="text-[10px] font-extrabold tracking-widest uppercase">Đã Hoàn Thành</span>
+            <CheckCircle2 className="h-4.5 w-4.5 text-green-600" />
+          </div>
+          <div>
+            <p className="text-2xl font-black text-black tracking-tight">{completedOrdersCount} ĐƠN</p>
+            <p className="text-[10px] text-black/40 font-semibold mt-1">Tỷ lệ hoàn thành: {Math.round((completedOrdersCount / (orders.length || 1)) * 100)}%</p>
+          </div>
+        </div>
+
+        {/* Biểu đồ Kênh Bán Hàng Mini */}
+        <div className="rounded-2xl border border-black/10 bg-white p-5 shadow-sm space-y-2.5">
+          <span className="text-[10px] font-extrabold tracking-widest uppercase text-black/45 block">
+            Tỉ Lệ Doanh Số Kênh Bán
+          </span>
+          <div className="space-y-1.5 pt-0.5">
+            {/* Website */}
+            <div className="flex items-center justify-between text-[9px] font-bold text-black/75">
+              <span className="flex items-center gap-1"><ShoppingBag className="h-3 w-3" /> WEB</span>
+              <span>{channelStats.website.count} đơn ({channelStats.website.pct}%)</span>
+            </div>
+            {/* Facebook */}
+            <div className="flex items-center justify-between text-[9px] font-bold text-blue-700">
+              <span className="flex items-center gap-1"><Facebook className="h-3 w-3" /> FB</span>
+              <span>{channelStats.facebook.count} đơn ({channelStats.facebook.pct}%)</span>
+            </div>
+            {/* Instagram */}
+            <div className="flex items-center justify-between text-[9px] font-bold text-pink-700">
+              <span className="flex items-center gap-1"><Instagram className="h-3 w-3" /> IG</span>
+              <span>{channelStats.instagram.count} đơn ({channelStats.instagram.pct}%)</span>
+            </div>
+            {/* POS */}
+            <div className="flex items-center justify-between text-[9px] font-bold text-neutral-900">
+              <span className="flex items-center gap-1"><Store className="h-3 w-3" /> POS</span>
+              <span>{channelStats.pos.count} đơn ({channelStats.pos.pct}%)</span>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Bộ lọc & Tìm kiếm Sleek Noir */}
       <div className="rounded-xl border border-black/10 bg-white p-5 shadow-sm space-y-4">
         <div className="flex flex-col lg:flex-row gap-4">
-          {/* Tìm kiếm */}
           <div className="relative flex-1">
             <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-black/35" />
             <input
@@ -360,7 +530,6 @@ export function AdminOrdersPage() {
           </div>
 
           <div className="flex flex-wrap gap-3">
-            {/* Lọc nguồn đơn */}
             <select
               value={filterSource}
               onChange={(event) => setFilterSource(event.target.value)}
@@ -374,7 +543,6 @@ export function AdminOrdersPage() {
               <option value="pos">CỬA HÀNG (POS)</option>
             </select>
 
-            {/* Lọc trạng thái */}
             <select
               value={filterStatus}
               onChange={(event) => setFilterStatus(event.target.value)}
@@ -474,10 +642,10 @@ export function AdminOrdersPage() {
         </div>
       </div>
 
-      {/* MODAL TẠO ĐƠN HÀNG THỦ CÔNG (OFFLINE ORDER CREATOR) */}
+      {/* MODAL TẠO ĐƠN HÀNG THỦ CÔNG */}
       {showCreateModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs">
-          <div className="max-h-[90vh] w-full max-w-5xl overflow-y-auto rounded-3xl bg-white border border-black/10 shadow-2xl">
+          <div className="max-h-[90vh] w-full max-w-5xl overflow-y-auto rounded-3xl bg-white border border-black/10 shadow-2xl animate-scaleUp">
             {/* Header Modal */}
             <div className="flex items-center justify-between border-b border-black/10 p-6">
               <div>
@@ -486,7 +654,6 @@ export function AdminOrdersPage() {
               </div>
               <button
                 onClick={() => {
-                  // Reset states when closing
                   setCheckedMember(null);
                   setVipCheckMessage("");
                   setShowCreateModal(false);
@@ -499,7 +666,7 @@ export function AdminOrdersPage() {
 
             <form onSubmit={handleCreateManualOrderSubmit} className="p-6 grid grid-cols-1 lg:grid-cols-12 gap-8 text-xs font-semibold">
               
-              {/* CỘT TRÁI (Lg: 7): Trình chọn sản phẩm hình ảnh + Giỏ hàng */}
+              {/* CỘT TRÁI (Lg: 7): Trình chọn sản phẩm hình ảnh */}
               <div className="lg:col-span-7 space-y-6">
                 
                 {/* Chọn sản phẩm thực tế */}
@@ -508,7 +675,6 @@ export function AdminOrdersPage() {
                     Chọn sản phẩm (Tìm kiếm trực quan)
                   </h3>
 
-                  {/* Thanh tìm kiếm sản phẩm có hình */}
                   <div className="space-y-3">
                     <label className="block text-[10px] font-bold text-black/50">Gõ tên sản phẩm cần tìm</label>
                     <div className="relative">
@@ -522,9 +688,8 @@ export function AdminOrdersPage() {
                       />
                     </div>
 
-                    {/* Danh sách sản phẩm dạng hình ảnh thu gọn */}
                     {productSearchQuery && (
-                      <div className="border border-black/10 bg-white rounded-xl max-h-[180px] overflow-y-auto p-2 space-y-1">
+                      <div className="border border-black/10 bg-white rounded-xl max-h-[180px] overflow-y-auto p-2 space-y-1 z-10 relative">
                         {filteredProductsToSelect.length === 0 ? (
                           <p className="text-center text-[10px] text-black/40 py-4">Không tìm thấy sản phẩm phù hợp.</p>
                         ) : (
@@ -536,7 +701,7 @@ export function AdminOrdersPage() {
                                 setSelectedProductToAdd(p);
                                 const colors = Object.keys(p.colorImages || {});
                                 setSelectedColorToAdd(colors.length > 0 ? colors[0] : "Default");
-                                setProductSearchQuery(""); // đóng bảng gợi ý
+                                setProductSearchQuery("");
                               }}
                               className="w-full flex items-center gap-3 p-2 hover:bg-stone-50 rounded-lg text-left transition-colors border border-transparent hover:border-black/5"
                             >
@@ -557,10 +722,8 @@ export function AdminOrdersPage() {
                     )}
                   </div>
 
-                  {/* Hiển thị sản phẩm đang được chọn để cấu hình size/màu */}
                   {selectedProductToAdd ? (
                     <div className="border border-black/10 bg-white rounded-2xl p-4 flex flex-col sm:flex-row gap-4 items-center sm:items-start animate-fadeIn">
-                      {/* Ảnh to sản phẩm đang chọn */}
                       <div className="h-24 w-20 overflow-hidden rounded-xl bg-stone-100 border border-black/5 flex-shrink-0">
                         <img
                           src={selectedProductToAdd.image}
@@ -582,7 +745,6 @@ export function AdminOrdersPage() {
                           </p>
                         </div>
 
-                        {/* Size & Màu & Số lượng */}
                         <div className="grid grid-cols-3 gap-2">
                           <div>
                             <label className="block text-[9px] font-bold text-black/50 mb-1">Chọn Size</label>
@@ -619,15 +781,13 @@ export function AdminOrdersPage() {
 
                           <div>
                             <label className="block text-[9px] font-bold text-black/50 mb-1">Số lượng</label>
-                            <div className="flex gap-1.5">
-                              <input
-                                type="number"
-                                min={1}
-                                value={quantityToAdd}
-                                onChange={(e) => setQuantityToAdd(Math.max(1, Number(e.target.value)))}
-                                className="w-full rounded-lg border border-black/10 bg-stone-50 px-2 py-1.5 text-center focus:border-black/60 focus:bg-white focus:outline-none transition-all text-[11px]"
-                              />
-                            </div>
+                            <input
+                              type="number"
+                              min={1}
+                              value={quantityToAdd}
+                              onChange={(e) => setQuantityToAdd(Math.max(1, Number(e.target.value)))}
+                              className="w-full rounded-lg border border-black/10 bg-stone-50 px-2 py-1.5 text-center focus:border-black/60 focus:bg-white focus:outline-none transition-all text-[11px]"
+                            />
                           </div>
                         </div>
 
@@ -710,7 +870,7 @@ export function AdminOrdersPage() {
                 </div>
               </div>
 
-              {/* CỘT PHẢI (Lg: 5): Check VIP Membership & Địa chỉ */}
+              {/* CỘT PHẢI (Lg: 5): Check VIP Membership */}
               <div className="lg:col-span-5 space-y-6 border-t lg:border-t-0 lg:border-l border-black/15 lg:pl-8 pt-6 lg:pt-0">
                 
                 {/* 👑 KHU VỰC LIVE CHECK VIP MEMBERSHIP */}
@@ -743,7 +903,6 @@ export function AdminOrdersPage() {
                     </div>
                   </div>
 
-                  {/* Kết quả Check VIP */}
                   {vipCheckMessage && (
                     <div className={`p-3 rounded-xl border text-[10px] leading-relaxed font-bold ${
                       checkedMember 
@@ -755,9 +914,13 @@ export function AdminOrdersPage() {
                     </div>
                   )}
 
-                  {/* Trạng thái hạng thẻ Hologram thu nhỏ */}
                   {checkedMember && (
-                    <div className={`rounded-xl p-3 border flex justify-between items-center ${getVIPBadgeColor(checkedMember.tier)}`}>
+                    <div className={`rounded-xl p-3 border flex justify-between items-center ${
+                      checkedMember.tier === "PLATINUM" ? "bg-zinc-950 text-zinc-100 border-zinc-800" :
+                      checkedMember.tier === "GOLD" ? "bg-amber-600 text-amber-50 border-amber-500" :
+                      checkedMember.tier === "SILVER" ? "bg-slate-400 text-slate-900 border-slate-300" :
+                      "bg-neutral-800 text-white border-neutral-700"
+                    }`}>
                       <div>
                         <p className="text-[8px] tracking-wider opacity-60 uppercase">MADMAD BLACK VIP</p>
                         <p className="font-extrabold text-[11px] uppercase mt-0.5">{checkedMember.fullName}</p>
@@ -898,7 +1061,7 @@ export function AdminOrdersPage() {
                       min={0}
                       step={1000}
                       value={finalDiscount}
-                      disabled={!!checkedMember} // Khóa nhập nếu đã apply giảm giá thành viên VIP
+                      disabled={!!checkedMember}
                       onChange={(e) => setManualDiscount(Math.max(0, Number(e.target.value)))}
                       placeholder={checkedMember ? "VIP Auto Apply" : "Số tiền giảm..."}
                       className="w-full rounded-xl border border-black/10 bg-stone-50 px-4 py-2.5 focus:border-black/60 focus:bg-white transition-all disabled:bg-stone-200 text-stone-500 font-extrabold"
@@ -906,19 +1069,19 @@ export function AdminOrdersPage() {
                   </div>
                 </div>
 
-                {/* Ghi chú đơn */}
+                {/* Ghi chú đơn / Staff Internal Notes */}
                 <div>
-                  <label className="block text-[10px] font-bold text-black/50 mb-1">Ghi chú (Tùy chọn)</label>
+                  <label className="block text-[10px] font-bold text-black/50 mb-1">Ghi chú đóng hàng (Nội bộ nhân viên)</label>
                   <textarea
                     rows={2}
                     value={manualNotes}
                     onChange={(e) => setManualNotes(e.target.value)}
-                    placeholder="Ghi chú đơn hàng..."
-                    className="w-full rounded-xl border border-black/10 bg-stone-50 px-4 py-2 focus:border-black/60 focus:bg-white transition-all resize-none"
+                    placeholder="Ghi chú nội bộ: Ví dụ gói hộp quà, tặng sticker, kiểm tra kỹ vải..."
+                    className="w-full rounded-xl border border-black/10 bg-stone-50 px-4 py-2 focus:border-black/60 focus:bg-white transition-all resize-none border-dashed border-red-500/30"
                   />
                 </div>
 
-                {/* Tổng kết tiền đơn hàng thủ công */}
+                {/* Tổng kết tiền đơn hàng */}
                 <div className="bg-stone-50 rounded-2xl p-5 border border-black/5 space-y-2.5">
                   <div className="flex justify-between text-black/55">
                     <span>Tạm tính ({manualItems.length} SP)</span>
@@ -942,7 +1105,6 @@ export function AdminOrdersPage() {
                   </div>
                 </div>
 
-                {/* Submit button */}
                 <button
                   type="submit"
                   className="w-full bg-black text-white hover:bg-red-700 h-12 text-xs font-bold tracking-widest uppercase transition-all rounded-xl flex items-center justify-center gap-1.5 shadow-lg shadow-black/25"
@@ -960,7 +1122,7 @@ export function AdminOrdersPage() {
       {/* MODAL CHI TIẾT ĐƠN HÀNG & DUYỆT TRẠNG THÁI */}
       {showOrderDetail && selectedOrder && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs">
-          <div className="max-h-[90vh] w-full max-w-4xl overflow-y-auto rounded-3xl bg-white border border-black/10 shadow-2xl">
+          <div className="max-h-[90vh] w-full max-w-4xl overflow-y-auto rounded-3xl bg-white border border-black/10 shadow-2xl animate-scaleUp">
             {/* Header Modal */}
             <div className="flex items-center justify-between border-b border-black/10 p-6">
               <div>
@@ -980,6 +1142,7 @@ export function AdminOrdersPage() {
 
             {/* Content Modal */}
             <div className="space-y-8 p-6">
+              
               {/* Trạng thái đơn hàng */}
               <div className="bg-stone-50 rounded-xl p-5 border border-black/5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
@@ -987,15 +1150,11 @@ export function AdminOrdersPage() {
                     <Clock className="h-3.5 w-3.5" />
                     Trạng thái vận hành đơn
                   </p>
-                  <p className="text-xs text-black/50">Chọn trạng thái để cập nhật tiến độ tự động trên hệ thống</p>
+                  <p className="text-xs text-black/50">Cộng điểm tích lũy VIP tự động khi chọn "Thành công"</p>
                 </div>
                 <select
                   value={selectedOrder.status}
-                  onChange={(event) => {
-                    const newStatus = event.target.value as Order["status"];
-                    updateOrderStatus(selectedOrder.id, newStatus);
-                    setSelectedOrder({ ...selectedOrder, status: newStatus });
-                  }}
+                  onChange={(event) => handleStatusUpdate(selectedOrder, event.target.value as Order["status"])}
                   className="rounded-xl border border-black/10 bg-white px-4 py-2.5 text-xs font-bold uppercase text-black/70 focus:border-black/60 focus:outline-none focus:ring-0 transition-all"
                 >
                   <option value="pending">CHỜ XÁC NHẬN</option>
@@ -1004,6 +1163,76 @@ export function AdminOrdersPage() {
                   <option value="completed">ĐÃ GIAO THÀNH CÔNG</option>
                   <option value="cancelled">ĐÃ HỦY ĐƠN</option>
                 </select>
+              </div>
+
+              {/* DYNAMIC VIETQR GENERATOR - QUÉT ĐỂ THANH TOÁN TỰ ĐỘNG CHUYỂN KHOẢN */}
+              {(selectedOrder.paymentMethod === "bank" || selectedOrder.paymentMethod === "chuyen_khoan") && (
+                <div className="bg-neutral-950 text-white rounded-2xl p-5 border border-neutral-800 flex flex-col md:flex-row gap-6 items-center justify-between shadow-lg relative overflow-hidden">
+                  <div className="absolute top-0 right-0 h-[2px] w-full bg-gradient-to-r from-red-600/40 via-white/20 to-red-600/40" />
+                  
+                  <div className="space-y-3 flex-1">
+                    <div className="flex items-center gap-1.5">
+                      <QrCode className="h-5 w-5 text-red-500 animate-pulse" />
+                      <h4 className="font-black tracking-widest text-xs uppercase text-stone-200">
+                        MADMAD AUTOMATIC VIETQR PAY
+                      </h4>
+                    </div>
+                    <p className="text-[11px] text-stone-400 leading-relaxed font-semibold">
+                      Hệ thống tự động đồng bộ hóa mã QR chuyển khoản chính xác số tiền đơn hàng. Chụp ảnh gửi cho khách qua Facebook/Instagram để nhận tiền 1 giây!
+                    </p>
+                    <div className="text-[10px] space-y-1 font-mono text-stone-300 bg-stone-900/50 p-3 rounded-xl border border-stone-800/80">
+                      <p>🏦 Ngân hàng: <span className="text-white font-bold">MB BANK (Quân Đội)</span></p>
+                      <p>💳 Số tài khoản: <span className="text-white font-bold">0999999999</span></p>
+                      <p>👤 Chủ tài khoản: <span className="text-white font-bold">MADMAD STUDIO</span></p>
+                      <p>💰 Số tiền: <span className="text-red-400 font-extrabold">{selectedOrder.total.toLocaleString("vi-VN")}₫</span></p>
+                      <p>📝 Nội dung: <span className="text-green-400 font-bold uppercase">MADMAD {selectedOrder.orderNumber}</span></p>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        navigator.clipboard.writeText(`0999999999 - MB Bank - MADMAD STUDIO. Chuyển khoản số tiền ${selectedOrder.total.toLocaleString("vi-VN")}đ với nội dung: MADMAD ${selectedOrder.orderNumber}`);
+                        window.alert("Đã copy thông tin thanh toán chuyển khoản của khách hàng!");
+                      }}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-stone-900 border border-stone-800 hover:bg-stone-800 text-[9px] font-black tracking-wider uppercase text-stone-300 rounded-lg transition-all"
+                    >
+                      <Copy className="h-3.5 w-3.5" />
+                      Sao chép text thanh toán
+                    </button>
+                  </div>
+
+                  {/* VietQR Dynamic Generation */}
+                  <div className="bg-white p-3.5 rounded-2xl flex-shrink-0 shadow-xl border border-neutral-800/20 text-center space-y-1.5">
+                    <img
+                      src={`https://img.vietqr.io/image/MB-0999999999-compact.png?amount=${selectedOrder.total}&addInfo=MADMAD%20${selectedOrder.orderNumber}&accountName=MADMAD%20STUDIO`}
+                      alt="VietQR MADMAD"
+                      className="h-36 w-36 object-contain"
+                    />
+                    <span className="text-[8px] font-bold text-stone-500 uppercase tracking-widest block">
+                      QUÉT ĐỂ THANH TOÁN
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              {/* GHI CHÚ VẬN HÀNH NỘI BỘ (BẢO MẬT NHÂN VIÊN - ẨN KHI IN) */}
+              <div className="border border-dashed border-red-500/20 rounded-2xl p-5 bg-red-50/10 space-y-3 print:hidden">
+                <div className="flex items-center gap-1.5">
+                  <FileText className="h-4.5 w-4.5 text-red-600" />
+                  <h4 className="text-[10px] font-extrabold tracking-widest text-red-800 uppercase">
+                    Ghi Chú Đóng Hàng & Vận Hành Nội Bộ (Bảo Mật Nhân Viên)
+                  </h4>
+                </div>
+                <textarea
+                  rows={2}
+                  value={internalPackingNotes[selectedOrder.orderNumber] || ""}
+                  onChange={(e) => handleSaveInternalNote(selectedOrder.orderNumber, e.target.value)}
+                  placeholder="Nhân viên đóng gói điền ghi chú đóng hàng tại đây (ví dụ: Tặng quà, hàng dễ vỡ, bọc kỹ...). Note này chỉ nhân viên quản trị nhìn thấy, sẽ tự động bị ẩn đi khi in hóa đơn giấy gửi khách!"
+                  className="w-full rounded-xl border border-red-500/10 bg-white px-4 py-2.5 text-xs placeholder:text-stone-400 focus:border-red-500/40 focus:outline-none transition-all resize-none font-medium leading-relaxed"
+                />
+                <p className="text-[9px] text-red-700/60 font-semibold italic">
+                  * Hệ thống tự động lưu ghi chú nội bộ này mỗi khi bạn gõ phím.
+                </p>
               </div>
 
               {/* Thông tin khách hàng & Địa chỉ */}
@@ -1106,101 +1335,143 @@ export function AdminOrdersPage() {
         </div>
       )}
 
-      {/* TEMPLATE IN HÓA ĐƠN GỬI KÈM HÀNG (PRINT ONLY) */}
+      {/* 🧾 THIẾT KẾ MỚI HÓA ĐƠN ULTRA-MINIMALIST PACKING SLIP (IN ẤN - PRINT ONLY) */}
       {selectedOrder && (
         <div className="hidden print:block">
-          <div className="mx-auto max-w-4xl p-8 text-black bg-white" style={{ fontFamily: "monospace" }}>
-            <div className="mb-8 flex items-start justify-between border-b-2 border-black pb-6">
-              <div className="flex items-center gap-4">
-                <img src={brandLogo} alt="MADMAD Studio" className="h-16 w-auto" />
-                <div>
-                  <h1 className="text-xl font-bold tracking-widest uppercase">MADMAD STUDIO</h1>
-                  <p className="text-[10px]">Thương hiệu thời trang tối giản & độc bản</p>
-                  <p className="text-[10px]">Website: madmad.vn</p>
+          <div className="mx-auto max-w-4xl p-10 text-black bg-white" style={{ fontFamily: "monospace", fontSize: "11px" }}>
+            
+            {/* Header răng cưa/Đầu trang */}
+            <div className="text-center space-y-2 mb-8 pb-6 border-b-2 border-dashed border-black">
+              <div className="flex items-center justify-between">
+                <img src={brandLogo} alt="MADMAD Studio" className="h-14 w-auto" />
+                <div className="text-right">
+                  <h1 className="text-lg font-black tracking-widest">MADMAD STUDIO</h1>
+                  <p className="text-[9px] uppercase tracking-wider text-black/60">Tối giản . Độc bản . Cao cấp</p>
+                  <p className="text-[9px] text-black/60">Showroom: 254 Nguyễn Trãi, Q.5, TP.HCM</p>
+                  <p className="text-[9px] text-black/60">Hotline: 099.999.9999</p>
                 </div>
               </div>
-              <div className="text-right">
-                <h2 className="text-lg font-bold">HÓA ĐƠN BÁN HÀNG</h2>
-                <p className="text-xs font-mono font-bold mt-1">{selectedOrder.orderNumber}</p>
-                <p className="text-[10px] mt-0.5">Ngày mua: {new Date(selectedOrder.createdAt).toLocaleDateString("vi-VN")}</p>
+            </div>
+
+            {/* Tiêu đề chính */}
+            <div className="text-center space-y-1 mb-8">
+              <h2 className="text-base font-black tracking-widest uppercase">HÓA ĐƠN VẬN CHUYỂN & GÓI HÀNG</h2>
+              <p className="text-xs font-mono font-bold tracking-wider">{selectedOrder.orderNumber}</p>
+              <p className="text-[9px] text-black/50">Ngày in: {new Date().toLocaleDateString("vi-VN")} - {new Date().toLocaleTimeString("vi-VN")}</p>
+            </div>
+
+            {/* Thông tin 2 cột */}
+            <div className="grid grid-cols-2 gap-8 mb-8 pb-6 border-b border-black">
+              <div>
+                <h3 className="font-black border-b border-black pb-1 mb-3 uppercase tracking-wider">Thông tin người nhận</h3>
+                <div className="space-y-1">
+                  <p>Họ tên: <span className="font-bold uppercase">{selectedOrder.customerName}</span></p>
+                  <p>Điện thoại: <span className="font-bold">{selectedOrder.customerPhone}</span></p>
+                  <p>Email: {selectedOrder.customerEmail}</p>
+                  <p>Phương thức: <span className="uppercase font-bold">{selectedOrder.paymentMethod}</span></p>
+                </div>
+              </div>
+              <div>
+                <h3 className="font-black border-b border-black pb-1 mb-3 uppercase tracking-wider">Địa chỉ giao hàng</h3>
+                <div className="space-y-1 leading-relaxed">
+                  {selectedOrder.shippingAddress.street === "Mua trực tiếp tại Shop" ? (
+                    <p className="font-bold">⚡ ĐƠN MUA TRỰC TIẾP TẠI CỬA HÀNG (POS)</p>
+                  ) : (
+                    <>
+                      <p>{selectedOrder.shippingAddress.street}</p>
+                      <p>{selectedOrder.shippingAddress.ward}</p>
+                      <p>{selectedOrder.shippingAddress.district}</p>
+                      <p>{selectedOrder.shippingAddress.province}</p>
+                    </>
+                  )}
+                </div>
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-8 mb-8 text-[11px]">
-              <div>
-                <h3 className="font-bold border-b border-black pb-1 mb-2 uppercase">Thông tin khách hàng</h3>
-                <p>Khách hàng: <span className="font-bold">{selectedOrder.customerName}</span></p>
-                <p>Số điện thoại: {selectedOrder.customerPhone}</p>
-                <p>Email: {selectedOrder.customerEmail}</p>
-                <p>Thanh toán: <span className="uppercase font-bold">{selectedOrder.paymentMethod}</span></p>
-              </div>
-              <div>
-                <h3 className="font-bold border-b border-black pb-1 mb-2 uppercase">Địa chỉ nhận hàng</h3>
-                {selectedOrder.shippingAddress.street === "Mua trực tiếp tại Shop" ? (
-                  <p className="font-bold">⚡ MUA TRỰC TIẾP TẠI CỬA HÀNG (POS)</p>
-                ) : (
-                  <>
-                    <p>{selectedOrder.shippingAddress.street}</p>
-                    <p>{selectedOrder.shippingAddress.ward}</p>
-                    <p>{selectedOrder.shippingAddress.district}</p>
-                    <p>{selectedOrder.shippingAddress.province}</p>
-                  </>
-                )}
-              </div>
-            </div>
-
+            {/* Bảng sản phẩm */}
             <table className="w-full text-left text-[11px] border-collapse mb-8">
               <thead>
-                <tr className="border-y border-black font-bold">
-                  <th className="py-2">Sản phẩm</th>
-                  <th className="py-2">Thuộc tính</th>
-                  <th className="py-2 text-center">Số lượng</th>
-                  <th className="py-2 text-right">Đơn giá</th>
-                  <th className="py-2 text-right">Thành tiền</th>
+                <tr className="border-b-2 border-black font-black uppercase text-black">
+                  <th className="py-2.5">Sản phẩm</th>
+                  <th className="py-2.5">Phân loại</th>
+                  <th className="py-2.5 text-center">SL</th>
+                  <th className="py-2.5 text-right">Đơn giá</th>
+                  <th className="py-2.5 text-right">Thành tiền</th>
                 </tr>
               </thead>
               <tbody>
                 {selectedOrder.items.map((item, index) => (
                   <tr key={index} className="border-b border-black/10">
                     <td className="py-3 uppercase font-bold">{item.product.name}</td>
-                    <td className="py-3 uppercase">Size: {item.size} | Màu: {item.color}</td>
+                    <td className="py-3 uppercase text-black/70">Size: {item.size} | Màu: {item.color}</td>
                     <td className="py-3 text-center">{item.quantity}</td>
                     <td className="py-3 text-right">{item.price.toLocaleString("vi-VN")}₫</td>
-                    <td className="py-3 text-right">{(item.price * item.quantity).toLocaleString("vi-VN")}₫</td>
+                    <td className="py-3 text-right font-bold">{(item.price * item.quantity).toLocaleString("vi-VN")}₫</td>
                   </tr>
                 ))}
               </tbody>
             </table>
 
-            <div className="flex justify-end text-[11px]">
-              <div className="w-64 space-y-1.5">
-                <div className="flex justify-between">
-                  <span>Tạm tính:</span>
-                  <span>{selectedOrder.subtotal.toLocaleString("vi-VN")}₫</span>
+            {/* Chi phí & Quét mã QR */}
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-8 items-start mb-8 pb-6 border-b border-black">
+              {/* VietQR In kèm cho khách quét payment khi nhận hàng COD / chuyển khoản */}
+              <div className="md:col-span-6 flex items-center gap-4 border border-black/10 rounded-xl p-3.5 bg-stone-50">
+                <div className="bg-white p-1 rounded border border-black/5 flex-shrink-0">
+                  <img
+                    src={`https://img.vietqr.io/image/MB-0999999999-compact.png?amount=${selectedOrder.total}&addInfo=MADMAD%20${selectedOrder.orderNumber}&accountName=MADMAD%20STUDIO`}
+                    alt="VietQR MADMAD"
+                    className="h-20 w-20 object-contain"
+                  />
                 </div>
-                {selectedOrder.discount > 0 && (
-                  <div className="flex justify-between font-bold text-red-600">
-                    <span>Giảm giá/Khuyến mãi:</span>
-                    <span>-{selectedOrder.discount.toLocaleString("vi-VN")}₫</span>
+                <div className="space-y-1">
+                  <p className="font-bold text-[10px] tracking-wider uppercase flex items-center gap-1">
+                    <QrCode className="h-3.5 w-3.5" />
+                    QUÉT THANH TOÁN
+                  </p>
+                  <p className="text-[8px] leading-relaxed text-black/60 font-semibold">
+                    Dùng app Ngân hàng để quét chuyển khoản tự động chính xác số tiền & nội dung đơn hàng này.
+                  </p>
+                </div>
+              </div>
+
+              {/* Bảng chi tiết tiền */}
+              <div className="md:col-span-6 flex justify-end text-[11px]">
+                <div className="w-full space-y-2">
+                  <div className="flex justify-between text-black/70">
+                    <span>Tạm tính:</span>
+                    <span>{selectedOrder.subtotal.toLocaleString("vi-VN")}₫</span>
                   </div>
-                )}
-                {selectedOrder.shippingAddress.street !== "Mua trực tiếp tại Shop" && (
-                  <div className="flex justify-between">
-                    <span>Phí ship:</span>
-                    <span>+{selectedOrder.shipping.toLocaleString("vi-VN")}₫</span>
+                  {selectedOrder.discount > 0 && (
+                    <div className="flex justify-between font-bold text-red-600">
+                      <span>Giảm giá/Khuyến mãi:</span>
+                      <span>-{selectedOrder.discount.toLocaleString("vi-VN")}₫</span>
+                    </div>
+                  )}
+                  {selectedOrder.shippingAddress.street !== "Mua trực tiếp tại Shop" && (
+                    <div className="flex justify-between text-black/70">
+                      <span>Phí giao hàng:</span>
+                      <span>+{selectedOrder.shipping.toLocaleString("vi-VN")}₫</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between font-black text-sm border-t-2 border-black pt-2">
+                    <span>TỔNG CỘNG TIỀN:</span>
+                    <span>{selectedOrder.total.toLocaleString("vi-VN")}₫</span>
                   </div>
-                )}
-                <div className="flex justify-between font-black text-sm border-t border-black pt-1.5">
-                  <span>TỔNG CỘNG:</span>
-                  <span>{selectedOrder.total.toLocaleString("vi-VN")}₫</span>
                 </div>
               </div>
             </div>
 
-            <div className="mt-16 text-center text-[10px] border-t border-black/10 pt-6">
-              <p className="font-bold uppercase tracking-widest">CẢM ƠN QUÝ KHÁCH ĐÃ CHỌN MADMAD STUDIO!</p>
-              <p className="text-black/50 mt-1">Mọi thông tin đổi trả sản phẩm vui lòng liên hệ Facebook/Instagram trong vòng 3 ngày.</p>
+            {/* Slogan & Note chân trang */}
+            <div className="text-center space-y-2 mt-8">
+              <p className="font-black uppercase tracking-widest text-[10px]">CẢM ƠN QUÝ KHÁCH ĐÃ CHỌN MADMAD STUDIO!</p>
+              <p className="text-black/50 text-[9px] leading-relaxed max-w-lg mx-auto">
+                * Quý khách vui lòng kiểm tra kỹ sản phẩm khi nhận hàng. Đối với các yêu cầu đổi trả sản phẩm nguyên tag mác, xin hãy nhắn tin trực tiếp fanpage Facebook/Instagram của MADMAD Studio trong vòng 3 ngày kể từ ngày nhận hàng.
+              </p>
+              <div className="pt-4 text-black/25 text-[8px] font-mono tracking-widest">
+                MADMAD STUDIO - NOIR NO DESIGN STANDARD
+              </div>
             </div>
+            
           </div>
         </div>
       )}
