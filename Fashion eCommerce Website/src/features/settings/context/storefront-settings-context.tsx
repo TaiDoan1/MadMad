@@ -31,6 +31,13 @@ export const DEFAULT_STOREFRONT_SETTINGS: StorefrontSettings = {
   ],
   bestSellerProductIds: [1, 2, 3, 4],
   bestSellerImageOverrides: {},
+  instagramImages: [
+    "/assets/categories/anh-pho-bien.jpg",
+    "/assets/products/ao-thun-m-den.jpg",
+    "/assets/products/sp2-den.jpg",
+    "/assets/products/sp3-navy.jpg",
+    "/assets/products/ao-thun-m-xam.jpg",
+  ],
   colorHexMap: {
     Trắng: "#FFFFFF",
     Đen: "#000000",
@@ -45,6 +52,15 @@ export const DEFAULT_STOREFRONT_SETTINGS: StorefrontSettings = {
     Sọc: "#374151",
     Hoa: "#EC4899",
   },
+  instagramUrl: "https://instagram.com",
+  facebookUrl: "https://facebook.com",
+  tiktokUrl: "https://tiktok.com",
+  shopeeUrl: "https://shopee.vn",
+  printInvoiceTitle: "HÓA ĐƠN VẬN CHUYỂN & GÓI HÀNG",
+  printInvoiceAddress: "Showroom: 254 Nguyễn Trãi, Q.5, TP.HCM",
+  printInvoicePhone: "Hotline: 099.999.9999",
+  printInvoiceFooterSlogan: "CẢM ƠN QUÝ KHÁCH ĐÃ CHỌN MADMAD STUDIO!",
+  printInvoicePolicy: "* Quý khách vui lòng kiểm tra kỹ sản phẩm khi nhận hàng. Đối với các yêu cầu đổi trả sản phẩm nguyên tag mác, xin hãy nhắn tin trực tiếp fanpage Facebook/Instagram của MADMAD Studio trong vòng 3 ngày kể từ ngày nhận hàng.",
 };
 
 interface StorefrontSettingsContextValue {
@@ -116,6 +132,28 @@ function readStoredSettings(): StorefrontSettings {
         Array.isArray(parsed.popularCategoryImages)
           ? parsed.popularCategoryImages.map((value) => String(value).trim()).filter(Boolean)
           : DEFAULT_STOREFRONT_SETTINGS.popularCategoryImages,
+      instagramImages:
+        Array.isArray(parsed.instagramImages)
+          ? parsed.instagramImages.map((value) => String(value).trim()).filter(Boolean)
+          : DEFAULT_STOREFRONT_SETTINGS.instagramImages,
+      instagramUrl:
+        typeof parsed.instagramUrl === "string" ? parsed.instagramUrl : DEFAULT_STOREFRONT_SETTINGS.instagramUrl,
+      facebookUrl:
+        typeof parsed.facebookUrl === "string" ? parsed.facebookUrl : DEFAULT_STOREFRONT_SETTINGS.facebookUrl,
+      tiktokUrl:
+        typeof parsed.tiktokUrl === "string" ? parsed.tiktokUrl : DEFAULT_STOREFRONT_SETTINGS.tiktokUrl,
+      shopeeUrl:
+        typeof parsed.shopeeUrl === "string" ? parsed.shopeeUrl : DEFAULT_STOREFRONT_SETTINGS.shopeeUrl,
+      printInvoiceTitle:
+        typeof parsed.printInvoiceTitle === "string" ? parsed.printInvoiceTitle : DEFAULT_STOREFRONT_SETTINGS.printInvoiceTitle,
+      printInvoiceAddress:
+        typeof parsed.printInvoiceAddress === "string" ? parsed.printInvoiceAddress : DEFAULT_STOREFRONT_SETTINGS.printInvoiceAddress,
+      printInvoicePhone:
+        typeof parsed.printInvoicePhone === "string" ? parsed.printInvoicePhone : DEFAULT_STOREFRONT_SETTINGS.printInvoicePhone,
+      printInvoiceFooterSlogan:
+        typeof parsed.printInvoiceFooterSlogan === "string" ? parsed.printInvoiceFooterSlogan : DEFAULT_STOREFRONT_SETTINGS.printInvoiceFooterSlogan,
+      printInvoicePolicy:
+        typeof parsed.printInvoicePolicy === "string" ? parsed.printInvoicePolicy : DEFAULT_STOREFRONT_SETTINGS.printInvoicePolicy,
     };
   } catch {
     return DEFAULT_STOREFRONT_SETTINGS;

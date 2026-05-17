@@ -92,6 +92,12 @@ export function HomePage() {
     "/assets/products/ao-thun-m-xam.jpg",
   ];
 
+  const activeInstagramImages = useMemo(() => {
+    const custom = settings.instagramImages ?? [];
+    const filtered = custom.map((v) => v.trim()).filter(Boolean);
+    return filtered.length > 0 ? filtered : editorialPhotos;
+  }, [settings.instagramImages, editorialPhotos]);
+
   return (
     <div>
       {/* ═══ HERO ════════════════════════════════════════════════════════════ */}
@@ -287,41 +293,52 @@ export function HomePage() {
         </div>
       </section>
 
-      {/* ═══ EDITORIAL FEED — @MADMAD ════════════════════════════════════════ */}
-      <section className="bg-white pt-14 pb-0">
+      {/* ═══ EDITORIAL FEED — @MADMAD (MARQUEE SLIDER) ══════════════════════ */}
+      <section className="bg-white pt-14 pb-0 overflow-hidden">
         {/* Feed header */}
-        <div className="px-6 sm:px-10 lg:px-16 mb-5 flex items-center justify-between">
+        <div className="px-6 sm:px-10 lg:px-16 mb-6 flex items-center justify-between">
           <p
             className="font-black uppercase text-black tracking-[0.15em]"
             style={{ fontSize: "clamp(0.85rem, 1.5vw, 1.1rem)" }}
           >
-            @MADMAD
+            @MADMAD INSTAGRAM FEED
           </p>
           <a
-            href="https://instagram.com"
+            href={settings.instagramUrl || "https://instagram.com"}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-[11px] uppercase tracking-[0.25em] text-black/40 transition-colors hover:text-black"
+            className="text-[11px] uppercase tracking-[0.25em] text-red-600 font-extrabold hover:text-black transition-colors"
           >
-            Follow
+            Follow us
           </a>
         </div>
 
-        {/* Photo grid — no gaps, full bleed */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-0.5">
-          {editorialPhotos.map((src, index) => (
-            <div key={index} className="relative overflow-hidden aspect-[2/3] group cursor-pointer">
-              <ImageWithFallback
-                src={src}
-                alt={`MADMAD editorial ${index + 1}`}
-                className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
-              />
-              {/* Hover overlay */}
-              <div className="absolute inset-0 bg-black/0 transition-all duration-500 group-hover:bg-black/25 flex items-center justify-center">
-                <span className="text-white text-xs uppercase tracking-widest opacity-0 transition-opacity duration-300 group-hover:opacity-100">
-                  @madmad
-                </span>
-              </div>
+        {/* Photo grid sliding continuously */}
+        <div className="relative flex w-full overflow-hidden border-t border-black/5 bg-stone-50/50 py-0.5 select-none">
+          {[0, 1].map((setIndex) => (
+            <div 
+              key={setIndex} 
+              className="flex shrink-0 animate-marquee gap-0.5 pr-0.5" 
+              aria-hidden={setIndex === 1}
+            >
+              {activeInstagramImages.map((src, index) => (
+                <div 
+                  key={`${index}-${setIndex}`} 
+                  className="relative overflow-hidden w-[50vw] sm:w-[33.33vw] lg:w-[20vw] aspect-[2/3] group cursor-pointer bg-white"
+                >
+                  <ImageWithFallback
+                    src={src}
+                    alt={`MADMAD editorial ${index + 1}`}
+                    className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
+                  />
+                  {/* Hover overlay */}
+                  <div className="absolute inset-0 bg-black/0 transition-all duration-500 group-hover:bg-black/35 flex items-center justify-center">
+                    <span className="text-white text-xs uppercase tracking-widest font-extrabold opacity-0 transition-opacity duration-300 group-hover:opacity-100 flex items-center gap-1">
+                      📷 @madmad
+                    </span>
+                  </div>
+                </div>
+              ))}
             </div>
           ))}
         </div>

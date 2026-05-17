@@ -20,6 +20,17 @@ export function AdminSettingsPage() {
   const [storeEmail, setStoreEmail] = useState(settings.storeEmail);
   const [storePhone, setStorePhone] = useState(settings.storePhone);
   const [storeAddress, setStoreAddress] = useState(settings.storeAddress);
+  const [instagramUrl, setInstagramUrl] = useState(settings.instagramUrl || "");
+  const [facebookUrl, setFacebookUrl] = useState(settings.facebookUrl || "");
+  const [tiktokUrl, setTiktokUrl] = useState(settings.tiktokUrl || "");
+  const [shopeeUrl, setShopeeUrl] = useState(settings.shopeeUrl || "");
+
+  // Invoice Print Customization States
+  const [printInvoiceTitle, setPrintInvoiceTitle] = useState(settings.printInvoiceTitle || "HÓA ĐƠN VẬN CHUYỂN & GÓI HÀNG");
+  const [printInvoiceAddress, setPrintInvoiceAddress] = useState(settings.printInvoiceAddress || "Showroom: 254 Nguyễn Trãi, Q.5, TP.HCM");
+  const [printInvoicePhone, setPrintInvoicePhone] = useState(settings.printInvoicePhone || "Hotline: 099.999.9999");
+  const [printInvoiceFooterSlogan, setPrintInvoiceFooterSlogan] = useState(settings.printInvoiceFooterSlogan || "CẢM ƠN QUÝ KHÁCH ĐÃ CHỌN MADMAD STUDIO!");
+  const [printInvoicePolicy, setPrintInvoicePolicy] = useState(settings.printInvoicePolicy || "");
 
   // Coupons States
   const [coupons, setCoupons] = useState<Coupon[]>([]);
@@ -27,13 +38,21 @@ export function AdminSettingsPage() {
   const [newDiscountAmount, setNewDiscountAmount] = useState("");
   const [couponError, setCouponError] = useState("");
 
-  // Đọc dữ liệu ban đầu
   useEffect(() => {
     setCurrentLogo(settings.logo || brandLogo);
     setStoreName(settings.storeName);
     setStoreEmail(settings.storeEmail);
     setStorePhone(settings.storePhone);
     setStoreAddress(settings.storeAddress);
+    setInstagramUrl(settings.instagramUrl || "");
+    setFacebookUrl(settings.facebookUrl || "");
+    setTiktokUrl(settings.tiktokUrl || "");
+    setShopeeUrl(settings.shopeeUrl || "");
+    setPrintInvoiceTitle(settings.printInvoiceTitle || "HÓA ĐƠN VẬN CHUYỂN & GÓI HÀNG");
+    setPrintInvoiceAddress(settings.printInvoiceAddress || "Showroom: 254 Nguyễn Trãi, Q.5, TP.HCM");
+    setPrintInvoicePhone(settings.printInvoicePhone || "Hotline: 099.999.9999");
+    setPrintInvoiceFooterSlogan(settings.printInvoiceFooterSlogan || "CẢM ƠN QUÝ KHÁCH ĐÃ CHỌN MADMAD STUDIO!");
+    setPrintInvoicePolicy(settings.printInvoicePolicy || "");
 
     // Đọc danh sách coupon từ service
     const storedCoupons = readStoredCoupons();
@@ -61,8 +80,23 @@ export function AdminSettingsPage() {
       storeEmail,
       storePhone,
       storeAddress,
+      instagramUrl,
+      facebookUrl,
+      tiktokUrl,
+      shopeeUrl,
     });
     window.alert("Đã lưu cài đặt nhận diện thương hiệu thành công!");
+  };
+
+  const handleSaveInvoiceSettings = () => {
+    updateSettings({
+      printInvoiceTitle,
+      printInvoiceAddress,
+      printInvoicePhone,
+      printInvoiceFooterSlogan,
+      printInvoicePolicy,
+    });
+    window.alert("Đã lưu thiết lập mẫu in hóa đơn thành công!");
   };
 
   // Thêm mã giảm giá mới
@@ -146,6 +180,16 @@ export function AdminSettingsPage() {
         >
           Khuyến Mãi & Coupons ({coupons.length})
         </button>
+        <button
+          onClick={() => setActiveTab("invoice")}
+          className={`px-6 py-3 text-xs font-extrabold tracking-widest uppercase border-b-2 transition-all ${
+            activeTab === "invoice"
+              ? "border-black text-black"
+              : "border-transparent text-black/40 hover:text-black"
+          }`}
+        >
+          Mẫu In Hóa Đơn
+        </button>
       </div>
 
       {/* TAB 1: NHẬN DIỆN THƯƠNG HIỆU (BRANDING) */}
@@ -202,8 +246,50 @@ export function AdminSettingsPage() {
                   <input
                     value={storeAddress}
                     onChange={(event) => setStoreAddress(event.target.value)}
-                    className="w-full rounded-xl border border-black/10 bg-stone-50 px-4 py-3 focus:bg-white focus:border-black/60 focus:outline-none focus:ring-0 transition-all"
+                    className="w-full rounded-xl border border-black/10 bg-stone-50 px-4 py-3 focus:bg-white focus:border-black/60 focus:outline-none focus:ring-0 transition-all mb-4"
                   />
+                </div>
+
+                <div className="border-t border-black/5 pt-4">
+                  <h4 className="text-[10px] font-black tracking-widest text-red-600 uppercase mb-3">Đường dẫn mạng xã hội (Social URLs)</h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                    <div>
+                      <label className="block text-[9px] font-extrabold tracking-wider uppercase text-black/50 mb-1">Facebook URL</label>
+                      <input
+                        value={facebookUrl}
+                        onChange={(event) => setFacebookUrl(event.target.value)}
+                        placeholder="https://facebook.com/..."
+                        className="w-full rounded-xl border border-black/10 bg-stone-50 px-3 py-2 text-xs focus:bg-white focus:border-black/60 focus:outline-none transition-all"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[9px] font-extrabold tracking-wider uppercase text-black/50 mb-1">Instagram URL</label>
+                      <input
+                        value={instagramUrl}
+                        onChange={(event) => setInstagramUrl(event.target.value)}
+                        placeholder="https://instagram.com/..."
+                        className="w-full rounded-xl border border-black/10 bg-stone-50 px-3 py-2 text-xs focus:bg-white focus:border-black/60 focus:outline-none transition-all"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[9px] font-extrabold tracking-wider uppercase text-black/50 mb-1">TikTok URL</label>
+                      <input
+                        value={tiktokUrl}
+                        onChange={(event) => setTiktokUrl(event.target.value)}
+                        placeholder="https://tiktok.com/@..."
+                        className="w-full rounded-xl border border-black/10 bg-stone-50 px-3 py-2 text-xs focus:bg-white focus:border-black/60 focus:outline-none transition-all"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[9px] font-extrabold tracking-wider uppercase text-black/50 mb-1">Shopee Shop URL</label>
+                      <input
+                        value={shopeeUrl}
+                        onChange={(event) => setShopeeUrl(event.target.value)}
+                        placeholder="https://shopee.vn/..."
+                        className="w-full rounded-xl border border-black/10 bg-stone-50 px-3 py-2 text-xs focus:bg-white focus:border-black/60 focus:outline-none transition-all"
+                      />
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -331,6 +417,154 @@ export function AdminSettingsPage() {
             <div className="flex items-center gap-2 pt-2 text-[10px] text-black/40 font-semibold">
               <ShieldCheck className="h-4 w-4 text-green-600" />
               Mã giảm giá được đồng bộ tự động xuống giao diện thanh toán (Checkout) của khách hàng.
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* TAB 3: TÙY BIẾN MẪU IN HÓA ĐƠN (INVOICE TEMPLATE CUSTOMIZER) */}
+      {activeTab === "invoice" && (
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+          {/* Cột trái (Nhập liệu) */}
+          <div className="lg:col-span-6 space-y-6 rounded-2xl border border-black/10 bg-white p-6 shadow-sm text-xs font-semibold">
+            <div>
+              <h3 className="text-xs font-extrabold tracking-widest text-black/45 uppercase mb-4">Cấu Hình Mẫu In Hóa Đơn</h3>
+              <p className="text-[10px] text-black/45 leading-relaxed mb-6 font-medium">
+                Tùy chỉnh thông tin hiển thị trên phiếu giao hàng và hóa đơn thanh toán của MADMAD Studio khi in đơn.
+              </p>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-[10px] font-extrabold tracking-wider uppercase text-black/50 mb-1.5">Tiêu đề hóa đơn</label>
+                <input
+                  value={printInvoiceTitle}
+                  onChange={(e) => setPrintInvoiceTitle(e.target.value)}
+                  className="w-full rounded-xl border border-black/10 bg-stone-50 px-4 py-3 focus:bg-white focus:border-black/60 focus:outline-none transition-all font-bold uppercase"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-extrabold tracking-wider uppercase text-black/50 mb-1.5">Địa chỉ Showroom hiển thị</label>
+                <input
+                  value={printInvoiceAddress}
+                  onChange={(e) => setPrintInvoiceAddress(e.target.value)}
+                  className="w-full rounded-xl border border-black/10 bg-stone-50 px-4 py-3 focus:bg-white focus:border-black/60 focus:outline-none transition-all"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-extrabold tracking-wider uppercase text-black/50 mb-1.5">Hotline CSKH hiển thị</label>
+                <input
+                  value={printInvoicePhone}
+                  onChange={(e) => setPrintInvoicePhone(e.target.value)}
+                  className="w-full rounded-xl border border-black/10 bg-stone-50 px-4 py-3 focus:bg-white focus:border-black/60 focus:outline-none transition-all font-mono"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-extrabold tracking-wider uppercase text-black/50 mb-1.5">Lời chào chân hóa đơn (Slogan)</label>
+                <input
+                  value={printInvoiceFooterSlogan}
+                  onChange={(e) => setPrintInvoiceFooterSlogan(e.target.value)}
+                  className="w-full rounded-xl border border-black/10 bg-stone-50 px-4 py-3 focus:bg-white focus:border-black/60 focus:outline-none transition-all"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-extrabold tracking-wider uppercase text-black/50 mb-1.5">Chính sách đổi trả & Ghi chú</label>
+                <textarea
+                  rows={4}
+                  value={printInvoicePolicy}
+                  onChange={(e) => setPrintInvoicePolicy(e.target.value)}
+                  placeholder="Điền quy định đổi trả hàng..."
+                  className="w-full rounded-xl border border-black/10 bg-stone-50 px-4 py-3 focus:bg-white focus:border-black/60 focus:outline-none transition-all font-medium leading-relaxed resize-none"
+                />
+              </div>
+            </div>
+
+            <div className="pt-4 border-t border-black/5">
+              <button
+                onClick={handleSaveInvoiceSettings}
+                className="w-full rounded-xl bg-black px-6 py-3.5 text-xs font-bold tracking-widest uppercase text-white hover:bg-neutral-800 transition-all flex items-center justify-center gap-2 hover:scale-[1.01] active:scale-[0.99]"
+              >
+                <Save className="h-4.5 w-4.5" />
+                LƯU THIẾT LẬP MẪU IN
+              </button>
+            </div>
+          </div>
+
+          {/* Cột phải (Live Preview mô phỏng chân thực hóa đơn giấy) */}
+          <div className="lg:col-span-6 space-y-4">
+            <h3 className="text-xs font-extrabold tracking-widest text-black/45 uppercase">Live Preview (Mô phỏng bản in)</h3>
+            <div className="rounded-2xl border border-black/10 bg-stone-50 p-6 flex items-center justify-center min-h-[450px]">
+              {/* Giả lập tờ giấy in hóa đơn */}
+              <div className="w-full max-w-sm bg-white shadow-lg border border-black/5 p-6 space-y-4 font-mono text-[9px] text-black leading-relaxed relative overflow-hidden" style={{ minHeight: "400px" }}>
+                {/* Dải rách giả lập hóa đơn */}
+                <div className="absolute top-0 left-0 right-0 h-1 bg-repeat-x" style={{ backgroundImage: "linear-gradient(45deg, transparent 33.333%, #f5f5f5 33.333%, #f5f5f5 66.667%, transparent 66.667%), linear-gradient(-45deg, transparent 33.333%, #f5f5f5 33.333%, #f5f5f5 66.667%, transparent 66.667%)", backgroundSize: "6px 4px" }} />
+                
+                {/* Shop Header */}
+                <div className="text-center pb-3 border-b border-dashed border-black/20 space-y-1">
+                  <h4 className="text-xs font-black font-sans uppercase">MADMAD STUDIO</h4>
+                  <p className="text-[7px] text-black/50 font-sans">Tối giản . Độc bản . Cao cấp</p>
+                  <p className="text-[8px] text-black/60">{printInvoiceAddress}</p>
+                  <p className="text-[8px] text-black/60">{printInvoicePhone}</p>
+                </div>
+
+                {/* Title */}
+                <div className="text-center space-y-0.5">
+                  <h5 className="font-black uppercase tracking-wider text-[10px]">{printInvoiceTitle}</h5>
+                  <p className="text-[7px] text-black/40">MÃ ĐƠN: MADMAD_#1002</p>
+                </div>
+
+                {/* Sample items table */}
+                <table className="w-full border-collapse text-[8px] text-left">
+                  <thead>
+                    <tr className="border-b border-black font-bold font-sans">
+                      <th className="pb-1">Sản phẩm</th>
+                      <th className="pb-1 text-center">SL</th>
+                      <th className="pb-1 text-right">T.Tiền</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr className="border-b border-black/5">
+                      <td className="py-1.5 uppercase font-sans font-bold">NOIR DISTRESSED HOODIE</td>
+                      <td className="py-1.5 text-center">1</td>
+                      <td className="py-1.5 text-right font-bold">650.000₫</td>
+                    </tr>
+                    <tr className="border-b border-black/10">
+                      <td className="py-1.5 uppercase font-sans font-bold">RAW EDGES CARGO SHORTS</td>
+                      <td className="py-1.5 text-center">1</td>
+                      <td className="py-1.5 text-right font-bold">420.000₫</td>
+                    </tr>
+                  </tbody>
+                </table>
+
+                {/* Total */}
+                <div className="space-y-1 border-t border-black pt-2 font-sans font-bold text-right text-[9px]">
+                  <div className="flex justify-between text-black/60 text-[8px]">
+                    <span>Tạm tính:</span>
+                    <span>1.070.000₫</span>
+                  </div>
+                  <div className="flex justify-between text-red-600 text-[8px]">
+                    <span>VIP Member (👑 Hạng thẻ):</span>
+                    <span>-53.500₫</span>
+                  </div>
+                  <div className="flex justify-between border-t border-black/10 pt-1 text-[10px] font-black text-black">
+                    <span>TỔNG CỘNG:</span>
+                    <span>1.016.500₫</span>
+                  </div>
+                </div>
+
+                {/* Footer notes */}
+                <div className="text-center pt-3 border-t border-dashed border-black/20 space-y-1.5">
+                  <p className="font-bold text-[8px] font-sans uppercase">{printInvoiceFooterSlogan}</p>
+                  <p className="text-[7px] text-black/50 font-sans leading-normal text-justify">
+                    {printInvoicePolicy || "* Chưa cấu hình chính sách đổi trả hàng..."}
+                  </p>
+                  <p className="text-[6px] text-black/30 tracking-widest pt-2">MADMAD STUDIO - NOIR STANDARD</p>
+                </div>
+              </div>
             </div>
           </div>
         </div>

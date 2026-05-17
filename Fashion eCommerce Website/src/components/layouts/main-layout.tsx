@@ -9,8 +9,10 @@ import { PageTransition, useTransitionTo } from "@/components/common/page-transi
 import { SplashScreen } from "@/components/common/splash-screen";
 import { useAdminAuth } from "@/features/auth/context/admin-auth-context";
 import { useCart } from "@/features/cart/context/cart-context";
+import { useStorefrontSettings } from "@/features/settings/context/storefront-settings-context";
 
 export function MainLayout() {
+  const { settings } = useStorefrontSettings();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [cartDrawerOpen, setCartDrawerOpen] = useState(false);
   const [showAdminLoginModal, setShowAdminLoginModal] = useState(false);
@@ -322,10 +324,37 @@ export function MainLayout() {
         <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 gap-8 md:grid-cols-4">
             <div>
-              <h3 className="mb-4 text-xs font-extrabold tracking-widest uppercase">Công ty</h3>
-              <ul className="space-y-2 text-xs text-gray-400 font-medium">
-                <li><Link to="/about" className="transition-all hover:text-white">Giới thiệu</Link></li>
-                <li><a href="#" className="transition-all hover:text-white">Tuyển dụng</a></li>
+              <h3 className="mb-4 text-xs font-extrabold tracking-widest uppercase text-white">Kết nối & Công ty</h3>
+              <ul className="space-y-2.5 text-xs text-gray-400 font-medium">
+                <li><Link to="/about" className="transition-all hover:text-white">Giới thiệu MADMAD</Link></li>
+                {settings.facebookUrl && (
+                  <li>
+                    <a href={settings.facebookUrl} target="_blank" rel="noopener noreferrer" className="transition-all hover:text-white text-sky-400 font-semibold">
+                      Facebook
+                    </a>
+                  </li>
+                )}
+                {settings.instagramUrl && (
+                  <li>
+                    <a href={settings.instagramUrl} target="_blank" rel="noopener noreferrer" className="transition-all hover:text-white text-pink-400 font-semibold">
+                      Instagram
+                    </a>
+                  </li>
+                )}
+                {settings.tiktokUrl && (
+                  <li>
+                    <a href={settings.tiktokUrl} target="_blank" rel="noopener noreferrer" className="transition-all hover:text-white text-stone-200 font-semibold">
+                      TikTok
+                    </a>
+                  </li>
+                )}
+                {settings.shopeeUrl && (
+                  <li>
+                    <a href={settings.shopeeUrl} target="_blank" rel="noopener noreferrer" className="transition-all hover:text-white text-amber-500 font-semibold">
+                      Shopee Shop
+                    </a>
+                  </li>
+                )}
               </ul>
             </div>
             <div>

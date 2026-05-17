@@ -1,0 +1,95 @@
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// 🛍️ Bảng Sản phẩm (Product)
+model Product {
+  id           String   @id @default(uuid())
+  name         String
+  sku          String   @unique
+  price        Int
+  image        String
+  category     String
+  description  String?
+  sizes        String   // Lưu danh sách size ngăn cách bởi dấu phẩy, ví dụ: "S,M,L,XL"
+  colors       String   // Lưu danh sách màu ngăn cách bởi dấu phẩy, ví dụ: "Black,White,Grey"
+  colorImages  String?  // Lưu JSON chuỗi mapping màu sắc sang ảnh
+  isFeatured   Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+// 📦 Bảng Đơn hàng (Order)
+model Order {
+  id             Int         @id @default(autoincrement())
+  orderNumber    String      @unique
+  customerName   String
+  customerEmail  String
+  customerPhone  String
+  street         String
+  ward           String
+  district       String
+  province       String
+  subtotal       Int
+  discount       Int
+  shipping       Int
+  total          Int
+  paymentMethod  String
+  shippingMethod String
+  status         String      @default("pending") // pending, processing, shipping, completed, cancelled
+  isPaid         Boolean     @default(false)
+  notes          String?
+  couponCode     String?
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+  items          OrderItem[]
+}
+
+// 🛒 Bảng Chi tiết Đơn hàng (OrderItem)
+model OrderItem {
+  id           Int      @id @default(autoincrement())
+  orderId      Int
+  order        Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId    String
+  productName  String
+  productImage String
+  quantity     Int
+  size         String
+  color        String
+  price        Int
+}
+
+// 👑 Bảng Thành viên VIP (VIPMember)
+model VIPMember {
+  id        Int      @id @default(autoincrement())
+  fullName  String
+  phone     String   @unique
+  email     String   @unique
+  points    Int      @default(0)
+  tier      String   @default("BRONZE") // BRONZE, SILVER, GOLD, PLATINUM
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ⚙️ Bảng Cấu hình Storefront (StorefrontSetting)
+model StorefrontSetting {
+  id                       Int     @id @default(1)
+  brandName                String  @default("MADMAD STUDIO")
+  logoUrl                  String?
+  manifestoSlogan          String?
+  facebookUrl              String?
+  instagramUrl             String?
+  tiktokUrl                String?
+  shopeeUrl                String?
+  instagramImages          String? // Lưu mảng các ảnh dạng JSON String
+  printInvoiceTitle        String?
+  printInvoiceAddress      String?
+  printInvoicePhone        String?
+  printInvoiceFooterSlogan String?
+  printInvoicePolicy       String?
+}

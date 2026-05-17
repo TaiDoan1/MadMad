@@ -5,7 +5,7 @@ import { Sparkles, Award, Receipt, LogOut, ArrowRight, UserCheck, ShieldCheck, L
 import { useTransitionTo } from "@/components/common/page-transition";
 
 export function MembershipPage() {
-  const { currentMember, registerMember, loginMember, logoutMember } = useMembership();
+  const { currentMember, registerMember, loginMember, logoutMember, tierConfigs } = useMembership();
   const { orders, updateOrderStatus } = useOrders();
   const navigate = useTransitionTo();
 
@@ -154,9 +154,15 @@ export function MembershipPage() {
                 <span className="text-4xl font-extrabold tracking-tight text-black">{currentMember.points}</span>
                 <span className="text-xs font-bold text-black/60">ĐIỂM</span>
               </div>
-              <p className="text-[11px] text-black/40 mt-2">
-                * 1 điểm tương đương 1.000₫. Hoàn tiền 5% giá trị mỗi hóa đơn tiếp theo!
-              </p>
+              {(() => {
+                const currentTierConfig = tierConfigs.find((c) => c.tier === currentMember.tier);
+                const cashbackPercent = currentTierConfig ? currentTierConfig.discountPercent : 2;
+                return (
+                  <p className="text-[11px] text-black/40 mt-2">
+                    * 1 điểm tương đương 10.000₫ chi tiêu thực tế. Bạn đang hưởng đặc quyền giảm giá trực tiếp {cashbackPercent}% cho mọi đơn hàng tiếp theo!
+                  </p>
+                );
+              })()}
             </div>
           </div>
 
@@ -264,34 +270,39 @@ export function MembershipPage() {
 
             {/* Quyền lợi VIP */}
             <div>
-              <h2 className="text-lg font-bold tracking-wider uppercase mb-6 flex items-center gap-2">
-                <Award className="h-5 w-5 text-black/70" />
-                ĐẶC QUYỀN HẠNG THÀNH VIÊN
+              <h2 className="text-sm font-black tracking-widest uppercase mb-6 flex items-center gap-2 text-black/60">
+                <Award className="h-4.5 w-4.5 text-black/70" />
+                ĐẶC QUYỀN MA TRẬN THÀNH VIÊN VIP
               </h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {[
-                  {
-                    title: "Chào mừng thành viên mới",
-                    desc: "Tặng ngay 50 điểm (~50k) vào tài khoản thành viên sau khi đăng ký.",
-                  },
-                  {
-                    title: "Tích điểm tự động",
-                    desc: "Hoàn điểm 5% giá trị của mọi hóa đơn. Có thể dùng điểm trừ tiền trực tiếp lần sau.",
-                  },
-                  {
-                    title: "Early Access",
-                    desc: "Nhận vé mời VIP trải nghiệm sớm các bộ sưu tập giới hạn mới ra mắt.",
-                  },
-                  {
-                    title: "Sinh nhật ý nghĩa",
-                    desc: "Tặng voucher giảm giá độc quyền 20% trong suốt tháng sinh nhật của bạn.",
-                  },
-                ].map((benefit, i) => (
-                  <div key={i} className="border border-black/5 rounded-xl p-5 bg-white hover:border-black/20 transition-all">
-                    <h3 className="font-bold text-sm text-black mb-1">{benefit.title}</h3>
-                    <p className="text-xs text-black/50 leading-relaxed">{benefit.desc}</p>
-                  </div>
-                ))}
+              <div className="border border-black/10 rounded-2xl overflow-hidden bg-white shadow-sm">
+                <div className="bg-stone-50 border-b border-black/10 px-6 py-4">
+                  <h3 className="font-extrabold text-[10px] tracking-wider uppercase text-black">Bảng đặc quyền & chiết khấu thành viên active</h3>
+                </div>
+                <div className="divide-y divide-black/5">
+                  {tierConfigs.map((config) => (
+                    <div key={config.tier} className="px-6 py-4.5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-xs transition-colors hover:bg-stone-50/40">
+                      <div className="flex items-center gap-3">
+                        <span className={`px-2.5 py-0.5 rounded-full text-[9px] font-black tracking-widest uppercase border ${
+                          config.tier === "PLATINUM" ? "bg-zinc-950 text-zinc-100 border-zinc-800" :
+                          config.tier === "GOLD" ? "bg-amber-600 text-amber-50 border-amber-500" :
+                          config.tier === "SILVER" ? "bg-slate-400 text-slate-900 border-slate-300" :
+                          "bg-amber-900/10 text-amber-900 border-amber-900/20"
+                        }`}>
+                          {config.tier}
+                        </span>
+                        <span className="text-black/40 font-bold uppercase tracking-wider text-[10px]">Từ {config.minPoints.toLocaleString()} điểm</span>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-6 sm:text-right">
+                        <span className="font-extrabold text-red-600 bg-red-50 border border-red-100 px-2 py-0.5 rounded-md">
+                          GIẢM {config.discountPercent}% MỌI HÓA ĐƠN
+                        </span>
+                        <span className="text-black/60 font-bold text-[11px] uppercase tracking-wide">
+                          🎁 {config.gifts || "Quà tặng thương hiệu"}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
           </div>

@@ -7,6 +7,7 @@ interface OrderContextValue {
   orders: Order[];
   addOrder: (order: Order) => void;
   updateOrderStatus: (id: number, status: Order["status"]) => void;
+  updateOrderPaymentStatus: (id: number, isPaid: boolean) => void;
   getOrderById: (id: number) => Order | undefined;
 }
 
@@ -51,6 +52,11 @@ export function OrderProvider({ children }: { children: ReactNode }) {
       updateOrderStatus: (id, status) => {
         setOrders((currentOrders) =>
           currentOrders.map((order) => (order.id === id ? { ...order, status } : order)),
+        );
+      },
+      updateOrderPaymentStatus: (id, isPaid) => {
+        setOrders((currentOrders) =>
+          currentOrders.map((order) => (order.id === id ? { ...order, isPaid } : order)),
         );
       },
       getOrderById: (id) => orders.find((order) => order.id === id),

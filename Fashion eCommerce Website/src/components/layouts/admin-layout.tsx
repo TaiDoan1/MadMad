@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { LayoutDashboard, LogOut, Menu, Monitor, Package, Settings, ShoppingBag } from "lucide-react";
+import { LayoutDashboard, LogOut, Menu, Monitor, Package, Settings, ShoppingBag, ShieldCheck } from "lucide-react";
 import { Link, Outlet, useLocation } from "react-router";
 
 import { brandLogo } from "@/assets/images";
@@ -20,6 +20,7 @@ export function AdminLayout() {
     { path: "/admin/storefront", icon: Monitor, label: "Storefront" },
     { path: "/admin/products", icon: Package, label: "Products" },
     { path: "/admin/orders", icon: ShoppingBag, label: "Orders" },
+    { path: "/admin/membership", icon: ShieldCheck, label: "VIP Club" },
     { path: "/admin/settings", icon: Settings, label: "Settings" },
   ];
 
@@ -27,38 +28,40 @@ export function AdminLayout() {
     <div className="min-h-screen bg-muted">
       <LoadingBar />
       <div className="flex">
-        <aside className={`${sidebarOpen ? "w-64" : "w-20"} min-h-screen border-r border-border bg-white transition-all duration-300`}>
-          <div className="flex items-center justify-between border-b border-border p-4">
-            {sidebarOpen && (
-              <Link to="/admin">
-                <img src={brandLogo} alt="MADMAD Studio" className="h-8 w-auto transition-transform duration-300 hover:scale-125" />
-              </Link>
-            )}
-            <button onClick={() => setSidebarOpen((value) => !value)}>
-              <Menu className="h-5 w-5" />
-            </button>
+        <aside className={`${sidebarOpen ? "w-64" : "w-20"} min-h-screen border-r border-border bg-white transition-all duration-300 flex flex-col justify-between`}>
+          <div>
+            <div className="flex items-center justify-between border-b border-border p-4">
+              {sidebarOpen && (
+                <Link to="/admin">
+                  <img src={brandLogo} alt="MADMAD Studio" className="h-8 w-auto transition-transform duration-300 hover:scale-125" />
+                </Link>
+              )}
+              <button onClick={() => setSidebarOpen((value) => !value)}>
+                <Menu className="h-5 w-5" />
+              </button>
+            </div>
+
+            <nav className="space-y-2 p-4">
+              {navItems.map((item) => {
+                const Icon = item.icon;
+                const active = isActive(item.path);
+
+                return (
+                  <Link
+                    key={item.path}
+                    to={item.path}
+                    className={`flex items-center gap-3 rounded-lg px-4 py-3 transition-colors ${active ? "bg-primary text-white" : "text-foreground hover:bg-muted"
+                      }`}
+                  >
+                    <Icon className="h-5 w-5" />
+                    {sidebarOpen && <span>{item.label}</span>}
+                  </Link>
+                );
+              })}
+            </nav>
           </div>
 
-          <nav className="space-y-2 p-4">
-            {navItems.map((item) => {
-              const Icon = item.icon;
-              const active = isActive(item.path);
-
-              return (
-                <Link
-                  key={item.path}
-                  to={item.path}
-                  className={`flex items-center gap-3 rounded-lg px-4 py-3 transition-colors ${active ? "bg-primary text-white" : "text-foreground hover:bg-muted"
-                    }`}
-                >
-                  <Icon className="h-5 w-5" />
-                  {sidebarOpen && <span>{item.label}</span>}
-                </Link>
-              );
-            })}
-          </nav>
-
-          <div className="absolute bottom-4 left-4 right-4">
+          <div className="p-4 border-t border-border/10">
             <button
               className="flex w-full items-center gap-3 rounded-lg px-4 py-3 text-foreground transition-colors hover:bg-muted"
               onClick={() => {
@@ -89,3 +92,4 @@ export function AdminLayout() {
     </div>
   );
 }
+

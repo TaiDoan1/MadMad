@@ -104,6 +104,13 @@ export const router = createBrowserRouter([
         },
       },
       {
+        path: "membership",
+        lazy: async () => {
+          const module = await import("@/pages/admin/membership-page");
+          return { Component: module.AdminMembershipPage };
+        },
+      },
+      {
         path: "storefront",
         lazy: async () => {
           const module = await import("@/pages/admin/storefront-page");

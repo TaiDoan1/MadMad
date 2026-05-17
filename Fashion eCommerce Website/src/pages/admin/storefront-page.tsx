@@ -27,6 +27,7 @@ export function AdminStorefrontPage() {
   const heroTextAlignClass = settings.heroContentAlign === "left" ? "text-left" : settings.heroContentAlign === "right" ? "text-right" : "text-center";
   const heroImageDrafts = settings.heroImages ?? [];
   const popularCategoryImageDrafts = settings.popularCategoryImages ?? [];
+  const instagramImageDrafts = settings.instagramImages ?? [];
   const heroImages = heroImageDrafts.map((value) => value.trim()).filter(Boolean);
   const previewHeroImages = [settings.heroImage.trim(), ...heroImages].filter(Boolean);
   const [previewHeroIndex, setPreviewHeroIndex] = useState(0);
@@ -553,6 +554,64 @@ export function AdminStorefrontPage() {
                 {popularCategoryImageDrafts.length === 0 ? (
                   <p className="text-xs text-muted-foreground">
                     Chưa có ảnh nào. Nhấn "+ Thêm ảnh" để bắt đầu.
+                  </p>
+                ) : null}
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-3 border-t border-border pt-6">
+            <h3 className="text-xl flex items-center gap-2 font-sans font-bold">
+              <span className="w-2.5 h-2.5 bg-red-600 rounded-full animate-ping" />
+              Instagram Marquee Slider
+            </h3>
+            <p className="text-sm text-muted-foreground">
+              Các hình ảnh này sẽ chạy trượt (marquee) liên tục tại chân Trang chủ của MADMAD Studio.
+            </p>
+            <div className="space-y-2 rounded-lg border border-border bg-muted/20 p-4">
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-sm text-muted-foreground">Danh sách ảnh Instagram (Tỉ lệ 2:3 khuyến nghị)</p>
+                <button
+                  type="button"
+                  onClick={() => updateSettings({ instagramImages: [...instagramImageDrafts, ""] })}
+                  className="rounded border border-border bg-white px-3 py-2 text-sm transition-colors hover:bg-muted font-bold"
+                >
+                  + Thêm ảnh Instagram
+                </button>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Để trống phần này sẽ tự động sử dụng 5 hình ảnh Editorial mặc định.
+              </p>
+              <div className="space-y-3">
+                {instagramImageDrafts.map((url, index) => (
+                  <div key={index} className="flex items-start gap-2">
+                    <ImageUploadInput
+                      value={url}
+                      onChange={(value) => {
+                        const next = [...instagramImageDrafts];
+                        next[index] = value;
+                        updateSettings({ instagramImages: next });
+                      }}
+                      className="flex-1"
+                      placeholder={`Ảnh Instagram #${index + 1}`}
+                    />
+                    <button
+                      type="button"
+                      onClick={() =>
+                        updateSettings({
+                          instagramImages: instagramImageDrafts.filter((_, i) => i !== index),
+                        })
+                      }
+                      className="rounded border border-border bg-white px-3 py-2 text-sm transition-colors hover:bg-muted font-bold text-red-600 hover:text-red-700"
+                      title="Xóa"
+                    >
+                      X
+                    </button>
+                  </div>
+                ))}
+                {instagramImageDrafts.length === 0 ? (
+                  <p className="text-xs text-muted-foreground italic">
+                    Chưa cấu hình ảnh tùy chỉnh. Hệ thống đang tự động sử dụng 5 ảnh Editorial mặc định của MADMAD.
                   </p>
                 ) : null}
               </div>

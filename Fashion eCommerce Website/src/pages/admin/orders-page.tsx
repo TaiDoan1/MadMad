@@ -38,13 +38,20 @@ import { ImageWithFallback } from "@/components/common/image-with-fallback";
 import { useOrders } from "@/features/orders/context/order-context";
 import { useProducts } from "@/features/products/context/product-context";
 import { useMembership } from "@/features/membership/context/membership-context";
+import { useStorefrontSettings } from "@/features/settings/context/storefront-settings-context";
 import type { Order, OrderItem } from "@/types/order";
 import type { Product } from "@/types/product";
 
 export function AdminOrdersPage() {
-  const { orders, updateOrderStatus, addOrder } = useOrders();
+  const { settings } = useStorefrontSettings();
+  const { orders, updateOrderStatus, updateOrderPaymentStatus, addOrder } = useOrders();
   const { products } = useProducts();
-  const { members } = useMembership(); // Đọc danh sách tất cả thành viên VIP
+  const { members, tierConfigs, setMembers } = useMembership(); // Đọc danh sách tất cả thành viên VIP
+
+  const handleTogglePaid = (order: Order, isPaid: boolean) => {
+    updateOrderPaymentStatus(order.id, isPaid);
+    setSelectedOrder({ ...order, isPaid });
+  };
 
   // Local storage state cho danh sách thành viên để đồng bộ thăng hạng realtime
   const [localMembers, setLocalMembers] = useState<any[]>([]);
@@ -289,10 +296,12 @@ export function AdminOrdersPage() {
       setManualCustomerName(found.fullName);
       if (found.email) setManualCustomerEmail(found.email);
       
-      const discountVal = Math.round(manualSubtotal * 0.05);
+      const memberConfig = tierConfigs.find((c) => c.tier === found.tier);
+      const discountPct = memberConfig ? memberConfig.discountPercent : 2;
+      const discountVal = Math.round(manualSubtotal * (discountPct / 100));
       setManualDiscount(discountVal);
 
-      setVipCheckMessage(`✓ Khách hàng VIP hạng ${found.tier} (MM Card: ${found.memberCardId}). Tích lũy: ${found.points} điểm. Tự động chiết khấu VIP 5%!`);
+      setVipCheckMessage(`✓ Khách hàng VIP hạng ${found.tier} (MM Card: ${found.memberCardId}). Tích lũy: ${found.points} điểm. Tự động chiết khấu VIP ${discountPct}%!`);
     } else {
       setVipCheckMessage("❌ Không tìm thấy thông tin thành viên VIP với SĐT/Email này.");
     }
@@ -302,7 +311,10 @@ export function AdminOrdersPage() {
   const manualShipping = manualSource === "pos"
     ? 0
     : (manualShippingMethod === "express" ? 60000 : (manualSubtotal > 500000 ? 0 : 30000));
-  const finalDiscount = checkedMember ? Math.round(manualSubtotal * 0.05) : manualDiscount;
+  
+  const checkedMemberConfig = checkedMember ? tierConfigs.find((c) => c.tier === checkedMember.tier) : null;
+  const checkedMemberDiscountPct = checkedMemberConfig ? checkedMemberConfig.discountPercent : 0;
+  const finalDiscount = checkedMember ? Math.round(manualSubtotal * (checkedMemberDiscountPct / 100)) : manualDiscount;
   const manualTotal = Math.max(0, manualSubtotal - finalDiscount) + manualShipping;
 
   const handleAddManualItem = () => {
@@ -349,18 +361,22 @@ export function AdminOrdersPage() {
       const targetPhone = order.customerPhone.trim().replace(/\s+/g, "");
       const targetEmail = order.customerEmail.trim().toLowerCase();
 
-      let pointsEarned = Math.floor(order.total / 100000);
-      if (pointsEarned === 0) pointsEarned = 1;
+      const pointsEarned = Math.max(1, Math.floor(order.total / 10000));
 
-      const updatedMembersList = localMembers.map((m) => {
+      const calculateTierForPoints = (points: number): "BRONZE" | "SILVER" | "GOLD" | "PLATINUM" => {
+        const sorted = [...tierConfigs].sort((a, b) => b.minPoints - a.minPoints);
+        for (const config of sorted) {
+          if (points >= config.minPoints) return config.tier;
+        }
+        return "BRONZE";
+      };
+
+      const updatedMembersList = members.map((m) => {
         if (m.phone === targetPhone || m.email.toLowerCase() === targetEmail) {
           const nextPoints = m.points + pointsEarned;
-          let nextTier: "BRONZE" | "SILVER" | "GOLD" | "PLATINUM" = "BRONZE";
-          if (nextPoints >= 1500) nextTier = "PLATINUM";
-          else if (nextPoints >= 800) nextTier = "GOLD";
-          else if (nextPoints >= 300) nextTier = "SILVER";
+          const nextTier = calculateTierForPoints(nextPoints);
 
-          window.alert(`👑 THÀNH VIÊN THÂN THIẾT! Đã tự động tích lũy thêm +${pointsEarned} điểm VIP cho khách hàng ${m.fullName}. (Tổng tích lũy hiện tại: ${nextPoints}đ - Hạng: ${nextTier})`);
+          window.alert(`👑 THÀNH VIÊN THÂN THIẾT! Đã tự động tích lũy thêm +${pointsEarned} điểm VIP cho khách hàng ${m.fullName}. (Tổng tích lũy hiện tại: ${nextPoints} điểm - Hạng: ${nextTier})`);
 
           return {
             ...m,
@@ -371,8 +387,7 @@ export function AdminOrdersPage() {
         return m;
       });
 
-      setLocalMembers(updatedMembersList);
-      localStorage.setItem("madmad_members", JSON.stringify(updatedMembersList));
+      setMembers(updatedMembersList);
     }
   };
 
@@ -423,21 +438,25 @@ export function AdminOrdersPage() {
     addOrder(newOrder);
 
     if (manualSource === "pos" && checkedMember) {
-      const pointsEarned = Math.max(1, Math.floor(manualTotal / 100000));
-      const updatedMembersList = localMembers.map((m) => {
+      const pointsEarned = Math.max(1, Math.floor(manualTotal / 10000));
+      
+      const calculateTierForPoints = (points: number): "BRONZE" | "SILVER" | "GOLD" | "PLATINUM" => {
+        const sorted = [...tierConfigs].sort((a, b) => b.minPoints - a.minPoints);
+        for (const config of sorted) {
+          if (points >= config.minPoints) return config.tier;
+        }
+        return "BRONZE";
+      };
+
+      const updatedMembersList = members.map((m) => {
         if (m.phone === checkedMember.phone) {
           const nextPoints = m.points + pointsEarned;
-          let nextTier: "BRONZE" | "SILVER" | "GOLD" | "PLATINUM" = "BRONZE";
-          if (nextPoints >= 1500) nextTier = "PLATINUM";
-          else if (nextPoints >= 800) nextTier = "GOLD";
-          else if (nextPoints >= 300) nextTier = "SILVER";
-
-          return { ...m, points: nextPoints, tier: nextTier };
+          return { ...m, points: nextPoints, tier: calculateTierForPoints(nextPoints) };
         }
         return m;
       });
-      setLocalMembers(updatedMembersList);
-      localStorage.setItem("madmad_members", JSON.stringify(updatedMembersList));
+      
+      setMembers(updatedMembersList);
       window.alert(`Đơn hàng POS thành công! Đã tích +${pointsEarned} điểm VIP cho khách hàng.`);
     }
 
@@ -659,6 +678,7 @@ export function AdminOrdersPage() {
                   <th className="px-6 py-4">Mã Đơn Hàng</th>
                   <th className="px-6 py-4">Nguồn</th>
                   <th className="px-6 py-4">Khách Hàng (Phân Loại)</th>
+                  <th className="px-6 py-4">Thanh Toán</th>
                   <th className="px-6 py-4">SĐT</th>
                   <th className="px-6 py-4">Ngày Đặt</th>
                   <th className="px-6 py-4 text-center">Trạng Thái</th>
@@ -669,7 +689,7 @@ export function AdminOrdersPage() {
               <tbody className="divide-y divide-black/5 font-semibold text-black/85">
                 {filteredOrders.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="px-6 py-12 text-center text-black/40 bg-stone-50/50">
+                    <td colSpan={9} className="px-6 py-12 text-center text-black/40 bg-stone-50/50">
                       Không tìm thấy đơn hàng nào tương ứng.
                     </td>
                   </tr>
@@ -711,6 +731,48 @@ export function AdminOrdersPage() {
                           <span className={`inline-block px-2 py-0.5 rounded text-[8px] font-black tracking-widest uppercase border ${customerType.badgeClass}`}>
                             {customerType.label}
                           </span>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="flex flex-col gap-1.5">
+                            {/* Payment Method Text Badge */}
+                            <span className="text-[10px] font-bold text-black/55 uppercase font-sans tracking-wide">
+                              {order.paymentMethod === "bank" || order.paymentMethod === "banking" || order.paymentMethod === "chuyen_khoan" || order.paymentMethod?.toLowerCase().includes("chuyển") || order.paymentMethod?.toLowerCase().includes("khoản")
+                                ? "Banking 💳"
+                                : order.paymentMethod === "cash"
+                                ? "Tiền mặt 💵"
+                                : "COD 📦"}
+                            </span>
+                            
+                            {/* Quick Toggle Status Badge */}
+                            {order.isPaid ? (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (window.confirm(`Hủy xác nhận thanh toán đơn hàng ${order.orderNumber}?`)) {
+                                    updateOrderPaymentStatus(order.id, false);
+                                  }
+                                }}
+                                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[9px] font-black bg-green-50 border border-green-200 text-green-700 w-max hover:bg-green-100 hover:border-green-300 transition-colors uppercase tracking-wider"
+                                title="Click để hủy xác nhận thanh toán"
+                              >
+                                <span className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" />
+                                ĐÃ THU TIỀN
+                              </button>
+                            ) : (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  updateOrderPaymentStatus(order.id, true);
+                                  window.alert(`✓ Đã xác nhận giao dịch chuyển khoản cho đơn hàng ${order.orderNumber}!`);
+                                }}
+                                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[9px] font-black bg-amber-50 border border-amber-200 text-amber-700 w-max hover:bg-amber-100 hover:border-amber-300 transition-colors uppercase tracking-wider"
+                                title="Click để xác nhận Đã nhận chuyển khoản"
+                              >
+                                <span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse" />
+                                CHỜ CK
+                              </button>
+                            )}
+                          </div>
                         </td>
                         <td className="px-6 py-4 text-black/60">{order.customerPhone}</td>
                         <td className="px-6 py-4 text-black/65 font-mono">
@@ -1245,7 +1307,7 @@ export function AdminOrdersPage() {
                   </div>
                   {finalDiscount > 0 && (
                     <div className="flex justify-between text-red-600 font-sans font-semibold">
-                      <span>Giảm giá {checkedMember ? "(VIP 5% Cashback)" : ""}</span>
+                      <span>Giảm giá {checkedMember ? `(VIP ${checkedMemberDiscountPct}% Chiết khấu)` : ""}</span>
                       <span className="font-bold font-mono">-{finalDiscount.toLocaleString("vi-VN")}₫</span>
                     </div>
                   )}
@@ -1285,40 +1347,74 @@ export function AdminOrdersPage() {
                 <span className="text-[10px] font-bold text-black/45 tracking-wider uppercase">Duyệt Đơn Hàng</span>
                 <h2 className="text-xl font-black text-black font-mono">{selectedOrder.orderNumber}</h2>
               </div>
-              <button
-                onClick={() => {
-                  setShowOrderDetail(false);
-                  setSelectedOrder(null);
-                }}
-                className="rounded-xl p-2 border border-black/5 hover:border-black/20 hover:bg-stone-50 transition-colors"
-              >
-                <X className="h-5 w-5 text-black/75" />
-              </button>
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => {
+                    setTimeout(() => window.print(), 100);
+                  }}
+                  className="inline-flex items-center gap-1.5 rounded-xl border border-blue-200 bg-blue-50/50 hover:bg-blue-50 text-blue-600 px-4 py-2.5 text-xs font-bold uppercase transition-colors"
+                  title="In hóa đơn bán hàng"
+                >
+                  <Printer className="h-4 w-4" />
+                  In đơn hàng
+                </button>
+                <button
+                  onClick={() => {
+                    setShowOrderDetail(false);
+                    setSelectedOrder(null);
+                  }}
+                  className="rounded-xl p-2 border border-black/5 hover:border-black/20 hover:bg-stone-50 transition-colors"
+                >
+                  <X className="h-5 w-5 text-black/75" />
+                </button>
+              </div>
             </div>
 
             {/* Content Modal */}
             <div className="space-y-8 p-6">
               
-              {/* Trạng thái đơn hàng */}
-              <div className="bg-stone-50 rounded-xl p-5 border border-black/5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                <div>
-                  <p className="text-[10px] font-bold tracking-wider text-black/55 uppercase mb-1.5 flex items-center gap-1">
-                    <Clock className="h-3.5 w-3.5" />
-                    Trạng thái vận hành đơn
-                  </p>
-                  <p className="text-xs text-black/50">Cộng điểm tích lũy VIP tự động khi chọn "Thành công"</p>
+              {/* Trạng thái đơn hàng & Thanh toán */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="bg-stone-50 rounded-xl p-5 border border-black/5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                  <div>
+                    <p className="text-[10px] font-bold tracking-wider text-black/55 uppercase mb-1.5 flex items-center gap-1">
+                      <Clock className="h-3.5 w-3.5" />
+                      Trạng thái vận hành đơn
+                    </p>
+                    <p className="text-xs text-black/50">Cộng điểm tích lũy VIP tự động khi chọn "Thành công"</p>
+                  </div>
+                  <select
+                    value={selectedOrder.status}
+                    onChange={(event) => handleStatusUpdate(selectedOrder, event.target.value as Order["status"])}
+                    className="rounded-xl border border-black/10 bg-white px-4 py-2.5 text-xs font-bold uppercase text-black/70 focus:border-black/60 focus:outline-none focus:ring-0 transition-all"
+                  >
+                    <option value="pending">CHỜ XÁC NHẬN</option>
+                    <option value="processing">ĐANG CHUẨN BỊ</option>
+                    <option value="shipping">ĐANG GIAO HÀNG</option>
+                    <option value="completed">ĐÃ GIAO THÀNH CÔNG</option>
+                    <option value="cancelled">ĐÃ HỦY ĐƠN</option>
+                  </select>
                 </div>
-                <select
-                  value={selectedOrder.status}
-                  onChange={(event) => handleStatusUpdate(selectedOrder, event.target.value as Order["status"])}
-                  className="rounded-xl border border-black/10 bg-white px-4 py-2.5 text-xs font-bold uppercase text-black/70 focus:border-black/60 focus:outline-none focus:ring-0 transition-all"
-                >
-                  <option value="pending">CHỜ XÁC NHẬN</option>
-                  <option value="processing">ĐANG CHUẨN BỊ</option>
-                  <option value="shipping">ĐANG GIAO HÀNG</option>
-                  <option value="completed">ĐÃ GIAO THÀNH CÔNG</option>
-                  <option value="cancelled">ĐÃ HỦY ĐƠN</option>
-                </select>
+
+                <div className="bg-stone-50 rounded-xl p-5 border border-black/5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                  <div>
+                    <p className="text-[10px] font-bold tracking-wider text-black/55 uppercase mb-1.5 flex items-center gap-1">
+                      <Tag className="h-3.5 w-3.5 text-red-600" />
+                      Trạng thái thanh toán
+                    </p>
+                    <p className="text-xs text-black/50">Đánh dấu hóa đơn đã thu được tiền chuyển khoản</p>
+                  </div>
+                  <button
+                    onClick={() => handleTogglePaid(selectedOrder, !selectedOrder.isPaid)}
+                    className={`rounded-xl px-4 py-2.5 text-xs font-extrabold uppercase border transition-all ${
+                      selectedOrder.isPaid
+                        ? "bg-green-50 border-green-200 text-green-700 hover:bg-green-100"
+                        : "bg-red-50 border-red-200 text-red-700 hover:bg-red-100"
+                    }`}
+                  >
+                    {selectedOrder.isPaid ? "✓ ĐÃ THANH TOÁN" : "✗ CHƯA THANH TOÁN"}
+                  </button>
+                </div>
               </div>
 
               {/* 👑 BẢNG INSIGHT TIÊU DÙNG VÀ TRUNG THÀNH KHÁCH HÀNG (LOYALTY INSIGHT) */}
@@ -1384,7 +1480,7 @@ export function AdminOrdersPage() {
               </div>
 
               {/* DYNAMIC VIETQR GENERATOR */}
-              {(selectedOrder.paymentMethod === "bank" || selectedOrder.paymentMethod === "chuyen_khoan") && (
+              {(selectedOrder.paymentMethod === "bank" || selectedOrder.paymentMethod === "chuyen_khoan" || selectedOrder.paymentMethod?.toLowerCase().includes("chuyển") || selectedOrder.paymentMethod?.toLowerCase().includes("khoản")) && (
                 <div className="bg-neutral-950 text-white rounded-2xl p-5 border border-neutral-800 flex flex-col md:flex-row gap-6 items-center justify-between shadow-lg relative overflow-hidden">
                   <div className="absolute top-0 right-0 h-[2px] w-full bg-gradient-to-r from-red-600/40 via-white/20 to-red-600/40" />
                   
@@ -1459,7 +1555,13 @@ export function AdminOrdersPage() {
                     <p className="text-black font-bold text-sm uppercase">{selectedOrder.customerName}</p>
                     <p><span className="text-black/45">Email:</span> {selectedOrder.customerEmail}</p>
                     <p><span className="text-black/45">Điện thoại:</span> {selectedOrder.customerPhone}</p>
-                    <p><span className="text-black/45">Thanh toán:</span> <span className="uppercase font-bold text-black font-mono">{selectedOrder.paymentMethod}</span></p>
+                    <p><span className="text-black/45">Thanh toán:</span> <span className="uppercase font-bold text-black font-mono">
+                      {selectedOrder.paymentMethod === "bank" || selectedOrder.paymentMethod === "banking" || selectedOrder.paymentMethod === "chuyen_khoan" || selectedOrder.paymentMethod?.toLowerCase().includes("chuyển")
+                        ? "Banking 💳"
+                        : selectedOrder.paymentMethod === "cash"
+                        ? "Tiền mặt 💵"
+                        : "COD 📦"}
+                    </span></p>
                     {selectedOrder.shippingAddress.street !== "Mua trực tiếp tại Shop" && (
                       <p>
                         <span className="text-black/45">Vận chuyển:</span>{" "}
@@ -1561,7 +1663,7 @@ export function AdminOrdersPage() {
 
       {/* 🧾 THIẾT KẾ MỚI HÓA ĐƠN ULTRA-MINIMALIST PACKING SLIP (IN ẤN - PRINT ONLY) */}
       {selectedOrder && (
-        <div className="hidden print:block">
+        <div className="hidden print:block invoice-print-container">
           <div className="mx-auto max-w-4xl p-10 text-black bg-white" style={{ fontFamily: "monospace", fontSize: "11px" }}>
             
             {/* Header */}
@@ -1571,15 +1673,15 @@ export function AdminOrdersPage() {
                 <div className="text-right font-mono">
                   <h1 className="text-lg font-black tracking-widest font-sans">MADMAD STUDIO</h1>
                   <p className="text-[9px] uppercase tracking-wider text-black/60 font-sans">Tối giản . Độc bản . Cao cấp</p>
-                  <p className="text-[9px] text-black/60">Showroom: 254 Nguyễn Trãi, Q.5, TP.HCM</p>
-                  <p className="text-[9px] text-black/60">Hotline: 099.999.9999</p>
+                  <p className="text-[9px] text-black/60">{settings.printInvoiceAddress || "Showroom: 254 Nguyễn Trãi, Q.5, TP.HCM"}</p>
+                  <p className="text-[9px] text-black/60">{settings.printInvoicePhone || "Hotline: 099.999.9999"}</p>
                 </div>
               </div>
             </div>
 
             {/* Tiêu đề chính */}
             <div className="text-center space-y-1 mb-8">
-              <h2 className="text-base font-black tracking-widest uppercase">HÓA ĐƠN VẬN CHUYỂN & GÓI HÀNG</h2>
+              <h2 className="text-base font-black tracking-widest uppercase">{settings.printInvoiceTitle || "HÓA ĐƠN VẬN CHUYỂN & GÓI HÀNG"}</h2>
               <p className="text-xs font-mono font-bold tracking-wider">{selectedOrder.orderNumber}</p>
               <p className="text-[9px] text-black/50">Ngày in: {new Date().toLocaleDateString("vi-VN")} - {new Date().toLocaleTimeString("vi-VN")}</p>
             </div>
@@ -1592,7 +1694,13 @@ export function AdminOrdersPage() {
                   <p>Họ tên: <span className="font-bold uppercase">{selectedOrder.customerName}</span></p>
                   <p>Điện thoại: <span className="font-bold">{selectedOrder.customerPhone}</span></p>
                   <p>Email: {selectedOrder.customerEmail}</p>
-                  <p>Phương thức: <span className="uppercase font-bold">{selectedOrder.paymentMethod}</span></p>
+                  <p>Phương thức: <span className="uppercase font-bold">
+                    {selectedOrder.paymentMethod === "bank" || selectedOrder.paymentMethod === "banking" || selectedOrder.paymentMethod === "chuyen_khoan" || selectedOrder.paymentMethod?.toLowerCase().includes("chuyển")
+                      ? "CHUYỂN KHOẢN (BANKING)"
+                      : selectedOrder.paymentMethod === "cash"
+                      ? "TIỀN MẶT AT SHOP"
+                      : "COD (THANH TOÁN KHI NHẬN HÀNG)"}
+                  </span></p>
                   {selectedOrder.shippingAddress.street !== "Mua trực tiếp tại Shop" && (
                     <p>
                       Vận chuyển: <span className="font-bold uppercase text-red-700">
@@ -1648,24 +1756,37 @@ export function AdminOrdersPage() {
 
             {/* Chi phí & Quét mã QR */}
             <div className="grid grid-cols-1 md:grid-cols-12 gap-8 items-start mb-8 pb-6 border-b border-black font-mono">
-              <div className="md:col-span-6 flex items-center gap-4 border border-black/10 rounded-xl p-3.5 bg-stone-50 font-sans">
-                <div className="bg-white p-1 rounded border border-black/5 flex-shrink-0">
-                  <img
-                    src={`https://img.vietqr.io/image/MB-0999999999-compact.png?amount=${selectedOrder.total}&addInfo=MADMAD%20${selectedOrder.orderNumber}&accountName=MADMAD%20STUDIO`}
-                    alt="VietQR MADMAD"
-                    className="h-20 w-20 object-contain"
-                  />
+              {selectedOrder.isPaid ? (
+                <div className="md:col-span-6 flex items-center justify-center p-4 border-2 border-dashed border-green-600 bg-green-50/10 rounded-xl select-none">
+                  <div className="text-center font-sans">
+                    <span className="inline-block border-2 border-green-600 text-green-600 px-3.5 py-1.5 font-black text-sm uppercase tracking-widest rounded rotate-[-2deg]">
+                      [ ĐÃ THANH TOÁN ]
+                    </span>
+                    <p className="text-[8px] text-green-700/80 font-extrabold uppercase mt-2 tracking-wider">
+                      PAID VIA BANK TRANSFER - THU HỘ COD: 0₫
+                    </p>
+                  </div>
                 </div>
-                <div className="space-y-1">
-                  <p className="font-bold text-[10px] tracking-wider uppercase flex items-center gap-1">
-                    <QrCode className="h-3.5 w-3.5" />
-                    QUÉT THANH TOÁN
-                  </p>
-                  <p className="text-[8px] leading-relaxed text-black/60 font-semibold">
-                    Dùng app Ngân hàng để quét chuyển khoản tự động chính xác số tiền & nội dung đơn hàng này.
-                  </p>
+              ) : (
+                <div className="md:col-span-6 flex items-center gap-4 border border-black/10 rounded-xl p-3.5 bg-stone-50 font-sans">
+                  <div className="bg-white p-1 rounded border border-black/5 flex-shrink-0">
+                    <img
+                      src={`https://img.vietqr.io/image/MB-0999999999-compact.png?amount=${selectedOrder.total}&addInfo=MADMAD%20${selectedOrder.orderNumber}&accountName=MADMAD%20STUDIO`}
+                      alt="VietQR MADMAD"
+                      className="h-20 w-20 object-contain"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <p className="font-bold text-[10px] tracking-wider uppercase flex items-center gap-1">
+                      <QrCode className="h-3.5 w-3.5" />
+                      QUÉT THANH TOÁN
+                    </p>
+                    <p className="text-[8px] leading-relaxed text-black/60 font-semibold">
+                      Dùng app Ngân hàng để quét chuyển khoản tự động chính xác số tiền & nội dung đơn hàng này.
+                    </p>
+                  </div>
                 </div>
-              </div>
+              )}
 
               <div className="md:col-span-6 flex justify-end text-[11px]">
                 <div className="w-full space-y-2 font-sans font-semibold">
@@ -1695,9 +1816,9 @@ export function AdminOrdersPage() {
 
             {/* Slogan */}
             <div className="text-center space-y-2 mt-8">
-              <p className="font-black uppercase tracking-widest text-[10px] font-sans">CẢM ƠN QUÝ KHÁCH ĐÃ CHỌN MADMAD STUDIO!</p>
+              <p className="font-black uppercase tracking-widest text-[10px] font-sans">{settings.printInvoiceFooterSlogan || "CẢM ƠN QUÝ KHÁCH ĐÃ CHỌN MADMAD STUDIO!"}</p>
               <p className="text-black/50 text-[9px] leading-relaxed max-w-lg mx-auto font-sans">
-                * Quý khách vui lòng kiểm tra kỹ sản phẩm khi nhận hàng. Đối với các yêu cầu đổi trả sản phẩm nguyên tag mác, xin hãy nhắn tin trực tiếp fanpage Facebook/Instagram của MADMAD Studio trong vòng 3 ngày kể từ ngày nhận hàng.
+                {settings.printInvoicePolicy || "* Quý khách vui lòng kiểm tra kỹ sản phẩm khi nhận hàng. Đối với các yêu cầu đổi trả sản phẩm nguyên tag mác, xin hãy nhắn tin trực tiếp fanpage Facebook/Instagram của MADMAD Studio trong vòng 3 ngày kể từ ngày nhận hàng."}
               </p>
               <div className="pt-4 text-black/25 text-[8px] font-mono tracking-widest">
                 MADMAD STUDIO - NOIR NO DESIGN STANDARD

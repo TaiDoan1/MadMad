@@ -12,6 +12,20 @@ export interface Member {
   createdAt: string;
 }
 
+export interface MembershipTierConfig {
+  tier: "BRONZE" | "SILVER" | "GOLD" | "PLATINUM";
+  minPoints: number;
+  discountPercent: number;
+  gifts: string;
+}
+
+const DEFAULT_TIER_CONFIGS: MembershipTierConfig[] = [
+  { tier: "BRONZE", minPoints: 0, discountPercent: 2, gifts: "Thẻ thành viên điện tử, tích lũy điểm thăng hạng" },
+  { tier: "SILVER", minPoints: 300, discountPercent: 5, gifts: "Chiết khấu 5% mọi đơn hàng, quà sinh nhật trị giá 100K" },
+  { tier: "GOLD", minPoints: 800, discountPercent: 10, gifts: "Chiết khấu 10% mọi đơn hàng, miễn phí vận chuyển toàn quốc, quà sinh nhật trị giá 200K" },
+  { tier: "PLATINUM", minPoints: 1500, discountPercent: 15, gifts: "Chiết khấu 15% mọi đơn hàng, Freeship hỏa tốc trọn đời, quà tặng sinh nhật Premium Noir trị giá 1M" },
+];
+
 interface MembershipContextType {
   members: Member[];
   currentMember: Member | null;
@@ -20,6 +34,9 @@ interface MembershipContextType {
   logoutMember: () => void;
   addPointsToCurrentMember: (pointsToAdd: number) => void;
   deductPointsFromCurrentMember: (pointsToDeduct: number) => void;
+  tierConfigs: MembershipTierConfig[];
+  updateTierConfigs: (configs: MembershipTierConfig[]) => void;
+  setMembers: React.Dispatch<React.SetStateAction<Member[]>>;
 }
 
 const MembershipContext = createContext<MembershipContextType | undefined>(undefined);
@@ -35,6 +52,11 @@ export function MembershipProvider({ children }: { children: ReactNode }) {
     return local ? JSON.parse(local) : null;
   });
 
+  const [tierConfigs, setTierConfigs] = useState<MembershipTierConfig[]>(() => {
+    const local = localStorage.getItem("madmad_membership_tiers");
+    return local ? JSON.parse(local) : DEFAULT_TIER_CONFIGS;
+  });
+
   // Đồng bộ hóa database local
   useEffect(() => {
     localStorage.setItem("madmad_members", JSON.stringify(members));
@@ -47,6 +69,24 @@ export function MembershipProvider({ children }: { children: ReactNode }) {
       localStorage.removeItem("madmad_current_member");
     }
   }, [currentMember]);
+
+  useEffect(() => {
+    localStorage.setItem("madmad_membership_tiers", JSON.stringify(tierConfigs));
+  }, [tierConfigs]);
+
+  const updateTierConfigs = (nextConfigs: MembershipTierConfig[]) => {
+    setTierConfigs(nextConfigs);
+  };
+
+  const calculateTier = (points: number): "BRONZE" | "SILVER" | "GOLD" | "PLATINUM" => {
+    const sorted = [...tierConfigs].sort((a, b) => b.minPoints - a.minPoints);
+    for (const config of sorted) {
+      if (points >= config.minPoints) {
+        return config.tier;
+      }
+    }
+    return "BRONZE";
+  };
 
   const registerMember = (fullName: string, email: string, phone: string, password?: string) => {
     const trimmedEmail = email.trim().toLowerCase();
@@ -73,6 +113,8 @@ export function MembershipProvider({ children }: { children: ReactNode }) {
       tier: "BRONZE",
       createdAt: new Date().toISOString(),
     };
+
+    newMember.tier = calculateTier(newMember.points);
 
     setMembers((prev) => [...prev, newMember]);
     setCurrentMember(newMember); // Auto login sau khi đăng ký
@@ -101,13 +143,6 @@ export function MembershipProvider({ children }: { children: ReactNode }) {
 
   const logoutMember = () => {
     setCurrentMember(null);
-  };
-
-  const calculateTier = (points: number): "BRONZE" | "SILVER" | "GOLD" | "PLATINUM" => {
-    if (points >= 1500) return "PLATINUM"; // Trên 1.5M points tích lũy
-    if (points >= 800) return "GOLD";
-    if (points >= 300) return "SILVER";
-    return "BRONZE";
   };
 
   const addPointsToCurrentMember = (pointsToAdd: number) => {
@@ -150,6 +185,9 @@ export function MembershipProvider({ children }: { children: ReactNode }) {
         logoutMember,
         addPointsToCurrentMember,
         deductPointsFromCurrentMember,
+        tierConfigs,
+        updateTierConfigs,
+        setMembers,
       }}
     >
       {children}
@@ -164,3 +202,4 @@ export function useMembership() {
   }
   return context;
 }
+

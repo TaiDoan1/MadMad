@@ -28,7 +28,7 @@ const inputCls =
 export function CheckoutPage() {
   const { products } = useProducts();
   const { addOrder } = useOrders();
-  const { currentMember, addPointsToCurrentMember } = useMembership();
+  const { currentMember, addPointsToCurrentMember, tierConfigs } = useMembership();
   const {
     cartItems,
     subtotal,
@@ -83,9 +83,14 @@ export function CheckoutPage() {
       .replace(/[\u0300-\u036f]/g, "")
       .replaceAll("đ", "d");
 
-  const shippingBase = subtotal - discountAmount;
+  const memberConfig = currentMember ? tierConfigs.find((c) => c.tier === currentMember.tier) : null;
+  const memberDiscountPercent = memberConfig ? memberConfig.discountPercent : 0;
+  const vipDiscountAmount = currentMember ? Math.round(subtotal * (memberDiscountPercent / 100)) : 0;
+
+  const totalDiscount = discountAmount + vipDiscountAmount;
+  const shippingBase = subtotal - totalDiscount;
   const shipping = formData.shippingMethod === "express" ? 60000 : (shippingBase > 500000 ? 0 : 30000);
-  const total = Math.max(0, subtotal - discountAmount) + shipping;
+  const total = Math.max(0, subtotal - totalDiscount) + shipping;
 
   useEffect(() => {
     let alive = true;
@@ -192,12 +197,15 @@ export function CheckoutPage() {
     }));
     const now = new Date();
     const orderNumber = `DH${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}${String(now.getDate()).padStart(2, "0")}${String(Math.floor(Math.random() * 1000)).padStart(3, "0")}`;
-    const paymentMethodText = formData.paymentMethod === "cod" ? "COD" : formData.paymentMethod === "bank" ? "Chuyển khoản" : "MoMo";
+    const paymentMethodText = formData.paymentMethod;
 
     const newOrder: Order = {
       id: 0, orderNumber, customerName: formData.fullName, customerEmail: formData.email,
       customerPhone: formData.phone, shippingAddress: { street: formData.address, ward: "", district: "", province: "" },
-      items: orderItems, subtotal, discount: discountAmount, couponCode: appliedCoupon?.code,
+      items: orderItems, subtotal, discount: totalDiscount,
+      couponCode: appliedCoupon?.code
+        ? `${appliedCoupon.code} + VIP ${currentMember?.tier || ""}`
+        : (currentMember ? `VIP ${currentMember.tier}` : undefined),
       shipping, total, paymentMethod: paymentMethodText, shippingMethod: formData.shippingMethod, status: "pending",
       createdAt: now.toISOString(), notes: formData.notes,
     };
@@ -206,9 +214,9 @@ export function CheckoutPage() {
       .then(([wardName, districtName, provinceName]) => {
         addOrder({ ...newOrder, shippingAddress: { street: formData.address, ward: wardName, district: districtName, province: provinceName } });
         
-        // Hoàn điểm thành viên 5% cho đơn hàng nếu đăng nhập
+        // Hoàn điểm thành viên VIP dựa trên giá trị chi tiêu thực tế (1 điểm = 10.000 VNĐ)
         if (currentMember) {
-          const pointsEarned = Math.floor((total * 0.05) / 1000);
+          const pointsEarned = Math.floor(total / 10000);
           if (pointsEarned > 0) {
             addPointsToCurrentMember(pointsEarned);
           }
@@ -455,6 +463,12 @@ export function CheckoutPage() {
                   <div className="flex justify-between">
                     <span className="text-black/60">Giảm giá {appliedCoupon ? `(${appliedCoupon.code})` : ""}</span>
                     <span className="text-green-700">- {discountAmount.toLocaleString("vi-VN")}₫</span>
+                  </div>
+                )}
+                {vipDiscountAmount > 0 && (
+                  <div className="flex justify-between font-semibold text-stone-900 animate-fadeIn">
+                    <span className="text-black/60">Chiết khấu VIP {currentMember?.tier} ({memberDiscountPercent}%)</span>
+                    <span className="text-red-700">- {vipDiscountAmount.toLocaleString("vi-VN")}₫</span>
                   </div>
                 )}
                 <div className="flex justify-between">

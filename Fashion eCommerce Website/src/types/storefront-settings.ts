@@ -22,4 +22,14 @@ export interface StorefrontSettings {
   bestSellerProductIds: number[];
   bestSellerImageOverrides: Record<number, string>;
   colorHexMap: Record<string, string>;
+  instagramImages: string[];
+  instagramUrl: string;
+  facebookUrl: string;
+  tiktokUrl: string;
+  shopeeUrl: string;
+  printInvoiceTitle: string;
+  printInvoiceAddress: string;
+  printInvoicePhone: string;
+  printInvoiceFooterSlogan: string;
+  printInvoicePolicy: string;
 }

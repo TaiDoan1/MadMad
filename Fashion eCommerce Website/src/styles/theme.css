@@ -1193,4 +1193,48 @@ input:focus {
 /* Transition bounce for items inside mobile menu */
 .transition-bounce {
   transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+/* ── PRINT ONLY INVOICE SLIP CUSTOM STYLES ───────────────────────────────── */
+@media print {
+  html, body {
+    background: #ffffff !important;
+    color: #000000 !important;
+  }
+
+  /* Hide everything on the screen during print */
+  body * {
+    visibility: hidden !important;
+  }
+
+  /* Only make our invoice print container visible */
+  .invoice-print-container,
+  .invoice-print-container * {
+    visibility: visible !important;
+  }
+
+  /* Position the invoice perfectly at the top left */
+  .invoice-print-container {
+    display: block !important;
+    position: absolute !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #ffffff !important;
+    color: #000000 !important;
+  }
+
+  /* Remove default browser print margin and header/footer */
+  @page {
+    size: auto;
+    margin: 0mm;
+  }
+
+  body {
+    margin: 1cm 1.5cm;
+    background: #ffffff !important;
+    color: #000000 !important;
+  }
 }

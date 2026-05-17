@@ -85,6 +85,8 @@ export function AdminProductsPage() {
     reviews: 0,
   });
 
+  const [formTab, setFormTab] = useState<"info" | "attributes" | "media">("info");
+
   const resetForm = () => {
     setFormData({ name: "", price: 0, originalPrice: 0, discountPercent: 0, category: productOptions.categories[0] ?? "", image: "", sizeChartImage: "", description: "", sizes: "", inStock: true, rating: 5, reviews: 0 });
     setSelectedSizes([]);
@@ -93,6 +95,7 @@ export function AdminProductsPage() {
     setColorImageDrafts({});
     setProductImages([""]);
     setSelectedProduct(null);
+    setFormTab("info");
   };
 
   const normalizedImages = productImages.map((value) => value.trim()).filter(Boolean);
@@ -296,7 +299,8 @@ export function AdminProductsPage() {
                           setSelectedColors(product.colors);
                           setSelectedTags(product.tags ?? []);
                           setColorImageDrafts(product.colorImages || {});
-                              setShowEditModal(true);
+                          setFormTab("info");
+                          setShowEditModal(true);
                             }}
                           >
                             <Edit className="h-4 w-4" />
@@ -344,341 +348,515 @@ export function AdminProductsPage() {
       </div>
 
       {showAddModal || showEditModal ? createPortal(
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 sm:p-6">
-          <div className="flex max-h-[90vh] w-full max-w-3xl flex-col overflow-hidden rounded-lg bg-white shadow-2xl">
-            <div className="shrink-0 flex items-center justify-between border-b border-border bg-white p-6 z-10">
-              <h2 className="text-2xl">{showAddModal ? "Thêm Sản Phẩm Mới" : "Chỉnh Sửa Sản Phẩm"}</h2>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 sm:p-6 animate-fadeIn">
+          <div className="flex max-h-[90vh] w-full max-w-3xl flex-col overflow-hidden rounded-3xl bg-white border border-black/10 shadow-2xl relative animate-scaleUp">
+            {/* Modal Header */}
+            <div className="shrink-0 flex items-center justify-between border-b border-black/5 bg-white p-6 z-10">
+              <div>
+                <h2 className="text-lg font-black tracking-tight text-black uppercase">
+                  {showAddModal ? "TẠO SẢN PHẨM MỚI" : "CHỈNH SỬA SẢN PHẨM"}
+                </h2>
+                <p className="text-[10px] text-black/40 uppercase font-semibold mt-0.5">
+                  {showAddModal ? "Thiết lập sản phẩm thời trang Noir cao cấp" : `Đang hiệu chỉnh: ${formData.name}`}
+                </p>
+              </div>
               <button
                 onClick={() => {
                   setShowAddModal(false);
                   setShowEditModal(false);
                   resetForm();
                 }}
-                className="rounded p-2 transition-colors hover:bg-muted"
+                className="rounded-full p-2 hover:bg-stone-100 transition-colors"
               >
-                <X className="h-5 w-5" />
+                <X className="h-5 w-5 text-black" />
               </button>
             </div>
-            <div className="flex-1 overflow-y-auto min-h-0 space-y-6 p-6">
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                <div className="md:col-span-2">
-                  <p className="mb-1 text-sm text-muted-foreground">Tên sản phẩm</p>
-                  <input value={formData.name} onChange={(event) => setFormData({ ...formData, name: event.target.value })} className="w-full rounded border border-border px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary" placeholder="Tên sản phẩm" />
-                </div>
-                <div>
-                  <p className="mb-1 text-sm text-muted-foreground">Danh mục</p>
-                  <select
-                    value={formData.category}
-                    onChange={(event) => setFormData({ ...formData, category: event.target.value })}
-                    className="w-full rounded border border-border bg-white px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
-                  >
-                    {productOptions.categories.map((category) => (
-                      <option key={category} value={category}>
-                        {category}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <p className="mb-1 text-sm text-muted-foreground">Giá</p>
-                  <input type="number" value={formData.price} onChange={(event) => setFormData({ ...formData, price: Number(event.target.value) })} className="w-full rounded border border-border px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary" placeholder="Giá" />
-                </div>
-                <div>
-                  <p className="mb-1 text-sm text-muted-foreground">Giá gốc (nếu có)</p>
-                  <input type="number" value={formData.originalPrice} onChange={(event) => setFormData({ ...formData, originalPrice: Number(event.target.value) })} className="w-full rounded border border-border px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary" placeholder="Giá gốc" />
-                </div>
-                <div>
-                  <p className="mb-1 text-sm text-muted-foreground">Giảm giá (%)</p>
-                  <input type="number" min={0} max={99} value={formData.discountPercent} onChange={(event) => setFormData({ ...formData, discountPercent: Number(event.target.value) })} className="w-full rounded border border-border px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary" placeholder="0" />
-                </div>
-              </div>
-              {calculatedPriceFromPercent !== null && (
-                <div className="rounded border border-dashed border-border bg-muted/20 p-3">
-                  <p className="text-sm text-muted-foreground">
-                    Giá sau giảm theo %:{" "}
-                    <span className="font-semibold text-foreground">
-                      {calculatedPriceFromPercent.toLocaleString("vi-VN")}₫
-                    </span>
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() => setFormData((current) => ({ ...current, price: calculatedPriceFromPercent }))}
-                    className="mt-2 rounded bg-primary px-3 py-1.5 text-xs text-white transition-colors hover:bg-primary/90"
-                  >
-                    Áp dụng vào giá bán
-                  </button>
+
+            {/* Elegant Tab Headers */}
+            <div className="shrink-0 flex border-b border-black/5 px-6 bg-stone-50/50">
+              <button
+                type="button"
+                onClick={() => setFormTab("info")}
+                className={`flex-1 py-3 text-center text-[10px] font-extrabold tracking-widest uppercase border-b-2 transition-all ${
+                  formTab === "info"
+                    ? "border-black text-black"
+                    : "border-transparent text-black/35 hover:text-black"
+                }`}
+              >
+                Thông tin chung
+              </button>
+              <button
+                type="button"
+                onClick={() => setFormTab("attributes")}
+                className={`flex-1 py-3 text-center text-[10px] font-extrabold tracking-widest uppercase border-b-2 transition-all ${
+                  formTab === "attributes"
+                    ? "border-black text-black"
+                    : "border-transparent text-black/35 hover:text-black"
+                }`}
+              >
+                Đặc tính sản phẩm
+              </button>
+              <button
+                type="button"
+                onClick={() => setFormTab("media")}
+                className={`flex-1 py-3 text-center text-[10px] font-extrabold tracking-widest uppercase border-b-2 transition-all ${
+                  formTab === "media"
+                    ? "border-black text-black"
+                    : "border-transparent text-black/35 hover:text-black"
+                }`}
+              >
+                Hình ảnh & Mô tả
+              </button>
+            </div>
+
+            {/* Modal Body with Tab Contents */}
+            <div className="flex-1 overflow-y-auto min-h-0 p-6 space-y-6">
+              
+              {/* TAB 1: BASIC INFO */}
+              {formTab === "info" && (
+                <div className="space-y-5 animate-fadeIn">
+                  <div className="space-y-1.5">
+                    <label className="block text-[9px] font-extrabold tracking-widest uppercase text-black/50">
+                      Tên sản phẩm thời trang
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={formData.name}
+                      onChange={(event) => setFormData({ ...formData, name: event.target.value })}
+                      className="w-full rounded-xl border border-black/10 bg-stone-50 px-4 py-3 text-xs focus:bg-white focus:border-black/60 focus:outline-none transition-all font-bold uppercase"
+                      placeholder="Ví dụ: BLACK DRESS NOIR"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <label className="block text-[9px] font-extrabold tracking-widest uppercase text-black/50">
+                        Danh mục
+                      </label>
+                      <select
+                        value={formData.category}
+                        onChange={(event) => setFormData({ ...formData, category: event.target.value })}
+                        className="w-full rounded-xl border border-black/10 bg-stone-50 px-4 py-3 text-xs focus:bg-white focus:border-black/60 focus:outline-none transition-all font-bold"
+                      >
+                        {productOptions.categories.map((category) => (
+                          <option key={category} value={category}>
+                            {category}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="block text-[9px] font-extrabold tracking-widest uppercase text-black/50">
+                        Trạng thái Tồn kho
+                      </label>
+                      <select
+                        value={formData.inStock ? "true" : "false"}
+                        onChange={(event) => setFormData({ ...formData, inStock: event.target.value === "true" })}
+                        className="w-full rounded-xl border border-black/10 bg-stone-50 px-4 py-3 text-xs focus:bg-white focus:border-black/60 focus:outline-none transition-all font-bold"
+                      >
+                        <option value="true">Còn hàng (In Stock)</option>
+                        <option value="false">Hết hàng (Out of Stock)</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="space-y-1.5">
+                      <label className="block text-[9px] font-extrabold tracking-widest uppercase text-black/50">
+                        Giá gốc (nếu có)
+                      </label>
+                      <input
+                        type="number"
+                        min={0}
+                        value={formData.originalPrice}
+                        onChange={(event) => setFormData({ ...formData, originalPrice: Number(event.target.value) })}
+                        className="w-full rounded-xl border border-black/10 bg-stone-50 px-4 py-3 text-xs focus:bg-white focus:border-black/60 focus:outline-none transition-all font-mono font-bold"
+                        placeholder="Giá gốc..."
+                      />
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="block text-[9px] font-extrabold tracking-widest uppercase text-black/50">
+                        Giảm giá % (nếu có)
+                      </label>
+                      <input
+                        type="number"
+                        min={0}
+                        max={99}
+                        value={formData.discountPercent}
+                        onChange={(event) => setFormData({ ...formData, discountPercent: Number(event.target.value) })}
+                        className="w-full rounded-xl border border-black/10 bg-stone-50 px-4 py-3 text-xs focus:bg-white focus:border-black/60 focus:outline-none transition-all font-mono font-bold"
+                        placeholder="0"
+                      />
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="block text-[9px] font-extrabold tracking-widest uppercase text-black/50">
+                        Giá bán thực tế
+                      </label>
+                      <input
+                        type="number"
+                        min={0}
+                        required
+                        value={formData.price}
+                        onChange={(event) => setFormData({ ...formData, price: Number(event.target.value) })}
+                        className="w-full rounded-xl border border-black/10 bg-stone-50 px-4 py-3 text-xs focus:bg-white focus:border-black/60 focus:outline-none transition-all font-mono font-bold text-black"
+                        placeholder="Giá bán..."
+                      />
+                    </div>
+                  </div>
+
+                  {calculatedPriceFromPercent !== null && (
+                    <div className="rounded-2xl border border-dashed border-black/15 bg-stone-50/50 p-4 flex items-center justify-between">
+                      <div>
+                        <p className="text-[10px] font-extrabold text-black/40 uppercase tracking-widest">
+                          Gợi ý giá bán tự động (-{formData.discountPercent}%):
+                        </p>
+                        <p className="text-sm font-black text-black font-mono mt-0.5">
+                          {calculatedPriceFromPercent.toLocaleString("vi-VN")}₫
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setFormData((current) => ({ ...current, price: calculatedPriceFromPercent }))}
+                        className="bg-black hover:bg-red-700 text-white text-[9px] font-bold uppercase tracking-widest px-4 py-2 rounded-xl transition-all"
+                      >
+                        Áp Dụng
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <p className="mb-1 text-sm text-muted-foreground">Tồn kho</p>
-                  <select
-                    value={formData.inStock ? "true" : "false"}
-                    onChange={(event) => setFormData({ ...formData, inStock: event.target.value === "true" })}
-                    className="w-full rounded border border-border bg-white px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
-                  >
-                    <option value="true">Còn hàng</option>
-                    <option value="false">Hết hàng</option>
-                  </select>
-                </div>
-                <div>
-                  <p className="mb-1 text-sm text-muted-foreground">Sizes (CSV)</p>
-                  <div className="flex flex-wrap gap-2 rounded border border-border p-2">
-                    {productOptions.sizes.map((size) => {
-                      const active = selectedSizes.includes(size);
-                      return (
-                        <button
-                          key={size}
-                          type="button"
-                          onClick={() =>
-                            setSelectedSizes((current) =>
-                              current.includes(size) ? current.filter((item) => item !== size) : [...current, size],
-                            )
+
+              {/* TAB 2: ATTRIBUTES (SIZES, COLORS, TAGS) */}
+              {formTab === "attributes" && (
+                <div className="space-y-6 animate-fadeIn">
+                  
+                  {/* Sizes Select */}
+                  <div className="space-y-2">
+                    <label className="block text-[9px] font-extrabold tracking-widest uppercase text-black/50">
+                      Bảng Sizes khả dụng
+                    </label>
+                    <div className="flex flex-wrap gap-2.5 rounded-2xl border border-black/15 p-3.5 bg-stone-50/40">
+                      {productOptions.sizes.map((size) => {
+                        const active = selectedSizes.includes(size);
+                        return (
+                          <button
+                            key={size}
+                            type="button"
+                            onClick={() =>
+                              setSelectedSizes((current) =>
+                                current.includes(size) ? current.filter((item) => item !== size) : [...current, size],
+                              )
+                            }
+                            className={`px-4 py-2 text-xs font-black rounded-xl border transition-all ${
+                              active
+                                ? "bg-black border-black text-white"
+                                : "bg-white border-black/10 text-black hover:bg-stone-50"
+                            }`}
+                          >
+                            {size}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Colors Select */}
+                  <div className="space-y-3">
+                    <label className="block text-[9px] font-extrabold tracking-widest uppercase text-black/50">
+                      Màu sắc khả dụng
+                    </label>
+                    <div className="flex flex-wrap gap-2.5 rounded-2xl border border-black/15 p-3.5 bg-stone-50/40">
+                      {productOptions.colors.map((color) => {
+                        const active = selectedColors.includes(color);
+                        return (
+                          <button
+                            key={color}
+                            type="button"
+                            onClick={() =>
+                              setSelectedColors((current) =>
+                                current.includes(color) ? current.filter((item) => item !== color) : [...current, color],
+                              )
+                            }
+                            className={`px-4 py-2 text-xs font-bold rounded-xl border transition-all uppercase ${
+                              active
+                                ? "bg-black border-black text-white"
+                                : "bg-white border-black/10 text-black hover:bg-stone-50"
+                            }`}
+                          >
+                            {color}
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    <div className="flex gap-2 max-w-sm">
+                      <input
+                        value={newColorInput}
+                        onChange={(event) => setNewColorInput(event.target.value)}
+                        className="flex-1 rounded-xl border border-black/10 bg-stone-50 px-3 py-2 text-xs focus:bg-white focus:border-black/60 focus:outline-none transition-all"
+                        placeholder="Thêm màu mới (ví dụ: Nude)"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const nextColor = newColorInput.trim();
+                          if (!nextColor) return;
+                          if (productOptions.colors.includes(nextColor)) {
+                            window.alert("Màu sắc này đã tồn tại trong danh mục.");
+                            return;
                           }
-                          className={`rounded px-3 py-1 text-sm transition-colors ${
-                            active ? "bg-primary text-white" : "bg-muted hover:bg-muted/80"
-                          }`}
-                        >
-                          {size}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              </div>
-              <div>
-                <p className="mb-1 text-sm text-muted-foreground">Màu sắc cố định</p>
-                <div className="flex flex-wrap gap-2 rounded border border-border p-2">
-                  {productOptions.colors.map((color) => {
-                    const active = selectedColors.includes(color);
-                    return (
-                      <button
-                        key={color}
-                        type="button"
-                        onClick={() =>
-                          setSelectedColors((current) =>
-                            current.includes(color) ? current.filter((item) => item !== color) : [...current, color],
-                          )
-                        }
-                        className={`rounded px-3 py-1 text-sm transition-colors ${
-                          active ? "bg-primary text-white" : "bg-muted hover:bg-muted/80"
-                        }`}
+                          const nextOptions: ProductOptions = {
+                            ...productOptions,
+                            colors: [...productOptions.colors, nextColor],
+                          };
+                          persistProductOptions(nextOptions);
+                          setColorHexDrafts((current) => ({ ...current, [nextColor]: "#D1D5DB" }));
+                          setSelectedColors((current) => [...current, nextColor]);
+                          setNewColorInput("");
+                        }}
+                        className="bg-black hover:bg-red-700 text-white text-[10px] font-bold uppercase tracking-wider px-4 rounded-xl transition-colors"
                       >
-                        {color}
+                        + Thêm
                       </button>
-                    );
-                  })}
-                </div>
-                <div className="mt-2 flex gap-2">
-                  <input
-                    value={newColorInput}
-                    onChange={(event) => setNewColorInput(event.target.value)}
-                    className="w-full rounded border border-border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-                    placeholder="Thêm màu mới, ví dụ: Hồng"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const nextColor = newColorInput.trim();
-                      if (!nextColor) return;
-                      if (productOptions.colors.includes(nextColor)) {
-                        window.alert("Màu đã tồn tại.");
-                        return;
-                      }
-                      const nextOptions: ProductOptions = {
-                        ...productOptions,
-                        colors: [...productOptions.colors, nextColor],
-                      };
-                      persistProductOptions(nextOptions);
-                      setColorHexDrafts((current) => ({ ...current, [nextColor]: "#D1D5DB" }));
-                      setSelectedColors((current) => [...current, nextColor]);
-                      setNewColorInput("");
-                    }}
-                    className="rounded bg-primary px-3 py-2 text-sm text-white transition-colors hover:bg-primary/90"
-                  >
-                    + Màu
-                  </button>
-                </div>
-              </div>
-              <div>
-                <p className="mb-1 text-sm text-muted-foreground">Tag cố định</p>
-                <div className="flex flex-wrap gap-2 rounded border border-border p-2">
-                  {productOptions.tags.map((tag) => {
-                    const active = selectedTags.includes(tag);
-                    return (
-                      <button
-                        key={tag}
-                        type="button"
-                        onClick={() =>
-                          setSelectedTags((current) =>
-                            current.includes(tag) ? current.filter((item) => item !== tag) : [...current, tag],
-                          )
-                        }
-                        className={`rounded px-3 py-1 text-sm transition-colors ${
-                          active ? "bg-primary text-white" : "bg-muted hover:bg-muted/80"
-                        }`}
-                      >
-                        #{tag}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-              {selectedColors.length > 0 && (
-                <div className="space-y-2 rounded border border-border p-3">
-                  <p className="text-sm text-muted-foreground">Ảnh theo màu (tuỳ chọn)</p>
-                  <p className="text-xs text-muted-foreground">Khuyến nghị: 1200x1200 (tỉ lệ 1:1) để đồng bộ trang shop/chi tiết.</p>
-                  {selectedColors.map((color) => (
-                    <div key={color} className="flex items-center gap-2">
-                      <span className="w-24 text-sm">{color}</span>
-                      <ImageUploadInput
-                        value={colorImageDrafts[color] || ""}
-                        onChange={(value) =>
-                          setColorImageDrafts((current) => ({ ...current, [color]: value }))
-                        }
-                        className="w-full"
-                        placeholder={`URL ảnh màu ${color}`}
-                      />
                     </div>
-                  ))}
+                  </div>
+
+                  {/* Tags Selector */}
+                  <div className="space-y-2">
+                    <label className="block text-[9px] font-extrabold tracking-widest uppercase text-black/50">
+                      Thẻ phân loại tags (Đánh dấu hiển thị)
+                    </label>
+                    <div className="flex flex-wrap gap-2 rounded-2xl border border-black/15 p-3.5 bg-stone-50/40">
+                      {productOptions.tags.map((tag) => {
+                        const active = selectedTags.includes(tag);
+                        return (
+                          <button
+                            key={tag}
+                            type="button"
+                            onClick={() =>
+                              setSelectedTags((current) =>
+                                current.includes(tag) ? current.filter((item) => item !== tag) : [...current, tag],
+                              )
+                            }
+                            className={`px-3 py-1.5 text-[10px] font-bold tracking-wider rounded-lg border transition-all uppercase ${
+                              active
+                                ? "bg-black border-black text-white"
+                                : "bg-white border-black/10 text-stone-500 hover:bg-stone-50"
+                            }`}
+                          >
+                            #{tag}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Color Images Mapping (Inside Attributes for cohesion) */}
+                  {selectedColors.length > 0 && (
+                    <div className="space-y-3 border-t border-black/10 pt-4">
+                      <div>
+                        <label className="block text-[9px] font-extrabold tracking-widest uppercase text-black/50">
+                          Hình ảnh cụ thể theo từng màu (Tùy chọn)
+                        </label>
+                        <p className="text-[9px] text-black/35 mt-0.5">Đặt URL ảnh riêng cho từng màu để khách xem khi đổi màu sản phẩm.</p>
+                      </div>
+                      <div className="space-y-2.5 max-h-48 overflow-y-auto pr-1">
+                        {selectedColors.map((color) => (
+                          <div key={color} className="flex items-center gap-3 bg-stone-50 p-2.5 border border-black/5 rounded-xl">
+                            <span className="w-20 text-[10px] font-extrabold uppercase tracking-wide text-black/70">{color}</span>
+                            <ImageUploadInput
+                              value={colorImageDrafts[color] || ""}
+                              onChange={(value) =>
+                                setColorImageDrafts((current) => ({ ...current, [color]: value }))
+                              }
+                              className="flex-1"
+                              placeholder={`URL ảnh màu ${color}`}
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
-              <div>
-                <p className="mb-1 text-sm text-muted-foreground">Mô tả</p>
-                <textarea value={formData.description} onChange={(event) => setFormData({ ...formData, description: event.target.value })} className="w-full rounded border border-border px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary" placeholder="Mô tả" rows={3} />
-              </div>
-              <div>
-                <p className="mb-1 text-sm text-muted-foreground">Ảnh bảng size (URL)</p>
-                <ImageUploadInput
-                  value={formData.sizeChartImage}
-                  onChange={(value) => setFormData({ ...formData, sizeChartImage: value })}
-                  placeholder="https://... (ảnh bảng size sản phẩm)"
-                />
-                <p className="mt-1 text-xs text-muted-foreground">Khuyến nghị bảng size: 1200x1600 (tỉ lệ 3:4), chữ rõ, nền sáng.</p>
-              </div>
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <p className="text-sm text-muted-foreground">Ảnh sản phẩm (nhiều ảnh)</p>
-                  <button
-                    type="button"
-                    onClick={() => setProductImages((current) => [...current, ""])}
-                    className="rounded bg-muted px-3 py-1 text-sm transition-colors hover:bg-muted/80"
-                  >
-                    + Thêm ảnh
-                  </button>
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Gợi ý để đồng bộ hiển thị: ảnh trang shop/chi tiết dùng tỉ lệ 1:1 (vd 1200x1200), ảnh best seller trang chủ dùng tỉ lệ 4:5 (vd 1200x1500).
-                </p>
-                <div className="space-y-2">
-                  {productImages.map((url, index) => (
-                    <div key={index} className="flex items-center gap-2">
-                      <ImageUploadInput
-                        value={url}
-                        onChange={(value) => {
-                          const next = [...productImages];
-                          next[index] = value;
-                          setProductImages(next);
-                        }}
-                        className="flex-1"
-                        placeholder={index === 0 ? "Ảnh chính (URL)" : "Ảnh phụ (URL)"}
-                      />
-                      {productImages.length > 1 && (
-                        <button
-                          type="button"
-                          className="rounded p-2 text-red-600 transition-colors hover:bg-red-50"
-                          onClick={() => setProductImages((current) => current.filter((_, i) => i !== index))}
-                          title="Xóa ảnh"
-                        >
-                          <X className="h-4 w-4" />
-                        </button>
-                      )}
-                      {index > 0 && (
-                        <button
-                          type="button"
-                          className="rounded p-2 transition-colors hover:bg-muted"
-                          onClick={() => {
-                            setProductImages((current) => {
-                              const next = [...current];
-                              const [picked] = next.splice(index, 1);
-                              next.unshift(picked);
-                              return next;
-                            });
-                          }}
-                          title="Đặt làm ảnh chính"
-                        >
-                          <ImageIcon className="h-4 w-4" />
-                        </button>
-                      )}
-                    </div>
-                  ))}
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Ảnh sản phẩm (chính + phụ): khuyến nghị 1200x1200 (tỉ lệ 1:1), cùng tông nền để đồng bộ.
-                </p>
-                <ImageUploadInput
-                  value={formData.image}
-                  onChange={(value) => setFormData({ ...formData, image: value })}
-                  placeholder="Fallback ảnh chính (dùng khi chưa nhập ảnh ở trên)"
-                />
-                {mainImage && (
-                  <div className="rounded border border-border p-3">
-                    <p className="mb-2 text-xs text-muted-foreground">Preview ảnh chính</p>
-                    <ImageWithFallback src={mainImage} alt="Preview" className="h-40 w-full rounded object-cover" />
+
+              {/* TAB 3: MEDIA (PRODUCT GALLERY & DESCRIPTION) */}
+              {formTab === "media" && (
+                <div className="space-y-5 animate-fadeIn">
+                  
+                  {/* Textarea Description */}
+                  <div className="space-y-1.5">
+                    <label className="block text-[9px] font-extrabold tracking-widest uppercase text-black/50">
+                      Mô tả chất liệu & Chi tiết thiết kế
+                    </label>
+                    <textarea
+                      value={formData.description}
+                      onChange={(event) => setFormData({ ...formData, description: event.target.value })}
+                      className="w-full rounded-xl border border-black/10 bg-stone-50 px-4 py-3 text-xs focus:bg-white focus:border-black/60 focus:outline-none transition-all font-semibold leading-relaxed"
+                      placeholder="Mô tả chất vải, form dáng, cách bảo quản..."
+                      rows={3}
+                    />
                   </div>
-                )}
-              </div>
+
+                  {/* Size Chart Image */}
+                  <div className="space-y-1.5">
+                    <label className="block text-[9px] font-extrabold tracking-widest uppercase text-black/50">
+                      Hình ảnh bảng size (Size Chart)
+                    </label>
+                    <ImageUploadInput
+                      value={formData.sizeChartImage}
+                      onChange={(value) => setFormData({ ...formData, sizeChartImage: value })}
+                      placeholder="https://... (URL ảnh bảng size chuẩn)"
+                    />
+                  </div>
+
+                  {/* Multi-images gallery manager */}
+                  <div className="space-y-3 border-t border-black/10 pt-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <label className="block text-[9px] font-extrabold tracking-widest uppercase text-black/50">
+                          Bộ sưu tập ảnh sản phẩm (Nhiều ảnh)
+                        </label>
+                        <p className="text-[9px] text-black/35 mt-0.5">Khuyến nghị: Tỉ lệ 1:1 vuông (1200x1200px) cho ảnh chi tiết.</p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setProductImages((current) => [...current, ""])}
+                        className="bg-black hover:bg-stone-800 text-white text-[9px] font-bold uppercase tracking-widest px-3 py-1.5 rounded-xl transition-all"
+                      >
+                        + Thêm URL ảnh
+                      </button>
+                    </div>
+
+                    <div className="space-y-3">
+                      {productImages.map((url, index) => (
+                        <div key={index} className="flex items-center gap-3 bg-stone-50/60 p-3 border border-black/5 rounded-2xl">
+                          <span className="text-[10px] font-extrabold text-black/40">#{index + 1}</span>
+                          <ImageUploadInput
+                            value={url}
+                            onChange={(value) => {
+                              const next = [...productImages];
+                              next[index] = value;
+                              setProductImages(next);
+                            }}
+                            className="flex-1"
+                            placeholder={index === 0 ? "Ảnh chính (URL)" : "Ảnh phụ (URL)"}
+                          />
+                          {productImages.length > 1 && (
+                            <button
+                              type="button"
+                              className="p-2 text-stone-400 hover:text-red-650 transition-colors"
+                              onClick={() => setProductImages((current) => current.filter((_, i) => i !== index))}
+                              title="Xóa ảnh"
+                            >
+                              <X className="h-4.5 w-4.5" />
+                            </button>
+                          )}
+                          {index > 0 && (
+                            <button
+                              type="button"
+                              className="border border-black/10 hover:bg-black hover:text-white px-2 py-1 rounded-lg text-[8px] font-black uppercase tracking-widest transition-colors"
+                              onClick={() => {
+                                setProductImages((current) => {
+                                  const next = [...current];
+                                  const [picked] = next.splice(index, 1);
+                                  next.unshift(picked);
+                                  return next;
+                                });
+                              }}
+                              title="Đặt làm ảnh chính"
+                            >
+                              Chính
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Main Image Preview card */}
+                  {mainImage && (
+                    <div className="rounded-2xl border border-black/10 p-3 bg-stone-50/20 max-w-sm">
+                      <p className="mb-2 text-[9px] font-extrabold tracking-widest text-black/40 uppercase">Preview Ảnh chính hiển thị</p>
+                      <div className="h-44 w-44 overflow-hidden rounded-xl border border-black/10 bg-white">
+                        <ImageWithFallback src={mainImage} alt="Main Preview" className="h-full w-full object-cover" />
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
             </div>
-            <div className="shrink-0 flex justify-end gap-3 border-t border-border p-6 bg-white rounded-b-lg">
+
+            {/* Modal Actions Footer */}
+            <div className="shrink-0 flex justify-end gap-3 border-t border-black/5 p-6 bg-white rounded-b-lg">
               <button
                 onClick={() => {
                   setShowAddModal(false);
                   setShowEditModal(false);
                   resetForm();
                 }}
-                className="rounded border border-border px-6 py-2 transition-colors hover:bg-muted"
+                className="border border-black/10 hover:bg-stone-50 px-6 py-3 rounded-xl text-[10px] font-extrabold tracking-widest uppercase transition-colors"
               >
-                Hủy
+                Hủy bỏ
               </button>
-              <button
-                onClick={() => {
-                  const colorImages: Record<string, string> = {};
-                  selectedColors.forEach((color) => {
-                    const url = (colorImageDrafts[color] || "").trim();
-                    if (url) colorImages[color] = url;
-                  });
+              
+              {formTab !== "media" ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (formTab === "info") setFormTab("attributes");
+                    else if (formTab === "attributes") setFormTab("media");
+                  }}
+                  className="bg-black hover:bg-red-700 text-white px-6 py-3 rounded-xl text-[10px] font-extrabold tracking-widest uppercase transition-all shadow-md shadow-black/10"
+                >
+                  Tiếp Tục
+                </button>
+              ) : (
+                <button
+                  onClick={() => {
+                    const colorImages: Record<string, string> = {};
+                    selectedColors.forEach((color) => {
+                      const url = (colorImageDrafts[color] || "").trim();
+                      if (url) colorImages[color] = url;
+                    });
 
-                  const nextProduct: Product = {
-                    ...(selectedProduct ?? { id: 0 }),
-                    name: formData.name,
-                    price: formData.price,
-                    originalPrice: formData.originalPrice || undefined,
-                    discountPercent: formData.discountPercent > 0 ? formData.discountPercent : undefined,
-                    tags: selectedTags,
-                    category: formData.category,
-                    image: mainImage,
-                    images: normalizedImages.length > 0 ? normalizedImages : mainImage ? [mainImage] : [],
-                    sizeChartImage: formData.sizeChartImage.trim() || undefined,
-                    description: formData.description,
-                    sizes: selectedSizes,
-                    colors: selectedColors,
-                    colorImages: Object.keys(colorImages).length ? colorImages : undefined,
-                    inStock: formData.inStock,
-                    rating: formData.rating,
-                    reviews: formData.reviews,
-                  };
+                    const nextProduct: Product = {
+                      ...(selectedProduct ?? { id: 0 }),
+                      name: formData.name,
+                      price: formData.price,
+                      originalPrice: formData.originalPrice || undefined,
+                      discountPercent: formData.discountPercent > 0 ? formData.discountPercent : undefined,
+                      tags: selectedTags,
+                      category: formData.category,
+                      image: mainImage,
+                      images: normalizedImages.length > 0 ? normalizedImages : mainImage ? [mainImage] : [],
+                      sizeChartImage: formData.sizeChartImage.trim() || undefined,
+                      description: formData.description,
+                      sizes: selectedSizes,
+                      colors: selectedColors,
+                      colorImages: Object.keys(colorImages).length ? colorImages : undefined,
+                      inStock: formData.inStock,
+                      rating: formData.rating,
+                      reviews: formData.reviews,
+                    };
 
-                  if (showAddModal) addProduct(nextProduct);
-                  if (showEditModal && selectedProduct) updateProduct(selectedProduct.id, nextProduct);
+                    if (showAddModal) addProduct(nextProduct);
+                    if (showEditModal && selectedProduct) updateProduct(selectedProduct.id, nextProduct);
 
-                  setShowAddModal(false);
-                  setShowEditModal(false);
-                  resetForm();
-                }}
-                className="rounded bg-primary px-6 py-2 text-white transition-colors hover:bg-primary/90"
-              >
-                {showAddModal ? "Thêm Sản Phẩm" : "Lưu Thay Đổi"}
-              </button>
+                    setShowAddModal(false);
+                    setShowEditModal(false);
+                    resetForm();
+                  }}
+                  className="bg-black hover:bg-red-700 text-white px-6 py-3 rounded-xl text-[10px] font-extrabold tracking-widest uppercase transition-all shadow-md shadow-black/10"
+                >
+                  {showAddModal ? "Thêm Sản Phẩm" : "Lưu Thay Đổi"}
+                </button>
+              )}
             </div>
           </div>
         </div>
