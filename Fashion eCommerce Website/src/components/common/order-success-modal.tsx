@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { CheckCircle, Package, ArrowRight, Sparkles } from "lucide-react";
+import { Package, ArrowRight, Sparkles } from "lucide-react";
+import { brandLogo } from "@/assets/images";
 
 interface OrderSuccessModalProps {
   open: boolean;
@@ -88,10 +89,14 @@ export function OrderSuccessModal({
         {/* Shimmer stripe at top */}
         <div className="order-success-stripe" />
 
-        {/* Check icon */}
+        {/* Brand logo */}
         <div className="order-success-icon-wrap">
           <div className="order-success-icon-ring" />
-          <CheckCircle className="order-success-icon" />
+          <img
+            src={brandLogo}
+            alt="MADMAD"
+            className="order-success-logo"
+          />
           <Sparkles className="order-success-sparkle order-success-sparkle--tl" />
           <Sparkles className="order-success-sparkle order-success-sparkle--br" />
         </div>
