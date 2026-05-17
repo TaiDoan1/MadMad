@@ -1,28 +1,32 @@
 import { useState } from "react";
 import { useOrders } from "@/features/orders/context/order-context";
-import { Search, MapPin, Truck, ShieldCheck, DollarSign, Calendar, Clock } from "lucide-react";
+import { Search, MapPin, Truck, ShieldCheck, DollarSign, Calendar, Clock, Lock } from "lucide-react";
 
 export function TrackOrderPage() {
   const { orders } = useOrders();
-  const [keyword, setKeyword] = useState("");
+  const [orderNumberInput, setOrderNumberInput] = useState("");
+  const [phoneOrEmailInput, setPhoneOrEmailInput] = useState("");
   const [searched, setSearched] = useState(false);
   const [results, setResults] = useState<any[]>([]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     setSearched(true);
-    const cleanedKeyword = keyword.trim().toLowerCase();
+    
+    const cleanOrderNumber = orderNumberInput.trim().toLowerCase();
+    const cleanContact = phoneOrEmailInput.trim().toLowerCase().replace(/\s+/g, "");
 
-    if (!cleanedKeyword) {
+    if (!cleanOrderNumber || !cleanContact) {
       setResults([]);
       return;
     }
 
-    // Tìm kiếm đơn hàng khớp với Mã Đơn hàng hoặc Số điện thoại
+    // Bắt buộc trùng khớp đồng thời cả 2 yếu tố để bảo mật tuyệt đối thông tin khách hàng
     const found = orders.filter(
       (o) =>
-        o.orderNumber.toLowerCase() === cleanedKeyword ||
-        o.customerPhone.replace(/\s+/g, "") === cleanedKeyword.replace(/\s+/g, "")
+        o.orderNumber.toLowerCase() === cleanOrderNumber &&
+        (o.customerPhone.replace(/\s+/g, "") === cleanContact ||
+          o.customerEmail.toLowerCase() === cleanContact)
     );
     setResults(found);
   };
@@ -37,7 +41,7 @@ export function TrackOrderPage() {
       case "processing":
       case "pending":
       default:
-        return 2; // Mặc định là Chờ xác nhận / Đang chuẩn bị
+        return 2;
     }
   };
 
@@ -60,40 +64,61 @@ export function TrackOrderPage() {
       {/* Header */}
       <div className="text-center max-w-lg mx-auto mb-12">
         <h1 className="font-extrabold text-3xl tracking-tight text-black uppercase mb-2">TRA CỨU ĐƠN HÀNG</h1>
-        <p className="text-black/50 text-sm">
-          Nhập mã đơn hàng (ví dụ: DH2026...) hoặc Số điện thoại để theo dõi hành trình vận chuyển
+        <p className="text-black/50 text-xs leading-relaxed">
+          Nhập mã đơn hàng và thông tin liên hệ của bạn để theo dõi tiến độ giao hàng. Vì lý do bảo mật, thông tin chỉ được hiển thị khi khớp hoàn toàn cả 2 yếu tố.
         </p>
       </div>
 
-      {/* Ô tìm kiếm */}
-      <form onSubmit={handleSearch} className="mb-12 max-w-xl mx-auto flex gap-3">
-        <div className="relative flex-1">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-black/35" />
-          <input
-            type="text"
-            required
-            value={keyword}
-            onChange={(e) => setKeyword(e.target.value)}
-            placeholder="Nhập Mã đơn hàng hoặc Số điện thoại..."
-            className="w-full rounded-xl border border-black/10 bg-stone-50 pl-12 pr-4 py-3.5 text-xs placeholder:text-black/30 focus:border-black/60 focus:bg-white focus:outline-none focus:ring-0 transition-all uppercase font-semibold"
-          />
+      {/* Form tìm kiếm bảo mật hai yếu tố */}
+      <form onSubmit={handleSearch} className="mb-16 max-w-2xl mx-auto border border-black/10 rounded-2xl p-6 sm:p-8 bg-stone-50/50 space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+          <div>
+            <label className="block text-[10px] font-extrabold tracking-wider uppercase text-black/70 mb-1.5 flex items-center gap-1.5">
+              <Lock className="h-3 w-3 text-black/55" />
+              Mã đơn hàng
+            </label>
+            <input
+              type="text"
+              required
+              value={orderNumberInput}
+              onChange={(e) => setOrderNumberInput(e.target.value)}
+              placeholder="VÍ DỤ: DH2026..."
+              className="w-full rounded-xl border border-black/10 bg-white px-4 py-3.5 text-xs placeholder:text-black/35 focus:border-black/60 focus:outline-none focus:ring-0 transition-all uppercase font-semibold"
+            />
+          </div>
+
+          <div>
+            <label className="block text-[10px] font-extrabold tracking-wider uppercase text-black/70 mb-1.5">
+              Số điện thoại hoặc Email
+            </label>
+            <input
+              type="text"
+              required
+              value={phoneOrEmailInput}
+              onChange={(e) => setPhoneOrEmailInput(e.target.value)}
+              placeholder="SĐT hoặc Email đặt hàng..."
+              className="w-full rounded-xl border border-black/10 bg-white px-4 py-3.5 text-xs placeholder:text-black/35 focus:border-black/60 focus:outline-none focus:ring-0 transition-all"
+            />
+          </div>
         </div>
+
         <button
           type="submit"
-          className="bg-black text-white hover:bg-red-700 px-6 py-3.5 text-xs font-bold tracking-widest uppercase transition-all rounded-xl"
+          className="w-full bg-black text-white hover:bg-red-700 h-12 text-xs font-bold tracking-widest uppercase transition-all rounded-xl flex items-center justify-center gap-2"
         >
-          TRA CỨU
+          <Search className="h-4 w-4" />
+          Xác minh và Tra cứu đơn hàng
         </button>
       </form>
 
       {/* Hiển thị kết quả */}
       {searched && (
-        <div className="space-y-12">
+        <div className="space-y-12 animate-fadeIn">
           {results.length === 0 ? (
             <div className="border border-dashed border-black/15 rounded-2xl p-12 text-center bg-stone-50 max-w-xl mx-auto">
-              <p className="text-sm font-semibold text-black/70 mb-2">Không tìm thấy đơn hàng tương ứng</p>
-              <p className="text-xs text-black/40">
-                Hãy kiểm tra lại mã đơn hàng (ví dụ: DH2026...) hoặc SĐT của bạn có chính xác không.
+              <p className="text-sm font-semibold text-black/70 mb-2">Thông tin tra cứu không trùng khớp</p>
+              <p className="text-xs text-black/40 leading-relaxed">
+                Vui lòng kiểm tra lại Mã đơn hàng (ví dụ: DH2026...) và Số điện thoại hoặc Email đặt hàng của bạn. Hãy đảm bảo cả 2 thông tin đã được điền chính xác.
               </p>
             </div>
           ) : (
@@ -106,7 +131,7 @@ export function TrackOrderPage() {
                   {/* Mã đơn và ngày mua */}
                   <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-black/10 pb-6 mb-8">
                     <div>
-                      <span className="text-[10px] font-bold tracking-wider text-black/40 uppercase">Đơn hàng</span>
+                      <span className="text-[10px] font-bold tracking-wider text-black/40 uppercase">Đơn hàng xác minh thành công</span>
                       <h2 className="font-mono font-bold text-xl text-black mt-0.5">{order.orderNumber}</h2>
                     </div>
                     <div className="flex items-center gap-4 text-xs text-black/50">
