@@ -19,19 +19,24 @@ import {
   MessageSquare,
   Tag,
   PlusCircle,
-  ChevronRight
+  ChevronRight,
+  UserCheck,
+  Sparkles,
+  Award
 } from "lucide-react";
 
 import { brandLogo } from "@/assets/images";
 import { ImageWithFallback } from "@/components/common/image-with-fallback";
 import { useOrders } from "@/features/orders/context/order-context";
 import { useProducts } from "@/features/products/context/product-context";
+import { useMembership } from "@/features/membership/context/membership-context";
 import type { Order, OrderItem } from "@/types/order";
 import type { Product } from "@/types/product";
 
 export function AdminOrdersPage() {
   const { orders, updateOrderStatus, addOrder } = useOrders();
   const { products } = useProducts();
+  const { members } = useMembership(); // Đọc danh sách tất cả thành viên VIP
 
   // Search & Filter
   const [searchTerm, setSearchTerm] = useState("");
@@ -57,13 +62,28 @@ export function AdminOrdersPage() {
   const [manualDistrict, setManualDistrict] = useState("");
   const [manualProvince, setManualProvince] = useState("");
 
-  // Items added in manual order
-  const [manualItems, setManualItems] = useState<OrderItem[]>([]);
+  // Visual Product Selector States
+  const [productSearchQuery, setProductSearchQuery] = useState("");
   const [selectedProductToAdd, setSelectedProductToAdd] = useState<Product | "">("");
   const [selectedSizeToAdd, setSelectedSizeToAdd] = useState("M");
   const [selectedColorToAdd, setSelectedColorToAdd] = useState("");
   const [quantityToAdd, setQuantityToAdd] = useState(1);
   const [manualDiscount, setManualDiscount] = useState(0);
+
+  // Items added in manual order
+  const [manualItems, setManualItems] = useState<OrderItem[]>([]);
+
+  // Membership VIP Check States
+  const [checkedMember, setCheckedMember] = useState<any | null>(null);
+  const [vipCheckMessage, setVipCheckMessage] = useState("");
+
+  // Tìm kiếm sản phẩm trực quan có hình ảnh
+  const filteredProductsToSelect = products.filter((p) => {
+    return (
+      p.name.toLowerCase().includes(productSearchQuery.toLowerCase()) ||
+      p.category.toLowerCase().includes(productSearchQuery.toLowerCase())
+    );
+  });
 
   // Lọc tìm kiếm đơn hàng theo mã đơn, tên, sđt và nguồn đơn hàng
   const filteredOrders = orders.filter((order) => {
@@ -141,10 +161,48 @@ export function AdminOrdersPage() {
     }
   };
 
+  // Tra cứu thành viên VIP dựa trên SĐT / Email nhập vào
+  const handleCheckVIPMember = () => {
+    setVipCheckMessage("");
+    setCheckedMember(null);
+
+    const query = manualCustomerPhone.trim().replace(/\s+/g, "");
+    const emailQuery = manualCustomerEmail.trim().toLowerCase();
+
+    if (!query && !emailQuery) {
+      setVipCheckMessage("⚠️ Vui lòng nhập Số điện thoại hoặc Email để tra cứu VIP!");
+      return;
+    }
+
+    // Tìm trong database members
+    const found = members.find(
+      (m) =>
+        (query && m.phone === query) ||
+        (emailQuery && m.email.toLowerCase() === emailQuery)
+    );
+
+    if (found) {
+      setCheckedMember(found);
+      setManualCustomerName(found.fullName); // Auto fill tên
+      if (found.email) setManualCustomerEmail(found.email); // Auto fill email
+      
+      // Auto apply giảm giá VIP 5% trị giá đơn hàng tạm tính làm quà VIP
+      const discountVal = Math.round(manualSubtotal * 0.05);
+      setManualDiscount(discountVal);
+
+      setVipCheckMessage(`✓ Khách hàng VIP hạng ${found.tier} (MM Card: ${found.memberCardId}). Tích lũy: ${found.points} điểm. Tự động hoàn 5% chiết khấu VIP!`);
+    } else {
+      setVipCheckMessage("❌ Không tìm thấy thông tin thành viên VIP với SĐT/Email này.");
+    }
+  };
+
   // Tính toán tiền cho đơn thủ công đang tạo
   const manualSubtotal = manualItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
   const manualShipping = manualSubtotal > 500000 || manualSource === "pos" ? 0 : 30000;
-  const manualTotal = Math.max(0, manualSubtotal - manualDiscount) + manualShipping;
+  
+  // Tự động cập nhật giảm giá VIP 5% nếu đã check member thành công trước đó
+  const finalDiscount = checkedMember ? Math.round(manualSubtotal * 0.05) : manualDiscount;
+  const manualTotal = Math.max(0, manualSubtotal - finalDiscount) + manualShipping;
 
   // Thêm sản phẩm vào giỏ hàng đơn thủ công
   const handleAddManualItem = () => {
@@ -185,6 +243,7 @@ export function AdminOrdersPage() {
     setSelectedProductToAdd("");
     setSelectedColorToAdd("");
     setQuantityToAdd(1);
+    setProductSearchQuery(""); // Reset query tìm kiếm
   };
 
   // Tạo đơn hàng thủ công hoàn tất
@@ -222,13 +281,13 @@ export function AdminOrdersPage() {
       },
       items: manualItems,
       subtotal: manualSubtotal,
-      discount: manualDiscount,
+      discount: finalDiscount,
       shipping: manualShipping,
       total: manualTotal,
       paymentMethod: manualPaymentMethod,
       status: manualSource === "pos" ? "delivered" : "pending", // Đơn tại quầy POS mặc định là Thành công luôn
       createdAt: new Date().toISOString(),
-      notes: manualNotes.trim() || `Đơn hàng tạo thủ công qua kênh ${manualSource.toUpperCase()}`,
+      notes: manualNotes.trim() || `Đơn hàng tạo thủ công qua kênh ${manualSource.toUpperCase()}${checkedMember ? ` (Thành viên VIP: ${checkedMember.memberCardId})` : ""}`,
     };
 
     addOrder(newOrder);
@@ -246,9 +305,25 @@ export function AdminOrdersPage() {
     setManualItems([]);
     setManualDiscount(0);
     setManualPaymentMethod("cod");
+    setCheckedMember(null);
+    setVipCheckMessage("");
     setShowCreateModal(false);
 
     window.alert("Tạo đơn hàng thủ công thành công!");
+  };
+
+  // Xác định Class màu cho thẻ VIP dựa trên hạng
+  const getVIPBadgeColor = (tier: string) => {
+    switch (tier) {
+      case "PLATINUM":
+        return "bg-zinc-950 text-zinc-100 border-zinc-800";
+      case "GOLD":
+        return "bg-amber-600 text-amber-50 border-amber-500";
+      case "SILVER":
+        return "bg-slate-400 text-slate-900 border-slate-300";
+      default:
+        return "bg-neutral-800 text-white border-neutral-700";
+    }
   };
 
   return (
@@ -266,7 +341,7 @@ export function AdminOrdersPage() {
           className="flex items-center justify-center gap-2 rounded-xl bg-black hover:bg-red-700 text-white px-5 py-3 text-xs font-bold tracking-widest uppercase transition-all shadow-md shadow-black/10"
         >
           <Plus className="h-4 w-4" />
-          Tạo Đơn Hủy / Thủ Công
+          Tạo Đơn Offline / Thủ Công
         </button>
       </div>
 
@@ -326,7 +401,7 @@ export function AdminOrdersPage() {
                   <th className="px-6 py-4">Khách Hàng</th>
                   <th className="px-6 py-4">SĐT</th>
                   <th className="px-6 py-4">Ngày Đặt</th>
-                  <th className="px-6 py-4 text-center">Trạng Thế</th>
+                  <th className="px-6 py-4 text-center">Trạng Thái</th>
                   <th className="px-6 py-4 text-right">Tổng Tiền</th>
                   <th className="px-6 py-4 text-right">Thao Tác</th>
                 </tr>
@@ -410,7 +485,12 @@ export function AdminOrdersPage() {
                 <h2 className="text-xl font-black text-black">TẠO ĐƠN HÀNG THỦ CÔNG</h2>
               </div>
               <button
-                onClick={() => setShowCreateModal(false)}
+                onClick={() => {
+                  // Reset states when closing
+                  setCheckedMember(null);
+                  setVipCheckMessage("");
+                  setShowCreateModal(false);
+                }}
                 className="rounded-xl p-2 border border-black/5 hover:border-black/20 hover:bg-stone-50 transition-colors"
               >
                 <X className="h-5 w-5 text-black/75" />
@@ -419,99 +499,162 @@ export function AdminOrdersPage() {
 
             <form onSubmit={handleCreateManualOrderSubmit} className="p-6 grid grid-cols-1 lg:grid-cols-12 gap-8 text-xs font-semibold">
               
-              {/* CỘT TRÁI (Lg: 7): Nhập sản phẩm & Giỏ hàng */}
+              {/* CỘT TRÁI (Lg: 7): Trình chọn sản phẩm hình ảnh + Giỏ hàng */}
               <div className="lg:col-span-7 space-y-6">
                 
                 {/* Chọn sản phẩm thực tế */}
                 <div className="border border-black/5 rounded-2xl p-5 bg-stone-50 space-y-4">
                   <h3 className="text-[10px] font-extrabold tracking-widest text-black/50 uppercase border-b border-black/5 pb-2">
-                    Chọn sản phẩm từ kho hàng
+                    Chọn sản phẩm (Tìm kiếm trực quan)
                   </h3>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-[10px] font-bold text-black/50 mb-1.5">Tên sản phẩm</label>
-                      <select
-                        value={selectedProductToAdd === "" ? "" : selectedProductToAdd.id}
-                        onChange={(e) => {
-                          const prod = products.find((p) => p.id === Number(e.target.value));
-                          setSelectedProductToAdd(prod || "");
-                          // Tự động set màu đầu tiên
-                          if (prod) {
-                            const colors = Object.keys(prod.colorImages || {});
-                            setSelectedColorToAdd(colors.length > 0 ? colors[0] : "Default");
-                          }
-                        }}
-                        className="w-full rounded-xl border border-black/10 bg-white px-3 py-2.5 focus:border-black/60 focus:outline-none transition-all uppercase"
-                      >
-                        <option value="">-- CHỌN SẢN PHẨM --</option>
-                        {products.map((p) => (
-                          <option key={p.id} value={p.id}>
-                            {p.name} ({p.price.toLocaleString("vi-VN")}₫)
-                          </option>
-                        ))}
-                      </select>
+                  {/* Thanh tìm kiếm sản phẩm có hình */}
+                  <div className="space-y-3">
+                    <label className="block text-[10px] font-bold text-black/50">Gõ tên sản phẩm cần tìm</label>
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-black/40" />
+                      <input
+                        type="text"
+                        value={productSearchQuery}
+                        onChange={(e) => setProductSearchQuery(e.target.value)}
+                        placeholder="Tìm sản phẩm (ví dụ: áo phông, jacket...)"
+                        className="w-full rounded-xl border border-black/10 bg-white pl-9 pr-4 py-2.5 text-xs placeholder:text-black/30 focus:border-black/60 focus:outline-none transition-all font-semibold"
+                      />
                     </div>
 
-                    <div>
-                      <label className="block text-[10px] font-bold text-black/50 mb-1.5">Chọn Size</label>
-                      <select
-                        value={selectedSizeToAdd}
-                        onChange={(e) => setSelectedSizeToAdd(e.target.value)}
-                        className="w-full rounded-xl border border-black/10 bg-white px-3 py-2.5 focus:border-black/60 focus:outline-none transition-all"
-                      >
-                        <option value="S">SIZE S</option>
-                        <option value="M">SIZE M</option>
-                        <option value="L">SIZE L</option>
-                        <option value="XL">SIZE XL</option>
-                      </select>
-                    </div>
+                    {/* Danh sách sản phẩm dạng hình ảnh thu gọn */}
+                    {productSearchQuery && (
+                      <div className="border border-black/10 bg-white rounded-xl max-h-[180px] overflow-y-auto p-2 space-y-1">
+                        {filteredProductsToSelect.length === 0 ? (
+                          <p className="text-center text-[10px] text-black/40 py-4">Không tìm thấy sản phẩm phù hợp.</p>
+                        ) : (
+                          filteredProductsToSelect.map((p) => (
+                            <button
+                              key={p.id}
+                              type="button"
+                              onClick={() => {
+                                setSelectedProductToAdd(p);
+                                const colors = Object.keys(p.colorImages || {});
+                                setSelectedColorToAdd(colors.length > 0 ? colors[0] : "Default");
+                                setProductSearchQuery(""); // đóng bảng gợi ý
+                              }}
+                              className="w-full flex items-center gap-3 p-2 hover:bg-stone-50 rounded-lg text-left transition-colors border border-transparent hover:border-black/5"
+                            >
+                              <div className="h-10 w-8 overflow-hidden rounded bg-stone-100 flex-shrink-0">
+                                <img src={p.image} alt={p.name} className="h-full w-full object-cover" />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="font-bold text-black uppercase truncate text-[11px]">{p.name}</p>
+                                <p className="text-[9px] text-black/40 uppercase">{p.category}</p>
+                              </div>
+                              <span className="font-extrabold text-black text-[11px]">
+                                {p.price.toLocaleString("vi-VN")}₫
+                              </span>
+                            </button>
+                          ))
+                        )}
+                      </div>
+                    )}
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-[10px] font-bold text-black/50 mb-1.5">Màu sắc</label>
-                      <select
-                        value={selectedColorToAdd}
-                        onChange={(e) => setSelectedColorToAdd(e.target.value)}
-                        disabled={!selectedProductToAdd}
-                        className="w-full rounded-xl border border-black/10 bg-white px-3 py-2.5 focus:border-black/60 focus:outline-none transition-all uppercase"
-                      >
-                        {selectedProductToAdd &&
-                        Object.keys(selectedProductToAdd.colorImages || {}).length > 0 ? (
-                          Object.keys(selectedProductToAdd.colorImages || {}).map((c) => (
-                            <option key={c} value={c}>
-                              MÀU {c.toUpperCase()}
-                            </option>
-                          ))
-                        ) : (
-                          <option value="Default">MÀU TIÊU CHUẨN</option>
-                        )}
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="block text-[10px] font-bold text-black/50 mb-1.5">Số lượng</label>
-                      <div className="flex gap-2">
-                        <input
-                          type="number"
-                          min={1}
-                          value={quantityToAdd}
-                          onChange={(e) => setQuantityToAdd(Math.max(1, Number(e.target.value)))}
-                          className="w-20 rounded-xl border border-black/10 bg-white px-3 py-2.5 text-center focus:border-black/60 focus:outline-none transition-all"
+                  {/* Hiển thị sản phẩm đang được chọn để cấu hình size/màu */}
+                  {selectedProductToAdd ? (
+                    <div className="border border-black/10 bg-white rounded-2xl p-4 flex flex-col sm:flex-row gap-4 items-center sm:items-start animate-fadeIn">
+                      {/* Ảnh to sản phẩm đang chọn */}
+                      <div className="h-24 w-20 overflow-hidden rounded-xl bg-stone-100 border border-black/5 flex-shrink-0">
+                        <img
+                          src={selectedProductToAdd.image}
+                          alt={selectedProductToAdd.name}
+                          className="h-full w-full object-cover"
                         />
-                        <button
-                          type="button"
-                          onClick={handleAddManualItem}
-                          disabled={!selectedProductToAdd}
-                          className="flex-1 bg-black text-white hover:bg-red-700 disabled:bg-stone-300 disabled:hover:bg-stone-300 font-bold uppercase tracking-wider rounded-xl flex items-center justify-center gap-1.5 transition-colors"
-                        >
-                          <PlusCircle className="h-4 w-4" />
-                          Thêm vào đơn
-                        </button>
+                      </div>
+                      
+                      <div className="flex-1 space-y-3 w-full">
+                        <div>
+                          <span className="text-[9px] font-bold px-2 py-0.5 bg-black text-white rounded-full uppercase">
+                            Đang chọn
+                          </span>
+                          <h4 className="font-black text-black text-sm uppercase mt-1">
+                            {selectedProductToAdd.name}
+                          </h4>
+                          <p className="text-[10px] text-green-700 font-extrabold mt-0.5">
+                            Đơn giá: {selectedProductToAdd.price.toLocaleString("vi-VN")}₫
+                          </p>
+                        </div>
+
+                        {/* Size & Màu & Số lượng */}
+                        <div className="grid grid-cols-3 gap-2">
+                          <div>
+                            <label className="block text-[9px] font-bold text-black/50 mb-1">Chọn Size</label>
+                            <select
+                              value={selectedSizeToAdd}
+                              onChange={(e) => setSelectedSizeToAdd(e.target.value)}
+                              className="w-full rounded-lg border border-black/10 bg-stone-50 px-2.5 py-1.5 focus:border-black/60 focus:bg-white focus:outline-none transition-all text-[11px]"
+                            >
+                              <option value="S">SIZE S</option>
+                              <option value="M">SIZE M</option>
+                              <option value="L">SIZE L</option>
+                              <option value="XL">SIZE XL</option>
+                            </select>
+                          </div>
+
+                          <div>
+                            <label className="block text-[9px] font-bold text-black/50 mb-1">Chọn Màu</label>
+                            <select
+                              value={selectedColorToAdd}
+                              onChange={(e) => setSelectedColorToAdd(e.target.value)}
+                              className="w-full rounded-lg border border-black/10 bg-stone-50 px-2.5 py-1.5 focus:border-black/60 focus:bg-white focus:outline-none transition-all text-[11px] uppercase"
+                            >
+                              {Object.keys(selectedProductToAdd.colorImages || {}).length > 0 ? (
+                                Object.keys(selectedProductToAdd.colorImages || {}).map((c) => (
+                                  <option key={c} value={c}>
+                                    {c}
+                                  </option>
+                                ))
+                              ) : (
+                                <option value="Default">TIÊU CHUẨN</option>
+                              )}
+                            </select>
+                          </div>
+
+                          <div>
+                            <label className="block text-[9px] font-bold text-black/50 mb-1">Số lượng</label>
+                            <div className="flex gap-1.5">
+                              <input
+                                type="number"
+                                min={1}
+                                value={quantityToAdd}
+                                onChange={(e) => setQuantityToAdd(Math.max(1, Number(e.target.value)))}
+                                className="w-full rounded-lg border border-black/10 bg-stone-50 px-2 py-1.5 text-center focus:border-black/60 focus:bg-white focus:outline-none transition-all text-[11px]"
+                              />
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex gap-2 pt-2">
+                          <button
+                            type="button"
+                            onClick={() => setSelectedProductToAdd("")}
+                            className="px-4 py-2 border border-black/10 hover:border-black hover:bg-stone-50 text-[10px] font-bold uppercase tracking-wider rounded-xl transition-colors"
+                          >
+                            Hủy chọn
+                          </button>
+                          <button
+                            type="button"
+                            onClick={handleAddManualItem}
+                            className="flex-1 bg-black text-white hover:bg-red-700 font-bold uppercase tracking-wider rounded-xl flex items-center justify-center gap-1.5 transition-colors text-[10px]"
+                          >
+                            <PlusCircle className="h-4 w-4" />
+                            Xác nhận thêm
+                          </button>
+                        </div>
                       </div>
                     </div>
-                  </div>
+                  ) : (
+                    <div className="border border-dashed border-black/15 bg-white rounded-2xl p-6 text-center text-black/45 text-[10px] font-semibold leading-relaxed">
+                      💡 Vui lòng gõ tìm kiếm ở ô trên để hiển thị sản phẩm kèm hình ảnh trực quan!
+                    </div>
+                  )}
                 </div>
 
                 {/* Giỏ hàng đơn thủ công */}
@@ -567,11 +710,66 @@ export function AdminOrdersPage() {
                 </div>
               </div>
 
-              {/* CỘT PHẢI (Lg: 5): Thông tin khách hàng & Nguồn đơn */}
+              {/* CỘT PHẢI (Lg: 5): Check VIP Membership & Địa chỉ */}
               <div className="lg:col-span-5 space-y-6 border-t lg:border-t-0 lg:border-l border-black/15 lg:pl-8 pt-6 lg:pt-0">
-                <h3 className="text-[10px] font-extrabold tracking-widest text-black/50 uppercase border-b border-black/5 pb-2">
-                  Thông Tin Hóa Đơn & Khách Hàng
-                </h3>
+                
+                {/* 👑 KHU VỰC LIVE CHECK VIP MEMBERSHIP */}
+                <div className="bg-stone-50 border border-black/10 rounded-2xl p-5 space-y-4">
+                  <div className="flex items-center gap-1.5 border-b border-black/5 pb-2">
+                    <Award className="h-4.5 w-4.5 text-black" />
+                    <h3 className="text-[10px] font-extrabold tracking-widest text-black uppercase">
+                      MADMAD VIP CLUB CHECK
+                    </h3>
+                  </div>
+
+                  <div className="space-y-1">
+                    <p className="text-[9px] text-black/50 uppercase">Tra cứu thẻ VIP bằng Số điện thoại hoặc Email</p>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={manualCustomerPhone}
+                        onChange={(e) => setManualCustomerPhone(e.target.value)}
+                        placeholder="Nhập SĐT cần check..."
+                        className="flex-1 rounded-xl border border-black/10 bg-white px-3 py-2 text-xs focus:border-black/60 focus:outline-none transition-all font-semibold"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleCheckVIPMember}
+                        className="bg-black hover:bg-red-700 text-white text-[10px] font-bold uppercase tracking-wider px-4 rounded-xl transition-colors flex items-center gap-1"
+                      >
+                        <UserCheck className="h-4.5 w-4.5" />
+                        Check VIP
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Kết quả Check VIP */}
+                  {vipCheckMessage && (
+                    <div className={`p-3 rounded-xl border text-[10px] leading-relaxed font-bold ${
+                      checkedMember 
+                        ? "bg-green-50/70 border-green-200 text-green-800" 
+                        : "bg-red-50/70 border-red-200 text-red-800"
+                    }`}>
+                      {checkedMember && <Sparkles className="h-3.5 w-3.5 inline mr-1 text-green-700 animate-pulse" />}
+                      {vipCheckMessage}
+                    </div>
+                  )}
+
+                  {/* Trạng thái hạng thẻ Hologram thu nhỏ */}
+                  {checkedMember && (
+                    <div className={`rounded-xl p-3 border flex justify-between items-center ${getVIPBadgeColor(checkedMember.tier)}`}>
+                      <div>
+                        <p className="text-[8px] tracking-wider opacity-60 uppercase">MADMAD BLACK VIP</p>
+                        <p className="font-extrabold text-[11px] uppercase mt-0.5">{checkedMember.fullName}</p>
+                      </div>
+                      <div className="text-right">
+                        <span className="inline-block px-2.5 py-0.5 text-[8px] font-black tracking-widest border border-white/20 bg-white/10 rounded-full uppercase">
+                          {checkedMember.tier}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                </div>
 
                 {/* Chọn Nguồn Đơn Hàng */}
                 <div>
@@ -617,28 +815,15 @@ export function AdminOrdersPage() {
                       className="w-full rounded-xl border border-black/10 bg-stone-50 px-4 py-2.5 focus:border-black/60 focus:bg-white transition-all uppercase font-bold"
                     />
                   </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-[10px] font-bold text-black/50 mb-1">Số Điện Thoại</label>
-                      <input
-                        type="tel"
-                        required
-                        value={manualCustomerPhone}
-                        onChange={(e) => setManualCustomerPhone(e.target.value)}
-                        placeholder="09XXXXXXXX"
-                        className="w-full rounded-xl border border-black/10 bg-stone-50 px-4 py-2.5 focus:border-black/60 focus:bg-white transition-all"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[10px] font-bold text-black/50 mb-1">Email (Không bắt buộc)</label>
-                      <input
-                        type="email"
-                        value={manualCustomerEmail}
-                        onChange={(e) => setManualCustomerEmail(e.target.value)}
-                        placeholder="khachhang@gmail.com"
-                        className="w-full rounded-xl border border-black/10 bg-stone-50 px-4 py-2.5 focus:border-black/60 focus:bg-white transition-all"
-                      />
-                    </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-black/50 mb-1">Email (Không bắt buộc)</label>
+                    <input
+                      type="email"
+                      value={manualCustomerEmail}
+                      onChange={(e) => setManualCustomerEmail(e.target.value)}
+                      placeholder="khachhang@gmail.com"
+                      className="w-full rounded-xl border border-black/10 bg-stone-50 px-4 py-2.5 focus:border-black/60 focus:bg-white transition-all"
+                    />
                   </div>
                 </div>
 
@@ -712,10 +897,11 @@ export function AdminOrdersPage() {
                       type="number"
                       min={0}
                       step={1000}
-                      value={manualDiscount}
+                      value={finalDiscount}
+                      disabled={!!checkedMember} // Khóa nhập nếu đã apply giảm giá thành viên VIP
                       onChange={(e) => setManualDiscount(Math.max(0, Number(e.target.value)))}
-                      placeholder="Số tiền giảm..."
-                      className="w-full rounded-xl border border-black/10 bg-stone-50 px-4 py-2.5 focus:border-black/60 focus:bg-white transition-all"
+                      placeholder={checkedMember ? "VIP Auto Apply" : "Số tiền giảm..."}
+                      className="w-full rounded-xl border border-black/10 bg-stone-50 px-4 py-2.5 focus:border-black/60 focus:bg-white transition-all disabled:bg-stone-200 text-stone-500 font-extrabold"
                     />
                   </div>
                 </div>
@@ -738,10 +924,10 @@ export function AdminOrdersPage() {
                     <span>Tạm tính ({manualItems.length} SP)</span>
                     <span className="font-bold">{manualSubtotal.toLocaleString("vi-VN")}₫</span>
                   </div>
-                  {manualDiscount > 0 && (
+                  {finalDiscount > 0 && (
                     <div className="flex justify-between text-red-600">
-                      <span>Giảm giá</span>
-                      <span className="font-bold">-{manualDiscount.toLocaleString("vi-VN")}₫</span>
+                      <span>Giảm giá {checkedMember ? "(VIP 5% Cashback)" : ""}</span>
+                      <span className="font-bold">-{finalDiscount.toLocaleString("vi-VN")}₫</span>
                     </div>
                   )}
                   {manualSource !== "pos" && (
@@ -836,7 +1022,7 @@ export function AdminOrdersPage() {
 
                 <div className="border border-black/5 rounded-xl p-5 bg-white space-y-3">
                   <h3 className="text-[10px] font-extrabold tracking-widest text-black/50 uppercase border-b border-black/5 pb-2">
-                    Địa Chi Nhận Hàng
+                    Địa Chỉ Nhận Hàng
                   </h3>
                   <div className="space-y-1.5 leading-relaxed">
                     {selectedOrder.shippingAddress.street === "Mua trực tiếp tại Shop" ? (
