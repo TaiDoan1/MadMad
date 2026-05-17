@@ -6,6 +6,7 @@ import { ImageWithFallback } from "@/components/common/image-with-fallback";
 import { brandLogo } from "@/assets/images";
 import { OrderSuccessModal } from "@/components/common/order-success-modal";
 import { useTransitionTo } from "@/components/common/page-transition";
+import { useMembership } from "@/features/membership/context/membership-context";
 import { useCart } from "@/features/cart/context/cart-context";
 import {
   getDistrictNameByCode,
@@ -27,6 +28,7 @@ const inputCls =
 export function CheckoutPage() {
   const { products } = useProducts();
   const { addOrder } = useOrders();
+  const { currentMember, addPointsToCurrentMember } = useMembership();
   const {
     cartItems,
     subtotal,
@@ -47,9 +49,9 @@ export function CheckoutPage() {
   }>({ open: false, orderNumber: "", customerName: "", total: 0 });
 
   const [formData, setFormData] = useState({
-    fullName: "",
-    email: "",
-    phone: "",
+    fullName: currentMember?.fullName || "",
+    email: currentMember?.email || "",
+    phone: currentMember?.phone || "",
     address: "",
     provinceCode: "",
     districtCode: "",
@@ -60,6 +62,18 @@ export function CheckoutPage() {
   const [provinces, setProvinces] = useState<AddressOption[]>([]);
   const [districts, setDistricts] = useState<AddressOption[]>([]);
   const [wards, setWards] = useState<AddressOption[]>([]);
+
+  // Tự động điền dữ liệu nếu thành viên đăng nhập sau khi vào trang
+  useEffect(() => {
+    if (currentMember) {
+      setFormData((prev) => ({
+        ...prev,
+        fullName: currentMember.fullName,
+        email: currentMember.email,
+        phone: currentMember.phone,
+      }));
+    }
+  }, [currentMember]);
 
   const normalizeText = (value: string) =>
     value
@@ -190,6 +204,15 @@ export function CheckoutPage() {
     Promise.all([getWardNameByCode(formData.wardCode), getDistrictNameByCode(formData.districtCode), getProvinceNameByCode(formData.provinceCode)])
       .then(([wardName, districtName, provinceName]) => {
         addOrder({ ...newOrder, shippingAddress: { street: formData.address, ward: wardName, district: districtName, province: provinceName } });
+        
+        // Hoàn điểm thành viên 5% cho đơn hàng nếu đăng nhập
+        if (currentMember) {
+          const pointsEarned = Math.floor((total * 0.05) / 1000);
+          if (pointsEarned > 0) {
+            addPointsToCurrentMember(pointsEarned);
+          }
+        }
+
         clearCart();
         setSuccessModal({
           open: true,

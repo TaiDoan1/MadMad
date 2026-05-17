@@ -51,6 +51,20 @@ export const router = createBrowserRouter([
           return { Component: module.ContactPage };
         },
       },
+      {
+        path: "membership",
+        lazy: async () => {
+          const module = await import("@/pages/membership/membership-page");
+          return { Component: module.MembershipPage };
+        },
+      },
+      {
+        path: "track-order",
+        lazy: async () => {
+          const module = await import("@/pages/track-order/track-order-page");
+          return { Component: module.TrackOrderPage };
+        },
+      },
     ],
   },
   {

@@ -93,7 +93,6 @@ export function MainLayout() {
       >
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="flex h-16 items-center justify-between">
-
             {/* Left — mobile menu + desktop nav */}
             <div className="flex flex-1 items-center gap-6">
               <button
@@ -105,12 +104,14 @@ export function MainLayout() {
                 <Menu className="h-6 w-6" />
               </button>
 
-              <nav className="hidden items-center gap-6 text-sm font-bold tracking-widest lg:flex">
+              <nav className="hidden items-center gap-5 text-[11px] font-bold tracking-[0.2em] lg:flex">
                 {[
-                  { path: "/",        label: "TRANG CHỦ" },
-                  { path: "/shop",    label: "CỬA HÀNG" },
-                  { path: "/about",   label: "GIỚI THIỆU" },
-                  { path: "/contact", label: "LIÊN HỆ" },
+                  { path: "/",            label: "TRANG CHỦ" },
+                  { path: "/shop",        label: "CỬA HÀNG" },
+                  { path: "/membership",  label: "THÀNH VIÊN" },
+                  { path: "/track-order",  label: "TRA CỨU ĐƠN" },
+                  { path: "/about",       label: "GIỚI THIỆU" },
+                  { path: "/contact",     label: "LIÊN HỆ" },
                 ].map((item) => (
                   <Link
                     key={item.path}
@@ -161,7 +162,7 @@ export function MainLayout() {
                 className={`hidden sm:block transition-colors ${
                   isTransparent ? "hover:text-white/70" : "hover:text-primary"
                 }`}
-                onClick={handleOpenAdmin}
+                onClick={() => navigate("/membership")}
               >
                 <User className="h-5 w-5" />
               </button>
@@ -200,16 +201,18 @@ export function MainLayout() {
             <nav className="p-6">
               <div className="space-y-1">
                 {[
-                  { path: "/", label: "TRANG CHỦ" },
-                  { path: "/shop", label: "CỬA HÀNG" },
-                  { path: "/about", label: "GIỚI THIỆU" },
-                  { path: "/contact", label: "LIÊN HỆ" },
+                  { path: "/",            label: "TRANG CHỦ" },
+                  { path: "/shop",        label: "CỬA HÀNG" },
+                  { path: "/membership",  label: "THÀNH VIÊN" },
+                  { path: "/track-order",  label: "TRA CỨU ĐƠN hàng" },
+                  { path: "/about",       label: "GIỚI THIỆU" },
+                  { path: "/contact",     label: "LIÊN HỆ" },
                 ].map((item) => (
                   <Link
                     key={item.path}
                     to={item.path}
                     onClick={() => setMobileMenuOpen(false)}
-                    className={`block rounded-lg px-4 py-3 text-sm font-semibold tracking-wider transition-bounce hover:bg-primary hover:scale-105 hover:text-white active:scale-105 active:bg-primary active:text-white ${
+                    className={`block rounded-lg px-4 py-3 text-xs font-semibold tracking-widest uppercase transition-bounce hover:bg-primary hover:scale-105 hover:text-white active:scale-105 active:bg-primary active:text-white ${
                       isActive(item.path) ? "bg-primary text-white" : ""
                     }`}
                   >
@@ -226,16 +229,20 @@ export function MainLayout() {
                     className="flex items-center gap-3 rounded-lg px-4 py-3 transition-bounce hover:bg-muted hover:scale-105 active:scale-105 active:bg-muted"
                   >
                     <ShoppingCart className="h-5 w-5" />
-                    <span className="font-medium">Giỏ hàng</span>
+                    <span className="font-medium text-xs">Giỏ hàng</span>
                     {cartCount > 0 && (
                       <span className="ml-auto flex h-6 w-6 items-center justify-center rounded-full bg-primary text-xs text-white">
                         {cartCount}
                       </span>
                     )}
                   </Link>
+                  <button className="flex w-full items-center gap-3 rounded-lg px-4 py-3 transition-bounce hover:bg-muted hover:scale-105 active:scale-105 active:bg-muted" onClick={() => { setMobileMenuOpen(false); navigate("/membership"); }}>
+                    <User className="h-5 w-5" />
+                    <span className="font-medium text-xs">Thành viên MADMAD</span>
+                  </button>
                   <button className="flex w-full items-center gap-3 rounded-lg px-4 py-3 transition-bounce hover:bg-muted hover:scale-105 active:scale-105 active:bg-muted" onClick={handleOpenAdmin}>
                     <User className="h-5 w-5" />
-                    <span className="font-medium">{isAdminAuthenticated ? "Vào Admin" : "Đăng nhập Admin"}</span>
+                    <span className="font-medium text-xs">{isAdminAuthenticated ? "Vào Admin" : "Đăng nhập Admin"}</span>
                   </button>
                   {isAdminAuthenticated && (
                     <button
@@ -246,13 +253,9 @@ export function MainLayout() {
                       }}
                     >
                       <X className="h-5 w-5" />
-                      <span className="font-medium">Đăng xuất Admin</span>
+                      <span className="font-medium text-xs">Đăng xuất Admin</span>
                     </button>
                   )}
-                  <button className="flex w-full items-center gap-3 rounded-lg px-4 py-3 transition-bounce hover:bg-muted hover:scale-105 active:scale-105 active:bg-muted">
-                    <Heart className="h-5 w-5" />
-                    <span className="font-medium">Yêu thích</span>
-                  </button>
                 </div>
               </div>
             </nav>
@@ -313,27 +316,24 @@ export function MainLayout() {
         <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 gap-8 md:grid-cols-4">
             <div>
-              <h3 className="mb-4">Công ty</h3>
-              <ul className="space-y-2 text-gray-400">
-                <li><a href="#" className="transition-all hover:text-white active:text-white">Giới thiệu</a></li>
-                <li><a href="#" className="transition-all hover:text-white active:text-white">Tuyển dụng</a></li>
-                <li><a href="#" className="transition-all hover:text-white active:text-white">Báo chí</a></li>
+              <h3 className="mb-4 text-xs font-extrabold tracking-widest uppercase">Công ty</h3>
+              <ul className="space-y-2 text-xs text-gray-400 font-medium">
+                <li><Link to="/about" className="transition-all hover:text-white">Giới thiệu</Link></li>
+                <li><a href="#" className="transition-all hover:text-white">Tuyển dụng</a></li>
               </ul>
             </div>
             <div>
-              <h3 className="mb-4">Tài nguyên</h3>
-              <ul className="space-y-2 text-gray-400">
-                <li><a href="#" className="transition-all hover:text-white active:text-white">Blog</a></li>
-                <li><a href="#" className="transition-all hover:text-white active:text-white">Bảng size</a></li>
-                <li><a href="#" className="transition-all hover:text-white active:text-white">Câu hỏi thường gặp</a></li>
+              <h3 className="mb-4 text-xs font-extrabold tracking-widest uppercase">Thành viên</h3>
+              <ul className="space-y-2 text-xs text-gray-400 font-medium">
+                <li><Link to="/membership" className="transition-all hover:text-white">MADMAD Club VIP</Link></li>
+                <li><Link to="/membership" className="transition-all hover:text-white">Đăng ký / Đăng nhập</Link></li>
               </ul>
             </div>
             <div>
-              <h3 className="mb-4">Hỗ trợ</h3>
-              <ul className="space-y-2 text-gray-400">
-                <li><a href="#" className="transition-all hover:text-white active:text-white">Liên hệ</a></li>
-                <li><a href="#" className="transition-all hover:text-white active:text-white">Vận chuyển</a></li>
-                <li><a href="#" className="transition-all hover:text-white active:text-white">Đổi trả</a></li>
+              <h3 className="mb-4 text-xs font-extrabold tracking-widest uppercase">Hỗ trợ khách hàng</h3>
+              <ul className="space-y-2 text-xs text-gray-400 font-medium">
+                <li><Link to="/track-order" className="transition-all hover:text-white">Tra cứu đơn hàng</Link></li>
+                <li><Link to="/contact" className="transition-all hover:text-white">Liên hệ hỗ trợ</Link></li>
               </ul>
             </div>
             <div>
