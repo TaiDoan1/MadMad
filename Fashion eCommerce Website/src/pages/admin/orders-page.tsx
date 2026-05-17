@@ -27,7 +27,10 @@ import {
   Boxes,
   FileText,
   QrCode,
-  Copy
+  Copy,
+  Users,
+  UserPlus,
+  User
 } from "lucide-react";
 
 import { brandLogo } from "@/assets/images";
@@ -59,6 +62,7 @@ export function AdminOrdersPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
   const [filterSource, setFilterSource] = useState("all");
+  const [filterCustomerType, setFilterCustomerType] = useState("all"); // all, vip, returning, first_time
 
   // Selected order details modal
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
@@ -107,14 +111,60 @@ export function AdminOrdersPage() {
     localStorage.setItem("madmad_internal_notes", JSON.stringify(nextNotes));
   };
 
-  // TÌM KIẾM & BỘ LỌC DOANH THU & KÊNH
+  // PHÂN LOẠI KHÁCH HÀNG TỰ ĐỘNG (Realtime Customer Category Calculator)
+  const getCustomerCategory = (phone: string, email: string) => {
+    const cleanPhone = phone.trim().replace(/\s+/g, "");
+    const cleanEmail = email.trim().toLowerCase();
+
+    // 1. Kiểm tra xem có phải VIP Thành viên không
+    const vip = localMembers.find(
+      (m) => m.phone === cleanPhone || m.email.toLowerCase() === cleanEmail
+    );
+    if (vip) {
+      return {
+        type: "VIP",
+        label: `👑 VIP ${vip.tier}`,
+        badgeClass: vip.tier === "PLATINUM" ? "bg-zinc-950 text-zinc-100 border-zinc-800" :
+                    vip.tier === "GOLD" ? "bg-amber-600 text-amber-50 border-amber-500" :
+                    vip.tier === "SILVER" ? "bg-slate-400 text-slate-900 border-slate-300" :
+                    "bg-neutral-800 text-white border-neutral-700",
+        vipDetail: vip
+      };
+    }
+
+    // 2. Kiểm tra xem có phải khách quen vãng lai mua nhiều lần (Returning Guest) không
+    const customerOrders = orders.filter(
+      (o) => o.customerPhone.trim().replace(/\s+/g, "") === cleanPhone
+    );
+
+    if (customerOrders.length > 1) {
+      return {
+        type: "RETURNING",
+        label: `🔄 Khách Quen (${customerOrders.length} đơn)`,
+        badgeClass: "bg-emerald-50 text-emerald-700 border-emerald-200",
+        orderCount: customerOrders.length,
+        totalSpent: customerOrders.reduce((sum, o) => sum + o.total, 0)
+      };
+    }
+
+    // 3. Người mua lần đầu (First-time Buyer)
+    return {
+      type: "FIRST_TIME",
+      label: "🆕 Mua lần đầu",
+      badgeClass: "bg-stone-100 text-stone-600 border-stone-200"
+    };
+  };
+
+  // TÌM KIẾM & BỘ LỌC DOANH THU & KÊNH & PHÂN LOẠI KHÁCH
   const filteredOrders = orders.filter((order) => {
     const matchesSearch =
       order.orderNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
       order.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       order.customerPhone.includes(searchTerm);
+    
     const matchesStatus = filterStatus === "all" || order.status === filterStatus;
 
+    // Lọc theo nguồn đơn
     let matchesSource = true;
     if (filterSource !== "all") {
       const isFb = order.orderNumber.startsWith("DH-FB");
@@ -130,7 +180,16 @@ export function AdminOrdersPage() {
       else if (filterSource === "website") matchesSource = isWeb;
     }
 
-    return matchesSearch && matchesStatus && matchesSource;
+    // Lọc theo phân loại khách hàng
+    let matchesCustomerType = true;
+    if (filterCustomerType !== "all") {
+      const cat = getCustomerCategory(order.customerPhone, order.customerEmail);
+      if (filterCustomerType === "vip") matchesCustomerType = cat.type === "VIP";
+      else if (filterCustomerType === "returning") matchesCustomerType = cat.type === "RETURNING";
+      else if (filterCustomerType === "first_time") matchesCustomerType = cat.type === "FIRST_TIME";
+    }
+
+    return matchesSearch && matchesStatus && matchesSource && matchesCustomerType;
   });
 
   // TÍNH TOÁN CÁC CHỈ SỐ DOANH THU CHO DASHBOARD
@@ -272,18 +331,16 @@ export function AdminOrdersPage() {
     updateOrderStatus(order.id, newStatus);
     setSelectedOrder({ ...order, status: newStatus });
 
-    // Cộng điểm VIP tự động khi trạng thái chuyển sang Thành công (Completed)
     if (newStatus === "completed") {
       const targetPhone = order.customerPhone.trim().replace(/\s+/g, "");
       const targetEmail = order.customerEmail.trim().toLowerCase();
 
-      let pointsEarned = Math.floor(order.total / 100000); // 100k = 1 điểm
-      if (pointsEarned === 0) pointsEarned = 1; // Tối thiểu được 1 điểm
+      let pointsEarned = Math.floor(order.total / 100000);
+      if (pointsEarned === 0) pointsEarned = 1;
 
       const updatedMembersList = localMembers.map((m) => {
         if (m.phone === targetPhone || m.email.toLowerCase() === targetEmail) {
           const nextPoints = m.points + pointsEarned;
-          // Calculate new tier
           let nextTier: "BRONZE" | "SILVER" | "GOLD" | "PLATINUM" = "BRONZE";
           if (nextPoints >= 1500) nextTier = "PLATINUM";
           else if (nextPoints >= 800) nextTier = "GOLD";
@@ -343,14 +400,13 @@ export function AdminOrdersPage() {
       shipping: manualShipping,
       total: manualTotal,
       paymentMethod: manualPaymentMethod,
-      status: manualSource === "pos" ? "completed" : "pending", // Đơn tại quầy hoàn thành luôn
+      status: manualSource === "pos" ? "completed" : "pending",
       createdAt: new Date().toISOString(),
       notes: manualNotes.trim() || `Đơn hàng tạo thủ công qua kênh ${manualSource.toUpperCase()}${checkedMember ? ` (Thành viên VIP: ${checkedMember.memberCardId})` : ""}`,
     };
 
     addOrder(newOrder);
 
-    // Nếu đơn POS, cộng điểm VIP ngay lập tức
     if (manualSource === "pos" && checkedMember) {
       const pointsEarned = Math.max(1, Math.floor(manualTotal / 100000));
       const updatedMembersList = localMembers.map((m) => {
@@ -370,12 +426,10 @@ export function AdminOrdersPage() {
       window.alert(`👑 Đơn hàng POS thành công! Đã tích +${pointsEarned} điểm VIP cho khách hàng.`);
     }
 
-    // Lưu internal note nếu có
     if (manualNotes) {
       handleSaveInternalNote(newOrderNumber, manualNotes);
     }
 
-    // Reset
     setManualCustomerName("");
     setManualCustomerPhone("");
     setManualCustomerEmail("");
@@ -393,38 +447,6 @@ export function AdminOrdersPage() {
     setShowCreateModal(false);
 
     window.alert("Tạo đơn hàng thủ công thành công!");
-  };
-
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case "completed":
-        return "bg-green-50 text-green-700 border-green-200";
-      case "cancelled":
-        return "bg-red-50 text-red-700 border-red-200";
-      case "shipping":
-        return "bg-indigo-50 text-indigo-700 border-indigo-200";
-      case "processing":
-        return "bg-amber-50 text-amber-700 border-amber-200";
-      case "pending":
-      default:
-        return "bg-stone-100 text-stone-600 border-stone-200";
-    }
-  };
-
-  const getStatusLabel = (status: string) => {
-    switch (status) {
-      case "completed":
-        return "Thành công";
-      case "cancelled":
-        return "Đã hủy";
-      case "shipping":
-        return "Đang giao";
-      case "processing":
-        return "Đang chuẩn bị";
-      case "pending":
-      default:
-        return "Chờ xác nhận";
-    }
   };
 
   return (
@@ -455,7 +477,7 @@ export function AdminOrdersPage() {
             <TrendingUp className="h-4.5 w-4.5 text-green-600" />
           </div>
           <div>
-            <p className="text-2xl font-black text-black tracking-tight">
+            <p className="text-2xl font-black text-black tracking-tight font-mono">
               {totalRevenue.toLocaleString("vi-VN")}₫
             </p>
             <p className="text-[10px] text-green-700 font-bold mt-1">✓ Chỉ tính đơn giao thành công</p>
@@ -469,7 +491,7 @@ export function AdminOrdersPage() {
             <Boxes className="h-4.5 w-4.5 text-amber-600" />
           </div>
           <div>
-            <p className="text-2xl font-black text-black tracking-tight">{pendingOrdersCount} ĐƠN</p>
+            <p className="text-2xl font-black text-black tracking-tight font-mono">{pendingOrdersCount} ĐƠN</p>
             <p className="text-[10px] text-amber-700 font-bold mt-1">⚡ Đang chờ xác nhận / đóng hàng</p>
           </div>
         </div>
@@ -481,7 +503,7 @@ export function AdminOrdersPage() {
             <CheckCircle2 className="h-4.5 w-4.5 text-green-600" />
           </div>
           <div>
-            <p className="text-2xl font-black text-black tracking-tight">{completedOrdersCount} ĐƠN</p>
+            <p className="text-2xl font-black text-black tracking-tight font-mono">{completedOrdersCount} ĐƠN</p>
             <p className="text-[10px] text-black/40 font-semibold mt-1">Tỷ lệ hoàn thành: {Math.round((completedOrdersCount / (orders.length || 1)) * 100)}%</p>
           </div>
         </div>
@@ -491,26 +513,22 @@ export function AdminOrdersPage() {
           <span className="text-[10px] font-extrabold tracking-widest uppercase text-black/45 block">
             Tỉ Lệ Doanh Số Kênh Bán
           </span>
-          <div className="space-y-1.5 pt-0.5">
-            {/* Website */}
+          <div className="space-y-1.5 pt-0.5 font-mono">
             <div className="flex items-center justify-between text-[9px] font-bold text-black/75">
-              <span className="flex items-center gap-1"><ShoppingBag className="h-3 w-3" /> WEB</span>
-              <span>{channelStats.website.count} đơn ({channelStats.website.pct}%)</span>
+              <span className="flex items-center gap-1 font-sans font-bold"><ShoppingBag className="h-3 w-3" /> WEB</span>
+              <span>{channelStats.website.count}đ ({channelStats.website.pct}%)</span>
             </div>
-            {/* Facebook */}
             <div className="flex items-center justify-between text-[9px] font-bold text-blue-700">
-              <span className="flex items-center gap-1"><Facebook className="h-3 w-3" /> FB</span>
-              <span>{channelStats.facebook.count} đơn ({channelStats.facebook.pct}%)</span>
+              <span className="flex items-center gap-1 font-sans font-bold"><Facebook className="h-3 w-3" /> FB</span>
+              <span>{channelStats.facebook.count}đ ({channelStats.facebook.pct}%)</span>
             </div>
-            {/* Instagram */}
             <div className="flex items-center justify-between text-[9px] font-bold text-pink-700">
-              <span className="flex items-center gap-1"><Instagram className="h-3 w-3" /> IG</span>
-              <span>{channelStats.instagram.count} đơn ({channelStats.instagram.pct}%)</span>
+              <span className="flex items-center gap-1 font-sans font-bold"><Instagram className="h-3 w-3" /> IG</span>
+              <span>{channelStats.instagram.count}đ ({channelStats.instagram.pct}%)</span>
             </div>
-            {/* POS */}
             <div className="flex items-center justify-between text-[9px] font-bold text-neutral-900">
-              <span className="flex items-center gap-1"><Store className="h-3 w-3" /> POS</span>
-              <span>{channelStats.pos.count} đơn ({channelStats.pos.pct}%)</span>
+              <span className="flex items-center gap-1 font-sans font-bold"><Store className="h-3 w-3" /> POS</span>
+              <span>{channelStats.pos.count}đ ({channelStats.pos.pct}%)</span>
             </div>
           </div>
         </div>
@@ -530,6 +548,18 @@ export function AdminOrdersPage() {
           </div>
 
           <div className="flex flex-wrap gap-3">
+            {/* 👑 BỘ LỌC PHÂN LOẠI LOYALTY KHÁCH HÀNG */}
+            <select
+              value={filterCustomerType}
+              onChange={(event) => setFilterCustomerType(event.target.value)}
+              className="rounded-xl border border-black/10 bg-stone-50 px-4 py-3 text-xs font-bold text-black/70 focus:border-black/60 focus:bg-white focus:outline-none focus:ring-0 transition-all"
+            >
+              <option value="all">TẤT CẢ PHÂN LOẠI KHÁCH</option>
+              <option value="vip">👑 THÀNH VIÊN VIP</option>
+              <option value="returning">🔄 KHÁCH QUEN VÃNG LAI</option>
+              <option value="first_time">🆕 KHÁCH MUA LẦN ĐẦU</option>
+            </select>
+
             <select
               value={filterSource}
               onChange={(event) => setFilterSource(event.target.value)}
@@ -566,7 +596,7 @@ export function AdminOrdersPage() {
                 <tr className="bg-stone-50 border-b border-black/10 font-bold uppercase tracking-wider text-black/60">
                   <th className="px-6 py-4">Mã Đơn Hàng</th>
                   <th className="px-6 py-4">Nguồn</th>
-                  <th className="px-6 py-4">Khách Hàng</th>
+                  <th className="px-6 py-4">Khách Hàng (Phân Loại)</th>
                   <th className="px-6 py-4">SĐT</th>
                   <th className="px-6 py-4">Ngày Đặt</th>
                   <th className="px-6 py-4 text-center">Trạng Thái</th>
@@ -585,6 +615,9 @@ export function AdminOrdersPage() {
                   filteredOrders.map((order) => {
                     const source = getOrderSourceDetails(order.orderNumber);
                     const SourceIcon = source.icon;
+                    
+                    // Tính toán Phân loại khách hàng realtime
+                    const customerType = getCustomerCategory(order.customerPhone, order.customerEmail);
 
                     return (
                       <tr key={order.id} className="transition-colors hover:bg-stone-50/50">
@@ -595,9 +628,14 @@ export function AdminOrdersPage() {
                             {source.label}
                           </span>
                         </td>
-                        <td className="px-6 py-4">{order.customerName}</td>
+                        <td className="px-6 py-4 space-y-1">
+                          <p className="font-bold text-black text-xs uppercase">{order.customerName}</p>
+                          <span className={`inline-block px-2 py-0.5 rounded text-[8px] font-black tracking-widest uppercase border ${customerType.badgeClass}`}>
+                            {customerType.label}
+                          </span>
+                        </td>
                         <td className="px-6 py-4 text-black/60">{order.customerPhone}</td>
-                        <td className="px-6 py-4 text-black/65">
+                        <td className="px-6 py-4 text-black/65 font-mono">
                           {new Date(order.createdAt).toLocaleDateString("vi-VN")}
                         </td>
                         <td className="px-6 py-4 text-center">
@@ -605,7 +643,7 @@ export function AdminOrdersPage() {
                             {getStatusLabel(order.status)}
                           </span>
                         </td>
-                        <td className="px-6 py-4 text-right font-extrabold text-black">
+                        <td className="px-6 py-4 text-right font-extrabold text-black font-mono">
                           {order.total.toLocaleString("vi-VN")}₫
                         </td>
                         <td className="px-6 py-4">
@@ -712,7 +750,7 @@ export function AdminOrdersPage() {
                                 <p className="font-bold text-black uppercase truncate text-[11px]">{p.name}</p>
                                 <p className="text-[9px] text-black/40 uppercase">{p.category}</p>
                               </div>
-                              <span className="font-extrabold text-black text-[11px]">
+                              <span className="font-extrabold text-black text-[11px] font-mono">
                                 {p.price.toLocaleString("vi-VN")}₫
                               </span>
                             </button>
@@ -740,7 +778,7 @@ export function AdminOrdersPage() {
                           <h4 className="font-black text-black text-sm uppercase mt-1">
                             {selectedProductToAdd.name}
                           </h4>
-                          <p className="text-[10px] text-green-700 font-extrabold mt-0.5">
+                          <p className="text-[10px] text-green-700 font-extrabold mt-0.5 font-mono">
                             Đơn giá: {selectedProductToAdd.price.toLocaleString("vi-VN")}₫
                           </p>
                         </div>
@@ -828,13 +866,13 @@ export function AdminOrdersPage() {
                       Chưa có sản phẩm nào được chọn cho đơn hàng này.
                     </div>
                   ) : (
-                    <div className="space-y-2.5 max-h-[250px] overflow-y-auto pr-2">
+                    <div className="space-y-2.5 max-h-[250px] overflow-y-auto pr-2 font-mono">
                       {manualItems.map((item, index) => (
                         <div
                           key={index}
-                          className="flex items-center gap-4 rounded-xl border border-black/5 p-3.5 bg-white hover:shadow-sm transition-all duration-300"
+                          className="flex items-center gap-4 rounded-xl border border-black/5 p-3.5 bg-white hover:shadow-sm transition-all duration-300 font-sans"
                         >
-                          <div className="h-12 w-10 overflow-hidden rounded bg-stone-100 border border-black/5 flex-shrink-0">
+                          <div className="h-12 w-10 overflow-hidden rounded bg-stone-100 border border-black/5 flex-shrink-0 font-mono">
                             <ImageWithFallback
                               src={item.product.image}
                               alt={item.product.name}
@@ -842,12 +880,12 @@ export function AdminOrdersPage() {
                             />
                           </div>
                           <div className="flex-1 min-w-0">
-                            <p className="font-bold text-black uppercase truncate">{item.product.name}</p>
+                            <p className="font-bold text-black uppercase truncate text-xs">{item.product.name}</p>
                             <p className="text-[9px] text-black/45 mt-0.5 uppercase">
                               Size: {item.size} | Màu: {item.color} | SL: {item.quantity}
                             </p>
                           </div>
-                          <div className="text-right flex items-center gap-4">
+                          <div className="text-right flex items-center gap-4 font-mono">
                             <div>
                               <p className="font-extrabold text-black">
                                 {(item.price * item.quantity).toLocaleString("vi-VN")}₫
@@ -858,7 +896,7 @@ export function AdminOrdersPage() {
                               onClick={() => {
                                 setManualItems(manualItems.filter((_, i) => i !== index));
                               }}
-                              className="text-stone-400 hover:text-red-600 rounded-lg p-1.5 hover:bg-red-50 transition-all"
+                              className="text-stone-400 hover:text-red-600 rounded-lg p-1.5 hover:bg-red-50 transition-all font-sans"
                             >
                               <Trash2 className="h-4 w-4" />
                             </button>
@@ -1082,26 +1120,26 @@ export function AdminOrdersPage() {
                 </div>
 
                 {/* Tổng kết tiền đơn hàng */}
-                <div className="bg-stone-50 rounded-2xl p-5 border border-black/5 space-y-2.5">
-                  <div className="flex justify-between text-black/55">
+                <div className="bg-stone-50 rounded-2xl p-5 border border-black/5 space-y-2.5 font-mono">
+                  <div className="flex justify-between text-black/55 font-sans font-semibold">
                     <span>Tạm tính ({manualItems.length} SP)</span>
-                    <span className="font-bold">{manualSubtotal.toLocaleString("vi-VN")}₫</span>
+                    <span className="font-bold font-mono">{manualSubtotal.toLocaleString("vi-VN")}₫</span>
                   </div>
                   {finalDiscount > 0 && (
-                    <div className="flex justify-between text-red-600">
+                    <div className="flex justify-between text-red-600 font-sans font-semibold">
                       <span>Giảm giá {checkedMember ? "(VIP 5% Cashback)" : ""}</span>
-                      <span className="font-bold">-{finalDiscount.toLocaleString("vi-VN")}₫</span>
+                      <span className="font-bold font-mono">-{finalDiscount.toLocaleString("vi-VN")}₫</span>
                     </div>
                   )}
                   {manualSource !== "pos" && (
-                    <div className="flex justify-between text-black/55">
+                    <div className="flex justify-between text-black/55 font-sans font-semibold">
                       <span>Phí giao hàng</span>
-                      <span className="font-bold">+{manualShipping.toLocaleString("vi-VN")}₫</span>
+                      <span className="font-bold font-mono">+{manualShipping.toLocaleString("vi-VN")}₫</span>
                     </div>
                   )}
-                  <div className="flex justify-between font-black text-black text-sm border-t border-black/10 pt-2.5">
+                  <div className="flex justify-between font-black text-black text-sm border-t border-black/10 pt-2.5 font-sans">
                     <span>TỔNG ĐƠN HÀNG</span>
-                    <span>{manualTotal.toLocaleString("vi-VN")}₫</span>
+                    <span className="font-mono">{manualTotal.toLocaleString("vi-VN")}₫</span>
                   </div>
                 </div>
 
@@ -1165,7 +1203,69 @@ export function AdminOrdersPage() {
                 </select>
               </div>
 
-              {/* DYNAMIC VIETQR GENERATOR - QUÉT ĐỂ THANH TOÁN TỰ ĐỘNG CHUYỂN KHOẢN */}
+              {/* 👑 BẢNG INSIGHT TIÊU DÙNG VÀ TRUNG THÀNH KHÁCH HÀNG (LOYALTY INSIGHT) */}
+              <div className="bg-stone-900 text-white rounded-2xl p-5 border border-stone-800 space-y-3.5">
+                <div className="flex justify-between items-center border-b border-stone-800 pb-2">
+                  <div className="flex items-center gap-1.5">
+                    <Users className="h-4.5 w-4.5 text-red-500" />
+                    <h4 className="font-black tracking-widest text-xs uppercase text-stone-200">
+                      MADMAD CUSTOMER LOYALTY INSIGHT
+                    </h4>
+                  </div>
+                  <span className={`px-2.5 py-0.5 rounded text-[8px] font-black tracking-wider uppercase border ${
+                    getCustomerCategory(selectedOrder.customerPhone, selectedOrder.customerEmail).badgeClass
+                  }`}>
+                    {getCustomerCategory(selectedOrder.customerPhone, selectedOrder.customerEmail).label}
+                  </span>
+                </div>
+
+                {/* Nội dung Phân loại Insight */}
+                {(() => {
+                  const insight = getCustomerCategory(selectedOrder.customerPhone, selectedOrder.customerEmail);
+                  if (insight.type === "VIP" && insight.vipDetail) {
+                    return (
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs font-mono">
+                        <div className="p-3 bg-stone-950/60 rounded-xl border border-stone-800">
+                          <p className="text-[8px] opacity-40 uppercase">MM VIP CARD ID</p>
+                          <p className="font-extrabold text-white text-[11px] mt-1">{insight.vipDetail.memberCardId}</p>
+                        </div>
+                        <div className="p-3 bg-stone-950/60 rounded-xl border border-stone-800">
+                          <p className="text-[8px] opacity-40 uppercase">TIER THẺ THÀNH VIÊN</p>
+                          <p className="font-extrabold text-amber-500 text-[11px] mt-1 uppercase">👑 HẠNG {insight.vipDetail.tier}</p>
+                        </div>
+                        <div className="p-3 bg-stone-950/60 rounded-xl border border-stone-800">
+                          <p className="text-[8px] opacity-40 uppercase">ĐIỂM VIP HIỆN TẠI</p>
+                          <p className="font-extrabold text-green-400 text-[11px] mt-1">{insight.vipDetail.points} ĐIỂM</p>
+                        </div>
+                      </div>
+                    );
+                  }
+                  if (insight.type === "RETURNING") {
+                    return (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs font-mono">
+                        <div className="p-3 bg-stone-950/60 rounded-xl border border-stone-800">
+                          <p className="text-[8px] opacity-40 uppercase">SỐ ĐƠN ĐÃ ĐẶT (VÃNG LAI)</p>
+                          <p className="font-extrabold text-emerald-400 text-[11px] mt-1">{insight.orderCount} ĐƠN HÀNG</p>
+                        </div>
+                        <div className="p-3 bg-stone-950/60 rounded-xl border border-stone-800">
+                          <p className="text-[8px] opacity-40 uppercase">TỔNG GIÁ TRỊ CHI TIÊU</p>
+                          <p className="font-extrabold text-white text-[11px] mt-1">{(insight.totalSpent || 0).toLocaleString("vi-VN")}₫</p>
+                        </div>
+                      </div>
+                    );
+                  }
+                  return (
+                    <div className="p-3 bg-stone-950/40 rounded-xl border border-stone-800 flex items-center gap-3">
+                      <UserPlus className="h-8 w-8 text-stone-500 flex-shrink-0" />
+                      <div className="text-[11px] leading-relaxed text-stone-400 font-semibold">
+                        Đây là **Đơn hàng đầu tiên** của khách hàng này tại MADMAD Studio. Hãy gói hàng thật đẹp, gửi kèm thiệp chào mừng và hướng dẫn họ đăng ký thẻ VIP Thành viên để được hoàn tiền 5% cho các đơn hàng tiếp theo nhé!
+                      </div>
+                    </div>
+                  );
+                })()}
+              </div>
+
+              {/* DYNAMIC VIETQR GENERATOR */}
               {(selectedOrder.paymentMethod === "bank" || selectedOrder.paymentMethod === "chuyen_khoan") && (
                 <div className="bg-neutral-950 text-white rounded-2xl p-5 border border-neutral-800 flex flex-col md:flex-row gap-6 items-center justify-between shadow-lg relative overflow-hidden">
                   <div className="absolute top-0 right-0 h-[2px] w-full bg-gradient-to-r from-red-600/40 via-white/20 to-red-600/40" />
@@ -1194,14 +1294,13 @@ export function AdminOrdersPage() {
                         navigator.clipboard.writeText(`0999999999 - MB Bank - MADMAD STUDIO. Chuyển khoản số tiền ${selectedOrder.total.toLocaleString("vi-VN")}đ với nội dung: MADMAD ${selectedOrder.orderNumber}`);
                         window.alert("Đã copy thông tin thanh toán chuyển khoản của khách hàng!");
                       }}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-stone-900 border border-stone-800 hover:bg-stone-800 text-[9px] font-black tracking-wider uppercase text-stone-300 rounded-lg transition-all"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-stone-900 border border-stone-800 hover:bg-stone-800 text-[9px] font-black tracking-wider uppercase text-stone-300 rounded-lg transition-all font-mono"
                     >
-                      <Copy className="h-3.5 w-3.5" />
+                      <Copy className="h-3.5 w-3.5 font-sans" />
                       Sao chép text thanh toán
                     </button>
                   </div>
 
-                  {/* VietQR Dynamic Generation */}
                   <div className="bg-white p-3.5 rounded-2xl flex-shrink-0 shadow-xl border border-neutral-800/20 text-center space-y-1.5">
                     <img
                       src={`https://img.vietqr.io/image/MB-0999999999-compact.png?amount=${selectedOrder.total}&addInfo=MADMAD%20${selectedOrder.orderNumber}&accountName=MADMAD%20STUDIO`}
@@ -1227,12 +1326,9 @@ export function AdminOrdersPage() {
                   rows={2}
                   value={internalPackingNotes[selectedOrder.orderNumber] || ""}
                   onChange={(e) => handleSaveInternalNote(selectedOrder.orderNumber, e.target.value)}
-                  placeholder="Nhân viên đóng gói điền ghi chú đóng hàng tại đây (ví dụ: Tặng quà, hàng dễ vỡ, bọc kỹ...). Note này chỉ nhân viên quản trị nhìn thấy, sẽ tự động bị ẩn đi khi in hóa đơn giấy gửi khách!"
+                  placeholder="Nhân viên đóng gói điền ghi chú đóng hàng tại đây..."
                   className="w-full rounded-xl border border-red-500/10 bg-white px-4 py-2.5 text-xs placeholder:text-stone-400 focus:border-red-500/40 focus:outline-none transition-all resize-none font-medium leading-relaxed"
                 />
-                <p className="text-[9px] text-red-700/60 font-semibold italic">
-                  * Hệ thống tự động lưu ghi chú nội bộ này mỗi khi bạn gõ phím.
-                </p>
               </div>
 
               {/* Thông tin khách hàng & Địa chỉ */}
@@ -1245,7 +1341,7 @@ export function AdminOrdersPage() {
                     <p className="text-black font-bold text-sm uppercase">{selectedOrder.customerName}</p>
                     <p><span className="text-black/45">Email:</span> {selectedOrder.customerEmail}</p>
                     <p><span className="text-black/45">Điện thoại:</span> {selectedOrder.customerPhone}</p>
-                    <p><span className="text-black/45">Thanh toán:</span> <span className="uppercase font-bold text-black">{selectedOrder.paymentMethod}</span></p>
+                    <p><span className="text-black/45">Thanh toán:</span> <span className="uppercase font-bold text-black font-mono">{selectedOrder.paymentMethod}</span></p>
                   </div>
                 </div>
 
@@ -1292,7 +1388,7 @@ export function AdminOrdersPage() {
                           Size: {item.size} | Màu: {item.color} | Số lượng: {item.quantity}
                         </p>
                       </div>
-                      <div className="text-right">
+                      <div className="text-right font-mono">
                         <p className="font-extrabold text-black text-xs">
                           {(item.price * item.quantity).toLocaleString("vi-VN")}₫
                         </p>
@@ -1306,27 +1402,27 @@ export function AdminOrdersPage() {
               </div>
 
               {/* Tổng kết tiền đơn hàng */}
-              <div className="border-t border-black/10 pt-5 flex justify-end">
-                <div className="w-full sm:w-64 space-y-2 text-xs">
+              <div className="border-t border-black/10 pt-5 flex justify-end font-mono">
+                <div className="w-full sm:w-64 space-y-2 text-xs font-sans font-semibold">
                   <div className="flex justify-between text-black/55">
                     <span>Tạm tính</span>
-                    <span>{selectedOrder.subtotal.toLocaleString("vi-VN")}₫</span>
+                    <span className="font-mono">{selectedOrder.subtotal.toLocaleString("vi-VN")}₫</span>
                   </div>
                   {selectedOrder.discount > 0 && (
                     <div className="flex justify-between text-red-600 font-bold">
                       <span>Mã giảm giá/Khuyến mãi</span>
-                      <span>-{selectedOrder.discount.toLocaleString("vi-VN")}₫</span>
+                      <span className="font-mono">-{selectedOrder.discount.toLocaleString("vi-VN")}₫</span>
                     </div>
                   )}
                   {selectedOrder.shippingAddress.street !== "Mua trực tiếp tại Shop" && (
                     <div className="flex justify-between text-black/55">
                       <span>Phí giao hàng</span>
-                      <span>+{selectedOrder.shipping.toLocaleString("vi-VN")}₫</span>
+                      <span className="font-mono">+{selectedOrder.shipping.toLocaleString("vi-VN")}₫</span>
                     </div>
                   )}
                   <div className="flex justify-between font-black text-black text-sm border-t border-black/5 pt-2">
                     <span>TỔNG TIỀN</span>
-                    <span>{selectedOrder.total.toLocaleString("vi-VN")}₫</span>
+                    <span className="font-mono">{selectedOrder.total.toLocaleString("vi-VN")}₫</span>
                   </div>
                 </div>
               </div>
@@ -1340,13 +1436,13 @@ export function AdminOrdersPage() {
         <div className="hidden print:block">
           <div className="mx-auto max-w-4xl p-10 text-black bg-white" style={{ fontFamily: "monospace", fontSize: "11px" }}>
             
-            {/* Header răng cưa/Đầu trang */}
+            {/* Header */}
             <div className="text-center space-y-2 mb-8 pb-6 border-b-2 border-dashed border-black">
               <div className="flex items-center justify-between">
                 <img src={brandLogo} alt="MADMAD Studio" className="h-14 w-auto" />
-                <div className="text-right">
-                  <h1 className="text-lg font-black tracking-widest">MADMAD STUDIO</h1>
-                  <p className="text-[9px] uppercase tracking-wider text-black/60">Tối giản . Độc bản . Cao cấp</p>
+                <div className="text-right font-mono">
+                  <h1 className="text-lg font-black tracking-widest font-sans">MADMAD STUDIO</h1>
+                  <p className="text-[9px] uppercase tracking-wider text-black/60 font-sans">Tối giản . Độc bản . Cao cấp</p>
                   <p className="text-[9px] text-black/60">Showroom: 254 Nguyễn Trãi, Q.5, TP.HCM</p>
                   <p className="text-[9px] text-black/60">Hotline: 099.999.9999</p>
                 </div>
@@ -1369,6 +1465,7 @@ export function AdminOrdersPage() {
                   <p>Điện thoại: <span className="font-bold">{selectedOrder.customerPhone}</span></p>
                   <p>Email: {selectedOrder.customerEmail}</p>
                   <p>Phương thức: <span className="uppercase font-bold">{selectedOrder.paymentMethod}</span></p>
+                  <p>Khách hàng: <span className="font-bold uppercase">{getCustomerCategory(selectedOrder.customerPhone, selectedOrder.customerEmail).label}</span></p>
                 </div>
               </div>
               <div>
@@ -1389,9 +1486,9 @@ export function AdminOrdersPage() {
             </div>
 
             {/* Bảng sản phẩm */}
-            <table className="w-full text-left text-[11px] border-collapse mb-8">
+            <table className="w-full text-left text-[11px] border-collapse mb-8 font-mono">
               <thead>
-                <tr className="border-b-2 border-black font-black uppercase text-black">
+                <tr className="border-b-2 border-black font-black uppercase text-black font-sans">
                   <th className="py-2.5">Sản phẩm</th>
                   <th className="py-2.5">Phân loại</th>
                   <th className="py-2.5 text-center">SL</th>
@@ -1402,7 +1499,7 @@ export function AdminOrdersPage() {
               <tbody>
                 {selectedOrder.items.map((item, index) => (
                   <tr key={index} className="border-b border-black/10">
-                    <td className="py-3 uppercase font-bold">{item.product.name}</td>
+                    <td className="py-3 uppercase font-bold font-sans">{item.product.name}</td>
                     <td className="py-3 uppercase text-black/70">Size: {item.size} | Màu: {item.color}</td>
                     <td className="py-3 text-center">{item.quantity}</td>
                     <td className="py-3 text-right">{item.price.toLocaleString("vi-VN")}₫</td>
@@ -1413,9 +1510,8 @@ export function AdminOrdersPage() {
             </table>
 
             {/* Chi phí & Quét mã QR */}
-            <div className="grid grid-cols-1 md:grid-cols-12 gap-8 items-start mb-8 pb-6 border-b border-black">
-              {/* VietQR In kèm cho khách quét payment khi nhận hàng COD / chuyển khoản */}
-              <div className="md:col-span-6 flex items-center gap-4 border border-black/10 rounded-xl p-3.5 bg-stone-50">
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-8 items-start mb-8 pb-6 border-b border-black font-mono">
+              <div className="md:col-span-6 flex items-center gap-4 border border-black/10 rounded-xl p-3.5 bg-stone-50 font-sans">
                 <div className="bg-white p-1 rounded border border-black/5 flex-shrink-0">
                   <img
                     src={`https://img.vietqr.io/image/MB-0999999999-compact.png?amount=${selectedOrder.total}&addInfo=MADMAD%20${selectedOrder.orderNumber}&accountName=MADMAD%20STUDIO`}
@@ -1434,37 +1530,36 @@ export function AdminOrdersPage() {
                 </div>
               </div>
 
-              {/* Bảng chi tiết tiền */}
               <div className="md:col-span-6 flex justify-end text-[11px]">
-                <div className="w-full space-y-2">
+                <div className="w-full space-y-2 font-sans font-semibold">
                   <div className="flex justify-between text-black/70">
                     <span>Tạm tính:</span>
-                    <span>{selectedOrder.subtotal.toLocaleString("vi-VN")}₫</span>
+                    <span className="font-mono">{selectedOrder.subtotal.toLocaleString("vi-VN")}₫</span>
                   </div>
                   {selectedOrder.discount > 0 && (
                     <div className="flex justify-between font-bold text-red-600">
                       <span>Giảm giá/Khuyến mãi:</span>
-                      <span>-{selectedOrder.discount.toLocaleString("vi-VN")}₫</span>
+                      <span className="font-mono">-{selectedOrder.discount.toLocaleString("vi-VN")}₫</span>
                     </div>
                   )}
                   {selectedOrder.shippingAddress.street !== "Mua trực tiếp tại Shop" && (
                     <div className="flex justify-between text-black/70">
                       <span>Phí giao hàng:</span>
-                      <span>+{selectedOrder.shipping.toLocaleString("vi-VN")}₫</span>
+                      <span className="font-mono">+{selectedOrder.shipping.toLocaleString("vi-VN")}₫</span>
                     </div>
                   )}
                   <div className="flex justify-between font-black text-sm border-t-2 border-black pt-2">
                     <span>TỔNG CỘNG TIỀN:</span>
-                    <span>{selectedOrder.total.toLocaleString("vi-VN")}₫</span>
+                    <span className="font-mono">{selectedOrder.total.toLocaleString("vi-VN")}₫</span>
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* Slogan & Note chân trang */}
+            {/* Slogan */}
             <div className="text-center space-y-2 mt-8">
-              <p className="font-black uppercase tracking-widest text-[10px]">CẢM ƠN QUÝ KHÁCH ĐÃ CHỌN MADMAD STUDIO!</p>
-              <p className="text-black/50 text-[9px] leading-relaxed max-w-lg mx-auto">
+              <p className="font-black uppercase tracking-widest text-[10px] font-sans">CẢM ƠN QUÝ KHÁCH ĐÃ CHỌN MADMAD STUDIO!</p>
+              <p className="text-black/50 text-[9px] leading-relaxed max-w-lg mx-auto font-sans">
                 * Quý khách vui lòng kiểm tra kỹ sản phẩm khi nhận hàng. Đối với các yêu cầu đổi trả sản phẩm nguyên tag mác, xin hãy nhắn tin trực tiếp fanpage Facebook/Instagram của MADMAD Studio trong vòng 3 ngày kể từ ngày nhận hàng.
               </p>
               <div className="pt-4 text-black/25 text-[8px] font-mono tracking-widest">
