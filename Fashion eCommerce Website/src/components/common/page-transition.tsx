@@ -24,6 +24,23 @@ export function PageTransition({ children }: PageTransitionProps) {
     curtainRef.current = curtain;
   }, [curtain]);
 
+  // ── Programmatic trigger (for buttons that use navigate() directly) ───────
+  const triggerTransition = (path: string) => {
+    if (curtainRef.current !== "hidden") return;
+    pendingPath.current = path;
+    setCurtain("covering");
+  };
+
+  // Expose on window so useTransitionTo() hook can call it from anywhere
+  useEffect(() => {
+    (window as Window & { __transitionTo?: (path: string) => void }).__transitionTo =
+      triggerTransition;
+    return () => {
+      delete (window as Window & { __transitionTo?: (path: string) => void }).__transitionTo;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Global click interceptor — capture phase runs BEFORE React Router
   useEffect(() => {
     const handleClick = (e: MouseEvent) => {
@@ -34,12 +51,13 @@ export function PageTransition({ children }: PageTransitionProps) {
       if (!anchor?.href) return;
 
       const url = new URL(anchor.href, window.location.href);
-      if (url.origin !== window.location.origin) return;       // external
-      if (anchor.getAttribute("target") === "_blank") return;  // new tab
-      if (anchor.hasAttribute("download")) return;             // download
+      if (url.origin !== window.location.origin) return;      // external
+      if (anchor.getAttribute("target") === "_blank") return; // new tab
+      if (anchor.hasAttribute("download")) return;            // download
 
       const dest = url.pathname + url.search + url.hash;
-      const curr = window.location.pathname + window.location.search + window.location.hash;
+      const curr =
+        window.location.pathname + window.location.search + window.location.hash;
       if (dest === curr) return; // same page
 
       // ── Block React Router from navigating ──────────────────────────────
@@ -100,4 +118,25 @@ export function PageTransition({ children }: PageTransitionProps) {
       {children}
     </>
   );
+}
+
+/**
+ * Hook to trigger the curtain page transition from any button/handler.
+ *
+ * Usage:
+ *   const transitionTo = useTransitionTo();
+ *   transitionTo("/checkout");
+ */
+export function useTransitionTo() {
+  return (path: string) => {
+    const fn = (
+      window as Window & { __transitionTo?: (path: string) => void }
+    ).__transitionTo;
+    if (fn) {
+      fn(path);
+    } else {
+      // Fallback nếu transition system chưa mount
+      window.location.href = path;
+    }
+  };
 }

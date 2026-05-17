@@ -204,6 +204,7 @@
     opacity: 0;
     transform: translateY(20px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -215,6 +216,7 @@
     opacity: 0;
     transform: translateY(30px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -226,6 +228,7 @@
     opacity: 0;
     transform: translateX(-30px);
   }
+
   to {
     opacity: 1;
     transform: translateX(0);
@@ -237,6 +240,7 @@
     opacity: 0;
     transform: translateX(30px);
   }
+
   to {
     opacity: 1;
     transform: translateX(0);
@@ -248,6 +252,7 @@
     opacity: 0;
     transform: scale(0.9);
   }
+
   to {
     opacity: 1;
     transform: scale(1);
@@ -255,9 +260,12 @@
 }
 
 @keyframes float {
-  0%, 100% {
+
+  0%,
+  100% {
     transform: translateY(0);
   }
+
   50% {
     transform: translateY(-10px);
   }
@@ -288,18 +296,38 @@
 }
 
 /* Stagger animations */
-.stagger-1 { animation-delay: 0.1s; }
-.stagger-2 { animation-delay: 0.2s; }
-.stagger-3 { animation-delay: 0.3s; }
-.stagger-4 { animation-delay: 0.4s; }
-.stagger-5 { animation-delay: 0.5s; }
-.stagger-6 { animation-delay: 0.6s; }
+.stagger-1 {
+  animation-delay: 0.1s;
+}
+
+.stagger-2 {
+  animation-delay: 0.2s;
+}
+
+.stagger-3 {
+  animation-delay: 0.3s;
+}
+
+.stagger-4 {
+  animation-delay: 0.4s;
+}
+
+.stagger-5 {
+  animation-delay: 0.5s;
+}
+
+.stagger-6 {
+  animation-delay: 0.6s;
+}
 
 /* Button pulse animation */
 @keyframes pulse {
-  0%, 100% {
+
+  0%,
+  100% {
     transform: scale(1);
   }
+
   50% {
     transform: scale(1.05);
   }
@@ -314,18 +342,17 @@
   0% {
     background-position: -1000px 0;
   }
+
   100% {
     background-position: 1000px 0;
   }
 }
 
 .shimmer {
-  background: linear-gradient(
-    90deg,
-    rgba(255, 255, 255, 0) 0%,
-    rgba(255, 255, 255, 0.3) 50%,
-    rgba(255, 255, 255, 0) 100%
-  );
+  background: linear-gradient(90deg,
+      rgba(255, 255, 255, 0) 0%,
+      rgba(255, 255, 255, 0.3) 50%,
+      rgba(255, 255, 255, 0) 100%);
   background-size: 1000px 100%;
   animation: shimmer 2s infinite;
 }
@@ -336,6 +363,7 @@
     opacity: 0;
     transform: translateY(20px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -347,6 +375,7 @@
     opacity: 1;
     transform: translateY(0);
   }
+
   to {
     opacity: 0;
     transform: translateY(-20px);
@@ -357,6 +386,7 @@
   from {
     transform: translateX(100%);
   }
+
   to {
     transform: translateX(0);
   }
@@ -366,6 +396,7 @@
   from {
     transform: translateX(0);
   }
+
   to {
     transform: translateX(-100%);
   }
@@ -374,70 +405,148 @@
 /* ── Page Curtain Transition — Protect.LDN style ────────────────────────── */
 /* Curtain slides IN from right (covers screen) */
 @keyframes curtainSlideIn {
-  from { transform: translateX(100%); }
-  to   { transform: translateX(0%);   }
+  from {
+    transform: translateX(100%);
+  }
+
+  to {
+    transform: translateX(0%);
+  }
 }
 
 /* Curtain slides OUT to left (reveals new page) */
 @keyframes curtainSlideOut {
-  from { transform: translateX(0%);    }
-  to   { transform: translateX(-100%); }
+  from {
+    transform: translateX(0%);
+  }
+
+  to {
+    transform: translateX(-100%);
+  }
 }
 
 .curtain-slide-in {
-  animation: curtainSlideIn 0.65s cubic-bezier(0.76, 0, 0.24, 1) forwards;
+  animation: curtainSlideIn 0.8s cubic-bezier(0.76, 0, 0.24, 1) forwards;
 }
 
 .curtain-slide-out {
-  animation: curtainSlideOut 0.65s cubic-bezier(0.76, 0, 0.24, 1) 0.2s forwards;
+  animation: curtainSlideOut 0.8s cubic-bezier(0.76, 0, 0.24, 1) 0.25s forwards;
 }
 
 /* ── Curtain logo: dramatic slide-up + bounce on white curtain ── */
 @keyframes curtainLogoIn {
-  0%   { opacity: 0; transform: translateY(50px) scale(0.65); }
-  50%  { opacity: 1; transform: translateY(-10px) scale(1.1); }
-  70%  { transform: translateY(4px) scale(0.96); }
-  85%  { transform: translateY(-3px) scale(1.02); }
-  100% { opacity: 1; transform: translateY(0) scale(1); }
+  0% {
+    opacity: 0;
+    transform: translateY(50px) scale(0.65);
+  }
+
+  50% {
+    opacity: 1;
+    transform: translateY(-10px) scale(1.1);
+  }
+
+  70% {
+    transform: translateY(4px) scale(0.96);
+  }
+
+  85% {
+    transform: translateY(-3px) scale(1.02);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
 .curtain-logo {
-  animation: curtainLogoIn 0.7s cubic-bezier(0.34, 1.56, 0.64, 1) 0.15s both;
+  animation: curtainLogoIn 0.85s cubic-bezier(0.34, 1.56, 0.64, 1) 0.15s both;
 }
 
 /* ── Splash / Welcome Screen ──────────────────────────────────────────── */
 @keyframes splashEnter {
-  from { opacity: 0; }
-  to   { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
 }
 
 @keyframes splashExit {
-  0%   { opacity: 1; transform: scale(1); }
-  60%  { opacity: 1; transform: scale(1.04); }
-  100% { opacity: 0; transform: scale(1.08); }
+  0% {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  60% {
+    opacity: 1;
+    transform: scale(1.04);
+  }
+
+  100% {
+    opacity: 0;
+    transform: scale(1.08);
+  }
 }
 
 @keyframes splashContentEnter {
-  0%   { opacity: 0; transform: translateY(24px); }
-  100% { opacity: 1; transform: translateY(0); }
+  0% {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 @keyframes splashContentExit {
-  0%   { opacity: 1; transform: scale(1); }
-  100% { opacity: 0; transform: scale(1.1); }
+  0% {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  100% {
+    opacity: 0;
+    transform: scale(1.1);
+  }
 }
 
 @keyframes splashPulse {
-  0%, 100% { opacity: 0.5; }
-  50%       { opacity: 1; }
+
+  0%,
+  100% {
+    opacity: 0.5;
+  }
+
+  50% {
+    opacity: 1;
+  }
 }
 
 @keyframes splashGrain {
-  0%   { transform: translate(0, 0); }
-  25%  { transform: translate(-2%, -2%); }
-  50%  { transform: translate(2%, 2%); }
-  75%  { transform: translate(-1%, 1%); }
-  100% { transform: translate(0, 0); }
+  0% {
+    transform: translate(0, 0);
+  }
+
+  25% {
+    transform: translate(-2%, -2%);
+  }
+
+  50% {
+    transform: translate(2%, 2%);
+  }
+
+  75% {
+    transform: translate(-1%, 1%);
+  }
+
+  100% {
+    transform: translate(0, 0);
+  }
 }
 
 .splash-enter {
@@ -468,13 +577,23 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .splash-enter, .splash-exit,
-  .splash-content-enter, .splash-content-exit { animation: none; }
-  .splash-pulse { animation: none; opacity: 0.7; }
+
+  .splash-enter,
+  .splash-exit,
+  .splash-content-enter,
+  .splash-content-exit {
+    animation: none;
+  }
+
+  .splash-pulse {
+    animation: none;
+    opacity: 0.7;
+  }
 }
 
 /* ── Native View Transitions API (Chrome 111+) — exact Protect.LDN clone ── */
 @media (prefers-reduced-motion: no-preference) {
+
   /* Disable default cross-fade */
   ::view-transition-old(root),
   ::view-transition-new(root) {
@@ -501,6 +620,7 @@
 
 /* Respect reduced motion */
 @media (prefers-reduced-motion: reduce) {
+
   ::view-transition-old(root),
   ::view-transition-new(root) {
     animation: none;
@@ -508,9 +628,18 @@
 }
 
 /* Legacy — no longer used */
-.page-transition { animation-duration: 0.3s; animation-fill-mode: both; }
-.page-transition.fadeIn  { animation-name: pageIn;  }
-.page-transition.fadeOut { animation-name: pageOut; }
+.page-transition {
+  animation-duration: 0.3s;
+  animation-fill-mode: both;
+}
+
+.page-transition.fadeIn {
+  animation-name: pageIn;
+}
+
+.page-transition.fadeOut {
+  animation-name: pageOut;
+}
 
 /* Link click ripple effect */
 @keyframes ripple {
@@ -518,6 +647,7 @@
     transform: scale(0);
     opacity: 1;
   }
+
   100% {
     transform: scale(4);
     opacity: 0;
@@ -563,9 +693,11 @@
   0% {
     background-position: 0% 50%;
   }
+
   50% {
     background-position: 100% 50%;
   }
+
   100% {
     background-position: 0% 50%;
   }
@@ -617,6 +749,7 @@
   0% {
     background-color: hsl(200, 20%, 80%);
   }
+
   100% {
     background-color: hsl(200, 20%, 95%);
   }
@@ -631,6 +764,7 @@
   from {
     transform: translateX(-100%);
   }
+
   to {
     transform: translateX(0);
   }
@@ -645,6 +779,7 @@
   0% {
     transform: translateX(0);
   }
+
   100% {
     transform: translateX(-50%);
   }
@@ -697,10 +832,12 @@
     stroke-dashoffset: 3000;
     fill: transparent;
   }
+
   60% {
     stroke-dashoffset: 0;
     fill: transparent;
   }
+
   100% {
     stroke-dashoffset: 0;
     fill: white;

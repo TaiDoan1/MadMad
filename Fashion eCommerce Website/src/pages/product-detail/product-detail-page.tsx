@@ -3,6 +3,7 @@ import { Link, useParams, useNavigate } from "react-router";
 import { Search, ShoppingCart, User, Share2, ArrowLeft } from "lucide-react";
 
 import { ImageWithFallback } from "@/components/common/image-with-fallback";
+import { useTransitionTo } from "@/components/common/page-transition";
 import { useCart } from "@/features/cart/context/cart-context";
 import { useProducts } from "@/features/products/context/product-context";
 import { useStorefrontSettings } from "@/features/settings/context/storefront-settings-context";
@@ -24,6 +25,7 @@ const COLOR_MAP: Record<string, { bg: string, text: string }> = {
 export function ProductDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const transitionTo = useTransitionTo();
   const { products } = useProducts();
   const { addToCart } = useCart();
   const { settings } = useStorefrontSettings();
@@ -282,7 +284,7 @@ export function ProductDetailPage() {
                       quantity,
                       priceAtAdd: product.price,
                     });
-                    navigate("/checkout");
+                    transitionTo("/checkout");
                   }}
                   className="w-full h-12 bg-[#b91c1c] text-white text-[13px] font-bold uppercase hover:bg-[#991b1b] transition-colors rounded-sm"
                 >
