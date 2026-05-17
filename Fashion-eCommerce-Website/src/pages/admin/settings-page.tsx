@@ -1,17 +1,18 @@
 import { useEffect, useState } from "react";
-import { Save, Upload, Plus, Trash2, Tag, ShieldCheck, Settings, Percent } from "lucide-react";
+import { Save, Upload, Plus, Trash2, Tag, ShieldCheck, Settings, Percent, Mail, Key, Send } from "lucide-react";
 import { Link } from "react-router";
 
 import { brandLogo } from "@/assets/images";
 import { useStorefrontSettings } from "@/features/settings/context/storefront-settings-context";
 import { readStoredCoupons, saveCoupons } from "@/features/promotions/services/coupon-service";
 import type { Coupon } from "@/types/coupon";
+import { API_URL } from "@/config/api";
 
 export function AdminSettingsPage() {
   const { settings, updateSettings } = useStorefrontSettings();
   
   // Tab State
-  const [activeTab, setActiveTab] = useState<"branding" | "coupons">("branding");
+  const [activeTab, setActiveTab] = useState<"branding" | "coupons" | "invoice" | "smtp">("branding");
 
   // Branding States
   const [currentLogo, setCurrentLogo] = useState(settings.logo || brandLogo);
@@ -31,6 +32,20 @@ export function AdminSettingsPage() {
   const [printInvoicePhone, setPrintInvoicePhone] = useState(settings.printInvoicePhone || "Hotline: 099.999.9999");
   const [printInvoiceFooterSlogan, setPrintInvoiceFooterSlogan] = useState(settings.printInvoiceFooterSlogan || "CẢM ƠN QUÝ KHÁCH ĐÃ CHỌN MADMAD STUDIO!");
   const [printInvoicePolicy, setPrintInvoicePolicy] = useState(settings.printInvoicePolicy || "");
+
+  // SMTP Gmail States
+  const [smtpHost, setSmtpHost] = useState(settings.smtpHost || "smtp.gmail.com");
+  const [smtpPort, setSmtpPort] = useState(settings.smtpPort || 587);
+  const [smtpUser, setSmtpUser] = useState(settings.smtpUser || "mmadmadstudio@gmail.com");
+  const [smtpPass, setSmtpPass] = useState(settings.smtpPass || "yxmbctjhsxkyeznx");
+  const [smtpSenderName, setSmtpSenderName] = useState(settings.smtpSenderName || "MADMAD STUDIO");
+
+  // Custom Direct Email States
+  const [testEmailTo, setTestEmailTo] = useState("");
+  const [testEmailSubject, setTestEmailSubject] = useState("");
+  const [testEmailBody, setTestEmailBody] = useState("");
+  const [sendingTest, setSendingTest] = useState(false);
+  const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
 
   // Coupons States
   const [coupons, setCoupons] = useState<Coupon[]>([]);
@@ -53,6 +68,13 @@ export function AdminSettingsPage() {
     setPrintInvoicePhone(settings.printInvoicePhone || "Hotline: 099.999.9999");
     setPrintInvoiceFooterSlogan(settings.printInvoiceFooterSlogan || "CẢM ƠN QUÝ KHÁCH ĐÃ CHỌN MADMAD STUDIO!");
     setPrintInvoicePolicy(settings.printInvoicePolicy || "");
+
+    // Cập nhật SMTP states khi settings thay đổi từ DB
+    setSmtpHost(settings.smtpHost || "smtp.gmail.com");
+    setSmtpPort(settings.smtpPort || 587);
+    setSmtpUser(settings.smtpUser || "mmadmadstudio@gmail.com");
+    setSmtpPass(settings.smtpPass || "yxmbctjhsxkyeznx");
+    setSmtpSenderName(settings.smtpSenderName || "MADMAD STUDIO");
 
     // Đọc danh sách coupon từ service
     const storedCoupons = readStoredCoupons();
@@ -97,6 +119,58 @@ export function AdminSettingsPage() {
       printInvoicePolicy,
     });
     window.alert("Đã lưu thiết lập mẫu in hóa đơn thành công!");
+  };
+
+  // 💾 Lưu cài đặt cấu hình SMTP Gmail động
+  const handleSaveSmtpSettings = () => {
+    updateSettings({
+      smtpHost,
+      smtpPort: Number(smtpPort),
+      smtpUser,
+      smtpPass,
+      smtpSenderName,
+    });
+    window.alert("Đã lưu cấu hình SMTP Gmail thành công lên đám mây!");
+  };
+
+  // 📬 Gửi Email Thủ Công trực tiếp từ biểu mẫu (Admin Form)
+  const handleSendTestEmail = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!testEmailTo || !testEmailSubject || !testEmailBody) {
+      window.alert("Vui lòng nhập đầy đủ các thông tin: Người nhận, Tiêu đề và Nội dung!");
+      return;
+    }
+
+    setSendingTest(true);
+    setTestResult(null);
+
+    try {
+      const response = await fetch(`${API_URL}/settings/send-test-email`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          to: testEmailTo,
+          subject: testEmailSubject,
+          body: testEmailBody,
+        }),
+      });
+
+      const data = await response.json();
+      if (response.ok && data.success) {
+        setTestResult({ success: true, message: "Gửi Email thành công! Hãy kiểm tra hòm thư nhận." });
+        setTestEmailTo("");
+        setTestEmailSubject("");
+        setTestEmailBody("");
+      } else {
+        setTestResult({ success: false, message: data.message || "Gửi email thất bại. Hãy kiểm tra cấu hình SMTP!" });
+      }
+    } catch (err: any) {
+      setTestResult({ success: false, message: err.message || "Lỗi kết nối mạng hoặc server không phản hồi." });
+    } finally {
+      setSendingTest(false);
+    }
   };
 
   // Thêm mã giảm giá mới
@@ -189,6 +263,16 @@ export function AdminSettingsPage() {
           }`}
         >
           Mẫu In Hóa Đơn
+        </button>
+        <button
+          onClick={() => setActiveTab("smtp")}
+          className={`px-6 py-3 text-xs font-extrabold tracking-widest uppercase border-b-2 transition-all ${
+            activeTab === "smtp"
+              ? "border-black text-black"
+              : "border-transparent text-black/40 hover:text-black"
+          }`}
+        >
+          SMTP & Gửi Email
         </button>
       </div>
 
@@ -566,6 +650,176 @@ export function AdminSettingsPage() {
                 </div>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+      {/* TAB 4: SMTP GMAIL & FORM GỬI EMAIL THỦ CÔNG */}
+      {activeTab === "smtp" && (
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+          {/* Cột trái: Cấu hình SMTP Gmail */}
+          <div className="lg:col-span-6 space-y-6 rounded-2xl border border-black/10 bg-white p-6 shadow-sm text-xs font-semibold">
+            <div className="flex items-center gap-2 border-b border-black/5 pb-3">
+              <Settings className="h-4.5 w-4.5 text-black/60" />
+              <h3 className="text-xs font-extrabold tracking-widest text-black/75 uppercase">CẤU HÌNH GỬI EMAIL (SMTP)</h3>
+            </div>
+            
+            <p className="text-[10px] text-black/45 leading-relaxed font-medium">
+              Cấu hình SMTP gửi hóa đơn tự động và email quảng bá. Các thiết lập này sẽ lưu thẳng lên đám mây Neon DB Postgres.
+            </p>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-[10px] font-extrabold tracking-wider uppercase text-black/50 mb-1.5">Máy chủ SMTP (SMTP Host)</label>
+                <input
+                  value={smtpHost}
+                  onChange={(e) => setSmtpHost(e.target.value)}
+                  className="w-full rounded-xl border border-black/10 bg-stone-50 px-4 py-3 focus:bg-white focus:border-black/60 focus:outline-none transition-all font-mono"
+                  placeholder="Ví dụ: smtp.gmail.com"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-extrabold tracking-wider uppercase text-black/50 mb-1.5">Cổng SMTP (SMTP Port)</label>
+                <input
+                  type="number"
+                  value={smtpPort}
+                  onChange={(e) => setSmtpPort(Number(e.target.value))}
+                  className="w-full rounded-xl border border-black/10 bg-stone-50 px-4 py-3 focus:bg-white focus:border-black/60 focus:outline-none transition-all font-mono"
+                  placeholder="Ví dụ: 587 hoặc 465"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-extrabold tracking-wider uppercase text-black/50 mb-1.5">Tên hiển thị người gửi (Sender Name)</label>
+                <input
+                  value={smtpSenderName}
+                  onChange={(e) => setSmtpSenderName(e.target.value)}
+                  className="w-full rounded-xl border border-black/10 bg-stone-50 px-4 py-3 focus:bg-white focus:border-black/60 focus:outline-none transition-all"
+                  placeholder="Ví dụ: MADMAD STUDIO"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-extrabold tracking-wider uppercase text-black/50 mb-1.5">Tài khoản Gmail gửi (SMTP User)</label>
+                <div className="relative">
+                  <input
+                    value={smtpUser}
+                    onChange={(e) => setSmtpUser(e.target.value)}
+                    className="w-full rounded-xl border border-black/10 bg-stone-50 pl-10 pr-4 py-3 focus:bg-white focus:border-black/60 focus:outline-none transition-all font-mono"
+                    placeholder="email@gmail.com"
+                  />
+                  <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-black/35" />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-extrabold tracking-wider uppercase text-black/50 mb-1.5">Mật khẩu ứng dụng (SMTP App Password - 16 ký tự)</label>
+                <div className="relative">
+                  <input
+                    type="password"
+                    value={smtpPass}
+                    onChange={(e) => setSmtpPass(e.target.value)}
+                    className="w-full rounded-xl border border-black/10 bg-stone-50 pl-10 pr-4 py-3 focus:bg-white focus:border-black/60 focus:outline-none transition-all font-mono"
+                    placeholder="•••• •••• •••• ••••"
+                  />
+                  <Key className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-black/35" />
+                </div>
+                <p className="mt-1.5 text-[9px] text-red-600 font-bold leading-normal">
+                  ⚠️ Lưu ý: Đây là mật khẩu ứng dụng Gmail gồm 16 chữ cái được tạo từ trang quản lý tài khoản Google của bạn, không phải mật khẩu đăng nhập Gmail thường.
+                </p>
+              </div>
+            </div>
+
+            <div className="pt-4 border-t border-black/5">
+              <button
+                onClick={handleSaveSmtpSettings}
+                className="w-full rounded-xl bg-black px-6 py-3.5 text-xs font-bold tracking-widest uppercase text-white hover:bg-neutral-800 transition-all flex items-center justify-center gap-2 hover:scale-[1.01] active:scale-[0.99] shadow-md shadow-black/10"
+              >
+                <Save className="h-4.5 w-4.5" />
+                LƯU CẤU HÌNH SMTP
+              </button>
+            </div>
+          </div>
+
+          {/* Cột phải: Form Gửi Email Trực tiếp */}
+          <div className="lg:col-span-6 space-y-6 rounded-2xl border border-black/10 bg-white p-6 shadow-sm text-xs font-semibold h-fit">
+            <div className="flex items-center gap-2 border-b border-black/5 pb-3">
+              <Send className="h-4.5 w-4.5 text-black/60" />
+              <h3 className="text-xs font-extrabold tracking-widest text-black/75 uppercase">FORM GỬI GMAIL THỦ CÔNG</h3>
+            </div>
+
+            <p className="text-[10px] text-black/45 leading-relaxed font-medium">
+              Bạn có thể viết thư trực tiếp và gửi tay tới bất kỳ hòm thư của khách hàng nào bằng cấu hình SMTP vừa lưu ở bên trái.
+            </p>
+
+            {testResult && (
+              <div className={`p-3 border rounded-xl text-[10px] font-extrabold tracking-wide flex items-center gap-1.5 ${
+                testResult.success
+                  ? "bg-green-50 border-green-200 text-green-700"
+                  : "bg-red-50 border-red-200 text-red-700"
+              }`}>
+                <span className={`w-1.5 h-1.5 rounded-full ${testResult.success ? "bg-green-600" : "bg-red-600 animate-ping"}`} />
+                {testResult.message}
+              </div>
+            )}
+
+            <form onSubmit={handleSendTestEmail} className="space-y-4 font-semibold text-xs">
+              <div>
+                <label className="block text-[10px] font-extrabold tracking-wider uppercase text-black/50 mb-1.5">Email người nhận</label>
+                <input
+                  type="email"
+                  required
+                  value={testEmailTo}
+                  onChange={(e) => setTestEmailTo(e.target.value)}
+                  placeholder="khachhang@gmail.com"
+                  className="w-full rounded-xl border border-black/10 bg-stone-50 px-4 py-3 focus:bg-white focus:border-black/60 focus:outline-none transition-all"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-extrabold tracking-wider uppercase text-black/50 mb-1.5">Tiêu đề email</label>
+                <input
+                  type="text"
+                  required
+                  value={testEmailSubject}
+                  onChange={(e) => setTestEmailSubject(e.target.value)}
+                  placeholder="[MADMAD STUDIO] Cảm ơn bạn đã ghé thăm showroom!"
+                  className="w-full rounded-xl border border-black/10 bg-stone-50 px-4 py-3 focus:bg-white focus:border-black/60 focus:outline-none transition-all font-bold"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-extrabold tracking-wider uppercase text-black/50 mb-1.5">Nội dung email (Hỗ trợ xuống dòng)</label>
+                <textarea
+                  rows={6}
+                  required
+                  value={testEmailBody}
+                  onChange={(e) => setTestEmailBody(e.target.value)}
+                  placeholder="Nhập nội dung thư bạn muốn gửi tới khách hàng ở đây..."
+                  className="w-full rounded-xl border border-black/10 bg-stone-50 px-4 py-3 focus:bg-white focus:border-black/60 focus:outline-none transition-all font-medium leading-relaxed resize-none"
+                />
+              </div>
+
+              <div className="pt-2">
+                <button
+                  type="submit"
+                  disabled={sendingTest}
+                  className="w-full rounded-xl bg-black text-white hover:bg-red-700 disabled:bg-stone-300 h-11 text-xs font-bold tracking-widest uppercase transition-all flex items-center justify-center gap-1.5 shadow-md shadow-black/10"
+                >
+                  {sendingTest ? (
+                    <span className="flex items-center gap-2">
+                      <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      Đang xử lý gửi thư...
+                    </span>
+                  ) : (
+                    <span className="flex items-center gap-2">
+                      <Send className="h-4 w-4" />
+                      GỬI EMAIL NGAY
+                    </span>
+                  )}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

@@ -1,14 +1,15 @@
-import { createContext, useContext, useMemo, useState, type ReactNode } from "react";
+import { createContext, useContext, useMemo, useState, useEffect, type ReactNode } from "react";
 
 import { brandLogo } from "@/assets/images";
 import type { StorefrontSettings } from "@/types/storefront-settings";
+import { API_URL } from "@/config/api";
 
 const STOREFRONT_SETTINGS_STORAGE_KEY = "fashion-ecommerce.admin-settings-v2";
 
 export const DEFAULT_STOREFRONT_SETTINGS: StorefrontSettings = {
   logo: brandLogo,
   storeName: "MADMAD Studio",
-  storeEmail: "contact@madmad.studio",
+  storeEmail: "mmadmadstudio@gmail.com",
   storePhone: "+84 123 456 789",
   storeAddress: "123 Fashion Street, Ho Chi Minh City",
   heroImage:
@@ -61,6 +62,11 @@ export const DEFAULT_STOREFRONT_SETTINGS: StorefrontSettings = {
   printInvoicePhone: "Hotline: 099.999.9999",
   printInvoiceFooterSlogan: "CẢM ƠN QUÝ KHÁCH ĐÃ CHỌN MADMAD STUDIO!",
   printInvoicePolicy: "* Quý khách vui lòng kiểm tra kỹ sản phẩm khi nhận hàng. Đối với các yêu cầu đổi trả sản phẩm nguyên tag mác, xin hãy nhắn tin trực tiếp fanpage Facebook/Instagram của MADMAD Studio trong vòng 3 ngày kể từ ngày nhận hàng.",
+  smtpHost: "smtp.gmail.com",
+  smtpPort: 587,
+  smtpUser: "mmadmadstudio@gmail.com",
+  smtpPass: "yxmbctjhsxkyeznx",
+  smtpSenderName: "MADMAD STUDIO",
 };
 
 interface StorefrontSettingsContextValue {
@@ -154,6 +160,16 @@ function readStoredSettings(): StorefrontSettings {
         typeof parsed.printInvoiceFooterSlogan === "string" ? parsed.printInvoiceFooterSlogan : DEFAULT_STOREFRONT_SETTINGS.printInvoiceFooterSlogan,
       printInvoicePolicy:
         typeof parsed.printInvoicePolicy === "string" ? parsed.printInvoicePolicy : DEFAULT_STOREFRONT_SETTINGS.printInvoicePolicy,
+      smtpHost:
+        typeof parsed.smtpHost === "string" ? parsed.smtpHost : DEFAULT_STOREFRONT_SETTINGS.smtpHost,
+      smtpPort:
+        typeof parsed.smtpPort === "number" ? parsed.smtpPort : DEFAULT_STOREFRONT_SETTINGS.smtpPort,
+      smtpUser:
+        typeof parsed.smtpUser === "string" ? parsed.smtpUser : DEFAULT_STOREFRONT_SETTINGS.smtpUser,
+      smtpPass:
+        typeof parsed.smtpPass === "string" ? parsed.smtpPass : DEFAULT_STOREFRONT_SETTINGS.smtpPass,
+      smtpSenderName:
+        typeof parsed.smtpSenderName === "string" ? parsed.smtpSenderName : DEFAULT_STOREFRONT_SETTINGS.smtpSenderName,
     };
   } catch {
     return DEFAULT_STOREFRONT_SETTINGS;
@@ -163,6 +179,25 @@ function readStoredSettings(): StorefrontSettings {
 export function StorefrontSettingsProvider({ children }: { children: ReactNode }) {
   const [settings, setSettings] = useState<StorefrontSettings>(readStoredSettings);
 
+  // 📥 Tải đồng bộ cấu hình từ Postgres Cloud khi load app
+  useEffect(() => {
+    const fetchSettings = async () => {
+      try {
+        const response = await fetch(`${API_URL}/settings`);
+        if (response.ok) {
+          const cloudSettings = await response.json();
+          setSettings((current) => ({
+            ...current,
+            ...cloudSettings
+          }));
+        }
+      } catch (err) {
+        console.warn("⚠️ Không đồng bộ được cấu hình từ Postgres Cloud:", err);
+      }
+    };
+    fetchSettings();
+  }, []);
+
   const value = useMemo<StorefrontSettingsContextValue>(
     () => ({
       settings,
@@ -170,6 +205,14 @@ export function StorefrontSettingsProvider({ children }: { children: ReactNode }
         setSettings((currentSettings) => {
           const nextSettings = { ...currentSettings, ...payload };
           window.localStorage.setItem(STOREFRONT_SETTINGS_STORAGE_KEY, JSON.stringify(nextSettings));
+
+          // 📤 Tự động đồng bộ PUT lên Postgres DB
+          fetch(`${API_URL}/settings`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+          }).catch((err) => console.warn("⚠️ Lỗi đồng bộ cài đặt lên Postgres:", err));
+
           return nextSettings;
         });
       },

@@ -325,6 +325,9 @@ export function AdminOrdersPage() {
 
     const newItem: OrderItem = {
       product: selectedProductToAdd,
+      productId: selectedProductToAdd.id,
+      productName: selectedProductToAdd.name,
+      productImage: selectedProductToAdd.image,
       quantity: quantityToAdd,
       size: selectedSizeToAdd,
       color: finalColor,
@@ -333,7 +336,7 @@ export function AdminOrdersPage() {
 
     const existingIndex = manualItems.findIndex(
       (item) =>
-        item.product.id === newItem.product.id &&
+        (item.productId || item.product?.id) === (newItem.productId || newItem.product?.id) &&
         item.size === newItem.size &&
         item.color === newItem.color
     );
@@ -1014,13 +1017,13 @@ export function AdminOrdersPage() {
                         >
                           <div className="h-12 w-10 overflow-hidden rounded bg-stone-100 border border-black/5 flex-shrink-0 font-mono">
                             <ImageWithFallback
-                              src={item.product.image}
-                              alt={item.product.name}
+                              src={item.productImage || item.product?.image || ""}
+                              alt={item.productName || item.product?.name || ""}
                               className="h-full w-full object-cover"
                             />
                           </div>
                           <div className="flex-1 min-w-0">
-                            <p className="font-bold text-black uppercase truncate text-xs">{item.product.name}</p>
+                            <p className="font-bold text-black uppercase truncate text-xs">{item.productName || item.product?.name || ""}</p>
                             <p className="text-[9px] text-black/45 mt-0.5 uppercase">
                               Size: {item.size} | Màu: {item.color} | SL: {item.quantity}
                             </p>
@@ -1607,13 +1610,13 @@ export function AdminOrdersPage() {
                     >
                       <div className="h-16 w-14 overflow-hidden rounded-lg bg-stone-100 border border-black/5 flex-shrink-0">
                         <ImageWithFallback
-                          src={item.product.image}
-                          alt={item.product.name}
+                          src={item.productImage || item.product?.image || ""}
+                          alt={item.productName || item.product?.name || ""}
                           className="h-full w-full object-cover"
                         />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="font-bold text-black uppercase truncate text-xs">{item.product.name}</p>
+                        <p className="font-bold text-black uppercase truncate text-xs">{item.productName || item.product?.name || ""}</p>
                         <p className="text-[10px] text-black/45 mt-1 uppercase">
                           Size: {item.size} | Màu: {item.color} | Số lượng: {item.quantity}
                         </p>
@@ -1744,7 +1747,7 @@ export function AdminOrdersPage() {
               <tbody>
                 {selectedOrder.items.map((item, index) => (
                   <tr key={index} className="border-b border-black/10">
-                    <td className="py-3 uppercase font-bold font-sans">{item.product.name}</td>
+                    <td className="py-3 uppercase font-bold font-sans">{item.productName || item.product?.name || ""}</td>
                     <td className="py-3 uppercase text-black/70">Size: {item.size} | Màu: {item.color}</td>
                     <td className="py-3 text-center">{item.quantity}</td>
                     <td className="py-3 text-right">{item.price.toLocaleString("vi-VN")}₫</td>

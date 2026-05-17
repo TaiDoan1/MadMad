@@ -94,7 +94,14 @@ model StorefrontSetting {
   printInvoicePolicy       String?
   
   // Các trường cấu hình email, SĐT, địa chỉ cửa hàng đồng bộ Cloud
-  storeEmail               String? @default("contact@madmad.studio")
+  storeEmail               String? @default("mmadmadstudio@gmail.com")
   storePhone               String? @default("+84 123 456 789")
   storeAddress             String? @default("123 Fashion Street, Ho Chi Minh City")
+
+  // Cấu hình SMTP Gmail động điều khiển từ Admin
+  smtpHost                 String? @default("smtp.gmail.com")
+  smtpPort                 Int?    @default(587)
+  smtpUser                 String? @default("mmadmadstudio@gmail.com")
+  smtpPass                 String? @default("yxmbctjhsxkyeznx")
+  smtpSenderName           String? @default("MADMAD STUDIO")
 }

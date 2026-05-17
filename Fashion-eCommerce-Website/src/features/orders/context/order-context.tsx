@@ -14,8 +14,33 @@ interface OrderContextValue {
 const OrderContext = createContext<OrderContextValue | undefined>(undefined);
 
 export function OrderProvider({ children }: { children: ReactNode }) {
-  const [orders, setOrders] = useState<Order[]>([]);
+  const [orders, setOrdersState] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // 🛡️ Helper tự động chuyển đổi flat fields từ database Postgres sang nested object shippingAddress để tương thích ngược với giao diện UI cũ, tránh sập trang.
+  const mapOrderAddress = (order: any): Order => {
+    if (!order) return order;
+    return {
+      ...order,
+      shippingAddress: order.shippingAddress || {
+        street: order.street || "Mua trực tiếp tại Shop",
+        ward: order.ward || "",
+        district: order.district || "",
+        province: order.province || "",
+      }
+    };
+  };
+
+  const setOrders = (newOrders: any) => {
+    if (typeof newOrders === "function") {
+      setOrdersState((current) => {
+        const resolved = newOrders(current);
+        return resolved.map(mapOrderAddress);
+      });
+    } else {
+      setOrdersState(newOrders.map(mapOrderAddress));
+    }
+  };
 
   // 📥 Tải danh sách đơn hàng từ database Neon Postgres (Dành cho Admin Dashboard)
   const loadOrders = async () => {

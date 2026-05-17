@@ -218,11 +218,15 @@ export function TrackOrderPage() {
                       <div className="space-y-4 max-h-[300px] overflow-y-auto pr-2">
                         {order.items.map((item: any, i: number) => (
                           <div key={i} className="flex gap-4 items-center">
-                            <div className="w-14 h-16 bg-stone-50 border border-black/5 rounded-lg overflow-hidden flex-shrink-0 flex items-center justify-center text-xs font-bold text-black/30">
-                              IMG
+                            <div className="w-14 h-16 bg-stone-50 border border-black/5 rounded-lg overflow-hidden flex-shrink-0">
+                              <img
+                                src={item.productImage || item.product?.image || ""}
+                                alt={item.productName || item.product?.name || ""}
+                                className="w-full h-full object-cover"
+                              />
                             </div>
                             <div className="flex-1 min-w-0">
-                              <h4 className="text-xs font-bold text-black truncate uppercase">{item.product.name}</h4>
+                              <h4 className="text-xs font-bold text-black truncate uppercase">{item.productName || item.product?.name || ""}</h4>
                               <p className="text-[10px] text-black/40 mt-1 uppercase">
                                 Size: {item.size} | Màu: {item.color} | SL: {item.quantity}
                               </p>

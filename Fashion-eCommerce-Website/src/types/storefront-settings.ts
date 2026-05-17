@@ -32,4 +32,9 @@ export interface StorefrontSettings {
   printInvoicePhone: string;
   printInvoiceFooterSlogan: string;
   printInvoicePolicy: string;
+  smtpHost?: string;
+  smtpPort?: number;
+  smtpUser?: string;
+  smtpPass?: string;
+  smtpSenderName?: string;
 }

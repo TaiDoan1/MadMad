@@ -1,43 +1,65 @@
 import nodemailer from "nodemailer";
 import { prisma } from "../config/prisma";
 
-// Cấu hình SMTP động từ tệp .env (mặc định fallback ghi log bảng tin ra console nếu chưa cấu hình)
-const getTransporter = () => {
-  const host = process.env.SMTP_HOST;
-  const port = Number(process.env.SMTP_PORT || 587);
-  const user = process.env.SMTP_USER;
-  const pass = process.env.SMTP_PASS;
+// 🔮 Cấu hình SMTP động: Ưu tiên lấy cấu hình từ Neon Database (StorefrontSetting), nếu không có mới dùng biến môi trường làm fallback
+const getTransporter = async () => {
+  let host = process.env.SMTP_HOST;
+  let port = Number(process.env.SMTP_PORT || 587);
+  let user = process.env.SMTP_USER;
+  let pass = process.env.SMTP_PASS;
+  let senderName = "MADMAD STUDIO";
 
-  console.log("================= KIỂM TRA ĐỌC BIẾN MÔI TRƯỜNG SMTP =================");
+  try {
+    const setting = await prisma.storefrontSetting.findFirst({
+      orderBy: { id: "asc" }
+    });
+
+    if (setting) {
+      if (setting.smtpHost) host = setting.smtpHost.trim();
+      if (setting.smtpPort) port = Number(setting.smtpPort);
+      if (setting.smtpUser) user = setting.smtpUser.trim();
+      if (setting.smtpPass) pass = setting.smtpPass.trim();
+      if (setting.smtpSenderName) senderName = setting.smtpSenderName.trim();
+      console.log("🔮 [SMTP ENGINE] Đã áp dụng thành công cấu hình SMTP động từ Neon Postgres DB!");
+    }
+  } catch (error) {
+    console.warn("⚠️ Không đọc được SMTP từ DB, chuyển sang dùng biến môi trường .env làm dự phòng:", error);
+  }
+
+  console.log("================= KIỂM TRA ĐỌC CẤU HÌNH SMTP =================");
   console.log(`- SMTP_HOST: "${host || 'KHÔNG CÓ'}"`);
   console.log(`- SMTP_PORT: ${port}`);
   console.log(`- SMTP_USER: "${user || 'KHÔNG CÓ'}"`);
   console.log(`- SMTP_PASS: "${pass ? 'ĐÃ ĐIỀN (MÃ ĐƯỢC ẨN BẢO MẬT)' : 'KHÔNG CÓ'}"`);
+  console.log(`- SMTP_SENDER: "${senderName}"`);
   console.log("==================================================================");
 
   if (!host || !user || !pass) {
-    console.warn("⚠️ CẢNH BÁO: Chưa cấu hình đầy đủ SMTP credentials trong file .env. Hệ thống chuyển sang chế độ ghi log ra console!");
+    console.warn("⚠️ CẢNH BÁO: Chưa cấu hình đầy đủ SMTP credentials. Hệ thống chạy ở chế độ console log!");
     return null;
   }
 
-  return nodemailer.createTransport({
+  const transporter = nodemailer.createTransport({
     host,
     port,
-    secure: port === 465, // true nếu dùng port 465, false cho 587
+    secure: port === 465,
     auth: { user, pass },
   });
+
+  return { transporter, user, senderName };
 };
 
+// 📩 THƯ 1 & 2: Tự động gửi Email hóa đơn cho Khách & Admin khi đặt hàng thành công
 export async function sendOrderConfirmationEmail(order: any) {
   console.log(`\n📬 [EMAIL SERVICE] BẮT ĐẦU XỬ LÝ GỬI EMAIL ĐƠN HÀNG: ${order.orderNumber}`);
 
-  const transporter = getTransporter();
+  const smtpInfo = await getTransporter();
 
   // 1. Lấy Dynamic Admin Email cấu hình từ Database
-  let adminEmail = "contact@madmad.studio";
+  let adminEmail = "mmadmadstudio@gmail.com";
   try {
-    const setting = await prisma.storefrontSetting.findUnique({
-      where: { id: 1 }
+    const setting = await prisma.storefrontSetting.findFirst({
+      orderBy: { id: "asc" }
     });
     if (setting && setting.storeEmail) {
       adminEmail = setting.storeEmail.trim();
@@ -47,8 +69,8 @@ export async function sendOrderConfirmationEmail(order: any) {
     console.error("⚠️ Không lấy được storeEmail từ DB cấu hình, dùng mặc định:", error);
   }
 
-  // Nếu không có transporter (chưa điền .env), in hóa đơn ra console
-  if (!transporter) {
+  // Nếu không có transporter (chưa điền cấu hình), in hóa đơn ra console
+  if (!smtpInfo) {
     console.log("================= CHƯA CÓ SMTP - FALLBACK EMAIL LOG =================");
     console.log(`To Customer: ${order.customerEmail || "KHÔNG CÓ EMAIL"}`);
     console.log(`To Admin Gmail: ${adminEmail}`);
@@ -58,7 +80,9 @@ export async function sendOrderConfirmationEmail(order: any) {
     return;
   }
 
-  // 🧪 Thử nghiệm kiểm tra kết nối SMTP với Google bằng verify()
+  const { transporter, user, senderName } = smtpInfo;
+
+  // 🧪 Kiểm tra kết nối SMTP với máy chủ
   console.log("🔍 Đang bắt đầu kiểm tra kết nối xác thực đến máy chủ SMTP (transporter.verify())...");
   try {
     await transporter.verify();
@@ -66,7 +90,7 @@ export async function sendOrderConfirmationEmail(order: any) {
   } catch (verifyError: any) {
     console.error("❌ LỖI XÁC THỰC SMTP KHI KẾT NỐI GOOGLE:", verifyError);
     console.error("👉 Gợi ý khắc phục: Kiểm tra lại xem có copy dư dấu cách trong mật khẩu 16 chữ cái, hoặc gõ sai địa chỉ Gmail người gửi.");
-    return; // Dừng tiến trình gửi thư nếu kết nối cơ bản lỗi để bảo vệ hệ thống
+    return;
   }
 
   // Chi tiết hóa sản phẩm thành bảng HTML
@@ -101,7 +125,7 @@ export async function sendOrderConfirmationEmail(order: any) {
               <!-- Header -->
               <tr>
                 <td align="center" style="background-color: #000000; padding: 30px 20px;">
-                  <h1 style="color: #ffffff; margin: 0; font-size: 24px; letter-spacing: 4px; font-weight: 900;">MADMAD STUDIO</h1>
+                  <h1 style="color: #ffffff; margin: 0; font-size: 24px; letter-spacing: 4px; font-weight: 900;">${senderName}</h1>
                   <p style="color: #999999; margin: 5px 0 0 0; font-size: 11px; letter-spacing: 2px;">--- MADE FOR REBELS ---</p>
                 </td>
               </tr>
@@ -195,11 +219,11 @@ export async function sendOrderConfirmationEmail(order: any) {
               <tr>
                 <td style="background-color: #f9f9f9; padding: 30px; text-align: center; border-top: 1px solid #eeeeee;">
                   <p style="margin: 0; font-size: 11px; color: #888888; line-height: 1.5;">
-                    Thư thông báo tự động từ Hệ thống Quản trị Cửa hàng MADMAD Studio.<br>
-                    Mọi thắc mắc vui lòng liên hệ qua Hotline: <strong>+84 123 456 789</strong> hoặc gửi email về: <strong>contact@madmad.studio</strong>.
+                    Thư thông báo tự động từ Hệ thống Quản trị Cửa hàng ${senderName}.<br>
+                    Mọi thắc mắc vui lòng liên hệ qua Hotline: <strong>${order.storePhone || '+84 123 456 789'}</strong> hoặc gửi email về: <strong>${adminEmail}</strong>.
                   </p>
                   <p style="margin: 10px 0 0 0; font-size: 10px; color: #aaaaaa;">
-                    &copy; 2026 MADMAD Studio. All rights reserved.
+                    &copy; 2026 ${senderName}. All rights reserved.
                   </p>
                 </td>
               </tr>
@@ -215,34 +239,32 @@ export async function sendOrderConfirmationEmail(order: any) {
   if (order.customerEmail && order.customerEmail.trim()) {
     try {
       console.log(`- Đang chuẩn bị gửi email cho Khách hàng đến: ${order.customerEmail.trim()}`);
-      const customerMsg = `Chào bạn <strong>${order.customerName}</strong>,<br><br>Cám ơn bạn đã lựa chọn nổi loạn và khẳng định cá tính cùng <strong>MADMAD Studio</strong>. Chúng tôi xác nhận đã nhận được đơn hàng của bạn và đang tiến hành đóng gói siêu tốc!`;
+      const customerMsg = `Chào bạn <strong>${order.customerName}</strong>,<br><br>Cám ơn bạn đã lựa chọn nổi loạn và khẳng định cá tính cùng <strong>${senderName}</strong>. Chúng tôi xác nhận đã nhận được đơn hàng của bạn và đang tiến hành đóng gói siêu tốc!`;
       const customerHtml = getHtmlTemplate("Đặt Hàng Thành Công!", customerMsg);
 
       const customerInfo = await transporter.sendMail({
-        from: `"MADMAD Studio" <${process.env.SMTP_USER}>`,
+        from: `"${senderName}" <${user}>`,
         to: order.customerEmail.trim(),
-        subject: `[MADMAD STUDIO] ĐẶT HÀNG THÀNH CÔNG - ĐƠN HÀNG ${order.orderNumber}`,
+        subject: `[${senderName}] ĐẶT HÀNG THÀNH CÔNG - ĐƠN HÀNG ${order.orderNumber}`,
         html: customerHtml,
       });
       console.log(`✉️ KẾT QUẢ GỬI KHÁCH HÀNG: Đã gửi email thành công! MessageId: ${customerInfo.messageId}`);
     } catch (err) {
       console.error("❌ LỖI GỬI EMAIL CHO KHÁCH HÀNG:", err);
     }
-  } else {
-    console.log("- Khách hàng không cung cấp Email, bỏ qua gửi hóa đơn khách.");
   }
 
   // 📩 THƯ 2: Gửi thông báo cho Admin Gmail (Luôn gửi)
   if (adminEmail) {
     try {
       console.log(`- Đang chuẩn bị gửi email thông báo cho Admin đến: ${adminEmail}`);
-      const adminMsg = `Xin chào Admin,<br><br>Hệ thống MADMAD Studio vừa ghi nhận có **ĐƠN HÀNG MỚI ĐẶT THÀNH CÔNG** trên website! Vui lòng truy cập trang quản trị Admin để xử lý giao dịch.`;
+      const adminMsg = `Xin chào Admin,<br><br>Hệ thống ${senderName} vừa ghi nhận có **ĐƠN HÀNG MỚI ĐẶT THÀNH CÔNG** trên website! Vui lòng truy cập trang quản trị Admin để xử lý giao dịch.`;
       const adminHtml = getHtmlTemplate("Thông Báo: Có Đơn Hàng Mới!", adminMsg);
 
       const adminInfo = await transporter.sendMail({
-        from: `"Hệ Thống MADMAD" <${process.env.SMTP_USER}>`,
+        from: `"Hệ Thống ${senderName}" <${user}>`,
         to: adminEmail,
-        subject: `[MADMAD STUDIO - ADMIN] CÓ ĐƠN HÀNG MỚI CẦN XỬ LÝ - ${order.orderNumber}`,
+        subject: `[${senderName} - ADMIN] CÓ ĐƠN HÀNG MỚI CẦN XỬ LÝ - ${order.orderNumber}`,
         html: adminHtml,
       });
       console.log(`✉️ KẾT QUẢ GỬI ADMIN GMAIL: Đã gửi thông báo thành công! MessageId: ${adminInfo.messageId}`);
@@ -250,4 +272,78 @@ export async function sendOrderConfirmationEmail(order: any) {
       console.error("❌ LỖI GỬI EMAIL THÔNG BÁO CHO ADMIN GMAIL:", err);
     }
   }
+}
+
+// 📬 THƯ 3: Hàm gửi Email Thủ công trực tiếp từ Admin Form
+export async function sendManualCustomEmail(to: string, subject: string, body: string) {
+  console.log(`\n📬 [EMAIL SERVICE] BẮT ĐẦU GỬI EMAIL THỦ CÔNG ĐẾN: ${to}`);
+
+  const smtpInfo = await getTransporter();
+
+  if (!smtpInfo) {
+    throw new Error("Chưa cấu hình thông tin SMTP để gửi mail! Hãy vào cài đặt SMTP trong Admin để cấu hình.");
+  }
+
+  const { transporter, user, senderName } = smtpInfo;
+
+  // Kiểm thử xác thực
+  await transporter.verify();
+
+  // Khung template Email Minimalist Noir cực đẹp
+  const htmlContent = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <title>${subject}</title>
+    </head>
+    <body style="margin: 0; padding: 0; background-color: #f6f6f6; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+      <table width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color: #f6f6f6; padding: 20px 0;">
+        <tr>
+          <td align="center">
+            <table width="600" border="0" cellspacing="0" cellpadding="0" style="background-color: #ffffff; border: 1px solid #e5e5e5; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.03);">
+              <!-- Header -->
+              <tr>
+                <td align="center" style="background-color: #000000; padding: 25px 20px;">
+                  <h1 style="color: #ffffff; margin: 0; font-size: 20px; letter-spacing: 4px; font-weight: 900;">${senderName}</h1>
+                  <p style="color: #999999; margin: 5px 0 0 0; font-size: 10px; letter-spacing: 2px;">--- THƯ TRỰC TIẾP ---</p>
+                </td>
+              </tr>
+              
+              <!-- Content Body -->
+              <tr>
+                <td style="padding: 40px 30px; font-size: 14px; color: #333333; line-height: 1.6;">
+                  ${body.replace(/\n/g, "<br>")}
+                </td>
+              </tr>
+
+              <!-- Footer -->
+              <tr>
+                <td style="background-color: #f9f9f9; padding: 25px; text-align: center; border-top: 1px solid #eeeeee;">
+                  <p style="margin: 0; font-size: 11px; color: #888888; line-height: 1.5;">
+                    Thư gửi từ Ban Quản Trị Hệ thống Cửa hàng ${senderName}.<br>
+                    Để hỗ trợ khẩn cấp, xin vui lòng phản hồi (reply) trực tiếp email này.
+                  </p>
+                  <p style="margin: 10px 0 0 0; font-size: 10px; color: #aaaaaa;">
+                    &copy; 2026 ${senderName}. All rights reserved.
+                  </p>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+      </table>
+    </body>
+    </html>
+  `;
+
+  const info = await transporter.sendMail({
+    from: `"${senderName}" <${user}>`,
+    to,
+    subject,
+    html: htmlContent,
+  });
+
+  console.log(`✉️ KẾT QUẢ GỬI EMAIL THỦ CÔNG THÀNH CÔNG! MessageId: ${info.messageId}`);
+  return info;
 }

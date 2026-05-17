@@ -1,7 +1,10 @@
 import type { Product } from "@/types/product";
 
 export interface OrderItem {
-  product: Product;
+  product?: Product;
+  productId?: string;
+  productName?: string;
+  productImage?: string;
   quantity: number;
   size: string;
   color: string;

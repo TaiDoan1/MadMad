@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { prisma } from "../config/prisma";
+import { sendManualCustomEmail } from "../services/email.service";
 
 const router = Router();
 
@@ -11,7 +12,7 @@ router.get("/", async (req, res, next) => {
     });
 
     if (!setting) {
-      // Khởi tạo cấu hình mặc định ban đầu
+      // Khởi tạo cấu hình mặc định ban đầu bao gồm cả SMTP
       setting = await prisma.storefrontSetting.create({
         data: {
           id: 1,
@@ -28,9 +29,14 @@ router.get("/", async (req, res, next) => {
           printInvoicePhone: "Hotline: 099.999.9999",
           printInvoiceFooterSlogan: "CẢM ƠN QUÝ KHÁCH ĐÃ CHỌN MADMAD STUDIO!",
           printInvoicePolicy: "* Quý khách vui lòng kiểm tra kỹ sản phẩm khi nhận hàng. Đối với các yêu cầu đổi trả sản phẩm nguyên tag mác, xin hãy nhắn tin trực tiếp fanpage Facebook/Instagram của MADMAD Studio trong vòng 3 ngày kể từ ngày nhận hàng.",
-          storeEmail: "contact@madmad.studio",
+          storeEmail: "mmadmadstudio@gmail.com",
           storePhone: "+84 123 456 789",
-          storeAddress: "123 Fashion Street, Ho Chi Minh City"
+          storeAddress: "123 Fashion Street, Ho Chi Minh City",
+          smtpHost: "smtp.gmail.com",
+          smtpPort: 587,
+          smtpUser: "mmadmadstudio@gmail.com",
+          smtpPass: "yxmbctjhsxkyeznx",
+          smtpSenderName: "MADMAD STUDIO"
         }
       });
     }
@@ -45,7 +51,7 @@ router.get("/", async (req, res, next) => {
   }
 });
 
-// 2. PUT /api/settings - Cập nhật cấu hình Storefront (Admin)
+// 2. PUT /api/settings - Cập nhật cấu hình Storefront (Admin) bao gồm SMTP
 router.put("/", async (req, res, next) => {
   try {
     const {
@@ -66,7 +72,14 @@ router.put("/", async (req, res, next) => {
       // Nhận diện cấu hình cửa hàng mới
       storeEmail,
       storePhone,
-      storeAddress
+      storeAddress,
+
+      // Nhận diện SMTP cấu hình mới
+      smtpHost,
+      smtpPort,
+      smtpUser,
+      smtpPass,
+      smtpSenderName
     } = req.body;
 
     const instagramImagesStr = Array.isArray(instagramImages) 
@@ -93,7 +106,14 @@ router.put("/", async (req, res, next) => {
         // Cập nhật cấu hình cửa hàng
         storeEmail,
         storePhone,
-        storeAddress
+        storeAddress,
+
+        // Cập nhật SMTP động
+        smtpHost,
+        smtpPort: smtpPort ? Number(smtpPort) : undefined,
+        smtpUser,
+        smtpPass,
+        smtpSenderName
       },
       create: {
         id: 1,
@@ -114,7 +134,14 @@ router.put("/", async (req, res, next) => {
         // Khởi tạo cấu hình cửa hàng
         storeEmail: storeEmail || "contact@madmad.studio",
         storePhone: storePhone || "+84 123 456 789",
-        storeAddress: storeAddress || "123 Fashion Street, Ho Chi Minh City"
+        storeAddress: storeAddress || "123 Fashion Street, Ho Chi Minh City",
+
+        // Khởi tạo SMTP động
+        smtpHost: smtpHost || "smtp.gmail.com",
+        smtpPort: smtpPort ? Number(smtpPort) : 587,
+        smtpUser: smtpUser || "mmadmadstudio@gmail.com",
+        smtpPass: smtpPass || "yxmbctjhsxkyeznx",
+        smtpSenderName: smtpSenderName || "MADMAD STUDIO"
       }
     });
 
@@ -124,6 +151,32 @@ router.put("/", async (req, res, next) => {
     });
   } catch (error) {
     next(error);
+  }
+});
+
+// 3. POST /api/settings/send-test-email - Gửi email thủ công trực tiếp từ Admin Form
+router.post("/send-test-email", async (req, res, next) => {
+  try {
+    const { to, subject, body } = req.body;
+
+    if (!to || !subject || !body) {
+      return res.status(400).json({ message: "Vui lòng điền đầy đủ các thông tin: Người nhận, Tiêu đề và Nội dung thư!" });
+    }
+
+    console.log(`📡 [API DIRECT MAIL] Yêu cầu gửi mail thủ công tới: "${to}"`);
+    const info = await sendManualCustomEmail(to.trim(), subject.trim(), body.trim());
+
+    res.json({
+      success: true,
+      message: "Gửi email thành công!",
+      messageId: info.messageId
+    });
+  } catch (error: any) {
+    console.error("❌ Lỗi khi gửi email thủ công từ API:", error);
+    res.status(500).json({
+      success: false,
+      message: error.message || "Gửi email thất bại! Vui lòng kiểm tra lại cấu hình SMTP của bạn."
+    });
   }
 });
 
