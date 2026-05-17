@@ -426,11 +426,11 @@
 }
 
 .curtain-slide-in {
-  animation: curtainSlideIn 0.8s cubic-bezier(0.76, 0, 0.24, 1) forwards;
+  animation: curtainSlideIn 0.65s cubic-bezier(0.76, 0, 0.24, 1) forwards;
 }
 
 .curtain-slide-out {
-  animation: curtainSlideOut 0.5s cubic-bezier(0.76, 0, 0.24, 1) 0.2s forwards;
+  animation: curtainSlideOut 0.4s cubic-bezier(0.76, 0, 0.24, 1) 0.18s forwards;
 }
 
 /* ── Curtain logo: dramatic slide-up + bounce on white curtain ── */
@@ -460,7 +460,7 @@
 }
 
 .curtain-logo {
-  animation: curtainLogoIn 0.85s cubic-bezier(0.34, 1.56, 0.64, 1) 0.15s both;
+  animation: curtainLogoIn 0.7s cubic-bezier(0.34, 1.56, 0.64, 1) 0.12s both;
 }
 
 /* ── Splash / Welcome Screen ──────────────────────────────────────────── */

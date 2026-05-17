@@ -1,16 +1,16 @@
 import { useState } from "react";
 import { LayoutDashboard, LogOut, Menu, Monitor, Package, Settings, ShoppingBag } from "lucide-react";
-import { Link, Outlet, useLocation, useNavigate } from "react-router";
+import { Link, Outlet, useLocation } from "react-router";
 
 import { brandLogo } from "@/assets/images";
 import { LoadingBar } from "@/components/common/loading-bar";
-import { PageTransition } from "@/components/common/page-transition";
+import { PageTransition, useTransitionTo } from "@/components/common/page-transition";
 import { useAdminAuth } from "@/features/auth/context/admin-auth-context";
 
 export function AdminLayout() {
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const navigate = useNavigate();
+  const navigate = useTransitionTo();
   const { logoutAdmin } = useAdminAuth();
 
   const isActive = (path: string) => location.pathname === path;

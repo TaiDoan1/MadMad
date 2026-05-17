@@ -1,11 +1,11 @@
 import { useEffect, useState } from "react";
 import { Heart, Menu, Search, ShoppingCart, User, X } from "lucide-react";
-import { Link, Outlet, useLocation, useNavigate } from "react-router";
+import { Link, Outlet, useLocation } from "react-router";
 
 import { brandLogo } from "@/assets/images";
 import { CartDrawer } from "@/components/common/cart-drawer";
 import { LoadingBar } from "@/components/common/loading-bar";
-import { PageTransition } from "@/components/common/page-transition";
+import { PageTransition, useTransitionTo } from "@/components/common/page-transition";
 import { SplashScreen } from "@/components/common/splash-screen";
 import { useAdminAuth } from "@/features/auth/context/admin-auth-context";
 import { useCart } from "@/features/cart/context/cart-context";
@@ -20,7 +20,7 @@ export function MainLayout() {
   const [adminLoginError, setAdminLoginError] = useState("");
   const [isScrolled, setIsScrolled] = useState(false);
   const location = useLocation();
-  const navigate = useNavigate();
+  const navigate = useTransitionTo();
   const { isAdminAuthenticated, loginAdmin, logoutAdmin } = useAdminAuth();
   const { itemCount: cartCount } = useCart();
   const isHome = location.pathname === "/";

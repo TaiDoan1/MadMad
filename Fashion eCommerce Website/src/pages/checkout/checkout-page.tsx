@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { ArrowLeft, ShoppingBag } from "lucide-react";
-import { Link, useNavigate } from "react-router";
+import { Link } from "react-router";
 
 import { ImageWithFallback } from "@/components/common/image-with-fallback";
 import { brandLogo } from "@/assets/images";
+import { useTransitionTo } from "@/components/common/page-transition";
 import { useCart } from "@/features/cart/context/cart-context";
 import {
   getDistrictNameByCode,
@@ -35,7 +36,7 @@ export function CheckoutPage() {
     clearCoupon,
     clearCart,
   } = useCart();
-  const navigate = useNavigate();
+  const navigate = useTransitionTo();
 
   const [formData, setFormData] = useState({
     fullName: "",
