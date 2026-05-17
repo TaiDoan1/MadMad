@@ -106,7 +106,6 @@ export function OrderSuccessModal({
           <AnimatedText text="CẢM ƠN" delay={200} />
           <br />
           <AnimatedText text={customerName.toUpperCase() || "BẠN"} delay={600} />
-          <span className="order-success-title-accent">!</span>
         </h2>
 
         <p className="order-success-subtitle">
@@ -132,7 +131,7 @@ export function OrderSuccessModal({
         </div>
 
         <p className="order-success-note">
-          Chúng tôi sẽ liên hệ xác nhận và giao hàng sớm nhất có thể 🚀
+          Chúng tôi sẽ liên hệ xác nhận và giao hàng sớm nhất có thể
         </p>
 
         {/* CTA button */}
