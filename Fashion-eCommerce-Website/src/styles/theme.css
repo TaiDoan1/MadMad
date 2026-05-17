@@ -147,7 +147,7 @@
     font-size: var(--text-2xl);
     font-weight: 400;
     line-height: 1.1;
-    font-family: 'Bayon', sans-serif;
+    font-family: 'Oswald', sans-serif;
     text-transform: uppercase;
     letter-spacing: 0.03em;
   }
@@ -156,7 +156,7 @@
     font-size: var(--text-xl);
     font-weight: 400;
     line-height: 1.15;
-    font-family: 'Bayon', sans-serif;
+    font-family: 'Oswald', sans-serif;
     text-transform: uppercase;
     letter-spacing: 0.03em;
   }
@@ -165,7 +165,7 @@
     font-size: var(--text-lg);
     font-weight: 400;
     line-height: 1.2;
-    font-family: 'Bayon', sans-serif;
+    font-family: 'Oswald', sans-serif;
     text-transform: uppercase;
     letter-spacing: 0.03em;
   }
@@ -174,7 +174,7 @@
     font-size: var(--text-base);
     font-weight: 400;
     line-height: 1.3;
-    font-family: 'Bayon', sans-serif;
+    font-family: 'Oswald', sans-serif;
     text-transform: uppercase;
     letter-spacing: 0.03em;
   }
