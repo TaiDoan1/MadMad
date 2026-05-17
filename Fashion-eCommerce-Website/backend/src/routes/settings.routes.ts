@@ -27,7 +27,10 @@ router.get("/", async (req, res, next) => {
           printInvoiceAddress: "Showroom: 254 Nguyễn Trãi, Q.5, TP.HCM",
           printInvoicePhone: "Hotline: 099.999.9999",
           printInvoiceFooterSlogan: "CẢM ƠN QUÝ KHÁCH ĐÃ CHỌN MADMAD STUDIO!",
-          printInvoicePolicy: "* Quý khách vui lòng kiểm tra kỹ sản phẩm khi nhận hàng. Đối với các yêu cầu đổi trả sản phẩm nguyên tag mác, xin hãy nhắn tin trực tiếp fanpage Facebook/Instagram của MADMAD Studio trong vòng 3 ngày kể từ ngày nhận hàng."
+          printInvoicePolicy: "* Quý khách vui lòng kiểm tra kỹ sản phẩm khi nhận hàng. Đối với các yêu cầu đổi trả sản phẩm nguyên tag mác, xin hãy nhắn tin trực tiếp fanpage Facebook/Instagram của MADMAD Studio trong vòng 3 ngày kể từ ngày nhận hàng.",
+          storeEmail: "contact@madmad.studio",
+          storePhone: "+84 123 456 789",
+          storeAddress: "123 Fashion Street, Ho Chi Minh City"
         }
       });
     }
@@ -58,7 +61,12 @@ router.put("/", async (req, res, next) => {
       printInvoiceAddress,
       printInvoicePhone,
       printInvoiceFooterSlogan,
-      printInvoicePolicy
+      printInvoicePolicy,
+      
+      // Nhận diện cấu hình cửa hàng mới
+      storeEmail,
+      storePhone,
+      storeAddress
     } = req.body;
 
     const instagramImagesStr = Array.isArray(instagramImages) 
@@ -80,7 +88,12 @@ router.put("/", async (req, res, next) => {
         printInvoiceAddress,
         printInvoicePhone,
         printInvoiceFooterSlogan,
-        printInvoicePolicy
+        printInvoicePolicy,
+        
+        // Cập nhật cấu hình cửa hàng
+        storeEmail,
+        storePhone,
+        storeAddress
       },
       create: {
         id: 1,
@@ -96,7 +109,12 @@ router.put("/", async (req, res, next) => {
         printInvoiceAddress,
         printInvoicePhone,
         printInvoiceFooterSlogan,
-        printInvoicePolicy
+        printInvoicePolicy,
+        
+        // Khởi tạo cấu hình cửa hàng
+        storeEmail: storeEmail || "contact@madmad.studio",
+        storePhone: storePhone || "+84 123 456 789",
+        storeAddress: storeAddress || "123 Fashion Street, Ho Chi Minh City"
       }
     });
 

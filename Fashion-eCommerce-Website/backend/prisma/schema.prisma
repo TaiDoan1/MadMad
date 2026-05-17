@@ -92,4 +92,9 @@ model StorefrontSetting {
   printInvoicePhone        String?
   printInvoiceFooterSlogan String?
   printInvoicePolicy       String?
+  
+  // Các trường cấu hình email, SĐT, địa chỉ cửa hàng đồng bộ Cloud
+  storeEmail               String? @default("contact@madmad.studio")
+  storePhone               String? @default("+84 123 456 789")
+  storeAddress             String? @default("123 Fashion Street, Ho Chi Minh City")
 }

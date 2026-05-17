@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { prisma } from "../config/prisma";
+import { sendOrderConfirmationEmail } from "../services/email.service";
 
 const router = Router();
 
@@ -176,6 +177,11 @@ router.post("/", async (req, res, next) => {
     if (newOrder.status === "completed") {
       await processVipPoints(newOrder.customerPhone, newOrder.customerEmail, newOrder.total);
     }
+
+    // Gửi email tự động thông báo đặt hàng thành công! (Tự động gửi cho cả Khách hàng và Admin Gmail)
+    sendOrderConfirmationEmail(newOrder).catch((err) => {
+      console.error("❌ Lỗi gửi email xác nhận đơn hàng:", err);
+    });
 
     res.status(201).json(newOrder);
   } catch (error) {
