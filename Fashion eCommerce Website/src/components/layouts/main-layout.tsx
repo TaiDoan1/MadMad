@@ -106,8 +106,8 @@ export function MainLayout() {
 
               <nav className="hidden items-center gap-8 text-[11px] font-bold tracking-[0.2em] lg:flex">
                 {[
+                  { path: "/",            label: "HOME" },
                   { path: "/shop",        label: "CỬA HÀNG" },
-                  { path: "/about",       label: "GIỚI THIỆU" },
                   { path: "/contact",     label: "LIÊN HỆ" },
                 ].map((item) => (
                   <Link
