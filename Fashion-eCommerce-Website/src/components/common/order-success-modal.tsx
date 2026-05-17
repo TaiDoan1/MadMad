@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { Package, ArrowRight, Sparkles } from "lucide-react";
+import { useNavigate } from "react-router";
+import { Package, ArrowRight, Sparkles, Search } from "lucide-react";
 import { brandLogo } from "@/assets/images";
 
 interface OrderSuccessModalProps {
@@ -52,6 +53,7 @@ export function OrderSuccessModal({
   total,
   onClose,
 }: OrderSuccessModalProps) {
+  const navigate = useNavigate();
   const [visible, setVisible] = useState(false);
   const [closing, setClosing] = useState(false);
 
@@ -131,13 +133,25 @@ export function OrderSuccessModal({
         </div>
 
         <p className="order-success-note">
-          Chúng tôi sẽ liên hệ xác nhận và giao hàng sớm nhất có thể
+          Mã đơn hàng đã được gửi về Gmail, quý khách vui lòng dùng mã đơn hàng để tra cứu nhé!
         </p>
 
         {/* CTA button */}
         <button className="order-success-btn" onClick={handleClose}>
           <span>Tiếp tục mua sắm</span>
           <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+        </button>
+
+        {/* Track Order Button */}
+        <button 
+          className="w-full mt-3 py-3 border border-stone-850 hover:border-stone-500 text-stone-500 hover:text-white rounded-xl text-[10px] font-extrabold tracking-widest uppercase transition-all duration-300 flex items-center justify-center gap-1.5 cursor-pointer bg-transparent"
+          onClick={() => {
+            handleClose();
+            navigate("/track-order");
+          }}
+        >
+          <Search className="h-3.5 w-3.5" />
+          <span>Tra cứu đơn hàng</span>
         </button>
       </div>
     </div>

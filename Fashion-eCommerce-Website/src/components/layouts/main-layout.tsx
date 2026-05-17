@@ -208,7 +208,7 @@ export function MainLayout() {
                   { path: "/",            label: "TRANG CHỦ" },
                   { path: "/shop",        label: "CỬA HÀNG" },
                   { path: "/membership",  label: "THÀNH VIÊN" },
-                  { path: "/track-order",  label: "TRA CỨU ĐƠN hàng" },
+                  { path: "/track-order",  label: "TRA CỨU ĐƠN HÀNG" },
                   { path: "/about",       label: "GIỚI THIỆU" },
                   { path: "/contact",     label: "LIÊN HỆ" },
                 ].map((item) => (
@@ -240,14 +240,6 @@ export function MainLayout() {
                       </span>
                     )}
                   </Link>
-                  <button className="flex w-full items-center gap-3 rounded-lg px-4 py-3 transition-bounce hover:bg-muted hover:scale-105 active:scale-105 active:bg-muted" onClick={() => { setMobileMenuOpen(false); navigate("/track-order"); }}>
-                    <Search className="h-5 w-5" />
-                    <span className="font-medium text-xs">Tra cứu đơn hàng</span>
-                  </button>
-                  <button className="flex w-full items-center gap-3 rounded-lg px-4 py-3 transition-bounce hover:bg-muted hover:scale-105 active:scale-105 active:bg-muted" onClick={() => { setMobileMenuOpen(false); navigate("/membership"); }}>
-                    <User className="h-5 w-5" />
-                    <span className="font-medium text-xs">Thành viên MADMAD</span>
-                  </button>
                   <button className="flex w-full items-center gap-3 rounded-lg px-4 py-3 transition-bounce hover:bg-muted hover:scale-105 active:scale-105 active:bg-muted" onClick={handleOpenAdmin}>
                     <User className="h-5 w-5" />
                     <span className="font-medium text-xs">{isAdminAuthenticated ? "Vào Admin" : "Đăng nhập Admin"}</span>

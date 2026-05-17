@@ -434,7 +434,7 @@ export function MembershipPage() {
                   className="w-full bg-black text-white hover:bg-red-700 h-12 text-xs font-bold tracking-widest uppercase transition-all rounded-lg flex items-center justify-center gap-2 mt-4"
                 >
                   <UserCheck className="h-4 w-4" />
-                  Kích hoạt thẻ VIP Bảo Mật
+                  Đăng ký thành viên VIP
                 </button>
               </form>
             ) : (
@@ -473,7 +473,7 @@ export function MembershipPage() {
                   type="submit"
                   className="w-full bg-black text-white hover:bg-red-700 h-12 text-xs font-bold tracking-widest uppercase transition-all rounded-lg flex items-center justify-center gap-2 mt-4"
                 >
-                  Mở khóa VIP Black Card
+                  Đăng nhập
                   <ArrowRight className="h-4 w-4" />
                 </button>
               </form>
@@ -492,7 +492,7 @@ export function MembershipPage() {
                   }}
                   className="font-bold text-red-600 hover:text-red-700 transition-colors uppercase ml-1"
                 >
-                  {isRegister ? "Đăng nhập ngay" : "Kích hoạt thẻ thành viên"}
+                  {isRegister ? "Đăng nhập ngay" : "Đăng ký ngay"}
                 </button>
               </p>
             </div>
