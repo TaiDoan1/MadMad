@@ -104,12 +104,9 @@ export function MainLayout() {
                 <Menu className="h-6 w-6" />
               </button>
 
-              <nav className="hidden items-center gap-5 text-[11px] font-bold tracking-[0.2em] lg:flex">
+              <nav className="hidden items-center gap-8 text-[11px] font-bold tracking-[0.2em] lg:flex">
                 {[
-                  { path: "/",            label: "TRANG CHỦ" },
                   { path: "/shop",        label: "CỬA HÀNG" },
-                  { path: "/membership",  label: "THÀNH VIÊN" },
-                  { path: "/track-order",  label: "TRA CỨU ĐƠN" },
                   { path: "/about",       label: "GIỚI THIỆU" },
                   { path: "/contact",     label: "LIÊN HỆ" },
                 ].map((item) => (
