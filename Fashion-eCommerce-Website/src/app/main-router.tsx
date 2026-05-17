@@ -1,7 +1,5 @@
 import { createBrowserRouter } from "react-router";
 
-import { AdminRouteGuard } from "@/components/auth/admin-route-guard";
-import { AdminLayout } from "@/components/layouts/admin-layout";
 import { MainLayout } from "@/components/layouts/main-layout";
 
 export const router = createBrowserRouter([
@@ -69,11 +67,17 @@ export const router = createBrowserRouter([
   },
   {
     path: "/admin",
-    Component: AdminRouteGuard,
+    lazy: async () => {
+      const module = await import("@/components/auth/admin-route-guard");
+      return { Component: module.AdminRouteGuard };
+    },
     children: [
       {
         path: "",
-        Component: AdminLayout,
+        lazy: async () => {
+          const module = await import("@/components/layouts/admin-layout");
+          return { Component: module.AdminLayout };
+        },
         children: [
       {
         index: true,
