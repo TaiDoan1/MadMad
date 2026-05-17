@@ -853,3 +853,287 @@
   stroke-dashoffset: 3000;
   animation: drawText 1.5s ease-in-out forwards;
 }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   Order Success Modal
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Backdrop ─────────────────────────────────────────────────────────── */
+.order-success-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  transition: background-color 0.4s ease, backdrop-filter 0.4s ease;
+}
+
+.order-success-backdrop--in {
+  background-color: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(6px);
+}
+
+.order-success-backdrop--out {
+  background-color: rgba(0, 0, 0, 0);
+  backdrop-filter: blur(0px);
+}
+
+/* ── Card ─────────────────────────────────────────────────────────────── */
+@keyframes orderCardIn {
+  0%   { opacity: 0; transform: translateY(60px) scale(0.88); }
+  60%  { opacity: 1; transform: translateY(-8px) scale(1.02); }
+  80%  { transform: translateY(4px) scale(0.99); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes orderCardOut {
+  from { opacity: 1; transform: translateY(0) scale(1); }
+  to   { opacity: 0; transform: translateY(40px) scale(0.92); }
+}
+
+.order-success-card {
+  position: relative;
+  width: 100%;
+  max-width: 420px;
+  background: #ffffff;
+  border-radius: 20px;
+  padding: 2.5rem 2rem 2rem;
+  text-align: center;
+  overflow: hidden;
+  box-shadow:
+    0 32px 80px rgba(0, 0, 0, 0.22),
+    0 8px 24px rgba(0, 0, 0, 0.12);
+}
+
+.order-success-card--in {
+  animation: orderCardIn 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+.order-success-card--out {
+  animation: orderCardOut 0.35s ease-in both;
+}
+
+/* ── Shimmer stripe at top ─────────────────────────────────────────────── */
+@keyframes stripeShimmer {
+  0%   { background-position: -400px 0; }
+  100% { background-position: 400px 0; }
+}
+
+.order-success-stripe {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(
+    90deg,
+    #aa1e22 0%,
+    #D4A373 35%,
+    #1a1a1a 50%,
+    #D4A373 65%,
+    #aa1e22 100%
+  );
+  background-size: 400px 100%;
+  animation: stripeShimmer 2.5s linear infinite;
+}
+
+/* ── Check icon ────────────────────────────────────────────────────────── */
+@keyframes iconPopIn {
+  0%   { opacity: 0; transform: scale(0) rotate(-30deg); }
+  60%  { opacity: 1; transform: scale(1.2) rotate(8deg); }
+  80%  { transform: scale(0.93) rotate(-3deg); }
+  100% { opacity: 1; transform: scale(1) rotate(0deg); }
+}
+
+@keyframes ringPulse {
+  0%   { transform: scale(0.8); opacity: 0.8; }
+  100% { transform: scale(1.8); opacity: 0; }
+}
+
+.order-success-icon-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 1.25rem;
+}
+
+.order-success-icon-ring {
+  position: absolute;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  border: 2px solid #aa1e22;
+  animation: ringPulse 1.4s ease-out 0.4s infinite;
+}
+
+.order-success-icon {
+  width: 56px;
+  height: 56px;
+  color: #aa1e22;
+  animation: iconPopIn 0.7s cubic-bezier(0.34, 1.56, 0.64, 1) 0.15s both;
+}
+
+/* ── Sparkle icons ─────────────────────────────────────────────────────── */
+@keyframes sparkleSpin {
+  0%   { opacity: 0; transform: scale(0) rotate(0deg); }
+  50%  { opacity: 1; transform: scale(1.2) rotate(180deg); }
+  100% { opacity: 0; transform: scale(0.8) rotate(360deg); }
+}
+
+.order-success-sparkle {
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  color: #D4A373;
+  animation: sparkleSpin 1.8s ease-in-out 0.5s infinite;
+}
+
+.order-success-sparkle--tl { top: -4px; left: -8px; animation-delay: 0.5s; }
+.order-success-sparkle--br { bottom: -4px; right: -8px; animation-delay: 1.1s; }
+
+/* ── Animated title characters ─────────────────────────────────────────── */
+@keyframes charDropIn {
+  0%   { opacity: 0; transform: translateY(-30px) scale(0.6) rotate(-10deg); }
+  60%  { opacity: 1; transform: translateY(4px) scale(1.1) rotate(2deg); }
+  80%  { transform: translateY(-2px) scale(0.97) rotate(-1deg); }
+  100% { opacity: 1; transform: translateY(0) scale(1) rotate(0deg); }
+}
+
+.order-success-char {
+  display: inline-block;
+  opacity: 0;
+  animation: charDropIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+.order-success-title {
+  font-family: 'Bayon', sans-serif;
+  font-size: clamp(1.75rem, 6vw, 2.25rem);
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  line-height: 1.1;
+  color: #1a1a1a;
+  margin-bottom: 0.5rem;
+  text-transform: uppercase;
+}
+
+.order-success-title-accent {
+  color: #aa1e22;
+  font-size: 2.75rem;
+  line-height: 0.8;
+  vertical-align: bottom;
+}
+
+.order-success-subtitle {
+  font-size: 0.8rem;
+  color: #6b6b6b;
+  letter-spacing: 0.05em;
+  margin-bottom: 1.5rem;
+}
+
+/* ── Info box ──────────────────────────────────────────────────────────── */
+@keyframes infoSlideUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.order-success-info {
+  background: #f7f7f7;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 12px;
+  padding: 1rem 1.25rem;
+  margin-bottom: 1rem;
+  animation: infoSlideUp 0.5s ease-out 0.9s both;
+}
+
+.order-success-info-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.order-success-info-divider {
+  height: 1px;
+  background: rgba(0, 0, 0, 0.08);
+  margin: 0.625rem 0;
+}
+
+.order-success-info-label {
+  font-size: 0.72rem;
+  color: #6b6b6b;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.order-success-info-value {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #1a1a1a;
+  letter-spacing: 0.06em;
+}
+
+.order-success-info-value--price {
+  color: #aa1e22;
+  font-size: 0.85rem;
+}
+
+/* ── Note text ─────────────────────────────────────────────────────────── */
+.order-success-note {
+  font-size: 0.75rem;
+  color: #9a9a9a;
+  margin-bottom: 1.5rem;
+  line-height: 1.5;
+  animation: infoSlideUp 0.5s ease-out 1.05s both;
+}
+
+/* ── CTA button ────────────────────────────────────────────────────────── */
+@keyframes btnSlideUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.order-success-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.875rem 1.5rem;
+  background: #1a1a1a;
+  color: #ffffff;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  border-radius: 10px;
+  border: none;
+  cursor: pointer;
+  transition: background 0.2s ease, transform 0.15s ease;
+  animation: btnSlideUp 0.5s ease-out 1.2s both;
+}
+
+.order-success-btn:hover {
+  background: #aa1e22;
+  transform: translateY(-1px);
+}
+
+.order-success-btn:active {
+  transform: translateY(1px);
+}
+
+/* ── Confetti particles ────────────────────────────────────────────────── */
+@keyframes particleFall {
+  0%   { opacity: 1; transform: translateY(0) rotate(0deg) scale(1); }
+  100% { opacity: 0; transform: translateY(120px) rotate(540deg) scale(0.3); }
+}
+
+.order-particle {
+  position: fixed;
+  pointer-events: none;
+  z-index: 10000;
+  animation: particleFall 1s ease-in both;
+}

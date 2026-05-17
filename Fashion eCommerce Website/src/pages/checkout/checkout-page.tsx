@@ -4,6 +4,7 @@ import { Link } from "react-router";
 
 import { ImageWithFallback } from "@/components/common/image-with-fallback";
 import { brandLogo } from "@/assets/images";
+import { OrderSuccessModal } from "@/components/common/order-success-modal";
 import { useTransitionTo } from "@/components/common/page-transition";
 import { useCart } from "@/features/cart/context/cart-context";
 import {
@@ -37,6 +38,13 @@ export function CheckoutPage() {
     clearCart,
   } = useCart();
   const navigate = useTransitionTo();
+
+  const [successModal, setSuccessModal] = useState<{
+    open: boolean;
+    orderNumber: string;
+    customerName: string;
+    total: number;
+  }>({ open: false, orderNumber: "", customerName: "", total: 0 });
 
   const [formData, setFormData] = useState({
     fullName: "",
@@ -183,13 +191,29 @@ export function CheckoutPage() {
       .then(([wardName, districtName, provinceName]) => {
         addOrder({ ...newOrder, shippingAddress: { street: formData.address, ward: wardName, district: districtName, province: provinceName } });
         clearCart();
-        window.alert(`Đặt hàng thành công! Mã đơn: ${orderNumber}\n\nChúng tôi sẽ liên hệ bạn sớm nhất.`);
-        navigate("/");
+        setSuccessModal({
+          open: true,
+          orderNumber,
+          customerName: formData.fullName,
+          total,
+        });
       });
   };
 
   return (
     <div className="min-h-screen bg-white">
+      {/* ── Order Success Modal ──────────────────────────────────────── */}
+      <OrderSuccessModal
+        open={successModal.open}
+        orderNumber={successModal.orderNumber}
+        customerName={successModal.customerName}
+        total={successModal.total}
+        onClose={() => {
+          setSuccessModal((prev) => ({ ...prev, open: false }));
+          setTimeout(() => navigate("/"), 420);
+        }}
+      />
+
       {/* ── Top bar ────────────────────────────────────────────────── */}
       <div className="border-b border-black/10 px-10 py-4">
         <div className="flex items-center justify-between">
