@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useMembership } from "@/features/membership/context/membership-context";
 import { useOrders } from "@/features/orders/context/order-context";
-import { Sparkles, Award, Receipt, LogOut, ArrowRight, UserCheck, ShieldCheck } from "lucide-react";
+import { Sparkles, Award, Receipt, LogOut, ArrowRight, UserCheck, ShieldCheck, Lock } from "lucide-react";
 import { useTransitionTo } from "@/components/common/page-transition";
 
 export function MembershipPage() {
@@ -14,6 +14,7 @@ export function MembershipPage() {
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
+  const [password, setPassword] = useState(""); // State cho password nhập vào
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
 
@@ -29,11 +30,11 @@ export function MembershipPage() {
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
-    if (!phoneOrEmail) {
-      setError("Vui lòng nhập Email hoặc Số điện thoại!");
+    if (!phoneOrEmail || !password) {
+      setError("Vui lòng nhập đầy đủ thông tin Email/SĐT và Mật khẩu!");
       return;
     }
-    const res = loginMember(phoneOrEmail);
+    const res = loginMember(phoneOrEmail, password);
     if (!res.success) {
       setError(res.error || "");
     }
@@ -44,14 +45,19 @@ export function MembershipPage() {
     setError("");
     setMessage("");
 
-    if (!fullName || !email || !phone) {
-      setError("Vui lòng nhập đầy đủ thông tin!");
+    if (!fullName || !email || !phone || !password) {
+      setError("Vui lòng nhập đầy đủ thông tin và thiết lập Mật khẩu!");
       return;
     }
 
-    const res = registerMember(fullName, email, phone);
+    if (password.length < 6) {
+      setError("Mật khẩu bảo mật phải có ít nhất 6 ký tự!");
+      return;
+    }
+
+    const res = registerMember(fullName, email, phone, password);
     if (res.success) {
-      setMessage("Chúc mừng! Đăng ký thành viên MADMAD thành công!");
+      setMessage("Chúc mừng! Kích hoạt tài khoản VIP MADMAD thành công!");
     } else {
       setError(res.error || "");
     }
@@ -284,8 +290,8 @@ export function MembershipPage() {
               </h2>
               <p className="text-xs text-black/50">
                 {isRegister
-                  ? "Điền thông tin bên dưới để kích hoạt tài khoản VIP của bạn"
-                  : "Nhập Email hoặc SĐT đã đăng ký để kiểm tra điểm thành viên"}
+                  ? "Điền thông tin bên dưới để kích hoạt tài khoản VIP bảo mật của bạn"
+                  : "Nhập Email hoặc SĐT và mật khẩu bảo mật để mở khóa Black Card VIP"}
               </p>
             </div>
 
@@ -307,7 +313,7 @@ export function MembershipPage() {
 
             {/* Form */}
             {isRegister ? (
-              // FORM ĐĂNG KÝ
+              // FORM ĐĂNG KÝ BẢO MẬT
               <form onSubmit={handleRegister} className="space-y-4">
                 <div>
                   <label className="block text-[10px] font-extrabold tracking-wider uppercase text-black/70 mb-1.5">
@@ -339,7 +345,7 @@ export function MembershipPage() {
 
                 <div>
                   <label className="block text-[10px] font-extrabold tracking-wider uppercase text-black/70 mb-1.5">
-                    Số Điện Thoại
+                    Số Điện thoại
                   </label>
                   <input
                     type="tel"
@@ -351,9 +357,24 @@ export function MembershipPage() {
                   />
                 </div>
 
+                <div>
+                  <label className="block text-[10px] font-extrabold tracking-wider uppercase text-black/70 mb-1.5 flex items-center gap-1">
+                    <Lock className="h-3 w-3 text-black/50" />
+                    Thiết lập mật khẩu bảo mật (Tối thiểu 6 ký tự)
+                  </label>
+                  <input
+                    type="password"
+                    required
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="Nhập mật khẩu tài khoản..."
+                    className="w-full rounded-lg border border-black/10 bg-stone-50 px-4 py-3 text-xs placeholder:text-black/30 focus:border-black/60 focus:bg-white focus:outline-none focus:ring-0 transition-all"
+                  />
+                </div>
+
                 <div className="flex items-center gap-2 pt-2 text-[10px] text-black/40">
                   <ShieldCheck className="h-4 w-4 text-green-600 flex-shrink-0" />
-                  Chúng tôi bảo mật hoàn toàn dữ liệu cá nhân của bạn.
+                  Hệ thống bảo mật dữ liệu khách hàng theo chuẩn quốc tế.
                 </div>
 
                 <button
@@ -361,11 +382,11 @@ export function MembershipPage() {
                   className="w-full bg-black text-white hover:bg-red-700 h-12 text-xs font-bold tracking-widest uppercase transition-all rounded-lg flex items-center justify-center gap-2 mt-4"
                 >
                   <UserCheck className="h-4 w-4" />
-                  Kích hoạt thẻ VIP
+                  Kích hoạt thẻ VIP Bảo Mật
                 </button>
               </form>
             ) : (
-              // FORM ĐĂNG NHẬP
+              // FORM ĐĂNG NHẬP BẢO MẬT
               <form onSubmit={handleLogin} className="space-y-4">
                 <div>
                   <label className="block text-[10px] font-extrabold tracking-wider uppercase text-black/70 mb-1.5">
@@ -381,11 +402,26 @@ export function MembershipPage() {
                   />
                 </div>
 
+                <div>
+                  <label className="block text-[10px] font-extrabold tracking-wider uppercase text-black/70 mb-1.5 flex items-center gap-1">
+                    <Lock className="h-3 w-3 text-black/50" />
+                    Mật khẩu bảo mật
+                  </label>
+                  <input
+                    type="password"
+                    required
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="Nhập mật khẩu tài khoản..."
+                    className="w-full rounded-lg border border-black/10 bg-stone-50 px-4 py-3 text-xs placeholder:text-black/30 focus:border-black/60 focus:bg-white focus:outline-none focus:ring-0 transition-all"
+                  />
+                </div>
+
                 <button
                   type="submit"
                   className="w-full bg-black text-white hover:bg-red-700 h-12 text-xs font-bold tracking-widest uppercase transition-all rounded-lg flex items-center justify-center gap-2 mt-4"
                 >
-                  Tra cứu điểm
+                  Mở khóa VIP Black Card
                   <ArrowRight className="h-4 w-4" />
                 </button>
               </form>
@@ -400,6 +436,7 @@ export function MembershipPage() {
                     setIsRegister(!isRegister);
                     setError("");
                     setMessage("");
+                    setPassword(""); // Reset password state
                   }}
                   className="font-bold text-red-600 hover:text-red-700 transition-colors uppercase ml-1"
                 >

@@ -5,6 +5,7 @@ export interface Member {
   fullName: string;
   email: string;
   phone: string;
+  password?: string; // Mật khẩu bảo mật cho tài khoản
   points: number; // 1 điểm = 1.000₫
   memberCardId: string; // MM-XXXXXX
   tier: "BRONZE" | "SILVER" | "GOLD" | "PLATINUM";
@@ -14,8 +15,8 @@ export interface Member {
 interface MembershipContextType {
   members: Member[];
   currentMember: Member | null;
-  registerMember: (fullName: string, email: string, phone: string) => { success: boolean; error?: string };
-  loginMember: (phoneOrEmail: string) => { success: boolean; error?: string };
+  registerMember: (fullName: string, email: string, phone: string, password?: string) => { success: boolean; error?: string };
+  loginMember: (phoneOrEmail: string, password?: string) => { success: boolean; error?: string };
   logoutMember: () => void;
   addPointsToCurrentMember: (pointsToAdd: number) => void;
   deductPointsFromCurrentMember: (pointsToDeduct: number) => void;
@@ -47,7 +48,7 @@ export function MembershipProvider({ children }: { children: ReactNode }) {
     }
   }, [currentMember]);
 
-  const registerMember = (fullName: string, email: string, phone: string) => {
+  const registerMember = (fullName: string, email: string, phone: string, password?: string) => {
     const trimmedEmail = email.trim().toLowerCase();
     const trimmedPhone = phone.trim().replace(/\s+/g, "");
 
@@ -66,6 +67,7 @@ export function MembershipProvider({ children }: { children: ReactNode }) {
       fullName,
       email: trimmedEmail,
       phone: trimmedPhone,
+      password: password || "123456", // Default fallback if empty
       points: 50, // Quà tặng chào mừng thành viên mới: 50 điểm (~50k)
       memberCardId,
       tier: "BRONZE",
@@ -77,7 +79,7 @@ export function MembershipProvider({ children }: { children: ReactNode }) {
     return { success: true };
   };
 
-  const loginMember = (phoneOrEmail: string) => {
+  const loginMember = (phoneOrEmail: string, password?: string) => {
     const trimmed = phoneOrEmail.trim().toLowerCase();
     const found = members.find(
       (m) => m.email.toLowerCase() === trimmed || m.phone === trimmed.replace(/\s+/g, "")
@@ -85,6 +87,12 @@ export function MembershipProvider({ children }: { children: ReactNode }) {
 
     if (!found) {
       return { success: false, error: "Không tìm thấy thông tin thành viên với Email hoặc SĐT này!" };
+    }
+
+    // Kiểm tra mật khẩu (hỗ trợ tài khoản cũ mặc định mật khẩu là 123456)
+    const storedPassword = found.password || "123456";
+    if (password && storedPassword !== password) {
+      return { success: false, error: "Mật khẩu không chính xác. Vui lòng kiểm tra lại!" };
     }
 
     setCurrentMember(found);
