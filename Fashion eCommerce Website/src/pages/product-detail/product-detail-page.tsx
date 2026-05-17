@@ -282,7 +282,7 @@ export function ProductDetailPage() {
                       quantity,
                       priceAtAdd: product.price,
                     });
-                    window.location.href = "/checkout";
+                    navigate("/checkout");
                   }}
                   className="w-full h-12 bg-[#b91c1c] text-white text-[13px] font-bold uppercase hover:bg-[#991b1b] transition-colors rounded-sm"
                 >
