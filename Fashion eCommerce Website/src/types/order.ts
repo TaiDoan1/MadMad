@@ -27,6 +27,7 @@ export interface Order {
   shipping: number;
   total: number;
   paymentMethod: string;
+  shippingMethod?: "standard" | "express";
   status: "pending" | "confirmed" | "shipping" | "delivered" | "cancelled";
   createdAt: string;
   notes?: string;

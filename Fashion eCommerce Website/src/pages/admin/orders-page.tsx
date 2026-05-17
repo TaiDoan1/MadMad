@@ -63,6 +63,10 @@ export function AdminOrdersPage() {
   const [filterStatus, setFilterStatus] = useState("all");
   const [filterSource, setFilterSource] = useState("all");
   const [filterCustomerType, setFilterCustomerType] = useState("all"); // all, vip, returning, first_time
+  const [filterShippingMethod, setFilterShippingMethod] = useState("all"); // all, standard, express
+
+  // Manual Shipping Method State
+  const [manualShippingMethod, setManualShippingMethod] = useState<"standard" | "express">("standard");
 
   // Selected order details modal
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
@@ -189,7 +193,15 @@ export function AdminOrdersPage() {
       else if (filterCustomerType === "first_time") matchesCustomerType = cat.type === "FIRST_TIME";
     }
 
-    return matchesSearch && matchesStatus && matchesSource && matchesCustomerType;
+    // Lọc theo phương thức vận chuyển
+    let matchesShippingMethod = true;
+    if (filterShippingMethod !== "all") {
+      const isExpress = order.shippingMethod === "express" || order.shipping === 60000;
+      if (filterShippingMethod === "express") matchesShippingMethod = isExpress;
+      else if (filterShippingMethod === "standard") matchesShippingMethod = !isExpress && order.shippingAddress.street !== "Mua trực tiếp tại Shop";
+    }
+
+    return matchesSearch && matchesStatus && matchesSource && matchesCustomerType && matchesShippingMethod;
   });
 
   // TÍNH TOÁN CÁC CHỈ SỐ DOANH THU CHO DASHBOARD
@@ -287,7 +299,9 @@ export function AdminOrdersPage() {
   };
 
   const manualSubtotal = manualItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
-  const manualShipping = manualSubtotal > 500000 || manualSource === "pos" ? 0 : 30000;
+  const manualShipping = manualSource === "pos"
+    ? 0
+    : (manualShippingMethod === "express" ? 60000 : (manualSubtotal > 500000 ? 0 : 30000));
   const finalDiscount = checkedMember ? Math.round(manualSubtotal * 0.05) : manualDiscount;
   const manualTotal = Math.max(0, manualSubtotal - finalDiscount) + manualShipping;
 
@@ -400,6 +414,7 @@ export function AdminOrdersPage() {
       shipping: manualShipping,
       total: manualTotal,
       paymentMethod: manualPaymentMethod,
+      shippingMethod: manualSource === "pos" ? undefined : manualShippingMethod,
       status: manualSource === "pos" ? "completed" : "pending",
       createdAt: new Date().toISOString(),
       notes: manualNotes.trim() || `Đơn hàng tạo thủ công qua kênh ${manualSource.toUpperCase()}${checkedMember ? ` (Thành viên VIP: ${checkedMember.memberCardId})` : ""}`,
@@ -447,6 +462,42 @@ export function AdminOrdersPage() {
     setShowCreateModal(false);
 
     window.alert("Tạo đơn hàng thủ công thành công!");
+  };
+
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case "completed":
+      case "delivered":
+        return "bg-green-50 text-green-700 border-green-200";
+      case "cancelled":
+        return "bg-red-50 text-red-700 border-red-200";
+      case "shipping":
+        return "bg-indigo-50 text-indigo-700 border-indigo-200";
+      case "processing":
+      case "confirmed":
+        return "bg-amber-50 text-amber-700 border-amber-200";
+      case "pending":
+      default:
+        return "bg-stone-100 text-stone-600 border-stone-200";
+    }
+  };
+
+  const getStatusLabel = (status: string) => {
+    switch (status) {
+      case "completed":
+      case "delivered":
+        return "Thành công";
+      case "cancelled":
+        return "Đã hủy";
+      case "shipping":
+        return "Đang giao";
+      case "processing":
+      case "confirmed":
+        return "Đang xử lý";
+      case "pending":
+      default:
+        return "Chờ xác nhận";
+    }
   };
 
   return (
@@ -560,6 +611,17 @@ export function AdminOrdersPage() {
               <option value="first_time">🆕 KHÁCH MUA LẦN ĐẦU</option>
             </select>
 
+            {/* ⚡ BỘ LỌC PHƯƠNG THỨC VẬN CHUYỂN */}
+            <select
+              value={filterShippingMethod}
+              onChange={(event) => setFilterShippingMethod(event.target.value)}
+              className="rounded-xl border border-black/10 bg-stone-50 px-4 py-3 text-xs font-bold text-black/70 focus:border-black/60 focus:bg-white focus:outline-none focus:ring-0 transition-all"
+            >
+              <option value="all">TẤT CẢ P.THỨC SHIP</option>
+              <option value="standard">📦 SHIP TIÊU CHUẨN (THƯỜNG)</option>
+              <option value="express">⚡ SHIP HỎA TỐC (2H)</option>
+            </select>
+
             <select
               value={filterSource}
               onChange={(event) => setFilterSource(event.target.value)}
@@ -623,10 +685,26 @@ export function AdminOrdersPage() {
                       <tr key={order.id} className="transition-colors hover:bg-stone-50/50">
                         <td className="px-6 py-4 font-mono font-bold text-black">{order.orderNumber}</td>
                         <td className="px-6 py-4">
-                          <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[10px] border font-bold uppercase ${source.badgeClass}`}>
-                            <SourceIcon className="h-3 w-3" />
-                            {source.label}
-                          </span>
+                          <div className="flex flex-col gap-1">
+                            <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[10px] border font-bold uppercase ${source.badgeClass} w-max`}>
+                              <SourceIcon className="h-3 w-3" />
+                              {source.label}
+                            </span>
+                            {/* Shipping Method Badge */}
+                            {order.shippingAddress.street !== "Mua trực tiếp tại Shop" && (
+                              <div>
+                                {order.shippingMethod === "express" || order.shipping === 60000 ? (
+                                  <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded text-[8px] font-black bg-red-50 text-red-700 border border-red-200 uppercase tracking-widest">
+                                    ⚡ Hỏa Tốc
+                                  </span>
+                                ) : (
+                                  <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded text-[8px] font-black bg-stone-100 text-stone-600 border border-stone-200 uppercase tracking-widest">
+                                    📦 Thường
+                                  </span>
+                                )}
+                              </div>
+                            )}
+                          </div>
                         </td>
                         <td className="px-6 py-4 space-y-1">
                           <p className="font-bold text-black text-xs uppercase">{order.customerName}</p>
@@ -1075,6 +1153,46 @@ export function AdminOrdersPage() {
                   </div>
                 )}
 
+                {/* Phương thức vận chuyển (chỉ hiển thị nếu không phải bán tại quầy POS) */}
+                {manualSource !== "pos" && (
+                  <div className="space-y-2">
+                    <label className="block text-[10px] font-bold text-black/50 mb-1">Phương thức vận chuyển</label>
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setManualShippingMethod("standard")}
+                        className={`flex flex-col text-left border p-3 rounded-xl transition-all ${
+                          manualShippingMethod === "standard"
+                            ? "border-black bg-black/5 text-black"
+                            : "border-black/10 hover:border-black text-black/70"
+                        }`}
+                      >
+                        <span className="text-[10px] font-bold uppercase tracking-wider">Ship Thường</span>
+                        <span className="text-[8px] text-black/45 mt-0.5">
+                          {manualSubtotal > 500000 ? "Miễn phí" : "30.000₫"} (2-4 ngày)
+                        </span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setManualShippingMethod("express")}
+                        className={`flex flex-col text-left border p-3 rounded-xl transition-all ${
+                          manualShippingMethod === "express"
+                            ? "border-black bg-black/5 text-black"
+                            : "border-black/10 hover:border-black text-black/70"
+                        }`}
+                      >
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-red-700">
+                          ⚡ Hỏa Tốc (2h)
+                        </span>
+                        <span className="text-[8px] text-black/45 mt-0.5">
+                          60.000₫ (Giao siêu tốc)
+                        </span>
+                      </button>
+                    </div>
+                  </div>
+                )}
+
                 {/* Thanh toán & Giảm giá */}
                 <div className="grid grid-cols-2 gap-3">
                   <div>
@@ -1342,6 +1460,16 @@ export function AdminOrdersPage() {
                     <p><span className="text-black/45">Email:</span> {selectedOrder.customerEmail}</p>
                     <p><span className="text-black/45">Điện thoại:</span> {selectedOrder.customerPhone}</p>
                     <p><span className="text-black/45">Thanh toán:</span> <span className="uppercase font-bold text-black font-mono">{selectedOrder.paymentMethod}</span></p>
+                    {selectedOrder.shippingAddress.street !== "Mua trực tiếp tại Shop" && (
+                      <p>
+                        <span className="text-black/45">Vận chuyển:</span>{" "}
+                        <span className="font-bold text-black uppercase">
+                          {selectedOrder.shippingMethod === "express" || selectedOrder.shipping === 60000
+                            ? "⚡ HỎA TỐC (2H)"
+                            : "📦 TIÊU CHUẨN (THƯỜNG)"}
+                        </span>
+                      </p>
+                    )}
                   </div>
                 </div>
 
@@ -1465,6 +1593,15 @@ export function AdminOrdersPage() {
                   <p>Điện thoại: <span className="font-bold">{selectedOrder.customerPhone}</span></p>
                   <p>Email: {selectedOrder.customerEmail}</p>
                   <p>Phương thức: <span className="uppercase font-bold">{selectedOrder.paymentMethod}</span></p>
+                  {selectedOrder.shippingAddress.street !== "Mua trực tiếp tại Shop" && (
+                    <p>
+                      Vận chuyển: <span className="font-bold uppercase text-red-700">
+                        {selectedOrder.shippingMethod === "express" || selectedOrder.shipping === 60000
+                          ? "⚡ HỎA TỐC (2H)"
+                          : "📦 TIÊU CHUẨN (THƯỜNG)"}
+                      </span>
+                    </p>
+                  )}
                   <p>Khách hàng: <span className="font-bold uppercase">{getCustomerCategory(selectedOrder.customerPhone, selectedOrder.customerEmail).label}</span></p>
                 </div>
               </div>

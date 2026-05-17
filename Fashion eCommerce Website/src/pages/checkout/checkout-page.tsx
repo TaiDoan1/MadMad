@@ -58,6 +58,7 @@ export function CheckoutPage() {
     wardCode: "",
     notes: "",
     paymentMethod: "cod",
+    shippingMethod: "standard" as "standard" | "express",
   });
   const [provinces, setProvinces] = useState<AddressOption[]>([]);
   const [districts, setDistricts] = useState<AddressOption[]>([]);
@@ -83,7 +84,7 @@ export function CheckoutPage() {
       .replaceAll("đ", "d");
 
   const shippingBase = subtotal - discountAmount;
-  const shipping = shippingBase > 500000 ? 0 : 30000;
+  const shipping = formData.shippingMethod === "express" ? 60000 : (shippingBase > 500000 ? 0 : 30000);
   const total = Math.max(0, subtotal - discountAmount) + shipping;
 
   useEffect(() => {
@@ -197,7 +198,7 @@ export function CheckoutPage() {
       id: 0, orderNumber, customerName: formData.fullName, customerEmail: formData.email,
       customerPhone: formData.phone, shippingAddress: { street: formData.address, ward: "", district: "", province: "" },
       items: orderItems, subtotal, discount: discountAmount, couponCode: appliedCoupon?.code,
-      shipping, total, paymentMethod: paymentMethodText, status: "pending",
+      shipping, total, paymentMethod: paymentMethodText, shippingMethod: formData.shippingMethod, status: "pending",
       createdAt: now.toISOString(), notes: formData.notes,
     };
 
@@ -310,6 +311,44 @@ export function CheckoutPage() {
                   <textarea rows={2} value={formData.notes}
                     onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
                     className={`${inputCls} resize-none`} placeholder="Ghi chú đơn hàng (tùy chọn)" />
+                </div>
+              </section>
+
+              {/* Shipping Method Selection */}
+              <section>
+                <h2 className="mb-4 text-sm font-bold uppercase tracking-widest">Phương thức vận chuyển</h2>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <button
+                    type="button"
+                    onClick={() => setFormData({ ...formData, shippingMethod: "standard" })}
+                    className={`flex flex-col text-left rounded-xl border-2 p-4 transition-all ${
+                      formData.shippingMethod === "standard"
+                        ? "border-black bg-black/5"
+                        : "border-black/15 hover:border-black"
+                    }`}
+                  >
+                    <span className="text-xs font-bold uppercase tracking-wider">Ship Tiêu Chuẩn (Thường)</span>
+                    <span className="text-[10px] text-black/50 mt-1">
+                      Giá: {shippingBase > 500000 ? "Miễn phí" : "30.000₫"} (2-4 ngày)
+                    </span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setFormData({ ...formData, shippingMethod: "express" })}
+                    className={`flex flex-col text-left rounded-xl border-2 p-4 transition-all ${
+                      formData.shippingMethod === "express"
+                        ? "border-black bg-black/5"
+                        : "border-black/15 hover:border-black"
+                    }`}
+                  >
+                    <span className="text-xs font-bold uppercase tracking-wider text-red-700 flex items-center gap-1">
+                      ⚡ Giao Hỏa Tốc (2h)
+                    </span>
+                    <span className="text-[10px] text-black/50 mt-1">
+                      Giá: 60.000₫ (Giao siêu tốc nội thành)
+                    </span>
+                  </button>
                 </div>
               </section>
 
