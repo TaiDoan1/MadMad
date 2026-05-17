@@ -343,7 +343,7 @@ export function CheckoutPage() {
                     }`}
                   >
                     <span className="text-xs font-bold uppercase tracking-wider text-red-700 flex items-center gap-1">
-                      ⚡ Giao Hỏa Tốc (2h)
+                      Giao Hỏa Tốc (2h)
                     </span>
                     <span className="text-[10px] text-black/50 mt-1">
                       Giá: 60.000₫ (Giao siêu tốc nội thành)

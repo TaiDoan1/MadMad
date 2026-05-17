@@ -127,7 +127,7 @@ export function AdminOrdersPage() {
     if (vip) {
       return {
         type: "VIP",
-        label: `👑 VIP ${vip.tier}`,
+        label: `VIP ${vip.tier}`,
         badgeClass: vip.tier === "PLATINUM" ? "bg-zinc-950 text-zinc-100 border-zinc-800" :
                     vip.tier === "GOLD" ? "bg-amber-600 text-amber-50 border-amber-500" :
                     vip.tier === "SILVER" ? "bg-slate-400 text-slate-900 border-slate-300" :
@@ -144,8 +144,8 @@ export function AdminOrdersPage() {
     if (customerOrders.length > 1) {
       return {
         type: "RETURNING",
-        label: `🔄 Khách Quen (${customerOrders.length} đơn)`,
-        badgeClass: "bg-emerald-50 text-emerald-700 border-emerald-200",
+        label: `KHÁCH QUEN (${customerOrders.length} ĐƠN)`,
+        badgeClass: "bg-stone-900 text-stone-100 border-stone-800",
         orderCount: customerOrders.length,
         totalSpent: customerOrders.reduce((sum, o) => sum + o.total, 0)
       };
@@ -154,7 +154,7 @@ export function AdminOrdersPage() {
     // 3. Người mua lần đầu (First-time Buyer)
     return {
       type: "FIRST_TIME",
-      label: "🆕 Mua lần đầu",
+      label: "MUA LẦN ĐẦU",
       badgeClass: "bg-stone-100 text-stone-600 border-stone-200"
     };
   };
@@ -438,7 +438,7 @@ export function AdminOrdersPage() {
       });
       setLocalMembers(updatedMembersList);
       localStorage.setItem("madmad_members", JSON.stringify(updatedMembersList));
-      window.alert(`👑 Đơn hàng POS thành công! Đã tích +${pointsEarned} điểm VIP cho khách hàng.`);
+      window.alert(`Đơn hàng POS thành công! Đã tích +${pointsEarned} điểm VIP cho khách hàng.`);
     }
 
     if (manualNotes) {
@@ -606,20 +606,20 @@ export function AdminOrdersPage() {
               className="rounded-xl border border-black/10 bg-stone-50 px-4 py-3 text-xs font-bold text-black/70 focus:border-black/60 focus:bg-white focus:outline-none focus:ring-0 transition-all"
             >
               <option value="all">TẤT CẢ PHÂN LOẠI KHÁCH</option>
-              <option value="vip">👑 THÀNH VIÊN VIP</option>
-              <option value="returning">🔄 KHÁCH QUEN VÃNG LAI</option>
-              <option value="first_time">🆕 KHÁCH MUA LẦN ĐẦU</option>
+              <option value="vip">THÀNH VIÊN VIP</option>
+              <option value="returning">KHÁCH QUEN VÃNG LAI</option>
+              <option value="first_time">KHÁCH MUA LẦN ĐẦU</option>
             </select>
 
-            {/* ⚡ BỘ LỌC PHƯƠNG THỨC VẬN CHUYỂN */}
+            {/* BỘ LỌC PHƯƠNG THỨC VẬN CHUYỂN */}
             <select
               value={filterShippingMethod}
               onChange={(event) => setFilterShippingMethod(event.target.value)}
               className="rounded-xl border border-black/10 bg-stone-50 px-4 py-3 text-xs font-bold text-black/70 focus:border-black/60 focus:bg-white focus:outline-none focus:ring-0 transition-all"
             >
               <option value="all">TẤT CẢ P.THỨC SHIP</option>
-              <option value="standard">📦 SHIP TIÊU CHUẨN (THƯỜNG)</option>
-              <option value="express">⚡ SHIP HỎA TỐC (2H)</option>
+              <option value="standard">SHIP TIÊU CHUẨN (THƯỜNG)</option>
+              <option value="express">SHIP HỎA TỐC (2H)</option>
             </select>
 
             <select
@@ -694,12 +694,12 @@ export function AdminOrdersPage() {
                             {order.shippingAddress.street !== "Mua trực tiếp tại Shop" && (
                               <div>
                                 {order.shippingMethod === "express" || order.shipping === 60000 ? (
-                                  <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded text-[8px] font-black bg-red-50 text-red-700 border border-red-200 uppercase tracking-widest">
-                                    ⚡ Hỏa Tốc
+                                  <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded text-[8px] font-black bg-black text-white uppercase tracking-widest">
+                                    HỎA TỐC
                                   </span>
                                 ) : (
-                                  <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded text-[8px] font-black bg-stone-100 text-stone-600 border border-stone-200 uppercase tracking-widest">
-                                    📦 Thường
+                                  <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded text-[8px] font-black bg-transparent text-stone-500 border border-stone-300 uppercase tracking-widest">
+                                    TIÊU CHUẨN
                                   </span>
                                 )}
                               </div>
@@ -928,7 +928,7 @@ export function AdminOrdersPage() {
                     </div>
                   ) : (
                     <div className="border border-dashed border-black/15 bg-white rounded-2xl p-6 text-center text-black/45 text-[10px] font-semibold leading-relaxed">
-                      💡 Vui lòng gõ tìm kiếm ở ô trên để hiển thị sản phẩm kèm hình ảnh trực quan!
+                      Vui lòng gõ tìm kiếm ở ô trên để hiển thị sản phẩm kèm hình ảnh trực quan!
                     </div>
                   )}
                 </div>
@@ -1149,7 +1149,7 @@ export function AdminOrdersPage() {
                   </div>
                 ) : (
                   <div className="bg-stone-50 border border-black/5 p-4 rounded-xl text-center text-stone-500 text-[11px] font-semibold">
-                    ⚡ Đơn bán tại quầy (POS) sẽ giao hàng trực tiếp cho khách tại cửa hàng.
+                    Đơn bán tại quầy (POS) sẽ giao hàng trực tiếp cho khách tại cửa hàng.
                   </div>
                 )}
 
@@ -1182,8 +1182,8 @@ export function AdminOrdersPage() {
                             : "border-black/10 hover:border-black text-black/70"
                         }`}
                       >
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-red-700">
-                          ⚡ Hỏa Tốc (2h)
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-black">
+                          Hỏa Tốc (2h)
                         </span>
                         <span className="text-[8px] text-black/45 mt-0.5">
                           60.000₫ (Giao siêu tốc)
@@ -1399,11 +1399,11 @@ export function AdminOrdersPage() {
                       Hệ thống tự động đồng bộ hóa mã QR chuyển khoản chính xác số tiền đơn hàng. Chụp ảnh gửi cho khách qua Facebook/Instagram để nhận tiền 1 giây!
                     </p>
                     <div className="text-[10px] space-y-1 font-mono text-stone-300 bg-stone-900/50 p-3 rounded-xl border border-stone-800/80">
-                      <p>🏦 Ngân hàng: <span className="text-white font-bold">MB BANK (Quân Đội)</span></p>
-                      <p>💳 Số tài khoản: <span className="text-white font-bold">0999999999</span></p>
-                      <p>👤 Chủ tài khoản: <span className="text-white font-bold">MADMAD STUDIO</span></p>
-                      <p>💰 Số tiền: <span className="text-red-400 font-extrabold">{selectedOrder.total.toLocaleString("vi-VN")}₫</span></p>
-                      <p>📝 Nội dung: <span className="text-green-400 font-bold uppercase">MADMAD {selectedOrder.orderNumber}</span></p>
+                      <p>Ngân hàng: <span className="text-white font-bold">MB BANK (Quân Đội)</span></p>
+                      <p>Số tài khoản: <span className="text-white font-bold">0999999999</span></p>
+                      <p>Chủ tài khoản: <span className="text-white font-bold">MADMAD STUDIO</span></p>
+                      <p>Số tiền: <span className="text-red-400 font-extrabold">{selectedOrder.total.toLocaleString("vi-VN")}₫</span></p>
+                      <p>Nội dung: <span className="text-green-400 font-bold uppercase">MADMAD {selectedOrder.orderNumber}</span></p>
                     </div>
 
                     <button
@@ -1465,8 +1465,8 @@ export function AdminOrdersPage() {
                         <span className="text-black/45">Vận chuyển:</span>{" "}
                         <span className="font-bold text-black uppercase">
                           {selectedOrder.shippingMethod === "express" || selectedOrder.shipping === 60000
-                            ? "⚡ HỎA TỐC (2H)"
-                            : "📦 TIÊU CHUẨN (THƯỜNG)"}
+                            ? "HỎA TỐC (2H)"
+                            : "TIÊU CHUẨN (THƯỜNG)"}
                         </span>
                       </p>
                     )}
@@ -1479,7 +1479,7 @@ export function AdminOrdersPage() {
                   </h3>
                   <div className="space-y-1.5 leading-relaxed">
                     {selectedOrder.shippingAddress.street === "Mua trực tiếp tại Shop" ? (
-                      <p className="font-bold text-black">⚡ ĐƠN MUA TRỰC TIẾP TẠI CỬA HÀNG (POS)</p>
+                      <p className="font-bold text-black">ĐƠN MUA TRỰC TIẾP TẠI CỬA HÀNG (POS)</p>
                     ) : (
                       <>
                         <p><span className="text-black/45">Địa chỉ cụ thể:</span> {selectedOrder.shippingAddress.street}</p>
@@ -1597,8 +1597,8 @@ export function AdminOrdersPage() {
                     <p>
                       Vận chuyển: <span className="font-bold uppercase text-red-700">
                         {selectedOrder.shippingMethod === "express" || selectedOrder.shipping === 60000
-                          ? "⚡ HỎA TỐC (2H)"
-                          : "📦 TIÊU CHUẨN (THƯỜNG)"}
+                          ? "HỎA TỐC (2H)"
+                          : "TIÊU CHUẨN (THƯỜNG)"}
                       </span>
                     </p>
                   )}
@@ -1609,7 +1609,7 @@ export function AdminOrdersPage() {
                 <h3 className="font-black border-b border-black pb-1 mb-3 uppercase tracking-wider">Địa chỉ giao hàng</h3>
                 <div className="space-y-1 leading-relaxed">
                   {selectedOrder.shippingAddress.street === "Mua trực tiếp tại Shop" ? (
-                    <p className="font-bold">⚡ ĐƠN MUA TRỰC TIẾP TẠI CỬA HÀNG (POS)</p>
+                    <p className="font-bold">ĐƠN MUA TRỰC TIẾP TẠI CỬA HÀNG (POS)</p>
                   ) : (
                     <>
                       <p>{selectedOrder.shippingAddress.street}</p>
