@@ -1,12 +1,12 @@
 import { useState } from "react";
 import { useMembership } from "@/features/membership/context/membership-context";
 import { useOrders } from "@/features/orders/context/order-context";
-import { Sparkles, Award, Receipt, LogOut, ArrowRight, UserCheck, ShieldCheck, Lock } from "lucide-react";
+import { Sparkles, Award, Receipt, LogOut, ArrowRight, UserCheck, ShieldCheck, Lock, XCircle, MessageCircle } from "lucide-react";
 import { useTransitionTo } from "@/components/common/page-transition";
 
 export function MembershipPage() {
   const { currentMember, registerMember, loginMember, logoutMember } = useMembership();
-  const { orders } = useOrders();
+  const { orders, updateOrderStatus } = useOrders();
   const navigate = useTransitionTo();
 
   const [isRegister, setIsRegister] = useState(false);
@@ -60,6 +60,13 @@ export function MembershipPage() {
       setMessage("Chúc mừng! Kích hoạt tài khoản VIP MADMAD thành công!");
     } else {
       setError(res.error || "");
+    }
+  };
+
+  // Thực hiện hủy đơn của thành viên
+  const handleCancelOrder = (orderId: number) => {
+    if (window.confirm("Bạn có chắc chắn muốn hủy đơn hàng này không? Hành động này không thể hoàn tác!")) {
+      updateOrderStatus(orderId, "cancelled");
     }
   };
 
@@ -178,42 +185,76 @@ export function MembershipPage() {
                   <div className="overflow-x-auto">
                     <table className="w-full text-left text-sm border-collapse">
                       <thead>
-                        <tr className="bg-stone-50 border-b border-black/10 text-xs font-bold tracking-wider text-black/60 uppercase">
+                        <tr className="bg-stone-50 border-b border-black/10 text-[10px] font-extrabold tracking-wider text-black/60 uppercase">
                           <th className="p-4">Mã Đơn</th>
                           <th className="p-4">Ngày mua</th>
                           <th className="p-4">Trạng thái</th>
                           <th className="p-4 text-right">Tổng tiền</th>
+                          <th className="p-4 text-center">Thao tác</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-black/5">
-                        {memberOrders.map((order) => (
-                          <tr key={order.id} className="hover:bg-stone-50/50 transition-colors">
-                            <td className="p-4 font-mono font-bold text-black">{order.orderNumber}</td>
-                            <td className="p-4 text-black/60">
-                              {new Date(order.createdAt).toLocaleDateString("vi-VN")}
-                            </td>
-                            <td className="p-4">
-                              <span
-                                className={`inline-block px-2.5 py-0.5 text-[10px] font-bold tracking-wider uppercase rounded-full ${
-                                  order.status === "completed"
-                                    ? "bg-green-50 text-green-700 border border-green-200"
+                      <tbody className="divide-y divide-black/5 text-xs">
+                        {memberOrders.map((order) => {
+                          const createdTime = new Date(order.createdAt).getTime();
+                          const diffMs = Date.now() - createdTime;
+                          const isWithin5Min = diffMs >= 0 && diffMs <= 5 * 60 * 1000;
+                          const isCancelled = order.status === "cancelled";
+
+                          return (
+                            <tr key={order.id} className="hover:bg-stone-50/50 transition-colors">
+                              <td className="p-4 font-mono font-bold text-black">{order.orderNumber}</td>
+                              <td className="p-4 text-black/60">
+                                {new Date(order.createdAt).toLocaleDateString("vi-VN")}
+                              </td>
+                              <td className="p-4">
+                                <span
+                                  className={`inline-block px-2.5 py-0.5 text-[9px] font-bold tracking-wider uppercase rounded-full ${
+                                    order.status === "completed"
+                                      ? "bg-green-50 text-green-700 border border-green-200"
+                                      : order.status === "cancelled"
+                                      ? "bg-red-50 text-red-700 border border-red-200"
+                                      : "bg-amber-50 text-amber-700 border border-amber-200"
+                                  }`}
+                                >
+                                  {order.status === "completed"
+                                    ? "Thành công"
                                     : order.status === "cancelled"
-                                    ? "bg-red-50 text-red-700 border border-red-200"
-                                    : "bg-amber-50 text-amber-700 border border-amber-200"
-                                }`}
-                              >
-                                {order.status === "completed"
-                                  ? "Thành công"
-                                  : order.status === "cancelled"
-                                  ? "Đã hủy"
-                                  : "Đang xử lý"}
-                              </span>
-                            </td>
-                            <td className="p-4 text-right font-bold text-black">
-                              {order.total.toLocaleString("vi-VN")}₫
-                            </td>
-                          </tr>
-                        ))}
+                                    ? "Đã hủy"
+                                    : "Đang xử lý"}
+                                </span>
+                              </td>
+                              <td className="p-4 text-right font-bold text-black">
+                                {order.total.toLocaleString("vi-VN")}₫
+                              </td>
+                              <td className="p-4 text-center">
+                                {isCancelled ? (
+                                  <span className="text-[10px] font-bold text-stone-400 uppercase">Đã hủy</span>
+                                ) : isWithin5Min ? (
+                                  <button
+                                    onClick={() => handleCancelOrder(order.id)}
+                                    className="inline-flex items-center gap-1 bg-red-600 hover:bg-red-700 text-white text-[9px] font-extrabold tracking-wider uppercase px-3 py-1.5 rounded-md transition-all shadow-sm"
+                                  >
+                                    <XCircle className="h-3 w-3" />
+                                    Hủy Đơn
+                                  </button>
+                                ) : (
+                                  <div className="flex items-center justify-center gap-1.5">
+                                    <a
+                                      href="https://facebook.com"
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      title="Liên hệ Facebook để hủy đơn"
+                                      className="text-blue-600 hover:text-blue-700 transition-colors"
+                                    >
+                                      <MessageCircle className="h-4 w-4" />
+                                    </a>
+                                    <span className="text-[9px] text-black/35 font-bold uppercase">CSKH</span>
+                                  </div>
+                                )}
+                              </td>
+                            </tr>
+                          );
+                        })}
                       </tbody>
                     </table>
                   </div>
