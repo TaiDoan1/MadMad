@@ -430,7 +430,7 @@
 }
 
 .curtain-slide-out {
-  animation: curtainSlideOut 0.8s cubic-bezier(0.76, 0, 0.24, 1) 0.25s forwards;
+  animation: curtainSlideOut 0.5s cubic-bezier(0.76, 0, 0.24, 1) 0.2s forwards;
 }
 
 /* ── Curtain logo: dramatic slide-up + bounce on white curtain ── */
