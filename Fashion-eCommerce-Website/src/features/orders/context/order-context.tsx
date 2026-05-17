@@ -1,67 +1,119 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
-
 import { mockOrders } from "@/features/orders/data/mock-orders";
 import type { Order } from "@/types/order";
+import { API_URL } from "@/config/api";
 
 interface OrderContextValue {
   orders: Order[];
-  addOrder: (order: Order) => void;
-  updateOrderStatus: (id: number, status: Order["status"]) => void;
-  updateOrderPaymentStatus: (id: number, isPaid: boolean) => void;
+  loading: boolean;
+  addOrder: (order: Omit<Order, "id">) => Promise<any>;
+  updateOrderStatus: (id: number, status: Order["status"]) => Promise<void>;
   getOrderById: (id: number) => Order | undefined;
 }
 
 const OrderContext = createContext<OrderContextValue | undefined>(undefined);
-const ORDERS_STORAGE_KEY = "fashion-ecommerce.orders";
 
 export function OrderProvider({ children }: { children: ReactNode }) {
-  const [orders, setOrders] = useState<Order[]>(() => {
-    if (typeof window === "undefined") {
-      return mockOrders;
-    }
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [loading, setLoading] = useState(true);
 
-    const raw = window.localStorage.getItem(ORDERS_STORAGE_KEY);
-    if (!raw) {
-      return mockOrders;
-    }
-
+  // 📥 Tải danh sách đơn hàng từ database Neon Postgres (Dành cho Admin Dashboard)
+  const loadOrders = async () => {
     try {
-      const parsed = JSON.parse(raw) as Order[];
-      return Array.isArray(parsed) && parsed.length > 0 ? parsed : mockOrders;
-    } catch {
-      return mockOrders;
+      setLoading(true);
+      const response = await fetch(`${API_URL}/orders`);
+      if (response.ok) {
+        const data = await response.json();
+        // Sắp xếp đơn hàng mới nhất lên đầu
+        const sortedOrders = data.sort(
+          (a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        );
+        setOrders(sortedOrders);
+      } else {
+        setOrders(mockOrders);
+      }
+    } catch (error) {
+      console.warn("⚠️ Không lấy được danh sách đơn hàng từ API, dùng dữ liệu local:", error);
+      setOrders(mockOrders);
+    } finally {
+      setLoading(false);
     }
-  });
+  };
 
   useEffect(() => {
-    window.localStorage.setItem(ORDERS_STORAGE_KEY, JSON.stringify(orders));
-  }, [orders]);
+    loadOrders();
+  }, []);
 
   const value = useMemo<OrderContextValue>(
     () => ({
       orders,
-      addOrder: (order) => {
-        setOrders((currentOrders) => [
-          ...currentOrders,
-          {
-            ...order,
-            id: Math.max(0, ...currentOrders.map((item) => item.id)) + 1,
-          },
-        ]);
+      loading,
+
+      // 🛒 Thêm đơn hàng mới khi khách hàng nhấn Checkout (Dat Hang)
+      addOrder: async (orderData) => {
+        console.log("%c🌐 [BROWSER CALL] Bắt đầu gửi API đặt hàng...", "color: #00ffff; font-weight: bold; font-size: 13px;");
+        console.log(`- API URL Đích: "${API_URL}/orders"`);
+        console.log("- Dữ liệu (Payload) gửi đi:", orderData);
+
+        try {
+          const response = await fetch(`${API_URL}/orders`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(orderData),
+          });
+
+          console.log(`- Response HTTP Status: ${response.status} (${response.statusText})`);
+
+          if (response.ok) {
+            const newOrder = await response.json();
+            console.log("%c✅ [API SUCCESS] Tạo đơn hàng thành công trên máy chủ!", "color: #00ff00; font-weight: bold;", newOrder);
+            await loadOrders(); // Reload để Admin thấy đơn mới
+            return newOrder;
+          } else {
+            const errText = await response.text();
+            console.error(`%c❌ [API ERROR] Máy chủ trả về lỗi (Status ${response.status}):`, "color: #ff0000; font-weight: bold;", errText);
+            throw new Error(`Lỗi từ máy chủ khi tạo đơn hàng: ${errText}`);
+          }
+        } catch (error) {
+          console.error("%c❌ [CONNECTION ERROR] Không kết nối được tới server API:", "color: #ff0000; font-weight: bold;", error);
+          console.warn("%c⚠️ [FALLBACK OFFLINE] Đã kích hoạt cơ chế lưu trữ cục bộ tạm thời (Local Backup) để tránh gián đoạn trải nghiệm của Khách hàng!", "color: #ffaa00;");
+          
+          // Dự phòng local để luồng checkout của khách không bao giờ bị đứt quãng
+          const backupOrder = {
+            ...orderData,
+            id: Math.max(0, ...orders.map((item) => item.id)) + 1,
+            createdAt: new Date().toISOString(),
+          } as Order;
+          setOrders((current) => [backupOrder, ...current]);
+          return backupOrder;
+        }
       },
-      updateOrderStatus: (id, status) => {
-        setOrders((currentOrders) =>
-          currentOrders.map((order) => (order.id === id ? { ...order, status } : order)),
-        );
+
+      // ✏️ Cập nhật trạng thái đơn hàng (Admin duyệt đơn: completed, cancelled...)
+      updateOrderStatus: async (id, status) => {
+        try {
+          const response = await fetch(`${API_URL}/orders/${id}/status`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ status }),
+          });
+
+          if (response.ok) {
+            await loadOrders(); // Tải lại để nhận cập nhật tự động (bao gồm điểm tích lũy thành viên VIP trong DB)
+          } else {
+            throw new Error("Lỗi khi cập nhật trạng thái đơn hàng");
+          }
+        } catch (error) {
+          console.error("Lỗi gọi API updateOrderStatus:", error);
+          setOrders((current) =>
+            current.map((order) => (order.id === id ? { ...order, status } : order)),
+          );
+        }
       },
-      updateOrderPaymentStatus: (id, isPaid) => {
-        setOrders((currentOrders) =>
-          currentOrders.map((order) => (order.id === id ? { ...order, isPaid } : order)),
-        );
-      },
+
       getOrderById: (id) => orders.find((order) => order.id === id),
     }),
-    [orders],
+    [orders, loading],
   );
 
   return <OrderContext.Provider value={value}>{children}</OrderContext.Provider>;
@@ -69,10 +121,8 @@ export function OrderProvider({ children }: { children: ReactNode }) {
 
 export function useOrders() {
   const context = useContext(OrderContext);
-
   if (!context) {
     throw new Error("useOrders must be used within an OrderProvider");
   }
-
   return context;
 }

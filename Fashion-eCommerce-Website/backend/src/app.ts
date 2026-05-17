@@ -21,6 +21,12 @@ app.use(cors({
 
 app.use(express.json());
 
+// 📝 Middleware ghi nhận mọi yêu cầu HTTP để chuẩn đoán kết nối local
+app.use((req, res, next) => {
+  console.log(`📡 [HTTP REQUEST] ${req.method} ${req.url}`);
+  next();
+});
+
 // API Base Check
 app.get("/", (req, res) => {
   res.json({

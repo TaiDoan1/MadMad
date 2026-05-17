@@ -8,8 +8,15 @@ const getTransporter = () => {
   const user = process.env.SMTP_USER;
   const pass = process.env.SMTP_PASS;
 
+  console.log("================= KIỂM TRA ĐỌC BIẾN MÔI TRƯỜNG SMTP =================");
+  console.log(`- SMTP_HOST: "${host || 'KHÔNG CÓ'}"`);
+  console.log(`- SMTP_PORT: ${port}`);
+  console.log(`- SMTP_USER: "${user || 'KHÔNG CÓ'}"`);
+  console.log(`- SMTP_PASS: "${pass ? 'ĐÃ ĐIỀN (MÃ ĐƯỢC ẨN BẢO MẬT)' : 'KHÔNG CÓ'}"`);
+  console.log("==================================================================");
+
   if (!host || !user || !pass) {
-    console.warn("⚠️ CẢNH BÁO: Chưa cấu hình SMTP credentials trong file .env (SMTP_HOST, SMTP_USER, SMTP_PASS). Hệ thống sẽ chuyển sang chế độ ghi log ra console!");
+    console.warn("⚠️ CẢNH BÁO: Chưa cấu hình đầy đủ SMTP credentials trong file .env. Hệ thống chuyển sang chế độ ghi log ra console!");
     return null;
   }
 
@@ -22,6 +29,8 @@ const getTransporter = () => {
 };
 
 export async function sendOrderConfirmationEmail(order: any) {
+  console.log(`\n📬 [EMAIL SERVICE] BẮT ĐẦU XỬ LÝ GỬI EMAIL ĐƠN HÀNG: ${order.orderNumber}`);
+
   const transporter = getTransporter();
 
   // 1. Lấy Dynamic Admin Email cấu hình từ Database
@@ -33,8 +42,31 @@ export async function sendOrderConfirmationEmail(order: any) {
     if (setting && setting.storeEmail) {
       adminEmail = setting.storeEmail.trim();
     }
+    console.log(`- Admin Email đích lấy từ Neon DB: "${adminEmail}"`);
   } catch (error) {
     console.error("⚠️ Không lấy được storeEmail từ DB cấu hình, dùng mặc định:", error);
+  }
+
+  // Nếu không có transporter (chưa điền .env), in hóa đơn ra console
+  if (!transporter) {
+    console.log("================= CHƯA CÓ SMTP - FALLBACK EMAIL LOG =================");
+    console.log(`To Customer: ${order.customerEmail || "KHÔNG CÓ EMAIL"}`);
+    console.log(`To Admin Gmail: ${adminEmail}`);
+    console.log(`Subject: [MADMAD STUDIO] ĐƠN HÀNG MỚI - MÃ: ${order.orderNumber}`);
+    console.log(`Order Total: ${order.total.toLocaleString("vi-VN")}₫`);
+    console.log("======================================================================");
+    return;
+  }
+
+  // 🧪 Thử nghiệm kiểm tra kết nối SMTP với Google bằng verify()
+  console.log("🔍 Đang bắt đầu kiểm tra kết nối xác thực đến máy chủ SMTP (transporter.verify())...");
+  try {
+    await transporter.verify();
+    console.log("✅ KẾT NỐI SMTP THÀNH CÔNG! Google chấp nhận tài khoản và mật khẩu ứng dụng.");
+  } catch (verifyError: any) {
+    console.error("❌ LỖI XÁC THỰC SMTP KHI KẾT NỐI GOOGLE:", verifyError);
+    console.error("👉 Gợi ý khắc phục: Kiểm tra lại xem có copy dư dấu cách trong mật khẩu 16 chữ cái, hoặc gõ sai địa chỉ Gmail người gửi.");
+    return; // Dừng tiến trình gửi thư nếu kết nối cơ bản lỗi để bảo vệ hệ thống
   }
 
   // Chi tiết hóa sản phẩm thành bảng HTML
@@ -179,50 +211,43 @@ export async function sendOrderConfirmationEmail(order: any) {
     </html>
   `;
 
-  // Gửi email thật qua SMTP hoặc fallback log console
-  if (transporter) {
-    // 📩 THƯ 1: Gửi cho Khách hàng (Nếu khách hàng có email)
-    if (order.customerEmail && order.customerEmail.trim()) {
-      try {
-        const customerMsg = `Chào bạn <strong>${order.customerName}</strong>,<br><br>Cám ơn bạn đã lựa chọn nổi loạn và khẳng định cá tính cùng <strong>MADMAD Studio</strong>. Chúng tôi xác nhận đã nhận được đơn hàng của bạn và đang tiến hành đóng gói siêu tốc!`;
-        const customerHtml = getHtmlTemplate("Đặt Hàng Thành Công!", customerMsg);
+  // 📩 THƯ 1: Gửi cho Khách hàng (Nếu khách hàng có email)
+  if (order.customerEmail && order.customerEmail.trim()) {
+    try {
+      console.log(`- Đang chuẩn bị gửi email cho Khách hàng đến: ${order.customerEmail.trim()}`);
+      const customerMsg = `Chào bạn <strong>${order.customerName}</strong>,<br><br>Cám ơn bạn đã lựa chọn nổi loạn và khẳng định cá tính cùng <strong>MADMAD Studio</strong>. Chúng tôi xác nhận đã nhận được đơn hàng của bạn và đang tiến hành đóng gói siêu tốc!`;
+      const customerHtml = getHtmlTemplate("Đặt Hàng Thành Công!", customerMsg);
 
-        await transporter.sendMail({
-          from: `"MADMAD Studio" <${process.env.SMTP_USER}>`,
-          to: order.customerEmail.trim(),
-          subject: `[MADMAD STUDIO] ĐẶT HÀNG THÀNH CÔNG - ĐƠN HÀNG ${order.orderNumber}`,
-          html: customerHtml,
-        });
-        console.log(`✉️ EMAIL: Đã gửi email xác nhận đặt hàng thành công đến Khách hàng: ${order.customerEmail}`);
-      } catch (err) {
-        console.error("❌ Lỗi gửi email cho Khách hàng:", err);
-      }
-    }
-
-    // 📩 THƯ 2: Gửi thông báo cho Admin Gmail (Luôn gửi)
-    if (adminEmail) {
-      try {
-        const adminMsg = `Xin chào Admin,<br><br>Hệ thống MADMAD Studio vừa ghi nhận có **ĐƠN HÀNG MỚI ĐẶT THÀNH CÔNG** trên website! Vui lòng truy cập trang quản trị Admin để xử lý giao dịch.`;
-        const adminHtml = getHtmlTemplate("Thông Báo: Có Đơn Hàng Mới!", adminMsg);
-
-        await transporter.sendMail({
-          from: `"Hệ Thống MADMAD" <${process.env.SMTP_USER}>`,
-          to: adminEmail,
-          subject: `[MADMAD STUDIO - ADMIN] CÓ ĐƠN HÀNG MỚI CẦN XỬ LÝ - ${order.orderNumber}`,
-          html: adminHtml,
-        });
-        console.log(`✉️ EMAIL: Đã gửi thông báo đơn hàng mới thành công đến Admin Gmail: ${adminEmail}`);
-      } catch (err) {
-        console.error("❌ Lỗi gửi email thông báo cho Admin Gmail:", err);
-      }
+      const customerInfo = await transporter.sendMail({
+        from: `"MADMAD Studio" <${process.env.SMTP_USER}>`,
+        to: order.customerEmail.trim(),
+        subject: `[MADMAD STUDIO] ĐẶT HÀNG THÀNH CÔNG - ĐƠN HÀNG ${order.orderNumber}`,
+        html: customerHtml,
+      });
+      console.log(`✉️ KẾT QUẢ GỬI KHÁCH HÀNG: Đã gửi email thành công! MessageId: ${customerInfo.messageId}`);
+    } catch (err) {
+      console.error("❌ LỖI GỬI EMAIL CHO KHÁCH HÀNG:", err);
     }
   } else {
-    // Fallback log console đẹp mắt
-    console.log("================= FALLBACK EMAIL LOG =================");
-    console.log(`To Customer: ${order.customerEmail || "KHÔNG CÓ EMAIL"}`);
-    console.log(`To Admin Gmail: ${adminEmail}`);
-    console.log(`Subject: [MADMAD STUDIO] ĐƠN HÀNG MỚI - MÃ: ${order.orderNumber}`);
-    console.log(`Order Total: ${order.total.toLocaleString("vi-VN")}₫`);
-    console.log("======================================================");
+    console.log("- Khách hàng không cung cấp Email, bỏ qua gửi hóa đơn khách.");
+  }
+
+  // 📩 THƯ 2: Gửi thông báo cho Admin Gmail (Luôn gửi)
+  if (adminEmail) {
+    try {
+      console.log(`- Đang chuẩn bị gửi email thông báo cho Admin đến: ${adminEmail}`);
+      const adminMsg = `Xin chào Admin,<br><br>Hệ thống MADMAD Studio vừa ghi nhận có **ĐƠN HÀNG MỚI ĐẶT THÀNH CÔNG** trên website! Vui lòng truy cập trang quản trị Admin để xử lý giao dịch.`;
+      const adminHtml = getHtmlTemplate("Thông Báo: Có Đơn Hàng Mới!", adminMsg);
+
+      const adminInfo = await transporter.sendMail({
+        from: `"Hệ Thống MADMAD" <${process.env.SMTP_USER}>`,
+        to: adminEmail,
+        subject: `[MADMAD STUDIO - ADMIN] CÓ ĐƠN HÀNG MỚI CẦN XỬ LÝ - ${order.orderNumber}`,
+        html: adminHtml,
+      });
+      console.log(`✉️ KẾT QUẢ GỬI ADMIN GMAIL: Đã gửi thông báo thành công! MessageId: ${adminInfo.messageId}`);
+    } catch (err) {
+      console.error("❌ LỖI GỬI EMAIL THÔNG BÁO CHO ADMIN GMAIL:", err);
+    }
   }
 }
