@@ -32,6 +32,8 @@ interface MembershipContextType {
   currentMember: Member | null;
   registerMember: (fullName: string, email: string, phone: string, password?: string) => Promise<{ success: boolean; error?: string }>;
   loginMember: (phoneOrEmail: string, password?: string) => Promise<{ success: boolean; error?: string }>;
+  loginWithGoogle: (credential: string) => Promise<{ success: boolean; error?: string }>;
+  updateMemberProfile: (fullName: string, phone: string) => Promise<{ success: boolean; error?: string }>;
   logoutMember: () => void;
   addPointsToCurrentMember: (pointsToAdd: number) => void;
   deductPointsFromCurrentMember: (pointsToDeduct: number) => void;
@@ -150,8 +152,64 @@ export function MembershipProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const loginWithGoogle = async (credential: string) => {
+    try {
+      const response = await fetch(`${API_URL}/auth/google-login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ credential }),
+      });
+      if (!response.ok) {
+        const err = await response.json();
+        return { success: false, error: err.message || "Đăng nhập Google thất bại!" };
+      }
+      const data = await response.json();
+      const loggedInMember: Member = {
+        ...data.member,
+        id: String(data.member.id),
+        memberCardId: `MM-${String(data.member.id).padStart(6, "0")}`,
+        avatarUrl: data.member.avatarUrl
+      };
+      setCurrentMember(loggedInMember);
+      localStorage.setItem("madmad_vip_session_token", data.sessionToken);
+      return { success: true };
+    } catch (e) {
+      return { success: false, error: "Không thể kết nối đến máy chủ" };
+    }
+  };
+
+  const updateMemberProfile = async (fullName: string, phone: string) => {
+    try {
+      if (!currentMember) return { success: false, error: "Chưa đăng nhập!" };
+      const response = await fetch(`${API_URL}/auth/update-profile`, {
+        method: "PUT",
+        headers: { 
+          "Content-Type": "application/json",
+          "x-member-email": currentMember.email
+        },
+        body: JSON.stringify({ fullName, phone }),
+      });
+      if (!response.ok) {
+        const err = await response.json();
+        return { success: false, error: err.message || "Lỗi cập nhật thông tin!" };
+      }
+      const data = await response.json();
+      const updated: Member = {
+        ...data,
+        id: String(data.id),
+        memberCardId: `MM-${String(data.id).padStart(6, "0")}`,
+        avatarUrl: data.avatarUrl
+      };
+      setCurrentMember(updated);
+      return { success: true };
+    } catch (e) {
+      return { success: false, error: "Lỗi kết nối máy chủ" };
+    }
+  };
+
   const logoutMember = () => {
     setCurrentMember(null);
+    localStorage.removeItem("madmad_vip_session_token");
   };
 
   const addPointsToCurrentMember = (pointsToAdd: number) => {
@@ -191,6 +249,8 @@ export function MembershipProvider({ children }: { children: ReactNode }) {
         currentMember,
         registerMember,
         loginMember,
+        loginWithGoogle,
+        updateMemberProfile,
         logoutMember,
         addPointsToCurrentMember,
         deductPointsFromCurrentMember,

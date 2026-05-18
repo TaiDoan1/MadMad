@@ -6,6 +6,7 @@ import productRoutes from "./routes/product.routes";
 import orderRoutes from "./routes/order.routes";
 import memberRoutes from "./routes/member.routes";
 import settingsRoutes from "./routes/settings.routes";
+import authRoutes from "./routes/auth.routes";
 
 dotenv.config();
 
@@ -16,7 +17,7 @@ const PORT = process.env.PORT || 5000;
 app.use(cors({
   origin: "*", // Trong thực tế, bạn sẽ cấu hình domain cụ thể của Frontend
   methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization"]
+  allowedHeaders: ["Content-Type", "Authorization", "x-member-email"]
 }));
 
 app.use(express.json());
@@ -41,6 +42,7 @@ app.use("/api/products", productRoutes);
 app.use("/api/orders", orderRoutes);
 app.use("/api/members", memberRoutes);
 app.use("/api/settings", settingsRoutes);
+app.use("/api/auth", authRoutes);
 
 // Global Error Handler Middleware
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {

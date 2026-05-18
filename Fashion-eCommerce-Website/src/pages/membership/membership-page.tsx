@@ -1,12 +1,11 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useMembership } from "@/features/membership/context/membership-context";
-import { useOrders } from "@/features/orders/context/order-context";
-import { Sparkles, Award, Receipt, LogOut, ArrowRight, UserCheck, ShieldCheck, Lock, XCircle, MessageCircle } from "lucide-react";
+import { Sparkles, Award, Receipt, LogOut, ArrowRight, UserCheck, ShieldCheck, Lock, XCircle, MessageCircle, Edit2, CheckCircle2, User, Phone, Mail } from "lucide-react";
 import { useTransitionTo } from "@/components/common/page-transition";
+import { API_URL } from "@/config/api";
 
 export function MembershipPage() {
-  const { currentMember, registerMember, loginMember, logoutMember, tierConfigs } = useMembership();
-  const { orders, updateOrderStatus } = useOrders();
+  const { currentMember, registerMember, loginMember, loginWithGoogle, updateMemberProfile, logoutMember, tierConfigs } = useMembership();
   const navigate = useTransitionTo();
 
   const [isRegister, setIsRegister] = useState(false);
@@ -14,18 +13,104 @@ export function MembershipPage() {
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
-  const [password, setPassword] = useState(""); // State cho password nhập vào
+  const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
 
-  // Lọc lịch sử mua sắm của thành viên dựa trên Số điện thoại hoặc Email
-  const memberOrders = currentMember
-    ? orders.filter(
-        (o) =>
-          o.customerPhone.replace(/\s+/g, "") === currentMember.phone ||
-          o.customerEmail.toLowerCase() === currentMember.email.toLowerCase()
-      )
-    : [];
+  // Realtime Orders loaded from neon backend matching logged-in member's Gmail
+  const [myOrders, setMyOrders] = useState<any[]>([]);
+  const [loadingOrders, setLoadingOrders] = useState(false);
+
+  // Profile Edit states
+  const [editingProfile, setEditingProfile] = useState(false);
+  const [profileName, setProfileName] = useState("");
+  const [profilePhone, setProfilePhone] = useState("");
+
+  // Sync profile editing fields when member is loaded/updates
+  useEffect(() => {
+    if (currentMember) {
+      setProfileName(currentMember.fullName);
+      setProfilePhone(currentMember.phone || "");
+    }
+  }, [currentMember]);
+
+  // Load Google Identity Services SDK dynamically
+  useEffect(() => {
+    if (currentMember) return;
+
+    const script = document.createElement("script");
+    script.src = "https://accounts.google.com/gsi/client";
+    script.async = true;
+    script.defer = true;
+    document.body.appendChild(script);
+
+    script.onload = () => {
+      if (window.google) {
+        window.google.accounts.id.initialize({
+          client_id: "688461719293-6o194l77qg1808hgd339r2n6a15o4d6p.apps.googleusercontent.com", // Google Client ID
+          callback: handleGoogleResponse,
+        });
+
+        // Render Google Sign-in button inside our container
+        window.google.accounts.id.renderButton(
+          document.getElementById("google-signin-btn-container"),
+          {
+            theme: "outline",
+            size: "large",
+            width: 320,
+            text: "signin_with",
+            shape: "rectangular"
+          }
+        );
+      }
+    };
+
+    return () => {
+      // Clean up script on unmount
+      if (document.body.contains(script)) {
+        document.body.removeChild(script);
+      }
+    };
+  }, [currentMember]);
+
+  // Fetch Member's Realtime Orders List from Postgres DB
+  useEffect(() => {
+    if (currentMember) {
+      setLoadingOrders(true);
+      fetch(`${API_URL}/auth/my-orders`, {
+        headers: {
+          "x-member-email": currentMember.email
+        }
+      })
+        .then(res => {
+          if (!res.ok) throw new Error("API error");
+          return res.json();
+        })
+        .then(data => {
+          if (Array.isArray(data)) {
+            setMyOrders(data);
+          }
+        })
+        .catch(err => console.error("Error loading member orders:", err))
+        .finally(() => setLoadingOrders(false));
+    }
+  }, [currentMember]);
+
+  // Handle Google OAuth Sign-In callback token
+  const handleGoogleResponse = async (response: any) => {
+    setError("");
+    setMessage("");
+    try {
+      const res = await loginWithGoogle(response.credential);
+      if (res.success) {
+        setMessage("Đăng nhập tài khoản Google thành công!");
+      } else {
+        setError(res.error || "Không thể đồng bộ tài khoản Google!");
+      }
+    } catch (err) {
+      setError("Không kết nối được dịch vụ Google OAuth!");
+    }
+  };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -63,14 +148,46 @@ export function MembershipPage() {
     }
   };
 
-  // Thực hiện hủy đơn của thành viên
-  const handleCancelOrder = (orderId: number) => {
-    if (window.confirm("Bạn có chắc chắn muốn hủy đơn hàng này không? Hành động này không thể hoàn tác!")) {
-      updateOrderStatus(orderId, "cancelled");
+  // Profile Edit Submit handler
+  const handleUpdateProfile = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+    setMessage("");
+    if (!profileName.trim()) {
+      setError("Họ tên không được để trống!");
+      return;
+    }
+    const res = await updateMemberProfile(profileName, profilePhone);
+    if (res.success) {
+      setMessage("Cập nhật thông tin thành viên thành công!");
+      setEditingProfile(false);
+    } else {
+      setError(res.error || "Không thể cập nhật thông tin!");
     }
   };
 
-  // Xác định Class màu thẻ dựa trên Tier
+  // Perform order cancellation
+  const handleCancelOrder = (orderId: number) => {
+    if (window.confirm("Bạn có chắc chắn muốn hủy đơn hàng này không? Hành động này không thể hoàn tác!")) {
+      fetch(`${API_URL}/orders/${orderId}/status`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "cancelled" }),
+      })
+        .then(res => {
+          if (res.ok) {
+            setMessage("Đã gửi yêu cầu hủy đơn hàng thành công!");
+            // Refresh order history list in-place
+            setMyOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: "cancelled" } : o));
+          } else {
+            setError("Gặp sự cố khi gửi yêu cầu hủy đơn hàng.");
+          }
+        })
+        .catch(() => setError("Lỗi kết nối máy chủ khi hủy đơn."));
+    }
+  };
+
+  // Format Card Hologram Color based on Membership Tier
   const getCardColorClass = (tier: string) => {
     switch (tier) {
       case "PLATINUM":
@@ -102,8 +219,20 @@ export function MembershipPage() {
           </button>
         </div>
 
+        {/* Messages */}
+        {error && (
+          <div className="mb-6 p-4 bg-red-50 border border-red-200 text-red-700 text-xs font-medium rounded-lg">
+            {error}
+          </div>
+        )}
+        {message && (
+          <div className="mb-6 p-4 bg-green-50 border border-green-200 text-green-700 text-xs font-medium rounded-lg">
+            {message}
+          </div>
+        )}
+
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
-          {/* CỘT 1: THẺ THÀNH VIÊN + ĐIỂM */}
+          {/* CỘT 1: THẺ THÀNH VIÊN + ĐIỂM + CẬP NHẬT HỒ SƠ */}
           <div className="lg:col-span-1 space-y-8">
             {/* MADMAD BLACK CARD */}
             <div
@@ -126,7 +255,7 @@ export function MembershipPage() {
 
               <div>
                 <p className="font-mono text-xl tracking-[0.25em] font-medium opacity-90">
-                  {currentMember.memberCardId}
+                  {currentMember.memberCardId || `MM-${String(currentMember.id).padStart(6, "0")}`}
                 </p>
               </div>
 
@@ -135,12 +264,16 @@ export function MembershipPage() {
                   <p className="text-[8px] tracking-[0.15em] opacity-40 uppercase">Chủ thẻ</p>
                   <p className="font-bold text-sm tracking-wider uppercase mt-0.5">{currentMember.fullName}</p>
                 </div>
-                <div className="text-right">
-                  <p className="text-[8px] tracking-[0.15em] opacity-40 uppercase">Gia nhập</p>
-                  <p className="font-medium text-xs opacity-80 mt-0.5">
-                    {new Date(currentMember.createdAt).toLocaleDateString("vi-VN")}
-                  </p>
-                </div>
+                {currentMember.avatarUrl ? (
+                  <img src={currentMember.avatarUrl} alt="Avatar" className="h-10 w-10 rounded-full border-2 border-white/20 object-cover" />
+                ) : (
+                  <div className="text-right">
+                    <p className="text-[8px] tracking-[0.15em] opacity-40 uppercase">Gia nhập</p>
+                    <p className="font-medium text-xs opacity-80 mt-0.5">
+                      {new Date(currentMember.createdAt).toLocaleDateString("vi-VN")}
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -164,20 +297,115 @@ export function MembershipPage() {
                 );
               })()}
             </div>
+
+            {/* BOX CHỈNH SỬA THÔNG TIN CÁ NHÂN */}
+            <div className="border border-black/10 rounded-xl p-6 bg-white shadow-sm">
+              <div className="flex justify-between items-center mb-4 border-b border-black/5 pb-2">
+                <span className="text-xs font-bold tracking-wider text-black/80 uppercase flex items-center gap-1.5">
+                  <User className="h-4 w-4 text-black/60" />
+                  HỒ SƠ THÀNH VIÊN
+                </span>
+                <button
+                  onClick={() => setEditingProfile(!editingProfile)}
+                  className="text-xs font-bold text-red-600 hover:text-red-700 flex items-center gap-1 transition-all"
+                >
+                  <Edit2 className="h-3.5 w-3.5" />
+                  {editingProfile ? "Hủy bỏ" : "Chỉnh sửa"}
+                </button>
+              </div>
+
+              {editingProfile ? (
+                // FORM CHỈNH SỬA
+                <form onSubmit={handleUpdateProfile} className="space-y-4">
+                  <div>
+                    <label className="block text-[10px] font-extrabold tracking-wider uppercase text-black/60 mb-1">
+                      Họ và Tên
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={profileName}
+                      onChange={(e) => setProfileName(e.target.value)}
+                      placeholder="Nhập họ và tên mới..."
+                      className="w-full rounded-lg border border-black/10 bg-stone-50 px-3 py-2 text-xs placeholder:text-black/30 focus:border-black/60 focus:bg-white focus:outline-none transition-all uppercase"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-extrabold tracking-wider uppercase text-black/60 mb-1">
+                      Số điện thoại
+                    </label>
+                    <input
+                      type="tel"
+                      value={profilePhone}
+                      onChange={(e) => setProfilePhone(e.target.value)}
+                      placeholder="Nhập số điện thoại liên hệ..."
+                      className="w-full rounded-lg border border-black/10 bg-stone-50 px-3 py-2 text-xs placeholder:text-black/30 focus:border-black/60 focus:bg-white focus:outline-none transition-all"
+                    />
+                  </div>
+
+                  <button
+                    type="submit"
+                    className="w-full bg-black text-white hover:bg-red-700 py-2.5 text-xs font-bold tracking-widest uppercase transition-all rounded-lg"
+                  >
+                    Lưu thông tin
+                  </button>
+                </form>
+              ) : (
+                // HIỂN THỊ CHI TIẾT
+                <div className="space-y-3.5 text-xs">
+                  <div className="flex items-center justify-between text-black/60">
+                    <span className="flex items-center gap-1.5 font-medium">
+                      <User className="h-4 w-4 opacity-50" />
+                      Tên thành viên:
+                    </span>
+                    <span className="font-extrabold text-black uppercase">{currentMember.fullName}</span>
+                  </div>
+
+                  <div className="flex items-center justify-between text-black/60">
+                    <span className="flex items-center gap-1.5 font-medium">
+                      <Mail className="h-4 w-4 opacity-50" />
+                      Địa chỉ Gmail:
+                    </span>
+                    <span className="font-semibold text-black">{currentMember.email}</span>
+                  </div>
+
+                  <div className="flex items-center justify-between text-black/60">
+                    <span className="flex items-center gap-1.5 font-medium">
+                      <Phone className="h-4 w-4 opacity-50" />
+                      Số điện thoại:
+                    </span>
+                    <span className="font-semibold text-black">{currentMember.phone || "Chưa cập nhật"}</span>
+                  </div>
+
+                  {/* Cảnh báo nếu chưa có sđt */}
+                  {!currentMember.phone && (
+                    <div className="mt-4 p-3 bg-amber-50 border border-amber-200 text-amber-800 rounded-lg text-[11px] leading-relaxed">
+                      💡 <strong>Mẹo:</strong> Hãy bấm <strong>Chỉnh sửa</strong> để bổ sung Số điện thoại liên lạc! Điều này giúp bạn tự động tích lũy điểm khi mua hàng.
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
 
-          {/* CỘT 2 & 3: QUYỀN LỢI & LỊCH SỬ ĐƠN HÀNG */}
+          {/* CỘT 2 & 3: LỊCH SỬ ĐƠN HÀNG (REALTIME TRỰC TIẾP) & ĐẶC QUYỀN VIP */}
           <div className="lg:col-span-2 space-y-12">
             {/* Lịch sử mua hàng */}
             <div>
               <h2 className="text-lg font-bold tracking-wider uppercase mb-6 flex items-center gap-2">
                 <Receipt className="h-5 w-5 text-black/70" />
-                LỊCH SỬ ĐƠN HÀNG ({memberOrders.length})
+                LỊCH SỬ ĐƠN HÀNG ({myOrders.length})
               </h2>
 
-              {memberOrders.length === 0 ? (
+              {loadingOrders ? (
+                <div className="border border-black/10 rounded-xl p-12 text-center bg-white">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-black mx-auto mb-4"></div>
+                  <p className="text-xs text-black/50">Đang quét tìm đơn hàng trên đám mây...</p>
+                </div>
+              ) : myOrders.length === 0 ? (
                 <div className="border border-dashed border-black/15 rounded-xl p-8 text-center bg-white">
-                  <p className="text-sm text-black/40 mb-4">Bạn chưa thực hiện đơn hàng thành viên nào.</p>
+                  <p className="text-sm text-black/40 mb-4">Chúng tôi không tìm thấy đơn hàng nào mua bằng Gmail: <strong>{currentMember.email}</strong>.</p>
                   <button
                     onClick={() => navigate("/shop")}
                     className="inline-flex items-center gap-2 bg-black text-white hover:bg-red-700 text-xs font-bold tracking-widest uppercase px-6 py-3 transition-all rounded-sm"
@@ -187,7 +415,7 @@ export function MembershipPage() {
                   </button>
                 </div>
               ) : (
-                <div className="border border-black/10 rounded-xl overflow-hidden bg-white">
+                <div className="border border-black/10 rounded-xl overflow-hidden bg-white shadow-sm">
                   <div className="overflow-x-auto">
                     <table className="w-full text-left text-sm border-collapse">
                       <thead>
@@ -200,7 +428,7 @@ export function MembershipPage() {
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-black/5 text-xs">
-                        {memberOrders.map((order) => {
+                        {myOrders.map((order) => {
                           const createdTime = new Date(order.createdAt).getTime();
                           const diffMs = Date.now() - createdTime;
                           const isWithin5Min = diffMs >= 0 && diffMs <= 5 * 60 * 1000;
@@ -229,7 +457,7 @@ export function MembershipPage() {
                                     : "Đang xử lý"}
                                 </span>
                               </td>
-                              <td className="p-4 text-right font-bold text-black">
+                              <td className="p-4 text-right font-bold text-black font-mono">
                                 {order.total.toLocaleString("vi-VN")}₫
                               </td>
                               <td className="p-4 text-center">
@@ -311,7 +539,7 @@ export function MembershipPage() {
     );
   }
 
-  // CHƯA ĐĂNG NHẬP: HIỂN THỊ FORM SPLIT-SCREEN
+  // CHƯA ĐĂNG NHẬP: HIỂN THỊ FORM SPLIT-SCREEN & ĐĂNG NHẬP GOOGLE
   return (
     <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8 min-h-[80vh] flex items-center">
       <div className="w-full border border-black/10 rounded-2xl overflow-hidden grid grid-cols-1 lg:grid-cols-12 shadow-2xl">
@@ -332,12 +560,12 @@ export function MembershipPage() {
           </div>
         </div>
 
-        {/* BÊN PHẢI: LOGIN/REGISTER FORM */}
+        {/* BÊN PHẢI: LOGIN/REGISTER FORM & GOOGLE SIGN IN */}
         <div className="lg:col-span-6 px-8 py-16 sm:px-12 flex flex-col justify-center bg-white">
           <div className="max-w-md w-full mx-auto">
             {/* Header Form */}
-            <div className="mb-8">
-              <h2 className="font-extrabold text-2xl tracking-tight text-black uppercase mb-2">
+            <div className="mb-6">
+              <h2 className="font-extrabold text-2xl tracking-tight text-black uppercase mb-1.5">
                 {isRegister ? "ĐĂNG KÝ THÀNH VIÊN" : "MADMAD MEMBER"}
               </h2>
               <p className="text-xs text-black/50">
@@ -362,6 +590,12 @@ export function MembershipPage() {
                 {message}
               </div>
             )}
+
+            {/* Google OAuth Login Button CONTAINER */}
+            <div className="mb-6 flex flex-col items-center justify-center border-b border-black/5 pb-6">
+              <p className="text-[10px] font-extrabold tracking-widest text-black/40 mb-3 uppercase">ĐĂNG NHẬP NHANH BẰNG GOOGLE</p>
+              <div id="google-signin-btn-container" className="shadow-sm border border-black/10 rounded overflow-hidden"></div>
+            </div>
 
             {/* Form */}
             {isRegister ? (
@@ -488,7 +722,7 @@ export function MembershipPage() {
                     setIsRegister(!isRegister);
                     setError("");
                     setMessage("");
-                    setPassword(""); // Reset password state
+                    setPassword("");
                   }}
                   className="font-bold text-red-600 hover:text-red-700 transition-colors uppercase ml-1"
                 >

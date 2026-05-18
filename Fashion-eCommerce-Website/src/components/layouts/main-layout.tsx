@@ -10,6 +10,7 @@ import { SplashScreen } from "@/components/common/splash-screen";
 import { useAdminAuth } from "@/features/auth/context/admin-auth-context";
 import { useCart } from "@/features/cart/context/cart-context";
 import { useStorefrontSettings } from "@/features/settings/context/storefront-settings-context";
+import { useMembership } from "@/features/membership/context/membership-context";
 
 export function MainLayout() {
   const { settings } = useStorefrontSettings();
@@ -24,6 +25,7 @@ export function MainLayout() {
   const location = useLocation();
   const navigate = useTransitionTo();
   const { isAdminAuthenticated, loginAdmin, logoutAdmin } = useAdminAuth();
+  const { currentMember } = useMembership();
   const { itemCount: cartCount } = useCart();
   const isHome = location.pathname === "/";
   // Header transparent chỉ khi ở home page VÀ chưa scroll
@@ -161,15 +163,35 @@ export function MainLayout() {
               >
                 <Search className="h-5 w-5" />
               </button>
-              <button
-                className={`transition-colors ${
-                  isTransparent ? "hover:text-white/70" : "hover:text-primary"
-                }`}
-                onClick={() => navigate("/membership")}
-                aria-label="Đăng ký thành viên"
-              >
-                <User className="h-5 w-5" />
-              </button>
+              {currentMember ? (
+                <button
+                  onClick={() => navigate("/membership")}
+                  className="relative transition-transform hover:scale-105 active:scale-95"
+                  aria-label="Xem hồ sơ thành viên"
+                >
+                  {currentMember.avatarUrl ? (
+                    <img
+                      src={currentMember.avatarUrl}
+                      alt={currentMember.fullName}
+                      className="h-6 w-6 rounded-full border border-black/10 object-cover"
+                    />
+                  ) : (
+                    <div className="h-6 w-6 rounded-full bg-primary flex items-center justify-center text-[10px] font-black text-white uppercase">
+                      {currentMember.fullName.charAt(0)}
+                    </div>
+                  )}
+                </button>
+              ) : (
+                <button
+                  className={`transition-colors ${
+                    isTransparent ? "hover:text-white/70" : "hover:text-primary"
+                  }`}
+                  onClick={() => navigate("/membership")}
+                  aria-label="Đăng ký thành viên"
+                >
+                  <User className="h-5 w-5" />
+                </button>
+              )}
               <button
                 onClick={() => setCartDrawerOpen(true)}
                 aria-label="Mở giỏ hàng"

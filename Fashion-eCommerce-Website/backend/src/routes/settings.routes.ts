@@ -32,6 +32,8 @@ router.get("/", async (req, res, next) => {
           storeEmail: "mmadmadstudio@gmail.com",
           storePhone: "+84 123 456 789",
           storeAddress: "123 Fashion Street, Ho Chi Minh City",
+          customerEmailSubject: "[{{brandName}}] ĐẶT HÀNG THÀNH CÔNG - ĐƠN HÀNG {{orderNumber}}",
+          customerEmailTemplate: "Chào bạn <strong>{{customerName}}</strong>,<br><br>Cám ơn bạn đã lựa chọn nổi loạn và khẳng định cá tính cùng <strong>{{brandName}}</strong>. Chúng tôi xác nhận đã nhận được đơn hàng của bạn và đang tiến hành đóng gói siêu tốc!",
           smtpHost: "smtp.gmail.com",
           smtpPort: 587,
           smtpUser: "mmadmadstudio@gmail.com",
@@ -79,7 +81,11 @@ router.put("/", async (req, res, next) => {
       smtpPort,
       smtpUser,
       smtpPass,
-      smtpSenderName
+      smtpSenderName,
+
+      // Nhận diện mẫu email động mới
+      customerEmailSubject,
+      customerEmailTemplate
     } = req.body;
 
     const instagramImagesStr = Array.isArray(instagramImages) 
@@ -108,6 +114,10 @@ router.put("/", async (req, res, next) => {
         storePhone,
         storeAddress,
 
+        // Cấu hình email khách hàng
+        customerEmailSubject,
+        customerEmailTemplate,
+
         // Cập nhật SMTP động
         smtpHost,
         smtpPort: smtpPort ? Number(smtpPort) : undefined,
@@ -135,6 +145,10 @@ router.put("/", async (req, res, next) => {
         storeEmail: storeEmail || "contact@madmad.studio",
         storePhone: storePhone || "+84 123 456 789",
         storeAddress: storeAddress || "123 Fashion Street, Ho Chi Minh City",
+
+        // Mẫu email khách hàng
+        customerEmailSubject: customerEmailSubject || "[{{brandName}}] ĐẶT HÀNG THÀNH CÔNG - ĐƠN HÀNG {{orderNumber}}",
+        customerEmailTemplate: customerEmailTemplate || "Chào bạn <strong>{{customerName}}</strong>,<br><br>Cám ơn bạn đã lựa chọn nổi loạn và khẳng định cá tính cùng <strong>{{brandName}}</strong>. Chúng tôi xác nhận đã nhận được đơn hàng của bạn và đang tiến hành đóng gói siêu tốc!",
 
         // Khởi tạo SMTP động
         smtpHost: smtpHost || "smtp.gmail.com",

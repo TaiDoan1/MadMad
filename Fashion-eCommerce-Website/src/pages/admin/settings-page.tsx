@@ -32,6 +32,10 @@ export function AdminSettingsPage() {
   const [printInvoicePhone, setPrintInvoicePhone] = useState(settings.printInvoicePhone || "Hotline: 099.999.9999");
   const [printInvoiceFooterSlogan, setPrintInvoiceFooterSlogan] = useState(settings.printInvoiceFooterSlogan || "CẢM ƠN QUÝ KHÁCH ĐÃ CHỌN MADMAD STUDIO!");
   const [printInvoicePolicy, setPrintInvoicePolicy] = useState(settings.printInvoicePolicy || "");
+  const [printInvoiceSubheader, setPrintInvoiceSubheader] = useState(settings.printInvoiceSubheader || "Tối giản . Độc bản . Cao cấp");
+  const [printInvoiceBankId, setPrintInvoiceBankId] = useState(settings.printInvoiceBankId || "MB");
+  const [printInvoiceBankAccount, setPrintInvoiceBankAccount] = useState(settings.printInvoiceBankAccount || "0999999999");
+  const [printInvoiceAccountName, setPrintInvoiceAccountName] = useState(settings.printInvoiceAccountName || "MADMAD STUDIO");
 
   // SMTP Gmail States
   const [smtpHost, setSmtpHost] = useState(settings.smtpHost || "smtp.gmail.com");
@@ -39,6 +43,10 @@ export function AdminSettingsPage() {
   const [smtpUser, setSmtpUser] = useState(settings.smtpUser || "mmadmadstudio@gmail.com");
   const [smtpPass, setSmtpPass] = useState(settings.smtpPass || "yxmbctjhsxkyeznx");
   const [smtpSenderName, setSmtpSenderName] = useState(settings.smtpSenderName || "MADMAD STUDIO");
+
+  // Customer Auto-Email Content States
+  const [customerEmailSubject, setCustomerEmailSubject] = useState(settings.customerEmailSubject || "");
+  const [customerEmailTemplate, setCustomerEmailTemplate] = useState(settings.customerEmailTemplate || "");
 
   // Custom Direct Email States
   const [testEmailTo, setTestEmailTo] = useState("");
@@ -68,6 +76,10 @@ export function AdminSettingsPage() {
     setPrintInvoicePhone(settings.printInvoicePhone || "Hotline: 099.999.9999");
     setPrintInvoiceFooterSlogan(settings.printInvoiceFooterSlogan || "CẢM ƠN QUÝ KHÁCH ĐÃ CHỌN MADMAD STUDIO!");
     setPrintInvoicePolicy(settings.printInvoicePolicy || "");
+    setPrintInvoiceSubheader(settings.printInvoiceSubheader || "Tối giản . Độc bản . Cao cấp");
+    setPrintInvoiceBankId(settings.printInvoiceBankId || "MB");
+    setPrintInvoiceBankAccount(settings.printInvoiceBankAccount || "0999999999");
+    setPrintInvoiceAccountName(settings.printInvoiceAccountName || "MADMAD STUDIO");
 
     // Cập nhật SMTP states khi settings thay đổi từ DB
     setSmtpHost(settings.smtpHost || "smtp.gmail.com");
@@ -75,6 +87,8 @@ export function AdminSettingsPage() {
     setSmtpUser(settings.smtpUser || "mmadmadstudio@gmail.com");
     setSmtpPass(settings.smtpPass || "yxmbctjhsxkyeznx");
     setSmtpSenderName(settings.smtpSenderName || "MADMAD STUDIO");
+    setCustomerEmailSubject(settings.customerEmailSubject || "");
+    setCustomerEmailTemplate(settings.customerEmailTemplate || "");
 
     // Đọc danh sách coupon từ service
     const storedCoupons = readStoredCoupons();
@@ -117,11 +131,15 @@ export function AdminSettingsPage() {
       printInvoicePhone,
       printInvoiceFooterSlogan,
       printInvoicePolicy,
+      printInvoiceSubheader,
+      printInvoiceBankId,
+      printInvoiceBankAccount,
+      printInvoiceAccountName,
     });
     window.alert("Đã lưu thiết lập mẫu in hóa đơn thành công!");
   };
 
-  // 💾 Lưu cài đặt cấu hình SMTP Gmail động
+  // 💾 Lưu cài đặt cấu hình SMTP Gmail & Mẫu email động
   const handleSaveSmtpSettings = () => {
     updateSettings({
       smtpHost,
@@ -129,8 +147,10 @@ export function AdminSettingsPage() {
       smtpUser,
       smtpPass,
       smtpSenderName,
+      customerEmailSubject,
+      customerEmailTemplate,
     });
-    window.alert("Đã lưu cấu hình SMTP Gmail thành công lên đám mây!");
+    window.alert("Đã lưu cấu hình SMTP & Mẫu Email Khách hàng thành công!");
   };
 
   // 📬 Gửi Email Thủ Công trực tiếp từ biểu mẫu (Admin Form)
@@ -583,31 +603,44 @@ export function AdminSettingsPage() {
             </div>
 
             <div className="space-y-4">
-              <div>
-                <label className="block text-[10px] font-extrabold tracking-wider uppercase text-black/50 mb-1.5">Tiêu đề hóa đơn</label>
-                <input
-                  value={printInvoiceTitle}
-                  onChange={(e) => setPrintInvoiceTitle(e.target.value)}
-                  className="w-full rounded-xl border border-black/10 bg-stone-50 px-4 py-3 focus:bg-white focus:border-black/60 focus:outline-none transition-all font-bold uppercase"
-                />
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-[10px] font-extrabold tracking-wider uppercase text-black/50 mb-1.5">Tiêu đề hóa đơn</label>
+                  <input
+                    value={printInvoiceTitle}
+                    onChange={(e) => setPrintInvoiceTitle(e.target.value)}
+                    className="w-full rounded-xl border border-black/10 bg-stone-50 px-4 py-3 focus:bg-white focus:border-black/60 focus:outline-none transition-all font-bold uppercase"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-extrabold tracking-wider uppercase text-black/50 mb-1.5">Slogan phụ / Manifesto</label>
+                  <input
+                    value={printInvoiceSubheader}
+                    onChange={(e) => setPrintInvoiceSubheader(e.target.value)}
+                    className="w-full rounded-xl border border-black/10 bg-stone-50 px-4 py-3 focus:bg-white focus:border-black/60 focus:outline-none transition-all font-bold"
+                  />
+                </div>
               </div>
 
-              <div>
-                <label className="block text-[10px] font-extrabold tracking-wider uppercase text-black/50 mb-1.5">Địa chỉ Showroom hiển thị</label>
-                <input
-                  value={printInvoiceAddress}
-                  onChange={(e) => setPrintInvoiceAddress(e.target.value)}
-                  className="w-full rounded-xl border border-black/10 bg-stone-50 px-4 py-3 focus:bg-white focus:border-black/60 focus:outline-none transition-all"
-                />
-              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-[10px] font-extrabold tracking-wider uppercase text-black/50 mb-1.5">Địa chỉ Showroom hiển thị</label>
+                  <input
+                    value={printInvoiceAddress}
+                    onChange={(e) => setPrintInvoiceAddress(e.target.value)}
+                    className="w-full rounded-xl border border-black/10 bg-stone-50 px-4 py-3 focus:bg-white focus:border-black/60 focus:outline-none transition-all"
+                  />
+                </div>
 
-              <div>
-                <label className="block text-[10px] font-extrabold tracking-wider uppercase text-black/50 mb-1.5">Hotline CSKH hiển thị</label>
-                <input
-                  value={printInvoicePhone}
-                  onChange={(e) => setPrintInvoicePhone(e.target.value)}
-                  className="w-full rounded-xl border border-black/10 bg-stone-50 px-4 py-3 focus:bg-white focus:border-black/60 focus:outline-none transition-all font-mono"
-                />
+                <div>
+                  <label className="block text-[10px] font-extrabold tracking-wider uppercase text-black/50 mb-1.5">Hotline CSKH hiển thị</label>
+                  <input
+                    value={printInvoicePhone}
+                    onChange={(e) => setPrintInvoicePhone(e.target.value)}
+                    className="w-full rounded-xl border border-black/10 bg-stone-50 px-4 py-3 focus:bg-white focus:border-black/60 focus:outline-none transition-all font-mono"
+                  />
+                </div>
               </div>
 
               <div>
@@ -619,10 +652,47 @@ export function AdminSettingsPage() {
                 />
               </div>
 
+              {/* Cấu hình Ngân hàng chuyển khoản quét VietQR */}
+              <div className="border border-black/5 rounded-xl p-4 bg-stone-50/50 space-y-3">
+                <h4 className="text-[10px] font-black tracking-widest text-black/60 uppercase border-b border-black/5 pb-1.5">
+                  Cấu hình Cổng Quét VietQR Hóa Đơn
+                </h4>
+                
+                <div className="grid grid-cols-3 gap-3">
+                  <div>
+                    <label className="block text-[9px] font-bold text-black/50 mb-1">Mã Ngân hàng (VietQR)</label>
+                    <input
+                      value={printInvoiceBankId}
+                      onChange={(e) => setPrintInvoiceBankId(e.target.value)}
+                      placeholder="Ví dụ: MB, VCB, ACB"
+                      className="w-full rounded-lg border border-black/10 bg-white px-2.5 py-1.5 text-[10px] font-bold uppercase focus:border-black/60 focus:outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[9px] font-bold text-black/50 mb-1">Số tài khoản</label>
+                    <input
+                      value={printInvoiceBankAccount}
+                      onChange={(e) => setPrintInvoiceBankAccount(e.target.value)}
+                      placeholder="0999999999"
+                      className="w-full rounded-lg border border-black/10 bg-white px-2.5 py-1.5 text-[10px] font-mono font-bold focus:border-black/60 focus:outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[9px] font-bold text-black/50 mb-1">Tên chủ tài khoản</label>
+                    <input
+                      value={printInvoiceAccountName}
+                      onChange={(e) => setPrintInvoiceAccountName(e.target.value)}
+                      placeholder="MADMAD STUDIO"
+                      className="w-full rounded-lg border border-black/10 bg-white px-2.5 py-1.5 text-[10px] font-bold uppercase focus:border-black/60 focus:outline-none"
+                    />
+                  </div>
+                </div>
+              </div>
+
               <div>
                 <label className="block text-[10px] font-extrabold tracking-wider uppercase text-black/50 mb-1.5">Chính sách đổi trả & Ghi chú</label>
                 <textarea
-                  rows={4}
+                  rows={3}
                   value={printInvoicePolicy}
                   onChange={(e) => setPrintInvoicePolicy(e.target.value)}
                   placeholder="Điền quy định đổi trả hàng..."
@@ -654,7 +724,7 @@ export function AdminSettingsPage() {
                 {/* Shop Header */}
                 <div className="text-center pb-3 border-b border-dashed border-black/20 space-y-1">
                   <h4 className="text-xs font-black font-sans uppercase">MADMAD STUDIO</h4>
-                  <p className="text-[7px] text-black/50 font-sans">Tối giản . Độc bản . Cao cấp</p>
+                  <p className="text-[7px] text-black/50 font-sans">{printInvoiceSubheader}</p>
                   <p className="text-[8px] text-black/60">{printInvoiceAddress}</p>
                   <p className="text-[8px] text-black/60">{printInvoicePhone}</p>
                 </div>
@@ -695,12 +765,28 @@ export function AdminSettingsPage() {
                     <span>1.070.000₫</span>
                   </div>
                   <div className="flex justify-between text-red-600 text-[8px]">
-                    <span>VIP Member (👑 Hạng thẻ):</span>
+                    <span>VIP Member (👑 PLATINUM):</span>
                     <span>-53.500₫</span>
                   </div>
                   <div className="flex justify-between border-t border-black/10 pt-1 text-[10px] font-black text-black">
                     <span>TỔNG CỘNG:</span>
                     <span>1.016.500₫</span>
+                  </div>
+                </div>
+
+                {/* Dynamic VietQR Preview Box */}
+                <div className="flex items-center gap-2 border border-black/10 rounded-lg p-2 bg-stone-50 text-[8px] font-sans">
+                  <div className="bg-white p-0.5 rounded border border-black/5 flex-shrink-0">
+                    <img
+                      src={`https://img.vietqr.io/image/${printInvoiceBankId}-${printInvoiceBankAccount}-compact.png?amount=1016500&addInfo=MADMAD%20DEMO1002&accountName=${encodeURIComponent(printInvoiceAccountName)}`}
+                      alt="VietQR MADMAD"
+                      className="h-8 w-8 object-contain"
+                    />
+                  </div>
+                  <div className="space-y-0.5">
+                    <p className="font-bold uppercase tracking-wider">CỔNG QUÉT THANH TOÁN ({printInvoiceBankId})</p>
+                    <p className="text-[6px] text-black/60">STK: {printInvoiceBankAccount}</p>
+                    <p className="text-[6px] text-black/60 uppercase">Tên: {printInvoiceAccountName}</p>
                   </div>
                 </div>
 
@@ -884,6 +970,71 @@ export function AdminSettingsPage() {
                 </button>
               </div>
             </form>
+          </div>
+
+          {/* Cấu hình Nội dung Email Mẫu gửi khách hàng tự động */}
+          <div className="col-span-12 lg:col-span-12 space-y-6 rounded-2xl border border-black/10 bg-white p-6 shadow-sm text-xs font-semibold">
+            <div className="flex items-center gap-2 border-b border-black/5 pb-3">
+              <Mail className="h-4.5 w-4.5 text-black/60" />
+              <h3 className="text-xs font-extrabold tracking-widest text-black/75 uppercase">MẪU EMAIL TỰ ĐỘNG GỬI KHÁCH HÀNG KHI ĐẶT HÀNG THÀNH CÔNG</h3>
+            </div>
+
+            <p className="text-[10px] text-black/45 leading-relaxed font-medium">
+              Bạn có thể dễ dàng tùy biến tiêu đề và nội dung chào mừng trong email tự động gửi cho khách hàng. Hệ thống hỗ trợ định dạng HTML (để tạo chữ in đậm, xuống dòng, liên kết...).
+            </p>
+
+            {/* Token Guide */}
+            <div className="p-4 bg-stone-50 border border-black/5 rounded-xl space-y-2">
+              <h4 className="text-[9px] font-black tracking-wider text-black/75 uppercase">📌 CÁC TỪ KHÓA ĐỘNG (TOKENS) CÓ THỂ SỬ DỤNG:</h4>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-[10px] text-black/60">
+                <div>
+                  <span className="font-mono font-bold text-red-600 bg-red-50 px-1.5 py-0.5 rounded">{"{{customerName}}"}</span>
+                  <span className="ml-1.5 font-medium">: Tên khách hàng đặt mua</span>
+                </div>
+                <div>
+                  <span className="font-mono font-bold text-red-600 bg-red-50 px-1.5 py-0.5 rounded">{"{{orderNumber}}"}</span>
+                  <span className="ml-1.5 font-medium">: Mã số đơn hàng tự động</span>
+                </div>
+                <div>
+                  <span className="font-mono font-bold text-red-600 bg-red-50 px-1.5 py-0.5 rounded">{"{{brandName}}"}</span>
+                  <span className="ml-1.5 font-medium">: Tên thương hiệu shop</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-[10px] font-extrabold tracking-wider uppercase text-black/50 mb-1.5">Tiêu đề Email xác nhận</label>
+                <input
+                  type="text"
+                  value={customerEmailSubject}
+                  onChange={(e) => setCustomerEmailSubject(e.target.value)}
+                  placeholder="Ví dụ: [{{brandName}}] ĐẶT HÀNG THÀNH CÔNG - ĐƠN HÀNG {{orderNumber}}"
+                  className="w-full rounded-xl border border-black/10 bg-stone-50 px-4 py-3 focus:bg-white focus:border-black/60 focus:outline-none transition-all font-bold"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-extrabold tracking-wider uppercase text-black/50 mb-1.5">Nội dung Email chào mừng (Hỗ trợ tags HTML & xuống dòng)</label>
+                <textarea
+                  rows={6}
+                  value={customerEmailTemplate}
+                  onChange={(e) => setCustomerEmailTemplate(e.target.value)}
+                  placeholder="Nhập mẫu tin nhắn chào mừng đặt hàng thành công..."
+                  className="w-full rounded-xl border border-black/10 bg-stone-50 px-4 py-3 focus:bg-white focus:border-black/60 focus:outline-none transition-all font-mono leading-relaxed"
+                />
+              </div>
+            </div>
+
+            <div className="pt-4 border-t border-black/5">
+              <button
+                onClick={handleSaveSmtpSettings}
+                className="w-full rounded-xl bg-black px-6 py-3.5 text-xs font-bold tracking-widest uppercase text-white hover:bg-neutral-800 transition-all flex items-center justify-center gap-2 hover:scale-[1.01] active:scale-[0.99] shadow-md shadow-black/10"
+              >
+                <Save className="h-4.5 w-4.5" />
+                LƯU MẪU EMAIL KHÁCH HÀNG & SMTP
+              </button>
+            </div>
           </div>
         </div>
       )}

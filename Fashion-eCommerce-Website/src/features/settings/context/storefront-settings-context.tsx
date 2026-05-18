@@ -62,11 +62,17 @@ export const DEFAULT_STOREFRONT_SETTINGS: StorefrontSettings = {
   printInvoicePhone: "Hotline: 099.999.9999",
   printInvoiceFooterSlogan: "CẢM ƠN QUÝ KHÁCH ĐÃ CHỌN MADMAD STUDIO!",
   printInvoicePolicy: "* Quý khách vui lòng kiểm tra kỹ sản phẩm khi nhận hàng. Đối với các yêu cầu đổi trả sản phẩm nguyên tag mác, xin hãy nhắn tin trực tiếp fanpage Facebook/Instagram của MADMAD Studio trong vòng 3 ngày kể từ ngày nhận hàng.",
+  printInvoiceSubheader: "Tối giản . Độc bản . Cao cấp",
+  printInvoiceBankId: "MB",
+  printInvoiceBankAccount: "0999999999",
+  printInvoiceAccountName: "MADMAD STUDIO",
   smtpHost: "smtp.gmail.com",
   smtpPort: 587,
   smtpUser: "mmadmadstudio@gmail.com",
   smtpPass: "yxmbctjhsxkyeznx",
   smtpSenderName: "MADMAD STUDIO",
+  customerEmailSubject: "[{{brandName}}] ĐẶT HÀNG THÀNH CÔNG - ĐƠN HÀNG {{orderNumber}}",
+  customerEmailTemplate: "Chào bạn <strong>{{customerName}}</strong>,<br><br>Cám ơn bạn đã lựa chọn nổi loạn và khẳng định cá tính cùng <strong>{{brandName}}</strong>. Chúng tôi xác nhận đã nhận được đơn hàng của bạn và đang tiến hành đóng gói siêu tốc!",
 };
 
 interface StorefrontSettingsContextValue {
@@ -160,6 +166,14 @@ function readStoredSettings(): StorefrontSettings {
         typeof parsed.printInvoiceFooterSlogan === "string" ? parsed.printInvoiceFooterSlogan : DEFAULT_STOREFRONT_SETTINGS.printInvoiceFooterSlogan,
       printInvoicePolicy:
         typeof parsed.printInvoicePolicy === "string" ? parsed.printInvoicePolicy : DEFAULT_STOREFRONT_SETTINGS.printInvoicePolicy,
+      printInvoiceSubheader:
+        typeof parsed.printInvoiceSubheader === "string" ? parsed.printInvoiceSubheader : DEFAULT_STOREFRONT_SETTINGS.printInvoiceSubheader,
+      printInvoiceBankId:
+        typeof parsed.printInvoiceBankId === "string" ? parsed.printInvoiceBankId : DEFAULT_STOREFRONT_SETTINGS.printInvoiceBankId,
+      printInvoiceBankAccount:
+        typeof parsed.printInvoiceBankAccount === "string" ? parsed.printInvoiceBankAccount : DEFAULT_STOREFRONT_SETTINGS.printInvoiceBankAccount,
+      printInvoiceAccountName:
+        typeof parsed.printInvoiceAccountName === "string" ? parsed.printInvoiceAccountName : DEFAULT_STOREFRONT_SETTINGS.printInvoiceAccountName,
       smtpHost:
         typeof parsed.smtpHost === "string" ? parsed.smtpHost : DEFAULT_STOREFRONT_SETTINGS.smtpHost,
       smtpPort:
@@ -170,6 +184,10 @@ function readStoredSettings(): StorefrontSettings {
         typeof parsed.smtpPass === "string" ? parsed.smtpPass : DEFAULT_STOREFRONT_SETTINGS.smtpPass,
       smtpSenderName:
         typeof parsed.smtpSenderName === "string" ? parsed.smtpSenderName : DEFAULT_STOREFRONT_SETTINGS.smtpSenderName,
+      customerEmailSubject:
+        typeof parsed.customerEmailSubject === "string" ? parsed.customerEmailSubject : DEFAULT_STOREFRONT_SETTINGS.customerEmailSubject,
+      customerEmailTemplate:
+        typeof parsed.customerEmailTemplate === "string" ? parsed.customerEmailTemplate : DEFAULT_STOREFRONT_SETTINGS.customerEmailTemplate,
     };
   } catch {
     return DEFAULT_STOREFRONT_SETTINGS;

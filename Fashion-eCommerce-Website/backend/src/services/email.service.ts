@@ -55,14 +55,19 @@ export async function sendOrderConfirmationEmail(order: any) {
 
   const smtpInfo = await getTransporter();
 
-  // 1. Lấy Dynamic Admin Email cấu hình từ Database
+  // 1. Lấy Dynamic Admin Email & Cấu hình email từ Database
   let adminEmail = "mmadmadstudio@gmail.com";
+  let dbCustomerSubject = "[{{brandName}}] ĐẶT HÀNG THÀNH CÔNG - ĐƠN HÀNG {{orderNumber}}";
+  let dbCustomerTemplate = "Chào bạn <strong>{{customerName}}</strong>,<br><br>Cám ơn bạn đã lựa chọn nổi loạn và khẳng định cá tính cùng <strong>{{brandName}}</strong>. Chúng tôi xác nhận đã nhận được đơn hàng của bạn và đang tiến hành đóng gói siêu tốc!";
+
   try {
     const setting = await prisma.storefrontSetting.findFirst({
       orderBy: { id: "asc" }
     });
-    if (setting && setting.storeEmail) {
-      adminEmail = setting.storeEmail.trim();
+    if (setting) {
+      if (setting.storeEmail) adminEmail = setting.storeEmail.trim();
+      if (setting.customerEmailSubject) dbCustomerSubject = setting.customerEmailSubject.trim();
+      if (setting.customerEmailTemplate) dbCustomerTemplate = setting.customerEmailTemplate.trim();
     }
     console.log(`- Admin Email đích lấy từ Neon DB: "${adminEmail}"`);
   } catch (error) {
@@ -110,7 +115,12 @@ export async function sendOrderConfirmationEmail(order: any) {
   `).join("");
 
   // Thiết kế HTML Email chuẩn Minimalist Noir cực sang trọng
-  const getHtmlTemplate = (titleText: string, welcomeMessage: string) => `
+  const getHtmlTemplate = (
+    titleText: string,
+    welcomeMessage: string,
+    buttonText: string = "Quản lý đơn hàng",
+    buttonUrl: string = "https://www.madmadstudio.com/admin/orders"
+  ) => `
     <!DOCTYPE html>
     <html>
     <head>
@@ -137,7 +147,7 @@ export async function sendOrderConfirmationEmail(order: any) {
                   <p style="margin: 0 0 25px 0; font-size: 14px; color: #444444; line-height: 1.6;">
                     ${welcomeMessage}
                   </p>
-
+ 
                   <!-- Thông tin đơn hàng tóm tắt -->
                   <div style="background-color: #fafafa; border: 1px solid #eeeeee; border-radius: 6px; padding: 20px; margin-bottom: 30px;">
                     <table width="100%" border="0" cellspacing="0" cellpadding="0" style="font-size: 13px;">
@@ -168,7 +178,7 @@ export async function sendOrderConfirmationEmail(order: any) {
                       ` : ""}
                     </table>
                   </div>
-
+ 
                   <!-- Chi tiết sản phẩm bảng -->
                   <h3 style="margin: 0 0 10px 0; font-size: 14px; color: #111111; border-bottom: 2px solid #000000; padding-bottom: 5px; text-transform: uppercase;">Sản phẩm đặt mua</h3>
                   <table width="100%" border="0" cellspacing="0" cellpadding="0" style="font-size: 13px; margin-bottom: 30px;">
@@ -183,7 +193,7 @@ export async function sendOrderConfirmationEmail(order: any) {
                       ${itemsHtml}
                     </tbody>
                   </table>
-
+ 
                   <!-- Tính tiền tóm tắt -->
                   <table width="100%" border="0" cellspacing="0" cellpadding="0" style="font-size: 13px; margin-bottom: 30px;">
                     <tr>
@@ -205,16 +215,16 @@ export async function sendOrderConfirmationEmail(order: any) {
                       <td style="padding: 15px 0 0 0; font-size: 18px; font-weight: bold; text-align: right; font-family: monospace; color: #c62828;">${order.total.toLocaleString("vi-VN")}₫</td>
                     </tr>
                   </table>
-
+ 
                   <!-- Nút kiểm tra trạng thái đơn hàng -->
                   <div align="center" style="margin-top: 30px;">
-                    <a href="https://www.madmadstudio.com/admin/orders" target="_blank" style="background-color: #000000; color: #ffffff; text-decoration: none; padding: 15px 35px; font-size: 13px; font-weight: bold; letter-spacing: 2px; border-radius: 4px; display: inline-block; text-transform: uppercase;">
-                      Quản lý đơn hàng
+                    <a href="${buttonUrl}" target="_blank" style="background-color: #000000; color: #ffffff; text-decoration: none; padding: 15px 35px; font-size: 13px; font-weight: bold; letter-spacing: 2px; border-radius: 4px; display: inline-block; text-transform: uppercase;">
+                      ${buttonText}
                     </a>
                   </div>
                 </td>
               </tr>
-
+ 
               <!-- Footer -->
               <tr>
                 <td style="background-color: #f9f9f9; padding: 30px; text-align: center; border-top: 1px solid #eeeeee;">
@@ -235,17 +245,27 @@ export async function sendOrderConfirmationEmail(order: any) {
     </html>
   `;
 
+  // Định nghĩa hàm phân tách các từ khóa động (Tokens parser)
+  const parseTemplateTokens = (templateStr: string) => {
+    return templateStr
+      .replace(/\{\{customerName\}\}/g, order.customerName || "quý khách")
+      .replace(/\{\{orderNumber\}\}/g, order.orderNumber || "")
+      .replace(/\{\{brandName\}\}/g, senderName || "MADMAD STUDIO");
+  };
+
+  const parsedSubject = parseTemplateTokens(dbCustomerSubject);
+  const parsedTemplateMsg = parseTemplateTokens(dbCustomerTemplate);
+
   // 📩 THƯ 1: Gửi cho Khách hàng (Nếu khách hàng có email)
   if (order.customerEmail && order.customerEmail.trim()) {
     try {
       console.log(`- Đang chuẩn bị gửi email cho Khách hàng đến: ${order.customerEmail.trim()}`);
-      const customerMsg = `Chào bạn <strong>${order.customerName}</strong>,<br><br>Cám ơn bạn đã lựa chọn nổi loạn và khẳng định cá tính cùng <strong>${senderName}</strong>. Chúng tôi xác nhận đã nhận được đơn hàng của bạn và đang tiến hành đóng gói siêu tốc!`;
-      const customerHtml = getHtmlTemplate("Đặt Hàng Thành Công!", customerMsg);
-
+      const customerHtml = getHtmlTemplate("Đặt Hàng Thành Công!", parsedTemplateMsg, "Tra cứu đơn hàng", "https://www.madmadstudio.com/track-order");
+ 
       const customerInfo = await transporter.sendMail({
         from: `"${senderName}" <${user}>`,
         to: order.customerEmail.trim(),
-        subject: `[${senderName}] ĐẶT HÀNG THÀNH CÔNG - ĐƠN HÀNG ${order.orderNumber}`,
+        subject: parsedSubject,
         html: customerHtml,
       });
       console.log(`✉️ KẾT QUẢ GỬI KHÁCH HÀNG: Đã gửi email thành công! MessageId: ${customerInfo.messageId}`);

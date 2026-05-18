@@ -69,8 +69,10 @@ model OrderItem {
 model VIPMember {
   id        Int      @id @default(autoincrement())
   fullName  String
-  phone     String   @unique
+  phone     String?  @unique
   email     String   @unique
+  googleId  String?  @unique
+  avatarUrl String?
   points    Int      @default(0)
   tier      String   @default("BRONZE") // BRONZE, SILVER, GOLD, PLATINUM
   createdAt DateTime @default(now())
@@ -98,6 +100,10 @@ model StorefrontSetting {
   storeEmail               String? @default("mmadmadstudio@gmail.com")
   storePhone               String? @default("+84 123 456 789")
   storeAddress             String? @default("123 Fashion Street, Ho Chi Minh City")
+
+  // Cấu hình nội dung email gửi cho khách hàng tự chỉnh sửa
+  customerEmailSubject     String? @default("[{{brandName}}] ĐẶT HÀNG THÀNH CÔNG - ĐƠN HÀNG {{orderNumber}}")
+  customerEmailTemplate    String? @default("Chào bạn <strong>{{customerName}}</strong>,<br><br>Cám ơn bạn đã lựa chọn nổi loạn và khẳng định cá tính cùng <strong>{{brandName}}</strong>. Chúng tôi xác nhận đã nhận được đơn hàng của bạn và đang tiến hành đóng gói siêu tốc!")
 
   // Cấu hình SMTP Gmail động điều khiển từ Admin
   smtpHost                 String? @default("smtp.gmail.com")
