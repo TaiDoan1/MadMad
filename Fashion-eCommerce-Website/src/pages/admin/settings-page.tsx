@@ -74,6 +74,8 @@ export function AdminSettingsPage() {
   const [coupons, setCoupons] = useState<Coupon[]>([]);
   const [newCouponCode, setNewCouponCode] = useState("");
   const [newDiscountAmount, setNewDiscountAmount] = useState("");
+  const [newCouponExclusive, setNewCouponExclusive] = useState(false);
+  const [newUsageLimit, setNewUsageLimit] = useState("");
   const [couponError, setCouponError] = useState("");
 
   useEffect(() => {
@@ -265,7 +267,14 @@ export function AdminSettingsPage() {
       return;
     }
 
-    const newCoupon: Coupon = { code, discountAmount: amount };
+    const limit = Number(newUsageLimit);
+    const newCoupon: Coupon = { 
+      code, 
+      discountAmount: amount, 
+      isExclusive: newCouponExclusive,
+      usageLimit: limit > 0 ? limit : undefined,
+      usageCount: 0
+    };
     const updatedCoupons = [...coupons, newCoupon];
     
     setCoupons(updatedCoupons);
@@ -274,6 +283,8 @@ export function AdminSettingsPage() {
     // Reset Form
     setNewCouponCode("");
     setNewDiscountAmount("");
+    setNewUsageLimit("");
+    setNewCouponExclusive(false);
     window.alert(`Đã kích hoạt mã giảm giá ${code} thành công!`);
   };
 
@@ -582,6 +593,35 @@ export function AdminSettingsPage() {
                 />
               </div>
 
+              <div>
+                <label className="block text-[10px] font-extrabold tracking-wider uppercase text-black/50 mb-1.5">
+                  Số lượng phát hành (Tùy chọn)
+                </label>
+                <input
+                  type="number"
+                  min={1}
+                  value={newUsageLimit}
+                  onChange={(e) => setNewUsageLimit(e.target.value)}
+                  placeholder="VÍ DỤ: 100 (Bỏ trống nếu không giới hạn)..."
+                  className="w-full rounded-xl border border-black/10 bg-stone-50 px-4 py-3 focus:bg-white focus:border-black/60 focus:outline-none focus:ring-0 transition-all font-bold"
+                />
+              </div>
+
+              <div className="pt-2">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={newCouponExclusive}
+                    onChange={(e) => setNewCouponExclusive(e.target.checked)}
+                    className="accent-black h-4 w-4"
+                  />
+                  <span className="text-[10px] font-extrabold tracking-wider uppercase text-black">Mã Đặc Quyền (Ẩn)</span>
+                </label>
+                <p className="text-[9px] text-black/40 mt-1 pl-6 normal-case">
+                  Mã này sẽ không được gợi ý công khai trên web. Chỉ khách hàng có mã bí mật này mới dùng được.
+                </p>
+              </div>
+
               <button
                 type="submit"
                 className="w-full bg-black text-white hover:bg-red-700 h-11 text-xs font-bold tracking-widest uppercase transition-all rounded-xl flex items-center justify-center gap-1.5 shadow-md shadow-black/10"
@@ -627,6 +667,18 @@ export function AdminSettingsPage() {
                         <p className="text-[10px] text-green-700 font-bold mt-0.5">
                           Giảm: {coupon.discountAmount.toLocaleString("vi-VN")}₫ trên hóa đơn
                         </p>
+                        <div className="flex gap-2 mt-1">
+                          {coupon.isExclusive && (
+                            <span className="inline-block px-1.5 py-0.5 rounded text-[8px] font-bold bg-amber-100 text-amber-800 uppercase tracking-wider">
+                              Đặc quyền (Ẩn)
+                            </span>
+                          )}
+                          {coupon.usageLimit && (
+                            <span className="inline-block px-1.5 py-0.5 rounded text-[8px] font-bold bg-blue-100 text-blue-800 uppercase tracking-wider">
+                              Đã dùng: {coupon.usageCount || 0} / {coupon.usageLimit}
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </div>
                     <button

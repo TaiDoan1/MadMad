@@ -123,6 +123,11 @@ export function CartProvider({ children }: { children: ReactNode }) {
         if (!normalized) return { success: false, message: "Vui lòng nhập mã giảm giá." };
         const coupon = availableCoupons.find((item) => item.code === normalized);
         if (!coupon) return { success: false, message: "Mã giảm giá không hợp lệ." };
+        
+        if (coupon.usageLimit !== undefined && (coupon.usageCount ?? 0) >= coupon.usageLimit) {
+          return { success: false, message: "Rất tiếc, mã giảm giá này đã hết lượt sử dụng." };
+        }
+        
         persistCouponCode(coupon.code);
         return {
           success: true,

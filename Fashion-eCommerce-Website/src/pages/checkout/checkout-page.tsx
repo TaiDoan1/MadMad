@@ -19,6 +19,7 @@ import {
 } from "@/features/checkout/services/address-service";
 import { useOrders } from "@/features/orders/context/order-context";
 import { useProducts } from "@/features/products/context/product-context";
+import { incrementCouponUsage } from "@/features/promotions/services/coupon-service";
 import { useStorefrontSettings } from "@/features/settings/context/storefront-settings-context";
 import type { Order, OrderItem } from "@/types/order";
 
@@ -283,6 +284,11 @@ export function CheckoutPage() {
           }
         }
 
+        // Tăng số lượt sử dụng voucher
+        if (appliedCoupon?.code) {
+          incrementCouponUsage(appliedCoupon.code);
+        }
+
         clearCart();
         setSuccessModal({
           open: true,
@@ -459,11 +465,11 @@ export function CheckoutPage() {
                     </div>
 
                     {/* Suggestions */}
-                    {availableCoupons.length > 0 && (
+                    {availableCoupons.filter(c => !c.isExclusive).length > 0 && (
                       <div className="space-y-2 border-t border-black/5 pt-3">
                         <p className="text-[10px] font-extrabold tracking-wider uppercase text-black/40">Gợi ý Voucher dành cho bạn:</p>
                         <div className="flex flex-wrap gap-2">
-                          {availableCoupons.map((coupon) => (
+                          {availableCoupons.filter(c => !c.isExclusive).map((coupon) => (
                             <button
                               key={coupon.code}
                               type="button"
@@ -477,7 +483,7 @@ export function CheckoutPage() {
                                   : "border-black/15 bg-white text-black/75 hover:border-black"
                               }`}
                             >
-                              🎫 {coupon.code} (-{coupon.discountAmount.toLocaleString("vi-VN")}₫)
+                              {coupon.code} (-{coupon.discountAmount.toLocaleString("vi-VN")}₫)
                             </button>
                           ))}
                         </div>
