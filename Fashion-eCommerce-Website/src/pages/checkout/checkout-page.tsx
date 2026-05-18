@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
-import { ArrowLeft, ShoppingBag, Trash2, Plus, Minus } from "lucide-react";
+import { ArrowLeft, ShoppingBag, Trash2, Plus, Minus, Copy, Check } from "lucide-react";
 import { Link } from "react-router";
 
 import { ImageWithFallback } from "@/components/common/image-with-fallback";
@@ -45,6 +45,17 @@ export function CheckoutPage() {
   } = useCart();
   const navigate = useTransitionTo();
   const [typedCoupon, setTypedCoupon] = useState("");
+  const [orderNumber] = useState(() => {
+    const now = new Date();
+    return `DH${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}${String(now.getDate()).padStart(2, "0")}${String(Math.floor(1000 + Math.random() * 9000))}`;
+  });
+  const [copiedField, setCopiedField] = useState<string | null>(null);
+
+  const handleCopy = (text: string, field: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedField(field);
+    setTimeout(() => setCopiedField(null), 2000);
+  };
 
   const [successModal, setSuccessModal] = useState<{
     open: boolean;
@@ -53,17 +64,29 @@ export function CheckoutPage() {
     total: number;
   }>({ open: false, orderNumber: "", customerName: "", total: 0 });
 
-  const [formData, setFormData] = useState({
-    fullName: currentMember?.fullName || "",
-    email: currentMember?.email || "",
-    phone: currentMember?.phone || "",
-    address: "",
-    provinceCode: "",
-    districtCode: "",
-    wardCode: "",
-    notes: "",
-    paymentMethod: "cod",
-    shippingMethod: "standard" as "standard" | "express",
+  const [formData, setFormData] = useState(() => {
+    let savedInfo: any = {};
+    try {
+      const stored = localStorage.getItem("madmad_last_delivery_info");
+      if (stored) {
+        savedInfo = JSON.parse(stored);
+      }
+    } catch (e) {
+      console.error("Error reading madmad_last_delivery_info", e);
+    }
+
+    return {
+      fullName: currentMember?.fullName || savedInfo.fullName || "",
+      email: currentMember?.email || savedInfo.email || "",
+      phone: currentMember?.phone || savedInfo.phone || "",
+      address: savedInfo.address || "",
+      provinceCode: savedInfo.provinceCode || "",
+      districtCode: savedInfo.districtCode || "",
+      wardCode: savedInfo.wardCode || "",
+      notes: "",
+      paymentMethod: "cod",
+      shippingMethod: "standard" as "standard" | "express",
+    };
   });
   const [provinces, setProvinces] = useState<AddressOption[]>([]);
   const [districts, setDistricts] = useState<AddressOption[]>([]);
@@ -203,11 +226,26 @@ export function CheckoutPage() {
       window.alert("Vui lòng điền đầy đủ thông tin giao hàng!"); return;
     }
 
+    // Save last delivery details to localStorage for next purchase autocomplete
+    const lastDeliveryInfo = {
+      fullName: formData.fullName,
+      email: formData.email,
+      phone: formData.phone,
+      address: formData.address,
+      provinceCode: formData.provinceCode,
+      districtCode: formData.districtCode,
+      wardCode: formData.wardCode,
+    };
+    try {
+      localStorage.setItem("madmad_last_delivery_info", JSON.stringify(lastDeliveryInfo));
+    } catch (e) {
+      console.error("Error saving last delivery info", e);
+    }
+
     const orderItems: OrderItem[] = resolvedItems.map(({ item, product }) => ({
       product, quantity: item.quantity, size: item.size, color: item.color, price: item.priceAtAdd,
     }));
     const now = new Date();
-    const orderNumber = `DH${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}${String(now.getDate()).padStart(2, "0")}${String(Math.floor(Math.random() * 1000)).padStart(3, "0")}`;
     const paymentMethodText = formData.paymentMethod;
 
     const newOrder: Order = {
@@ -466,20 +504,70 @@ export function CheckoutPage() {
                 {/* Payment Detail Instructions Panel */}
                 {formData.paymentMethod === "bank" && (
                   <div className="mt-4 rounded-xl border border-black/10 bg-stone-50 p-4 space-y-4 animate-fadeIn">
-                    <div className="flex items-start gap-4">
-                      <div className="bg-white p-1 rounded-lg border border-black/5 flex-shrink-0">
+                    <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4">
+                      <div className="bg-white p-2 rounded-xl border border-black/5 flex-shrink-0 shadow-sm">
                         <img
-                          src={`https://img.vietqr.io/image/${settings.bankId || 'MB'}-${settings.bankAccount || '0999999999'}-compact.png?amount=${total}&addInfo=MADMAD%20PAYMENT&accountName=${encodeURIComponent(settings.bankAccountName || 'MADMAD STUDIO')}`}
+                          src={`https://img.vietqr.io/image/${settings.bankId || 'MB'}-${settings.bankAccount || '0999999999'}-compact.png?amount=${total}&addInfo=${encodeURIComponent(`MADMAD ${orderNumber}`)}&accountName=${encodeURIComponent(settings.bankAccountName || 'MADMAD STUDIO')}`}
                           alt="VietQR Chuyển khoản"
-                          className="h-28 w-28 object-contain animate-pulse"
+                          className="h-32 w-32 object-contain"
                         />
                       </div>
-                      <div className="space-y-1.5 text-xs">
-                        <p className="font-bold uppercase text-[10px] tracking-wider text-black/50">Thông tin chuyển khoản</p>
-                        <p className="text-sm font-black text-black">{settings.bankAccountName || "MADMAD STUDIO"}</p>
-                        <p className="font-mono font-bold text-black text-sm">STK: {settings.bankAccount || "0999999999"}</p>
-                        <p className="text-black/60 font-semibold">Ngân hàng: <span className="font-bold text-black uppercase">{settings.bankId || "MB Bank"}</span></p>
-                        <p className="text-[10px] text-green-700 font-bold">✓ Quét VietQR để thanh toán nhanh tự động.</p>
+                      <div className="flex-1 space-y-2 text-xs w-full">
+                        <p className="font-bold uppercase text-[9px] tracking-wider text-black/50">Thông tin chuyển khoản</p>
+                        
+                        <div className="space-y-1">
+                          <p className="text-black/60 text-[9px]">Ngân hàng:</p>
+                          <p className="font-bold text-black text-sm uppercase">{settings.bankId || "MB Bank"}</p>
+                        </div>
+
+                        <div className="space-y-1">
+                          <p className="text-black/60 text-[9px]">Chủ tài khoản:</p>
+                          <p className="font-black text-black">{settings.bankAccountName || "MADMAD STUDIO"}</p>
+                        </div>
+
+                        <div className="space-y-1">
+                          <p className="text-black/60 text-[9px]">Số tài khoản:</p>
+                          <div className="flex items-center justify-between gap-2 bg-white rounded-lg border border-black/5 px-2.5 py-1.5">
+                            <span className="font-mono font-bold text-black text-xs">{settings.bankAccount || "0999999999"}</span>
+                            <button
+                              type="button"
+                              onClick={() => handleCopy(settings.bankAccount || "0999999999", "bankAccount")}
+                              className="text-stone-400 hover:text-black transition-colors"
+                            >
+                              {copiedField === "bankAccount" ? <Check className="h-3.5 w-3.5 text-green-600" /> : <Copy className="h-3.5 w-3.5" />}
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="space-y-1">
+                          <p className="text-black/60 text-[9px]">Nội dung chuyển khoản:</p>
+                          <div className="flex items-center justify-between gap-2 bg-white rounded-lg border border-black/5 px-2.5 py-1.5">
+                            <span className="font-mono font-black text-black tracking-wider text-xs uppercase">{`MADMAD ${orderNumber}`}</span>
+                            <button
+                              type="button"
+                              onClick={() => handleCopy(`MADMAD ${orderNumber}`, "bankMemo")}
+                              className="text-stone-400 hover:text-black transition-colors"
+                            >
+                              {copiedField === "bankMemo" ? <Check className="h-3.5 w-3.5 text-green-600" /> : <Copy className="h-3.5 w-3.5" />}
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="space-y-1">
+                          <p className="text-black/60 text-[9px]">Số tiền:</p>
+                          <div className="flex items-center justify-between gap-2 bg-white rounded-lg border border-black/5 px-2.5 py-1.5">
+                            <span className="font-bold text-red-600 text-xs">{total.toLocaleString("vi-VN")}₫</span>
+                            <button
+                              type="button"
+                              onClick={() => handleCopy(String(total), "bankTotal")}
+                              className="text-stone-400 hover:text-black transition-colors"
+                            >
+                              {copiedField === "bankTotal" ? <Check className="h-3.5 w-3.5 text-green-600" /> : <Copy className="h-3.5 w-3.5" />}
+                            </button>
+                          </div>
+                        </div>
+
+                        <p className="text-[10px] text-green-700 font-bold pt-1">✓ Quét VietQR để điền tự động 100% hoặc sao chép nhanh ở trên.</p>
                       </div>
                     </div>
                   </div>
@@ -487,19 +575,65 @@ export function CheckoutPage() {
 
                 {formData.paymentMethod === "momo" && (
                   <div className="mt-4 rounded-xl border border-black/10 bg-stone-50 p-4 space-y-4 animate-fadeIn">
-                    <div className="flex items-start gap-4">
-                      <div className="bg-white p-1 rounded-lg border border-black/5 flex-shrink-0">
+                    <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4">
+                      <div className="bg-white p-2 rounded-xl border border-black/5 flex-shrink-0 shadow-sm">
                         <img
-                          src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(`momo://?phone=${settings.momoPhone || '0999999999'}&amount=${total}&note=MADMAD%20PAYMENT`)}`}
+                          src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(`momo://?phone=${settings.momoPhone || '0999999999'}&amount=${total}&note=${encodeURIComponent(`MADMAD ${orderNumber}`)}`)}`}
                           alt="MoMo QR"
-                          className="h-28 w-28 object-contain animate-pulse"
+                          className="h-32 w-32 object-contain"
                         />
                       </div>
-                      <div className="space-y-1.5 text-xs">
-                        <p className="font-bold uppercase text-[10px] tracking-wider text-black/50">Ví điện tử MoMo</p>
-                        <p className="text-sm font-black text-black">{settings.momoAccountName || "MADMAD STUDIO"}</p>
-                        <p className="font-mono font-bold text-black text-sm">SĐT: {settings.momoPhone || "0999999999"}</p>
-                        <p className="text-[10px] text-red-600 font-bold">✓ Chuyển khoản đúng số tiền: {total.toLocaleString("vi-VN")}₫.</p>
+                      <div className="flex-1 space-y-2 text-xs w-full">
+                        <p className="font-bold uppercase text-[9px] tracking-wider text-black/50">Ví điện tử MoMo</p>
+                        
+                        <div className="space-y-1">
+                          <p className="text-black/60 text-[9px]">Tên tài khoản:</p>
+                          <p className="font-black text-black">{settings.momoAccountName || "MADMAD STUDIO"}</p>
+                        </div>
+
+                        <div className="space-y-1">
+                          <p className="text-black/60 text-[9px]">Số điện thoại MoMo:</p>
+                          <div className="flex items-center justify-between gap-2 bg-white rounded-lg border border-black/5 px-2.5 py-1.5">
+                            <span className="font-mono font-bold text-black text-xs">{settings.momoPhone || "0999999999"}</span>
+                            <button
+                              type="button"
+                              onClick={() => handleCopy(settings.momoPhone || "0999999999", "momoPhone")}
+                              className="text-stone-400 hover:text-black transition-colors"
+                            >
+                              {copiedField === "momoPhone" ? <Check className="h-3.5 w-3.5 text-green-600" /> : <Copy className="h-3.5 w-3.5" />}
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="space-y-1">
+                          <p className="text-black/60 text-[9px]">Nội dung chuyển tiền:</p>
+                          <div className="flex items-center justify-between gap-2 bg-white rounded-lg border border-black/5 px-2.5 py-1.5">
+                            <span className="font-mono font-black text-black tracking-wider text-xs uppercase">{`MADMAD ${orderNumber}`}</span>
+                            <button
+                              type="button"
+                              onClick={() => handleCopy(`MADMAD ${orderNumber}`, "momoMemo")}
+                              className="text-stone-400 hover:text-black transition-colors"
+                            >
+                              {copiedField === "momoMemo" ? <Check className="h-3.5 w-3.5 text-green-600" /> : <Copy className="h-3.5 w-3.5" />}
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="space-y-1">
+                          <p className="text-black/60 text-[9px]">Số tiền:</p>
+                          <div className="flex items-center justify-between gap-2 bg-white rounded-lg border border-black/5 px-2.5 py-1.5">
+                            <span className="font-bold text-red-600 text-xs">{total.toLocaleString("vi-VN")}₫</span>
+                            <button
+                              type="button"
+                              onClick={() => handleCopy(String(total), "momoTotal")}
+                              className="text-stone-400 hover:text-black transition-colors"
+                            >
+                              {copiedField === "momoTotal" ? <Check className="h-3.5 w-3.5 text-green-600" /> : <Copy className="h-3.5 w-3.5" />}
+                            </button>
+                          </div>
+                        </div>
+
+                        <p className="text-[10px] text-red-600 font-bold pt-1">✓ Chuyển khoản đúng số tiền và nội dung để hệ thống duyệt tự động.</p>
                       </div>
                     </div>
                   </div>
