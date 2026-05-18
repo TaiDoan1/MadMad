@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useOrders } from "@/features/orders/context/order-context";
 import { Search, MapPin, Truck, ShieldCheck, DollarSign, Calendar, Clock, Lock, XCircle, MessageCircle, Mail, AlertTriangle } from "lucide-react";
-import { API_URL } from "@/config/api";
+import { API_URL, GOOGLE_CLIENT_ID } from "@/config/api";
 
 export function TrackOrderPage() {
   const { orders, updateOrderStatus } = useOrders();
@@ -35,7 +35,7 @@ export function TrackOrderPage() {
     script.onload = () => {
       if (window.google) {
         window.google.accounts.id.initialize({
-          client_id: "688461719293-6o194l77qg1808hgd339r2n6a15o4d6p.apps.googleusercontent.com",
+          client_id: GOOGLE_CLIENT_ID,
           callback: handleGoogleResponse,
         });
 

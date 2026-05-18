@@ -8,3 +8,6 @@ export const API_BASE_URL = import.meta.env.DEV
   : "https://madmad-backend.vercel.app";
 
 export const API_URL = `${API_BASE_URL}/api`;
+
+// 🔑 Nhập Google Client ID của bạn ở đây để đồng bộ hóa cho toàn bộ website
+export const GOOGLE_CLIENT_ID = "510445218979-m81v10hm2hj8kuj3egjiip9ieft8a27k.apps.googleusercontent.com";
