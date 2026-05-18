@@ -20,6 +20,7 @@ model Product {
   colors       String   // Lưu danh sách màu ngăn cách bởi dấu phẩy, ví dụ: "Black,White,Grey"
   colorImages  String?  // Lưu JSON chuỗi mapping màu sắc sang ảnh
   isFeatured   Boolean  @default(false)
+  orderIndex   Int      @default(0) // Lưu thứ tự sắp xếp sản phẩm kéo thả
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 }

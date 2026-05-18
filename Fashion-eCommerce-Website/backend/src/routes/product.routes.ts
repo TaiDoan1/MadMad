@@ -20,7 +20,10 @@ router.get("/", async (req, res, next) => {
 
     const products = await prisma.product.findMany({
       where: whereClause,
-      orderBy: { createdAt: "desc" }
+      orderBy: [
+        { orderIndex: "asc" },
+        { createdAt: "desc" }
+      ]
     });
 
     // Parse JSON strings của sizes, colors, colorImages trước khi trả về
@@ -138,6 +141,31 @@ router.delete("/:id", async (req, res, next) => {
       where: { id }
     });
     res.json({ success: true, message: "Xóa sản phẩm thành công" });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// 6. PUT /api/products/reorder - Sắp xếp lại thứ tự sản phẩm
+router.put("/reorder", async (req, res, next) => {
+  try {
+    const { items } = req.body;
+    
+    if (!Array.isArray(items)) {
+      return res.status(400).json({ message: "Dữ liệu không hợp lệ" });
+    }
+
+    // Dùng transaction để cập nhật hàng loạt
+    await prisma.$transaction(
+      items.map((item: any) =>
+        prisma.product.update({
+          where: { id: item.id },
+          data: { orderIndex: item.orderIndex }
+        })
+      )
+    );
+
+    res.json({ success: true, message: "Cập nhật thứ tự thành công" });
   } catch (error) {
     next(error);
   }

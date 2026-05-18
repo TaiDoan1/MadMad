@@ -27,8 +27,10 @@ const DEFAULT_PRODUCT_OPTIONS: ProductOptions = {
 };
 
 export function AdminProductsPage() {
-  const { products, addProduct, updateProduct, deleteProduct, updateProductColorImages } = useProducts();
+  const { products, addProduct, updateProduct, deleteProduct, updateProductColorImages, reorderProducts } = useProducts();
   const { settings, updateSettings } = useStorefrontSettings();
+  const [draggedProductId, setDraggedProductId] = useState<number | null>(null);
+  const [dragOverProductId, setDragOverProductId] = useState<number | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [showAddModal, setShowAddModal] = useState(false);
@@ -114,8 +116,7 @@ export function AdminProductsPage() {
         const matchesSearch = !q || product.name.toLowerCase().includes(q) || product.category.toLowerCase().includes(q);
         const matchesCategory = selectedCategory === "all" || product.category === selectedCategory;
         return matchesSearch && matchesCategory;
-      })
-      .sort((a, b) => b.id - a.id);
+      });
   }, [products, searchTerm, selectedCategory]);
 
   const selectedCount = filteredProducts.length;
@@ -237,10 +238,46 @@ export function AdminProductsPage() {
                 </thead>
                 <tbody className="divide-y divide-border">
                   {filteredProducts.map((product) => (
-                    <tr key={product.id} className="transition-colors hover:bg-muted/50">
+                    <tr 
+                      key={product.id} 
+                      draggable={!searchTerm && selectedCategory === "all"}
+                      onDragStart={(e) => {
+                        setDraggedProductId(product.id);
+                        e.dataTransfer.effectAllowed = "move";
+                      }}
+                      onDragOver={(e) => {
+                        e.preventDefault();
+                        setDragOverProductId(product.id);
+                      }}
+                      onDrop={(e) => {
+                        e.preventDefault();
+                        if (draggedProductId && draggedProductId !== product.id) {
+                          const dragIndex = products.findIndex((p) => p.id === draggedProductId);
+                          const dropIndex = products.findIndex((p) => p.id === product.id);
+                          if (dragIndex !== -1 && dropIndex !== -1) {
+                            const newOrder = [...products];
+                            const [draggedItem] = newOrder.splice(dragIndex, 1);
+                            newOrder.splice(dropIndex, 0, draggedItem);
+                            reorderProducts(newOrder);
+                          }
+                        }
+                        setDraggedProductId(null);
+                        setDragOverProductId(null);
+                      }}
+                      onDragEnd={() => {
+                        setDraggedProductId(null);
+                        setDragOverProductId(null);
+                      }}
+                      className={`transition-colors hover:bg-muted/50 ${draggedProductId === product.id ? "opacity-50 bg-stone-50" : ""} ${dragOverProductId === product.id ? "border-t-2 border-black bg-stone-100" : ""}`}
+                    >
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
-                          <div className="h-14 w-14 overflow-hidden rounded bg-muted">
+                          {(!searchTerm && selectedCategory === "all") && (
+                            <div className="cursor-grab text-black/20 hover:text-black">
+                              <svg width="15" height="15" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4.5 3C4.5 3.82843 3.82843 4.5 3 4.5C2.17157 4.5 1.5 3.82843 1.5 3C1.5 2.17157 2.17157 1.5 3 1.5C3.82843 1.5 4.5 2.17157 4.5 3ZM4.5 7.5C4.5 8.32843 3.82843 9 3 9C2.17157 9 1.5 8.32843 1.5 7.5C1.5 6.67157 2.17157 6 3 6C3.82843 6 4.5 6.67157 4.5 7.5ZM3 13.5C3.82843 13.5 4.5 12.8284 4.5 12C4.5 11.1716 3.82843 10.5 3 10.5C2.17157 10.5 1.5 11.1716 1.5 12C1.5 12.8284 2.17157 13.5 3 13.5ZM10.5 3C10.5 3.82843 9.82843 4.5 9 4.5C8.17157 4.5 7.5 3.82843 7.5 3C7.5 2.17157 8.17157 1.5 9 1.5C9.82843 1.5 10.5 2.17157 10.5 3ZM9 9C9.82843 9 10.5 8.32843 10.5 7.5C10.5 6.67157 9.82843 6 9 6C8.17157 6 7.5 6.67157 7.5 7.5C7.5 8.32843 8.17157 9 9 9ZM10.5 12C10.5 12.8284 9.82843 13.5 9 13.5C8.17157 13.5 7.5 12.8284 7.5 12C7.5 11.1716 8.17157 10.5 9 10.5C9.82843 10.5 10.5 11.1716 10.5 12ZM13.5 4.5C14.3284 4.5 15 3.82843 15 3C15 2.17157 14.3284 1.5 13.5 1.5C12.6716 1.5 12 2.17157 12 3C12 3.82843 12.6716 4.5 13.5 4.5ZM15 7.5C15 8.32843 14.3284 9 13.5 9C12.6716 9 12 8.32843 12 7.5C12 6.67157 12.6716 6 13.5 6C14.3284 6 15 6.67157 15 7.5ZM13.5 13.5C14.3284 13.5 15 12.8284 15 12C15 11.1716 14.3284 10.5 13.5 10.5C12.6716 10.5 12 11.1716 12 12C12 12.8284 12.6716 13.5 13.5 13.5Z" fill="currentColor" fillRule="evenodd" clipRule="evenodd"></path></svg>
+                            </div>
+                          )}
+                          <div className="h-16 w-12 shrink-0 overflow-hidden rounded bg-muted">
                             <ImageWithFallback src={product.image} alt={product.name} className="h-full w-full object-cover" />
                           </div>
                           <div className="min-w-0">

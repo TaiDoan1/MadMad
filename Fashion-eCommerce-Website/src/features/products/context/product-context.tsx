@@ -9,6 +9,7 @@ interface ProductContextValue {
   updateProduct: (id: number, product: Product) => void;
   deleteProduct: (id: number) => void;
   updateProductColorImages: (id: number, colorImages: Record<string, string>) => void;
+  reorderProducts: (newOrderedList: Product[]) => void;
 }
 
 const ProductContext = createContext<ProductContextValue | undefined>(undefined);
@@ -66,6 +67,9 @@ export function ProductProvider({ children }: { children: ReactNode }) {
             product.id === id ? { ...product, colorImages } : product,
           ),
         );
+      },
+      reorderProducts: (newOrderedList) => {
+        setProducts(newOrderedList);
       },
     }),
     [products],

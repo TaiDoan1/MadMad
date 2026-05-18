@@ -149,7 +149,7 @@ export function ProductDetailPage() {
 
           {/* Center Column */}
           <div className="md:col-span-2 lg:col-span-6 flex flex-col items-center justify-center order-1 lg:order-2 w-full md:max-w-xl lg:max-w-none mx-auto">
-            <div className="relative w-full aspect-[4/5] overflow-hidden rounded-xl bg-white">
+            <div className="relative w-full aspect-[3/4] overflow-hidden rounded-xl bg-white">
               <ImageWithFallback 
                 src={currentImage} 
                 alt={product.name} 
