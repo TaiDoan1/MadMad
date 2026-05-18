@@ -91,6 +91,11 @@ export function MembershipProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     loadMembers();
+    // 🔄 Tự động cập nhật ngầm mỗi 3 giây (Real-time polling cho Admin không cần F5)
+    const interval = setInterval(() => {
+      loadMembers();
+    }, 3000);
+    return () => clearInterval(interval);
   }, []);
 
   // Đồng bộ hóa database local

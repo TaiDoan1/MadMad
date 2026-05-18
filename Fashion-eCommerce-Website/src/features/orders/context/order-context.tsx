@@ -46,9 +46,9 @@ export function OrderProvider({ children }: { children: ReactNode }) {
 const LOCAL_ORDERS_KEY = "madmad_orders_fallback";
 
   // 📥 Tải danh sách đơn hàng từ database Neon Postgres (Dành cho Admin Dashboard)
-  const loadOrders = async () => {
+  const loadOrders = async (silent = false) => {
     try {
-      setLoading(true);
+      if (!silent) setLoading(true);
       const response = await fetch(`${API_URL}/orders`);
       if (response.ok) {
         const data = await response.json();
@@ -69,12 +69,17 @@ const LOCAL_ORDERS_KEY = "madmad_orders_fallback";
         setOrders(mockOrders);
       }
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   };
 
   useEffect(() => {
     loadOrders();
+    // 🔄 Tự động cập nhật ngầm mỗi 3 giây (Real-time polling cho Admin không cần F5)
+    const interval = setInterval(() => {
+      loadOrders(true);
+    }, 3000);
+    return () => clearInterval(interval);
   }, []);
 
   // 🛡️ Tự động đồng bộ Orders state vào LocalStorage dự phòng
