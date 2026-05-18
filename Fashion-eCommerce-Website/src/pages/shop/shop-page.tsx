@@ -54,7 +54,7 @@ export function ShopPage() {
       if (sortBy === "price-low") return a.price - b.price;
       if (sortBy === "price-high") return b.price - a.price;
       if (sortBy === "newest") return b.id - a.id;
-      return b.id - a.id; // featured → newest by default
+      return 0; // featured → Giữ nguyên thứ tự custom từ context
     });
   }, [products, selectedCategory, selectedPriceRange, sortBy]);
 
