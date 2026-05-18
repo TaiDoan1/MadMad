@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Save, Upload, Plus, Trash2, Tag, ShieldCheck, Settings, Percent, Mail, Key, Send, DownloadCloud } from "lucide-react";
+import { Save, Upload, Plus, Trash2, Tag, ShieldCheck, Settings, Percent, Mail, Key, Send, DownloadCloud, QrCode } from "lucide-react";
 import { Link } from "react-router";
 
 import { brandLogo } from "@/assets/images";
