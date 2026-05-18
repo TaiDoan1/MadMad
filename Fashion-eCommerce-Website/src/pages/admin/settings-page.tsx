@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Save, Upload, Plus, Trash2, Tag, ShieldCheck, Settings, Percent, Mail, Key, Send } from "lucide-react";
+import { Save, Upload, Plus, Trash2, Tag, ShieldCheck, Settings, Percent, Mail, Key, Send, DownloadCloud } from "lucide-react";
 import { Link } from "react-router";
 
 import { brandLogo } from "@/assets/images";
@@ -12,7 +12,7 @@ export function AdminSettingsPage() {
   const { settings, updateSettings } = useStorefrontSettings();
   
   // Tab State
-  const [activeTab, setActiveTab] = useState<"branding" | "coupons" | "invoice" | "smtp">("branding");
+  const [activeTab, setActiveTab] = useState<"branding" | "coupons" | "invoice" | "smtp" | "backup">("branding");
 
   // Branding States
   const [currentLogo, setCurrentLogo] = useState(settings.logo || brandLogo);
@@ -217,6 +217,60 @@ export function AdminSettingsPage() {
     }
   };
 
+  // 💾 Backup Dữ liệu (Export CSV)
+  const handleExportBackup = async () => {
+    try {
+      const ordersRes = await fetch(`${API_URL}/orders`);
+      const orders = await ordersRes.json();
+      
+      const membersRes = await fetch(`${API_URL}/members`);
+      const members = await membersRes.json();
+
+      const ordersCsv = [
+        ["Mã Đơn", "Khách Hàng", "Email", "SĐT", "Tổng Tiền", "Trạng Thái", "Ngày Đặt"].join(","),
+        ...orders.map((o: any) => [
+          o.orderNumber,
+          `"${o.customerName}"`,
+          o.customerEmail,
+          o.customerPhone,
+          o.total,
+          o.status,
+          o.createdAt
+        ].join(","))
+      ].join("\n");
+
+      const membersCsv = [
+        ["ID", "Họ Tên", "Email", "SĐT", "Hạng", "Điểm", "Ngày Đăng Ký"].join(","),
+        ...members.map((m: any) => [
+          m.id,
+          `"${m.fullName}"`,
+          m.email,
+          m.phone,
+          m.tier,
+          m.points,
+          m.createdAt
+        ].join(","))
+      ].join("\n");
+
+      const orderBlob = new Blob(["\uFEFF" + ordersCsv], { type: "text/csv;charset=utf-8;" });
+      const orderLink = document.createElement("a");
+      orderLink.href = URL.createObjectURL(orderBlob);
+      orderLink.download = `MADMAD_Orders_Backup_${new Date().toISOString().split("T")[0]}.csv`;
+      orderLink.click();
+
+      const memberBlob = new Blob(["\uFEFF" + membersCsv], { type: "text/csv;charset=utf-8;" });
+      const memberLink = document.createElement("a");
+      memberLink.href = URL.createObjectURL(memberBlob);
+      memberLink.download = `MADMAD_VIPMembers_Backup_${new Date().toISOString().split("T")[0]}.csv`;
+      memberLink.click();
+
+      window.alert("Đã tải xuống thành công bản sao lưu Dữ liệu Đơn hàng và Thành viên VIP!");
+    } catch (error) {
+      console.error(error);
+      window.alert("Lỗi khi tải bản sao lưu. Vui lòng kiểm tra lại kết nối mạng!");
+    }
+  };
+
   return (
     <div className="mx-auto max-w-4xl space-y-6">
       {/* Header */}
@@ -273,6 +327,16 @@ export function AdminSettingsPage() {
           }`}
         >
           SMTP & Gửi Email
+        </button>
+        <button
+          onClick={() => setActiveTab("backup")}
+          className={`px-6 py-3 text-xs font-extrabold tracking-widest uppercase border-b-2 transition-all ${
+            activeTab === "backup"
+              ? "border-red-600 text-red-600"
+              : "border-transparent text-black/40 hover:text-black"
+          }`}
+        >
+          Sao Lưu Dữ Liệu
         </button>
       </div>
 
@@ -820,6 +884,38 @@ export function AdminSettingsPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* TAB 5: BACKUP DỮ LIỆU */}
+      {activeTab === "backup" && (
+        <div className="rounded-2xl border border-black/10 bg-white overflow-hidden shadow-sm">
+          <div className="border-b border-black/5 bg-stone-50 p-6 md:p-8">
+            <div className="flex items-center gap-3 mb-2">
+              <DownloadCloud className="h-6 w-6 text-red-600" />
+              <h2 className="text-xl font-black uppercase tracking-tight text-black">SAO LƯU DỮ LIỆU TRÊN ĐÁM MÂY</h2>
+            </div>
+            <p className="text-sm text-black/60 font-medium">Tải xuống toàn bộ cơ sở dữ liệu Khách hàng và Lịch sử đơn hàng định dạng Excel/CSV để lưu trữ trên máy tính của bạn.</p>
+          </div>
+          <div className="p-6 md:p-8 space-y-6">
+            <div className="bg-blue-50 border border-blue-200 text-blue-800 p-4 rounded-xl text-xs font-semibold leading-relaxed">
+              <p>💡 <strong>Lời khuyên an toàn:</strong> Mặc dù hệ thống máy chủ Cloud của Neon/Vercel đã tự động sao lưu cấu trúc database mỗi ngày, bạn vẫn nên thực hiện tải xuống bản sao lưu vật lý này mỗi tuần 1 lần. Việc này đảm bảo bạn luôn giữ trong tay danh sách số điện thoại/email khách hàng mới nhất ngay cả khi mất quyền truy cập Cloud.</p>
+            </div>
+            
+            <div className="border border-black/10 rounded-xl p-5 flex flex-col md:flex-row items-center justify-between gap-4">
+              <div>
+                <h3 className="text-sm font-bold text-black uppercase tracking-wider mb-1">Gói Dữ liệu Khách hàng & Đơn hàng</h3>
+                <p className="text-xs text-black/60 font-medium">Sẽ tải xuống 2 tệp: <code>MADMAD_Orders_Backup_...csv</code> và <code>MADMAD_VIPMembers_Backup_...csv</code></p>
+              </div>
+              <button
+                onClick={handleExportBackup}
+                className="w-full md:w-auto rounded-xl bg-black text-white hover:bg-red-700 px-6 h-12 text-xs font-bold tracking-widest uppercase transition-all flex items-center justify-center gap-2 shadow-md shrink-0"
+              >
+                <DownloadCloud className="h-4 w-4" />
+                XUẤT RA EXCEL / CSV NGAY
+              </button>
+            </div>
           </div>
         </div>
       )}
