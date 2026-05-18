@@ -1817,7 +1817,6 @@ export function AdminOrdersPage() {
                       </span>
                     </p>
                   )}
-                  <p>Khách hàng: <span className="font-bold uppercase text-[9px]">{getCustomerCategory(selectedOrder.customerPhone, selectedOrder.customerEmail).label}</span></p>
                 </div>
               </div>
               <div>

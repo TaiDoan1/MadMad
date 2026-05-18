@@ -170,7 +170,19 @@ export function MembershipProvider({ children }: { children: ReactNode }) {
         memberCardId: `MM-${String(data.member.id).padStart(6, "0")}`,
         avatarUrl: data.member.avatarUrl
       };
+      
       setCurrentMember(loggedInMember);
+      
+      // FIX: Thêm hoặc cập nhật tài khoản Google vào danh sách VIP tổng để Admin có thể quản lý
+      setMembers((prev) => {
+        const exists = prev.find((m) => m.email === loggedInMember.email);
+        if (exists) {
+          return prev.map((m) => (m.email === loggedInMember.email ? { ...m, ...loggedInMember } : m));
+        } else {
+          return [...prev, loggedInMember];
+        }
+      });
+
       localStorage.setItem("madmad_vip_session_token", data.sessionToken);
       return { success: true };
     } catch (e) {
