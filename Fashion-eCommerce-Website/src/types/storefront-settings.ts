@@ -43,4 +43,14 @@ export interface StorefrontSettings {
   smtpSenderName?: string;
   customerEmailSubject?: string;
   customerEmailTemplate?: string;
+  
+  // 💳 Cổng Thanh Toán & Vận Chuyển
+  bankId?: string;
+  bankAccount?: string;
+  bankAccountName?: string;
+  momoPhone?: string;
+  momoAccountName?: string;
+  shippingFeeStandard?: number;
+  shippingFeeExpress?: number;
+  shippingFreeThreshold?: number;
 }

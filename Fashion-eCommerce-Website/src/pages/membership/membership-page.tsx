@@ -405,7 +405,7 @@ export function MembershipPage() {
                 </div>
               ) : myOrders.length === 0 ? (
                 <div className="border border-dashed border-black/15 rounded-xl p-8 text-center bg-white">
-                  <p className="text-sm text-black/40 mb-4">Chúng tôi không tìm thấy đơn hàng nào mua bằng Gmail: <strong>{currentMember.email}</strong>.</p>
+                  <p className="text-sm text-black/40 mb-4">Gmail không tồn tại hoặc chưa từng phát sinh mua hàng bằng Gmail này: <strong>{currentMember.email}</strong>.</p>
                   <button
                     onClick={() => navigate("/shop")}
                     className="inline-flex items-center gap-2 bg-black text-white hover:bg-red-700 text-xs font-bold tracking-widest uppercase px-6 py-3 transition-all rounded-sm"

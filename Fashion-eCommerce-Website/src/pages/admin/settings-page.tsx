@@ -12,7 +12,17 @@ export function AdminSettingsPage() {
   const { settings, updateSettings } = useStorefrontSettings();
   
   // Tab State
-  const [activeTab, setActiveTab] = useState<"branding" | "coupons" | "invoice" | "smtp" | "backup">("branding");
+  const [activeTab, setActiveTab] = useState<"branding" | "coupons" | "gateways" | "invoice" | "smtp" | "backup">("branding");
+
+  // Gateways & Shipping States
+  const [bankId, setBankId] = useState(settings.bankId || "MB");
+  const [bankAccount, setBankAccount] = useState(settings.bankAccount || "0999999999");
+  const [bankAccountName, setBankAccountName] = useState(settings.bankAccountName || "MADMAD STUDIO");
+  const [momoPhone, setMomoPhone] = useState(settings.momoPhone || "0999999999");
+  const [momoAccountName, setMomoAccountName] = useState(settings.momoAccountName || "MADMAD STUDIO");
+  const [shippingFeeStandard, setShippingFeeStandard] = useState(String(settings.shippingFeeStandard ?? 30000));
+  const [shippingFeeExpress, setShippingFeeExpress] = useState(String(settings.shippingFeeExpress ?? 60000));
+  const [shippingFreeThreshold, setShippingFreeThreshold] = useState(String(settings.shippingFreeThreshold ?? 500000));
 
   // Branding States
   const [currentLogo, setCurrentLogo] = useState(settings.logo || brandLogo);
@@ -90,6 +100,16 @@ export function AdminSettingsPage() {
     setCustomerEmailSubject(settings.customerEmailSubject || "");
     setCustomerEmailTemplate(settings.customerEmailTemplate || "");
 
+    // Gateways
+    setBankId(settings.bankId || "MB");
+    setBankAccount(settings.bankAccount || "0999999999");
+    setBankAccountName(settings.bankAccountName || "MADMAD STUDIO");
+    setMomoPhone(settings.momoPhone || "0999999999");
+    setMomoAccountName(settings.momoAccountName || "MADMAD STUDIO");
+    setShippingFeeStandard(String(settings.shippingFeeStandard ?? 30000));
+    setShippingFeeExpress(String(settings.shippingFeeExpress ?? 60000));
+    setShippingFreeThreshold(String(settings.shippingFreeThreshold ?? 500000));
+
     // Đọc danh sách coupon từ service
     const storedCoupons = readStoredCoupons();
     setCoupons(storedCoupons);
@@ -137,6 +157,20 @@ export function AdminSettingsPage() {
       printInvoiceAccountName,
     });
     window.alert("Đã lưu thiết lập mẫu in hóa đơn thành công!");
+  };
+
+  const handleSaveGateways = () => {
+    updateSettings({
+      bankId,
+      bankAccount,
+      bankAccountName,
+      momoPhone,
+      momoAccountName,
+      shippingFeeStandard: Number(shippingFeeStandard) || 0,
+      shippingFeeExpress: Number(shippingFeeExpress) || 0,
+      shippingFreeThreshold: Number(shippingFreeThreshold) || 0,
+    });
+    window.alert("Đã lưu thiết lập Cổng Thanh Toán & Vận Chuyển thành công!");
   };
 
   // 💾 Lưu cài đặt cấu hình SMTP Gmail & Mẫu email động
@@ -327,6 +361,16 @@ export function AdminSettingsPage() {
           }`}
         >
           Khuyến Mãi & Coupons ({coupons.length})
+        </button>
+        <button
+          onClick={() => setActiveTab("gateways")}
+          className={`px-6 py-3 text-xs font-extrabold tracking-widest uppercase border-b-2 transition-all ${
+            activeTab === "gateways"
+              ? "border-black text-black"
+              : "border-transparent text-black/40 hover:text-black"
+          }`}
+        >
+          Thanh Toán & Vận Chuyển
         </button>
         <button
           onClick={() => setActiveTab("invoice")}
@@ -586,6 +630,139 @@ export function AdminSettingsPage() {
               <ShieldCheck className="h-4 w-4 text-green-600" />
               Mã giảm giá được đồng bộ tự động xuống giao diện thanh toán (Checkout) của khách hàng.
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* TAB: CỔNG THANH TOÁN & VẬN CHUYỂN */}
+      {activeTab === "gateways" && (
+        <div className="space-y-6 rounded-2xl border border-black/10 bg-white p-6 shadow-sm text-xs font-semibold text-black/85 animate-fadeIn">
+          <div className="border-b border-black/5 pb-3">
+            <h3 className="text-sm font-extrabold tracking-widest text-black uppercase">CỔNG THANH TOÁN & PHÍ VẬN CHUYỂN</h3>
+            <p className="text-[10px] text-black/45 mt-1 leading-relaxed">
+              Thiết lập tài khoản nhận tiền ngân hàng, số ví MoMo hiển thị cho khách và biểu phí ship động khi thanh toán.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Cột trái: Cấu hình thanh toán */}
+            <div className="space-y-5">
+              {/* Ngân hàng */}
+              <div className="border border-black/5 rounded-2xl p-5 bg-stone-50/50 space-y-3.5">
+                <h4 className="text-[10px] font-black tracking-widest text-black/60 uppercase border-b border-black/5 pb-2">
+                  🏦 TÀI KHOẢN NGÂN HÀNG (VIETQR)
+                </h4>
+                <div>
+                  <label className="block text-[9px] font-extrabold tracking-wider uppercase text-black/50 mb-1">Mã ngân hàng (VietQR)</label>
+                  <input
+                    value={bankId}
+                    onChange={(e) => setBankId(e.target.value)}
+                    placeholder="Ví dụ: MB, VCB, ACB, Techcombank"
+                    className="w-full rounded-xl border border-black/10 bg-white px-3 py-2 text-xs font-bold uppercase focus:border-black/60 focus:outline-none"
+                  />
+                  <p className="text-[8px] text-black/35 mt-1">Sử dụng mã viết tắt chuẩn VietQR (ví dụ: MB, VCB, ACB, ICB, v.v.)</p>
+                </div>
+                <div>
+                  <label className="block text-[9px] font-extrabold tracking-wider uppercase text-black/50 mb-1">Số tài khoản</label>
+                  <input
+                    value={bankAccount}
+                    onChange={(e) => setBankAccount(e.target.value)}
+                    placeholder="Nhập số tài khoản ngân hàng..."
+                    className="w-full rounded-xl border border-black/10 bg-white px-3 py-2 text-xs font-mono font-bold focus:border-black/60 focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[9px] font-extrabold tracking-wider uppercase text-black/50 mb-1">Họ tên chủ tài khoản</label>
+                  <input
+                    value={bankAccountName}
+                    onChange={(e) => setBankAccountName(e.target.value)}
+                    placeholder="Ví dụ: DOAN QUOC THAI"
+                    className="w-full rounded-xl border border-black/10 bg-white px-3 py-2 text-xs font-bold uppercase focus:border-black/60 focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              {/* MoMo */}
+              <div className="border border-black/5 rounded-2xl p-5 bg-stone-50/50 space-y-3.5">
+                <h4 className="text-[10px] font-black tracking-widest text-black/60 uppercase border-b border-black/5 pb-2">
+                  📱 VÍ ĐIỆN TỬ MOMO
+                </h4>
+                <div>
+                  <label className="block text-[9px] font-extrabold tracking-wider uppercase text-black/50 mb-1">Số điện thoại đăng ký MoMo</label>
+                  <input
+                    value={momoPhone}
+                    onChange={(e) => setMomoPhone(e.target.value)}
+                    placeholder="Nhập số điện thoại ví MoMo..."
+                    className="w-full rounded-xl border border-black/10 bg-white px-3 py-2 text-xs font-mono font-bold focus:border-black/60 focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[9px] font-extrabold tracking-wider uppercase text-black/50 mb-1">Họ tên chủ ví MoMo</label>
+                  <input
+                    value={momoAccountName}
+                    onChange={(e) => setMomoAccountName(e.target.value)}
+                    placeholder="Ví dụ: DOAN QUOC THAI"
+                    className="w-full rounded-xl border border-black/10 bg-white px-3 py-2 text-xs font-bold uppercase focus:border-black/60 focus:outline-none"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Cột phải: Cấu hình vận chuyển */}
+            <div className="space-y-5">
+              <div className="border border-black/5 rounded-2xl p-5 bg-stone-50/50 space-y-3.5 h-full">
+                <h4 className="text-[10px] font-black tracking-widest text-black/60 uppercase border-b border-black/5 pb-2">
+                  🚚 BIỂU PHÍ VẬN CHUYỂN
+                </h4>
+                <div>
+                  <label className="block text-[9px] font-extrabold tracking-wider uppercase text-black/50 mb-1">Phí vận chuyển thường (Standard) (VNĐ)</label>
+                  <input
+                    type="number"
+                    value={shippingFeeStandard}
+                    onChange={(e) => setShippingFeeStandard(e.target.value)}
+                    placeholder="30000"
+                    className="w-full rounded-xl border border-black/10 bg-white px-3 py-2 text-xs font-bold focus:border-black/60 focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[9px] font-extrabold tracking-wider uppercase text-black/50 mb-1">Phí vận chuyển hỏa tốc (Express) (VNĐ)</label>
+                  <input
+                    type="number"
+                    value={shippingFeeExpress}
+                    onChange={(e) => setShippingFeeExpress(e.target.value)}
+                    placeholder="60000"
+                    className="w-full rounded-xl border border-black/10 bg-white px-3 py-2 text-xs font-bold focus:border-black/60 focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[9px] font-extrabold tracking-wider uppercase text-black/50 mb-1">Hạn mức miễn phí vận chuyển (Standard) (VNĐ)</label>
+                  <input
+                    type="number"
+                    value={shippingFreeThreshold}
+                    onChange={(e) => setShippingFreeThreshold(e.target.value)}
+                    placeholder="500000"
+                    className="w-full rounded-xl border border-black/10 bg-white px-3 py-2 text-xs font-bold focus:border-black/60 focus:outline-none"
+                  />
+                  <p className="text-[8px] text-black/35 mt-1">Đơn hàng đạt giá trị tối thiểu này sẽ được miễn phí giao hàng thường.</p>
+                </div>
+
+                <div className="rounded-xl border border-black/5 bg-white p-3.5 text-[9px] text-black/55 leading-normal space-y-1.5 mt-4">
+                  <p className="font-bold text-black uppercase">💡 Hướng dẫn kiểm thử thực tế:</p>
+                  <p>• Phí ship và các thông số tài khoản ngân hàng/momo sẽ tự động cập nhật đồng bộ trực tiếp lên Trang Thanh Toán (Checkout).</p>
+                  <p>• Khách hàng có thể quét mã QR thanh toán nhanh bằng VietQR được sinh động tự động với đúng giá trị đơn hàng thực tế!</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-3 border-t border-black/10 pt-5">
+            <button
+              onClick={handleSaveGateways}
+              className="flex items-center gap-2 rounded-xl bg-black text-white hover:bg-red-700 px-6 h-11 text-xs font-bold tracking-widest uppercase transition-all shadow-md shadow-black/10"
+            >
+              <Save className="h-4 w-4" />
+              LƯU CẤU HÌNH
+            </button>
           </div>
         </div>
       )}

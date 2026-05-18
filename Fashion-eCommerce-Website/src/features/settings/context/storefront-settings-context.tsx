@@ -73,6 +73,16 @@ export const DEFAULT_STOREFRONT_SETTINGS: StorefrontSettings = {
   smtpSenderName: "MADMAD STUDIO",
   customerEmailSubject: "[{{brandName}}] ĐẶT HÀNG THÀNH CÔNG - ĐƠN HÀNG {{orderNumber}}",
   customerEmailTemplate: "Chào bạn <strong>{{customerName}}</strong>,<br><br>Cám ơn bạn đã lựa chọn nổi loạn và khẳng định cá tính cùng <strong>{{brandName}}</strong>. Chúng tôi xác nhận đã nhận được đơn hàng của bạn và đang tiến hành đóng gói siêu tốc!",
+  
+  // 💳 Cổng Thanh Toán & Vận Chuyển Mặc định
+  bankId: "MB",
+  bankAccount: "0999999999",
+  bankAccountName: "MADMAD STUDIO",
+  momoPhone: "0999999999",
+  momoAccountName: "MADMAD STUDIO",
+  shippingFeeStandard: 30000,
+  shippingFeeExpress: 60000,
+  shippingFreeThreshold: 500000,
 };
 
 interface StorefrontSettingsContextValue {
@@ -188,6 +198,22 @@ function readStoredSettings(): StorefrontSettings {
         typeof parsed.customerEmailSubject === "string" ? parsed.customerEmailSubject : DEFAULT_STOREFRONT_SETTINGS.customerEmailSubject,
       customerEmailTemplate:
         typeof parsed.customerEmailTemplate === "string" ? parsed.customerEmailTemplate : DEFAULT_STOREFRONT_SETTINGS.customerEmailTemplate,
+      bankId:
+        typeof parsed.bankId === "string" ? parsed.bankId : DEFAULT_STOREFRONT_SETTINGS.bankId,
+      bankAccount:
+        typeof parsed.bankAccount === "string" ? parsed.bankAccount : DEFAULT_STOREFRONT_SETTINGS.bankAccount,
+      bankAccountName:
+        typeof parsed.bankAccountName === "string" ? parsed.bankAccountName : DEFAULT_STOREFRONT_SETTINGS.bankAccountName,
+      momoPhone:
+        typeof parsed.momoPhone === "string" ? parsed.momoPhone : DEFAULT_STOREFRONT_SETTINGS.momoPhone,
+      momoAccountName:
+        typeof parsed.momoAccountName === "string" ? parsed.momoAccountName : DEFAULT_STOREFRONT_SETTINGS.momoAccountName,
+      shippingFeeStandard:
+        typeof parsed.shippingFeeStandard === "number" ? parsed.shippingFeeStandard : DEFAULT_STOREFRONT_SETTINGS.shippingFeeStandard,
+      shippingFeeExpress:
+        typeof parsed.shippingFeeExpress === "number" ? parsed.shippingFeeExpress : DEFAULT_STOREFRONT_SETTINGS.shippingFeeExpress,
+      shippingFreeThreshold:
+        typeof parsed.shippingFreeThreshold === "number" ? parsed.shippingFreeThreshold : DEFAULT_STOREFRONT_SETTINGS.shippingFreeThreshold,
     };
   } catch {
     return DEFAULT_STOREFRONT_SETTINGS;

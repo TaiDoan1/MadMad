@@ -292,10 +292,10 @@ export function TrackOrderPage() {
           {renderedOrders.length === 0 ? (
             <div className="border border-dashed border-black/15 rounded-2xl p-12 text-center bg-stone-50 max-w-xl mx-auto">
               <AlertTriangle className="h-8 w-8 text-amber-500 mx-auto mb-3" />
-              <p className="text-sm font-semibold text-black/70 mb-2">Không tìm thấy đơn hàng trùng khớp</p>
+              <p className="text-sm font-semibold text-black/70 mb-2">Không tìm thấy đơn hàng</p>
               <p className="text-xs text-black/40 leading-relaxed">
                 {googleUser 
-                  ? `Hệ thống không tìm thấy bất kỳ đơn hàng nào từng được đặt dưới địa chỉ Gmail: ${googleUser.email}.`
+                  ? `Gmail không tồn tại hoặc chưa từng phát sinh mua hàng bằng Gmail này: ${googleUser.email}.`
                   : "Vui lòng kiểm tra lại Mã đơn hàng (DH2026...) và Số điện thoại hoặc Email liên hệ của bạn."}
               </p>
             </div>
@@ -309,6 +309,7 @@ export function TrackOrderPage() {
               const diffMs = Date.now() - createdTime;
               const isWithin5Min = diffMs >= 0 && diffMs <= 5 * 60 * 1000;
               const isCancelled = order.status === "cancelled";
+              const isCompletedOrCancelled = order.status === "completed" || order.status === "cancelled";
 
               return (
                 <div key={order.id} className="border border-black/10 rounded-2xl p-6 sm:p-8 bg-white shadow-xl">
@@ -316,7 +317,18 @@ export function TrackOrderPage() {
                   <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-black/10 pb-6 mb-8">
                     <div>
                       <span className="text-[10px] font-bold tracking-wider text-black/40 uppercase">Xác minh đơn hàng thành công</span>
-                      <h2 className="font-mono font-bold text-xl text-black mt-0.5">{order.orderNumber}</h2>
+                      <div className="flex items-center gap-3 mt-0.5">
+                        <h2 className="font-mono font-bold text-xl text-black">{order.orderNumber}</h2>
+                        {isCompletedOrCancelled && (
+                          <span className={`text-[9px] font-extrabold tracking-wider uppercase px-2.5 py-1 rounded-full ${
+                            order.status === "completed" 
+                              ? "bg-green-50 text-green-700 border border-green-200"
+                              : "bg-red-50 text-red-700 border border-red-200"
+                          }`}>
+                            {order.status === "completed" ? "Đã hoàn thành" : "Đã hủy"}
+                          </span>
+                        )}
+                      </div>
                     </div>
                     <div className="flex items-center gap-4 text-xs text-black/50">
                       <span className="flex items-center gap-1">
@@ -331,7 +343,7 @@ export function TrackOrderPage() {
                   </div>
 
                   {/* Thanh tiến trình */}
-                  {!isCancelled && (
+                  {!isCompletedOrCancelled && (
                     <div className="mb-12">
                       <div className="relative">
                         <div className="absolute top-1/2 left-0 right-0 h-1 bg-stone-100 -translate-y-1/2 z-0 rounded-full" />
@@ -461,6 +473,10 @@ export function TrackOrderPage() {
                         {isCancelled ? (
                           <div className="text-[10px] text-center font-bold text-stone-500 uppercase py-2 bg-stone-100 rounded-lg">
                             Đơn hàng đã được hủy thành công
+                          </div>
+                        ) : order.status === "completed" ? (
+                          <div className="text-[10px] text-center font-bold text-green-700 uppercase py-2 bg-green-50 border border-green-200 rounded-lg">
+                            Đơn hàng đã giao thành công
                           </div>
                         ) : isWithin5Min ? (
                           <div className="space-y-2">

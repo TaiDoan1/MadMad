@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
-import { Package, ArrowRight, Sparkles, Search } from "lucide-react";
+import { Package, ArrowRight, Sparkles, Truck } from "lucide-react";
 import { brandLogo } from "@/assets/images";
 
 interface OrderSuccessModalProps {
@@ -8,7 +8,7 @@ interface OrderSuccessModalProps {
   orderNumber: string;
   customerName: string;
   total: number;
-  onClose: () => void;
+  onClose: (targetPath?: string) => void;
 }
 
 /** Chữ "CẢM ƠN BẠN" hiển thị từng ký tự */
@@ -68,9 +68,9 @@ export function OrderSuccessModal({
     }
   }, [open]);
 
-  const handleClose = () => {
+  const handleClose = (targetPath?: string) => {
     setClosing(true);
-    setTimeout(onClose, 400);
+    setTimeout(() => onClose(targetPath), 400);
   };
 
   if (!open) return null;
@@ -78,7 +78,7 @@ export function OrderSuccessModal({
   return (
     <div
       className={`order-success-backdrop ${visible && !closing ? "order-success-backdrop--in" : "order-success-backdrop--out"}`}
-      onClick={handleClose}
+      onClick={() => handleClose("/")}
     >
       {/* Confetti particles */}
       {visible && PARTICLES.map((p, i) => <Particle key={i} style={p} />)}
@@ -137,7 +137,7 @@ export function OrderSuccessModal({
         </p>
 
         {/* CTA button */}
-        <button className="order-success-btn" onClick={handleClose}>
+        <button className="order-success-btn" onClick={() => handleClose("/")}>
           <span>Tiếp tục mua sắm</span>
           <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
         </button>
@@ -145,12 +145,9 @@ export function OrderSuccessModal({
         {/* Track Order Button */}
         <button 
           className="w-full mt-3 py-3 border border-stone-850 hover:border-stone-500 text-stone-500 hover:text-white rounded-xl text-[10px] font-extrabold tracking-widest uppercase transition-all duration-300 flex items-center justify-center gap-1.5 cursor-pointer bg-transparent"
-          onClick={() => {
-            handleClose();
-            navigate("/track-order");
-          }}
+          onClick={() => handleClose("/track-order")}
         >
-          <Search className="h-3.5 w-3.5" />
+          <Truck className="h-3.5 w-3.5" />
           <span>Tra cứu đơn hàng</span>
         </button>
       </div>

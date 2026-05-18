@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
-import { ArrowLeft, ShoppingBag } from "lucide-react";
+import { ArrowLeft, ShoppingBag, Trash2, Plus, Minus } from "lucide-react";
 import { Link } from "react-router";
 
 import { ImageWithFallback } from "@/components/common/image-with-fallback";
@@ -19,6 +19,7 @@ import {
 } from "@/features/checkout/services/address-service";
 import { useOrders } from "@/features/orders/context/order-context";
 import { useProducts } from "@/features/products/context/product-context";
+import { useStorefrontSettings } from "@/features/settings/context/storefront-settings-context";
 import type { Order, OrderItem } from "@/types/order";
 
 /* ── Shared input className ───────────────────────────────────────────── */
@@ -27,6 +28,7 @@ const inputCls =
 
 export function CheckoutPage() {
   const { products } = useProducts();
+  const { settings } = useStorefrontSettings();
   const { addOrder } = useOrders();
   const { currentMember, addPointsToCurrentMember, tierConfigs } = useMembership();
   const {
@@ -38,8 +40,11 @@ export function CheckoutPage() {
     applyCoupon,
     clearCoupon,
     clearCart,
+    removeFromCart,
+    updateItemQuantity,
   } = useCart();
   const navigate = useTransitionTo();
+  const [typedCoupon, setTypedCoupon] = useState("");
 
   const [successModal, setSuccessModal] = useState<{
     open: boolean;
@@ -89,7 +94,13 @@ export function CheckoutPage() {
 
   const totalDiscount = discountAmount + vipDiscountAmount;
   const shippingBase = subtotal - totalDiscount;
-  const shipping = formData.shippingMethod === "express" ? 60000 : (shippingBase > 500000 ? 0 : 30000);
+  const feeStandard = settings.shippingFeeStandard ?? 30000;
+  const feeExpress = settings.shippingFeeExpress ?? 60000;
+  const freeThreshold = settings.shippingFreeThreshold ?? 500000;
+
+  const shipping = formData.shippingMethod === "express" 
+    ? feeExpress 
+    : (shippingBase >= freeThreshold ? 0 : feeStandard);
   const total = Math.max(0, subtotal - totalDiscount) + shipping;
 
   useEffect(() => {
@@ -240,9 +251,9 @@ export function CheckoutPage() {
         orderNumber={successModal.orderNumber}
         customerName={successModal.customerName}
         total={successModal.total}
-        onClose={() => {
+        onClose={(targetPath) => {
           setSuccessModal((prev) => ({ ...prev, open: false }));
-          setTimeout(() => navigate("/"), 420);
+          setTimeout(() => navigate(targetPath || "/"), 420);
         }}
       />
 
@@ -337,7 +348,7 @@ export function CheckoutPage() {
                   >
                     <span className="text-xs font-bold uppercase tracking-wider">Ship Tiêu Chuẩn (Thường)</span>
                     <span className="text-[10px] text-black/50 mt-1">
-                      Giá: {shippingBase > 500000 ? "Miễn phí" : "30.000₫"} (2-4 ngày)
+                      Giá: {shippingBase >= freeThreshold ? "Miễn phí" : `${feeStandard.toLocaleString("vi-VN")}₫`} (2-4 ngày)
                     </span>
                   </button>
 
@@ -354,7 +365,7 @@ export function CheckoutPage() {
                       Giao Hỏa Tốc (2h)
                     </span>
                     <span className="text-[10px] text-black/50 mt-1">
-                      Giá: 60.000₫ (Giao siêu tốc nội thành)
+                      Giá: {feeExpress.toLocaleString("vi-VN")}₫ (Giao siêu tốc nội thành)
                     </span>
                   </button>
                 </div>
@@ -364,27 +375,70 @@ export function CheckoutPage() {
               <section>
                 <h2 className="mb-4 text-sm font-bold uppercase tracking-widest">Phương thức thanh toán</h2>
 
-                {/* Coupon */}
-                {!hasDiscountedProducts && availableCoupons.length > 0 && (
-                  <div className="mb-4 border border-black/15 p-4">
-                    <p className="mb-2 text-xs text-black/50">Mã giảm giá</p>
-                    <div className="flex flex-wrap gap-2">
-                      {availableCoupons.map((coupon) => (
-                        <button key={coupon.code} type="button"
-                          onClick={() => { const r = applyCoupon(coupon.code); window.alert(r.message); }}
-                          className={`border px-3 py-1.5 text-xs font-bold uppercase tracking-wide transition-colors ${
-                            appliedCoupon?.code === coupon.code
-                              ? "border-black bg-black text-white"
-                              : "border-black/30 hover:border-black"
-                          }`}>
-                          {coupon.code} (-{coupon.discountAmount.toLocaleString("vi-VN")}₫)
-                        </button>
-                      ))}
+                {/* Coupon / Voucher Entry */}
+                {!hasDiscountedProducts && (
+                  <div className="mb-6 rounded-xl border border-black/10 bg-stone-50 p-4 space-y-4">
+                    <h3 className="text-xs font-bold uppercase tracking-widest text-black">Mã giảm giá / Voucher</h3>
+                    
+                    {/* Manual input */}
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={typedCoupon}
+                        onChange={(e) => setTypedCoupon(e.target.value)}
+                        placeholder="Nhập mã giảm giá của bạn..."
+                        className="flex-1 rounded-xl border border-black/10 bg-white px-3.5 py-2 text-xs font-bold uppercase tracking-wider focus:border-black/60 focus:outline-none"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (!typedCoupon.trim()) {
+                            window.alert("Vui lòng nhập mã giảm giá!");
+                            return;
+                          }
+                          const r = applyCoupon(typedCoupon.trim().toUpperCase());
+                          window.alert(r.message);
+                          if (r.success) {
+                            setTypedCoupon("");
+                          }
+                        }}
+                        className="rounded-xl bg-black text-white hover:bg-neutral-800 px-4 text-xs font-black tracking-widest uppercase transition-all"
+                      >
+                        Áp dụng
+                      </button>
                     </div>
+
+                    {/* Suggestions */}
+                    {availableCoupons.length > 0 && (
+                      <div className="space-y-2 border-t border-black/5 pt-3">
+                        <p className="text-[10px] font-extrabold tracking-wider uppercase text-black/40">Gợi ý Voucher dành cho bạn:</p>
+                        <div className="flex flex-wrap gap-2">
+                          {availableCoupons.map((coupon) => (
+                            <button
+                              key={coupon.code}
+                              type="button"
+                              onClick={() => {
+                                const r = applyCoupon(coupon.code);
+                                window.alert(r.message);
+                              }}
+                              className={`rounded-lg border px-2.5 py-1.5 text-[10px] font-black uppercase tracking-wider transition-all hover:scale-[1.02] active:scale-[0.98] ${
+                                appliedCoupon?.code === coupon.code
+                                  ? "border-black bg-black text-white"
+                                  : "border-black/15 bg-white text-black/75 hover:border-black"
+                              }`}
+                            >
+                              🎫 {coupon.code} (-{coupon.discountAmount.toLocaleString("vi-VN")}₫)
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Active Coupon Feedback */}
                     {appliedCoupon && (
-                      <div className="mt-2 flex items-center justify-between text-xs">
-                        <span className="text-green-700">✓ Mã: {appliedCoupon.code}</span>
-                        <button onClick={clearCoupon} className="text-red-600 hover:underline">Bỏ mã</button>
+                      <div className="flex items-center justify-between rounded-lg bg-green-50 border border-green-200 px-3 py-2 text-xs text-green-800 font-semibold mt-2">
+                        <span>✓ Đã áp dụng mã: <span className="font-black font-mono tracking-wider text-green-950 uppercase">{appliedCoupon.code}</span> (-{appliedCoupon.discountAmount.toLocaleString("vi-VN")}₫)</span>
+                        <button type="button" onClick={clearCoupon} className="text-[10px] font-black text-red-600 hover:text-red-800 hover:underline uppercase tracking-wider">Hủy mã</button>
                       </div>
                     )}
                   </div>
@@ -408,6 +462,48 @@ export function CheckoutPage() {
                     </label>
                   ))}
                 </div>
+
+                {/* Payment Detail Instructions Panel */}
+                {formData.paymentMethod === "bank" && (
+                  <div className="mt-4 rounded-xl border border-black/10 bg-stone-50 p-4 space-y-4 animate-fadeIn">
+                    <div className="flex items-start gap-4">
+                      <div className="bg-white p-1 rounded-lg border border-black/5 flex-shrink-0">
+                        <img
+                          src={`https://img.vietqr.io/image/${settings.bankId || 'MB'}-${settings.bankAccount || '0999999999'}-compact.png?amount=${total}&addInfo=MADMAD%20PAYMENT&accountName=${encodeURIComponent(settings.bankAccountName || 'MADMAD STUDIO')}`}
+                          alt="VietQR Chuyển khoản"
+                          className="h-28 w-28 object-contain animate-pulse"
+                        />
+                      </div>
+                      <div className="space-y-1.5 text-xs">
+                        <p className="font-bold uppercase text-[10px] tracking-wider text-black/50">Thông tin chuyển khoản</p>
+                        <p className="text-sm font-black text-black">{settings.bankAccountName || "MADMAD STUDIO"}</p>
+                        <p className="font-mono font-bold text-black text-sm">STK: {settings.bankAccount || "0999999999"}</p>
+                        <p className="text-black/60 font-semibold">Ngân hàng: <span className="font-bold text-black uppercase">{settings.bankId || "MB Bank"}</span></p>
+                        <p className="text-[10px] text-green-700 font-bold">✓ Quét VietQR để thanh toán nhanh tự động.</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {formData.paymentMethod === "momo" && (
+                  <div className="mt-4 rounded-xl border border-black/10 bg-stone-50 p-4 space-y-4 animate-fadeIn">
+                    <div className="flex items-start gap-4">
+                      <div className="bg-white p-1 rounded-lg border border-black/5 flex-shrink-0">
+                        <img
+                          src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(`momo://?phone=${settings.momoPhone || '0999999999'}&amount=${total}&note=MADMAD%20PAYMENT`)}`}
+                          alt="MoMo QR"
+                          className="h-28 w-28 object-contain animate-pulse"
+                        />
+                      </div>
+                      <div className="space-y-1.5 text-xs">
+                        <p className="font-bold uppercase text-[10px] tracking-wider text-black/50">Ví điện tử MoMo</p>
+                        <p className="text-sm font-black text-black">{settings.momoAccountName || "MADMAD STUDIO"}</p>
+                        <p className="font-mono font-bold text-black text-sm">SĐT: {settings.momoPhone || "0999999999"}</p>
+                        <p className="text-[10px] text-red-600 font-bold">✓ Chuyển khoản đúng số tiền: {total.toLocaleString("vi-VN")}₫.</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </section>
 
               {/* Submit */}
@@ -426,27 +522,69 @@ export function CheckoutPage() {
               <h2 className="mb-5 text-xs font-bold uppercase tracking-widest text-black/60">Đơn hàng của bạn</h2>
 
               {/* Items */}
-              <div className="mb-6 space-y-4">
+              <div className="mb-6 space-y-3.5">
                 {resolvedItems.map(({ item, product }) => (
-                  <div key={item.id} className="flex items-center gap-3">
-                    {/* Image — no quantity badge */}
-                    <div className="h-14 w-14 flex-shrink-0 overflow-hidden bg-white border border-black/10 rounded-lg">
+                  <div key={item.id} className="flex items-center gap-3 bg-white border border-black/5 rounded-xl p-3 shadow-sm hover:shadow-md transition-shadow">
+                    {/* Image */}
+                    <div className="h-16 w-16 flex-shrink-0 overflow-hidden bg-white border border-black/10 rounded-lg">
                       <ImageWithFallback src={product.image} alt={product.name}
                         className="h-full w-full object-cover" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="truncate text-xs font-bold uppercase tracking-wide">{product.name}</p>
-                      <p className="text-xs text-black/50">
+                      <p className="truncate text-xs font-extrabold uppercase tracking-wide text-black">{product.name}</p>
+                      <p className="text-[10px] text-black/45 mt-0.5 uppercase">
                         {item.size}{item.color ? ` / ${item.color}` : ""}
                       </p>
+                      
+                      {/* Interactive inline quantity adjuster + delete */}
+                      <div className="flex items-center gap-3 mt-1.5">
+                        <div className="flex items-center border border-black/10 rounded bg-stone-50 overflow-hidden">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (item.quantity > 1) {
+                                updateItemQuantity(item.id, item.quantity - 1);
+                              } else {
+                                removeFromCart(item.id);
+                              }
+                            }}
+                            className="p-1 hover:bg-black/5 text-black/60 transition-colors"
+                          >
+                            <Minus className="h-3 w-3" />
+                          </button>
+                          <span className="px-2 text-[10px] font-bold text-black">{item.quantity}</span>
+                          <button
+                            type="button"
+                            onClick={() => updateItemQuantity(item.id, item.quantity + 1)}
+                            className="p-1 hover:bg-black/5 text-black/60 transition-colors"
+                          >
+                            <Plus className="h-3 w-3" />
+                          </button>
+                        </div>
+                        
+                        {/* Quick Trash icon */}
+                        <button
+                          type="button"
+                          onClick={() => removeFromCart(item.id)}
+                          className="text-black/35 hover:text-red-600 transition-colors p-1"
+                          title="Xóa sản phẩm"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
                     </div>
-                    <p className="text-xs font-semibold whitespace-nowrap">
-                      {(item.priceAtAdd * item.quantity).toLocaleString("vi-VN")}₫
-                    </p>
+                    
+                    <div className="text-right flex-shrink-0">
+                      <p className="text-xs font-bold text-black font-mono">
+                        {(item.priceAtAdd * item.quantity).toLocaleString("vi-VN")}₫
+                      </p>
+                    </div>
                   </div>
                 ))}
                 {resolvedItems.length === 0 && (
-                  <p className="text-xs text-black/40">Giỏ hàng trống.</p>
+                  <div className="text-center py-6 border border-dashed border-black/10 rounded-xl bg-white">
+                    <p className="text-xs text-black/40">Giỏ hàng trống.</p>
+                  </div>
                 )}
               </div>
 

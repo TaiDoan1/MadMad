@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Heart, Menu, Search, ShoppingCart, User, X } from "lucide-react";
+import { Heart, Menu, Search, ShoppingCart, User, X, Truck } from "lucide-react";
 import { Link, Outlet, useLocation } from "react-router";
 
 import { brandLogo } from "@/assets/images";
@@ -161,7 +161,7 @@ export function MainLayout() {
                 onClick={() => navigate("/track-order")}
                 aria-label="Tra cứu đơn hàng"
               >
-                <Search className="h-5 w-5" />
+                <Truck className="h-5 w-5" />
               </button>
               {currentMember ? (
                 <button
