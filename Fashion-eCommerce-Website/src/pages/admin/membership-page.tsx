@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { Award, Gift, Percent, Plus, Search, ShieldCheck, Sparkles, Trash2, User, UserPlus, X } from "lucide-react";
 
 import { useMembership, type Member, type MembershipTierConfig } from "@/features/membership/context/membership-context";
+import { API_URL } from "@/config/api";
 
 export function AdminMembershipPage() {
   const { members, setMembers, tierConfigs, updateTierConfigs } = useMembership();
