@@ -30,7 +30,8 @@ import {
   Copy,
   Users,
   UserPlus,
-  User
+  User,
+  CircleCheck
 } from "lucide-react";
 
 import { brandLogo } from "@/assets/images";
