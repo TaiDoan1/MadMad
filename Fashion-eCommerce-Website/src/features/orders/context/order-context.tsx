@@ -43,6 +43,8 @@ export function OrderProvider({ children }: { children: ReactNode }) {
     }
   };
 
+const LOCAL_ORDERS_KEY = "madmad_orders_fallback";
+
   // 📥 Tải danh sách đơn hàng từ database Neon Postgres (Dành cho Admin Dashboard)
   const loadOrders = async () => {
     try {
@@ -56,11 +58,16 @@ export function OrderProvider({ children }: { children: ReactNode }) {
         );
         setOrders(sortedOrders);
       } else {
-        setOrders(mockOrders);
+        throw new Error("API response not ok");
       }
     } catch (error) {
       console.warn("⚠️ Không lấy được danh sách đơn hàng từ API, dùng dữ liệu local:", error);
-      setOrders(mockOrders);
+      const localData = localStorage.getItem(LOCAL_ORDERS_KEY);
+      if (localData) {
+        setOrders(JSON.parse(localData));
+      } else {
+        setOrders(mockOrders);
+      }
     } finally {
       setLoading(false);
     }
@@ -69,6 +76,13 @@ export function OrderProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     loadOrders();
   }, []);
+
+  // 🛡️ Tự động đồng bộ Orders state vào LocalStorage dự phòng
+  useEffect(() => {
+    if (orders.length > 0) {
+      localStorage.setItem(LOCAL_ORDERS_KEY, JSON.stringify(orders));
+    }
+  }, [orders]);
 
   const value = useMemo<OrderContextValue>(
     () => ({
