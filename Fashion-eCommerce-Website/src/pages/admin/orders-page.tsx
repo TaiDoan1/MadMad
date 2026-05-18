@@ -1861,62 +1861,28 @@ export function AdminOrdersPage() {
               </tbody>
             </table>
 
-            {/* Chi phí & Quét mã QR */}
-            <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-start mb-4 pb-4 border-b border-black font-mono">
-              {selectedOrder.isPaid ? (
-                <div className="md:col-span-6 flex items-center justify-center p-3 border-2 border-dashed border-green-600 bg-green-50/10 rounded-xl select-none">
-                  <div className="text-center font-sans">
-                    <span className="inline-block border-2 border-green-600 text-green-600 px-3 py-1 font-black text-xs uppercase tracking-widest rounded rotate-[-1deg]">
-                      [ ĐÃ THANH TOÁN ]
-                    </span>
-                    <p className="text-[8px] text-green-700/80 font-extrabold uppercase mt-1.5 tracking-wider">
-                      PAID VIA BANK TRANSFER - THU HỘ COD: 0₫
-                    </p>
-                  </div>
+            {/* Tổng kết chi phí */}
+            <div className="flex justify-end items-start mb-4 pb-4 border-b border-black font-mono">
+              <div className="w-1/2 space-y-1.5 font-sans font-semibold text-[10px]">
+                <div className="flex justify-between text-black/70">
+                  <span>Tạm tính:</span>
+                  <span className="font-mono">{selectedOrder.subtotal.toLocaleString("vi-VN")}₫</span>
                 </div>
-              ) : (
-                <div className="md:col-span-6 flex items-center gap-3 border border-black/10 rounded-xl p-2 bg-stone-50 font-sans">
-                  <div className="bg-white p-0.5 rounded border border-black/5 flex-shrink-0">
-                    <img
-                      src={`https://img.vietqr.io/image/${settings.printInvoiceBankId || "MB"}-${settings.printInvoiceBankAccount || "0999999999"}-compact.png?amount=${selectedOrder.total}&addInfo=MADMAD%20${selectedOrder.orderNumber}&accountName=${encodeURIComponent(settings.printInvoiceAccountName || "MADMAD STUDIO")}`}
-                      alt="VietQR MADMAD"
-                      className="h-14 w-14 object-contain"
-                    />
+                {selectedOrder.discount > 0 && (
+                  <div className="flex justify-between font-bold text-red-600">
+                    <span>Giảm giá/Khuyến mãi:</span>
+                    <span className="font-mono">-{selectedOrder.discount.toLocaleString("vi-VN")}₫</span>
                   </div>
-                  <div className="space-y-0.5">
-                    <p className="font-bold text-[9px] tracking-wider uppercase flex items-center gap-1">
-                      <QrCode className="h-3 w-3" />
-                      QUÉT THANH TOÁN
-                    </p>
-                    <p className="text-[7px] leading-tight text-black/60 font-semibold">
-                      Chuyển khoản QR tự động với NH {settings.printInvoiceBankId || "MB"} - STK {settings.printInvoiceBankAccount || "0999999999"} ({settings.printInvoiceAccountName || "MADMAD STUDIO"}).
-                    </p>
-                  </div>
-                </div>
-              )}
-
-              <div className="md:col-span-6 flex justify-end text-[10px]">
-                <div className="w-full space-y-1.5 font-sans font-semibold">
+                )}
+                {selectedOrder.shippingAddress.street !== "Mua trực tiếp tại Shop" && (
                   <div className="flex justify-between text-black/70">
-                    <span>Tạm tính:</span>
-                    <span className="font-mono">{selectedOrder.subtotal.toLocaleString("vi-VN")}₫</span>
+                    <span>Phí giao hàng:</span>
+                    <span className="font-mono">+{selectedOrder.shipping.toLocaleString("vi-VN")}₫</span>
                   </div>
-                  {selectedOrder.discount > 0 && (
-                    <div className="flex justify-between font-bold text-red-600">
-                      <span>Giảm giá/Khuyến mãi:</span>
-                      <span className="font-mono">-{selectedOrder.discount.toLocaleString("vi-VN")}₫</span>
-                    </div>
-                  )}
-                  {selectedOrder.shippingAddress.street !== "Mua trực tiếp tại Shop" && (
-                    <div className="flex justify-between text-black/70">
-                      <span>Phí giao hàng:</span>
-                      <span className="font-mono">+{selectedOrder.shipping.toLocaleString("vi-VN")}₫</span>
-                    </div>
-                  )}
-                  <div className="flex justify-between font-black text-xs border-t-2 border-black pt-1.5">
-                    <span>TỔNG CỘNG TIỀN:</span>
-                    <span className="font-mono text-xs">{selectedOrder.total.toLocaleString("vi-VN")}₫</span>
-                  </div>
+                )}
+                <div className="flex justify-between font-black text-xs border-t-2 border-black pt-1.5">
+                  <span>TỔNG CỘNG TIỀN:</span>
+                  <span className="font-mono text-xs">{selectedOrder.total.toLocaleString("vi-VN")}₫</span>
                 </div>
               </div>
             </div>

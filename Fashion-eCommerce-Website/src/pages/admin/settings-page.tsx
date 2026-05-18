@@ -1214,38 +1214,7 @@ export function AdminSettingsPage() {
                 />
               </div>
 
-              <div className="pt-4 border-t border-black/10 mt-6 mb-4">
-                <h4 className="text-[10px] font-extrabold tracking-widest text-black/45 uppercase mb-4 flex items-center gap-1.5">
-                  <QrCode className="h-3.5 w-3.5" />
-                  Cấu Hình Mã Thanh Toán QR Tự Động
-                </h4>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                  <div>
-                    <label className="block text-[10px] font-extrabold tracking-wider uppercase text-black/50 mb-1.5">Ngân hàng (Ví dụ: MB)</label>
-                    <input
-                      value={printInvoiceBankId}
-                      onChange={(e) => setPrintInvoiceBankId(e.target.value)}
-                      className="w-full rounded-none border border-black/20 bg-stone-50/50 px-4 py-2.5 focus:bg-white focus:border-black focus:outline-none transition-all font-bold uppercase text-[11px]"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] font-extrabold tracking-wider uppercase text-black/50 mb-1.5">Số tài khoản</label>
-                    <input
-                      value={printInvoiceBankAccount}
-                      onChange={(e) => setPrintInvoiceBankAccount(e.target.value)}
-                      className="w-full rounded-none border border-black/20 bg-stone-50/50 px-4 py-2.5 focus:bg-white focus:border-black focus:outline-none transition-all font-bold font-mono text-[11px]"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] font-extrabold tracking-wider uppercase text-black/50 mb-1.5">Chủ tài khoản</label>
-                    <input
-                      value={printInvoiceAccountName}
-                      onChange={(e) => setPrintInvoiceAccountName(e.target.value)}
-                      className="w-full rounded-none border border-black/20 bg-stone-50/50 px-4 py-2.5 focus:bg-white focus:border-black focus:outline-none transition-all font-bold uppercase text-[11px]"
-                    />
-                  </div>
-                </div>
-              </div>
+
             </div>
 
             <div className="pt-4 border-t border-black/10">
@@ -1333,45 +1302,24 @@ export function AdminSettingsPage() {
                   </tbody>
                 </table>
 
-                {/* Chi phí & Quét mã QR */}
-                <div className="grid grid-cols-12 gap-4 items-start mb-4 pb-4 border-b border-black font-mono">
-                  <div className="col-span-6 flex items-center gap-2 border border-black/10 rounded-lg p-1.5 bg-stone-50 font-sans">
-                    <div className="bg-white p-0.5 rounded border border-black/5 flex-shrink-0">
-                      <img
-                        src={`https://img.vietqr.io/image/${printInvoiceBankId}-${printInvoiceBankAccount}-compact.png?amount=1016500&addInfo=MADMAD%20M-1002&accountName=${encodeURIComponent(printInvoiceAccountName)}`}
-                        alt="VietQR MADMAD"
-                        className="h-10 w-10 object-contain"
-                      />
+                {/* Tổng kết chi phí */}
+                <div className="flex justify-end items-start mb-4 pb-4 border-b border-black font-mono">
+                  <div className="w-1/2 space-y-1 font-sans font-semibold text-[8px]">
+                    <div className="flex justify-between text-black/70">
+                      <span>Tạm tính:</span>
+                      <span className="font-mono">1.070.000₫</span>
                     </div>
-                    <div className="space-y-0.5">
-                      <p className="font-bold text-[7px] tracking-wider uppercase flex items-center gap-1">
-                        <QrCode className="h-2.5 w-2.5" />
-                        QUÉT THANH TOÁN
-                      </p>
-                      <p className="text-[6px] leading-tight text-black/60 font-semibold">
-                        Chuyển khoản QR với NH {printInvoiceBankId} - STK {printInvoiceBankAccount} ({printInvoiceAccountName}).
-                      </p>
+                    <div className="flex justify-between font-bold text-red-600">
+                      <span>Giảm giá:</span>
+                      <span className="font-mono">-53.500₫</span>
                     </div>
-                  </div>
-
-                  <div className="col-span-6 flex justify-end text-[8px]">
-                    <div className="w-full space-y-1 font-sans font-semibold">
-                      <div className="flex justify-between text-black/70">
-                        <span>Tạm tính:</span>
-                        <span className="font-mono">1.070.000₫</span>
-                      </div>
-                      <div className="flex justify-between font-bold text-red-600">
-                        <span>Giảm giá:</span>
-                        <span className="font-mono">-53.500₫</span>
-                      </div>
-                      <div className="flex justify-between text-black/70">
-                        <span>Phí giao hàng:</span>
-                        <span className="font-mono">+0₫</span>
-                      </div>
-                      <div className="flex justify-between font-black text-[9px] border-t border-black pt-1 mt-1">
-                        <span>TỔNG TIỀN:</span>
-                        <span className="font-mono">1.016.500₫</span>
-                      </div>
+                    <div className="flex justify-between text-black/70">
+                      <span>Phí giao hàng:</span>
+                      <span className="font-mono">+0₫</span>
+                    </div>
+                    <div className="flex justify-between font-black text-[9px] border-t border-black pt-1 mt-1">
+                      <span>TỔNG TIỀN:</span>
+                      <span className="font-mono">1.016.500₫</span>
                     </div>
                   </div>
                 </div>
