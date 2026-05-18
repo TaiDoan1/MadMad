@@ -78,7 +78,7 @@ export function AdminMembershipPage() {
   };
 
   // Handle Add/Edit Member Submit
-  const handleMemberSubmit = (e: React.FormEvent) => {
+  const handleMemberSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     const phone = memberPhone.trim().replace(/\s+/g, "");
@@ -91,22 +91,34 @@ export function AdminMembershipPage() {
 
     if (selectedMember) {
       // Edit mode
+      const finalPoints = Math.max(0, memberPoints);
+      const updatedData = {
+        fullName: memberName.trim(),
+        phone,
+        email,
+        points: finalPoints,
+        password: memberPassword.trim() || selectedMember.password,
+        tier: calculateTierForPoints(finalPoints),
+      };
+
       const updatedList = members.map((m) => {
         if (m.id === selectedMember.id) {
-          const finalPoints = Math.max(0, memberPoints);
-          return {
-            ...m,
-            fullName: memberName.trim(),
-            phone,
-            email,
-            points: finalPoints,
-            password: memberPassword.trim() || m.password,
-            tier: calculateTierForPoints(finalPoints),
-          };
+          return { ...m, ...updatedData };
         }
         return m;
       });
       setMembers(updatedList);
+
+      try {
+        await fetch(`${API_URL}/members/${selectedMember.id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(updatedData),
+        });
+      } catch (err) {
+        console.warn("⚠️ Lỗi cập nhật lên server, đã lưu local", err);
+      }
+
       window.alert("Đã cập nhật thông tin thành viên thành công!");
     } else {
       // Add mode
@@ -139,6 +151,17 @@ export function AdminMembershipPage() {
       };
 
       setMembers((prev) => [newMem, ...prev]);
+
+      try {
+        await fetch(`${API_URL}/members`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(newMem),
+        });
+      } catch (err) {
+        console.warn("⚠️ Lỗi lưu thành viên lên server, đã lưu local", err);
+      }
+
       window.alert(`Đã đăng ký thành công thành viên VIP mới! (Số thẻ: ${memberCardId})`);
     }
 
@@ -146,9 +169,14 @@ export function AdminMembershipPage() {
     resetMemberForm();
   };
 
-  const handleDeleteMember = (id: string, name: string) => {
+  const handleDeleteMember = async (id: string, name: string) => {
     if (window.confirm(`Bạn có chắc chắn muốn xóa thành viên VIP "${name}" khỏi hệ thống?`)) {
       setMembers((prev) => prev.filter((m) => m.id !== id));
+      try {
+        await fetch(`${API_URL}/members/${id}`, { method: "DELETE" });
+      } catch (err) {
+        console.warn("⚠️ Lỗi xóa trên server, đã xóa local", err);
+      }
       window.alert("Đã xóa thành viên.");
     }
   };
