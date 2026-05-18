@@ -27,20 +27,20 @@ export function MembershipPage() {
       )
     : [];
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
     if (!phoneOrEmail || !password) {
       setError("Vui lòng nhập đầy đủ thông tin Email/SĐT và Mật khẩu!");
       return;
     }
-    const res = loginMember(phoneOrEmail, password);
+    const res = await loginMember(phoneOrEmail, password);
     if (!res.success) {
       setError(res.error || "");
     }
   };
 
-  const handleRegister = (e: React.FormEvent) => {
+  const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
     setMessage("");
@@ -55,9 +55,9 @@ export function MembershipPage() {
       return;
     }
 
-    const res = registerMember(fullName, email, phone, password);
+    const res = await registerMember(fullName, email, phone, password);
     if (res.success) {
-      setMessage("Chúc mừng! Kích hoạt tài khoản VIP MADMAD thành công!");
+      setMessage("Chúc mừng! Đăng ký tài khoản VIP MADMAD thành công!");
     } else {
       setError(res.error || "");
     }

@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { API_URL } from "@/config/api";
 
 export interface Member {
   id: string;
@@ -29,8 +30,8 @@ const DEFAULT_TIER_CONFIGS: MembershipTierConfig[] = [
 interface MembershipContextType {
   members: Member[];
   currentMember: Member | null;
-  registerMember: (fullName: string, email: string, phone: string, password?: string) => { success: boolean; error?: string };
-  loginMember: (phoneOrEmail: string, password?: string) => { success: boolean; error?: string };
+  registerMember: (fullName: string, email: string, phone: string, password?: string) => Promise<{ success: boolean; error?: string }>;
+  loginMember: (phoneOrEmail: string, password?: string) => Promise<{ success: boolean; error?: string }>;
   logoutMember: () => void;
   addPointsToCurrentMember: (pointsToAdd: number) => void;
   deductPointsFromCurrentMember: (pointsToDeduct: number) => void;
@@ -88,57 +89,65 @@ export function MembershipProvider({ children }: { children: ReactNode }) {
     return "BRONZE";
   };
 
-  const registerMember = (fullName: string, email: string, phone: string, password?: string) => {
-    const trimmedEmail = email.trim().toLowerCase();
-    const trimmedPhone = phone.trim().replace(/\s+/g, "");
+  const registerMember = async (fullName: string, email: string, phone: string, password?: string) => {
+    try {
+      const response = await fetch(`${API_URL}/members`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ fullName, email, phone, points: 50, tier: "BRONZE" }),
+      });
+      if (!response.ok) {
+        const err = await response.json();
+        return { success: false, error: err.message || "Lỗi đăng ký thành viên trên hệ thống!" };
+      }
+      const data = await response.json();
 
-    const emailExists = members.some((m) => m.email.toLowerCase() === trimmedEmail);
-    const phoneExists = members.some((m) => m.phone === trimmedPhone);
+      const newMember: Member = {
+        ...data,
+        id: String(data.id),
+        memberCardId: `MM-${String(data.id).padStart(6, "0")}`,
+        password: password || "123456", // Local password support
+        createdAt: data.createdAt || new Date().toISOString(),
+      };
 
-    if (emailExists) return { success: false, error: "Email này đã được đăng ký thành viên!" };
-    if (phoneExists) return { success: false, error: "Số điện thoại này đã được đăng ký thành viên!" };
-
-    // Tạo mã thẻ thành viên ngẫu nhiên MM-XXXXXX
-    const randomDigits = Math.floor(100000 + Math.random() * 900000).toString();
-    const memberCardId = `MM-${randomDigits}`;
-
-    const newMember: Member = {
-      id: Date.now().toString(),
-      fullName,
-      email: trimmedEmail,
-      phone: trimmedPhone,
-      password: password || "123456", // Default fallback if empty
-      points: 50, // Quà tặng chào mừng thành viên mới: 50 điểm (~50k)
-      memberCardId,
-      tier: "BRONZE",
-      createdAt: new Date().toISOString(),
-    };
-
-    newMember.tier = calculateTier(newMember.points);
-
-    setMembers((prev) => [...prev, newMember]);
-    setCurrentMember(newMember); // Auto login sau khi đăng ký
-    return { success: true };
+      setMembers((prev) => [...prev, newMember]);
+      setCurrentMember(newMember); // Auto login
+      return { success: true };
+    } catch (e) {
+      return { success: false, error: "Không thể kết nối đến máy chủ" };
+    }
   };
 
-  const loginMember = (phoneOrEmail: string, password?: string) => {
-    const trimmed = phoneOrEmail.trim().toLowerCase();
-    const found = members.find(
-      (m) => m.email.toLowerCase() === trimmed || m.phone === trimmed.replace(/\s+/g, "")
-    );
+  const loginMember = async (phoneOrEmail: string, password?: string) => {
+    try {
+      const trimmed = phoneOrEmail.trim().toLowerCase();
+      // Gọi API tra cứu khách hàng từ Database
+      const response = await fetch(`${API_URL}/members/check?query=${encodeURIComponent(trimmed)}`);
+      
+      if (!response.ok) {
+        return { success: false, error: "Không tìm thấy thông tin thành viên với Email hoặc SĐT này!" };
+      }
+      
+      const data = await response.json();
+      
+      const found: Member = {
+        ...data,
+        id: String(data.id),
+        memberCardId: `MM-${String(data.id).padStart(6, "0")}`,
+        password: "123456", // Local mock support for password
+      };
 
-    if (!found) {
-      return { success: false, error: "Không tìm thấy thông tin thành viên với Email hoặc SĐT này!" };
+      // Kiểm tra mật khẩu (hỗ trợ local)
+      const storedPassword = found.password || "123456";
+      if (password && storedPassword !== password) {
+        return { success: false, error: "Mật khẩu không chính xác. Vui lòng kiểm tra lại!" };
+      }
+
+      setCurrentMember(found);
+      return { success: true };
+    } catch (e) {
+      return { success: false, error: "Lỗi kết nối máy chủ" };
     }
-
-    // Kiểm tra mật khẩu (hỗ trợ tài khoản cũ mặc định mật khẩu là 123456)
-    const storedPassword = found.password || "123456";
-    if (password && storedPassword !== password) {
-      return { success: false, error: "Mật khẩu không chính xác. Vui lòng kiểm tra lại!" };
-    }
-
-    setCurrentMember(found);
-    return { success: true };
   };
 
   const logoutMember = () => {
