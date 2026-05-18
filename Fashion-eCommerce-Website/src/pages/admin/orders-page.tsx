@@ -795,9 +795,22 @@ export function AdminOrdersPage() {
                           {new Date(order.createdAt).toLocaleDateString("vi-VN")}
                         </td>
                         <td className="px-6 py-4 text-center">
-                          <span className={`inline-block px-3 py-1 rounded-full text-[10px] border font-bold uppercase ${getStatusBadge(order.status)}`}>
-                            {getStatusLabel(order.status)}
-                          </span>
+                          <select
+                            value={order.status}
+                            onChange={(e) => {
+                              const nextStatus = e.target.value as Order["status"];
+                              if (window.confirm(`Xác nhận đổi trạng thái đơn hàng ${order.orderNumber} sang "${getStatusLabel(nextStatus)}"?`)) {
+                                handleStatusUpdate(order, nextStatus);
+                              }
+                            }}
+                            className={`inline-block px-3 py-1 rounded-full text-[10px] border font-bold uppercase cursor-pointer outline-none transition-all ${getStatusBadge(order.status)}`}
+                          >
+                            <option value="pending" className="bg-white text-stone-600">Chờ xác nhận</option>
+                            <option value="processing" className="bg-white text-amber-700">Đang chuẩn bị</option>
+                            <option value="shipping" className="bg-white text-indigo-700">Đang giao</option>
+                            <option value="completed" className="bg-white text-green-700">Thành công</option>
+                            <option value="cancelled" className="bg-white text-red-700">Đã hủy</option>
+                          </select>
                         </td>
                         <td className="px-6 py-4 text-right font-extrabold text-black font-mono">
                           {order.total.toLocaleString("vi-VN")}₫

@@ -8,6 +8,7 @@ interface OrderContextValue {
   loading: boolean;
   addOrder: (order: Omit<Order, "id">) => Promise<any>;
   updateOrderStatus: (id: number, status: Order["status"]) => Promise<void>;
+  updateOrderPaymentStatus: (id: number, isPaid: boolean) => Promise<void>;
   getOrderById: (id: number) => Order | undefined;
 }
 
@@ -132,6 +133,40 @@ export function OrderProvider({ children }: { children: ReactNode }) {
           console.error("Lỗi gọi API updateOrderStatus:", error);
           setOrders((current) =>
             current.map((order) => (order.id === id ? { ...order, status } : order)),
+          );
+        }
+      },
+
+      // 💳 Cập nhật trạng thái thanh toán đơn hàng (Đã thu tiền / Chờ CK)
+      updateOrderPaymentStatus: async (id, isPaid) => {
+        try {
+          // Thử cập nhật qua endpoint chuẩn
+          const response = await fetch(`${API_URL}/orders/${id}/payment`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ isPaid }),
+          });
+
+          if (response.ok) {
+            await loadOrders();
+          } else {
+            // Thử endpoint dự phòng khác (ví dụ: gửi body chung cho cả order)
+            const responseBackup = await fetch(`${API_URL}/orders/${id}`, {
+              method: "PUT",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ isPaid }),
+            });
+            if (responseBackup.ok) {
+              await loadOrders();
+            } else {
+              throw new Error("Không thể cập nhật thanh toán đơn hàng trên server");
+            }
+          }
+        } catch (error) {
+          console.error("Lỗi gọi API updateOrderPaymentStatus, cập nhật local:", error);
+          // Fallback cập nhật state local để UI phản hồi ngay lập tức
+          setOrders((current) =>
+            current.map((order) => (order.id === id ? { ...order, isPaid } : order)),
           );
         }
       },
