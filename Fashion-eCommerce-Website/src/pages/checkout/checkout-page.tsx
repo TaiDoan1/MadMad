@@ -111,6 +111,15 @@ export function CheckoutPage() {
       .replace(/[\u0300-\u036f]/g, "")
       .replaceAll("đ", "d");
 
+  const resolvedItems = cartItems
+    .map((item) => ({ item, product: products.find((p) => p.id === item.productId) }))
+    .filter((e): e is { item: (typeof cartItems)[number]; product: NonNullable<(typeof products)[number]> } => Boolean(e.product));
+  const hasDiscountedProducts = resolvedItems.some(({ product }) => (product.discountPercent ?? 0) > 0);
+
+  useEffect(() => {
+    if (hasDiscountedProducts && appliedCoupon) clearCoupon();
+  }, [appliedCoupon, clearCoupon, hasDiscountedProducts]);
+
   const memberConfig = currentMember ? tierConfigs.find((c) => c.tier === currentMember.tier) : null;
   const memberDiscountPercent = memberConfig ? memberConfig.discountPercent : 0;
   
@@ -221,15 +230,6 @@ export function CheckoutPage() {
       </div>
     );
   };
-
-  const resolvedItems = cartItems
-    .map((item) => ({ item, product: products.find((p) => p.id === item.productId) }))
-    .filter((e): e is { item: (typeof cartItems)[number]; product: NonNullable<(typeof products)[number]> } => Boolean(e.product));
-  const hasDiscountedProducts = resolvedItems.some(({ product }) => (product.discountPercent ?? 0) > 0);
-
-  useEffect(() => {
-    if (hasDiscountedProducts && appliedCoupon) clearCoupon();
-  }, [appliedCoupon, clearCoupon, hasDiscountedProducts]);
 
   const handleSubmit = (event?: FormEvent) => {
     event?.preventDefault();
