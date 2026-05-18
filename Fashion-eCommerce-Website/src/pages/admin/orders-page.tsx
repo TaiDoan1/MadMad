@@ -214,7 +214,16 @@ export function AdminOrdersPage() {
       order.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       order.customerPhone.includes(searchTerm);
     
-    const matchesStatus = filterStatus === "all" || order.status === filterStatus;
+    let matchesStatus = true;
+    if (filterStatus !== "all") {
+      if (filterStatus === "waiting_bank") {
+        matchesStatus = !order.isPaid && (order.paymentMethod === "bank" || order.paymentMethod === "banking" || order.paymentMethod === "chuyen_khoan" || order.paymentMethod?.toLowerCase().includes("chuyển") || order.paymentMethod?.toLowerCase().includes("khoản"));
+      } else if (filterStatus === "waiting_cod") {
+        matchesStatus = !order.isPaid && (order.paymentMethod === "cod" || order.paymentMethod === "cash_on_delivery" || order.paymentMethod?.toLowerCase().includes("cod"));
+      } else {
+        matchesStatus = order.status === filterStatus;
+      }
+    }
 
     // Lọc theo nguồn đơn
     let matchesSource = true;
@@ -721,7 +730,9 @@ export function AdminOrdersPage() {
             >
               <option value="all">TẤT CẢ TRẠNG THÁI</option>
               <option value="pending">CHỜ XÁC NHẬN</option>
-              <option value="processing">ĐANG CHUẨN BỊ</option>
+              <option value="waiting_bank">⏳ CHỜ CHUYỂN KHOẢN (BANKING)</option>
+              <option value="waiting_cod">⏳ CHỜ THU HỘ (COD)</option>
+              <option value="processing">ĐANG CHUẨN BỊ (ĐÃ IN ĐƠN)</option>
               <option value="shipping">ĐANG GIAO HÀNG</option>
               <option value="completed">ĐÃ GIAO THÀNH CÔNG</option>
               <option value="cancelled">ĐÃ HỦY ĐƠN</option>
@@ -751,8 +762,8 @@ export function AdminOrdersPage() {
                       className="rounded border-black/20 text-black focus:ring-black h-4 w-4 cursor-pointer"
                     />
                   </th>
-                  <th className="px-6 py-4">Mã Đơn Hàng</th>
-                  <th className="px-6 py-4">Nguồn</th>
+                  <th className="px-6 py-4">Mã Đơn / Nguồn</th>
+                  <th className="px-6 py-4">Tình Trạng In</th>
                   <th className="px-6 py-4">Khách Hàng (Phân Loại)</th>
                   <th className="px-6 py-4">Thanh Toán</th>
                   <th className="px-6 py-4">SĐT</th>
@@ -793,11 +804,11 @@ export function AdminOrdersPage() {
                             className="rounded border-black/20 text-black focus:ring-black h-4 w-4 cursor-pointer"
                           />
                         </td>
-                        <td className="px-6 py-4 font-mono font-bold text-black">{order.orderNumber}</td>
                         <td className="px-6 py-4">
+                          <div className="font-mono font-bold text-black mb-1.5 text-xs">{order.orderNumber}</div>
                           <div className="flex flex-col gap-1">
-                            <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[10px] border font-bold uppercase ${source.badgeClass} w-max`}>
-                              <SourceIcon className="h-3 w-3" />
+                            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[9px] border font-bold uppercase ${source.badgeClass} w-max`}>
+                              <SourceIcon className="h-2.5 w-2.5" />
                               {source.label}
                             </span>
                             {/* Shipping Method Badge */}
@@ -815,6 +826,17 @@ export function AdminOrdersPage() {
                               </div>
                             )}
                           </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          {order.status !== "pending" ? (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[10px] font-mono font-bold bg-emerald-100 text-emerald-800 border border-emerald-200 w-max">
+                              <CircleCheck className="w-3 h-3 text-emerald-600" /> Đã in đơn
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[10px] font-mono font-bold bg-amber-100 text-amber-800 border border-amber-200 w-max">
+                              <Clock className="w-3 h-3 text-amber-600" /> Chưa in đơn
+                            </span>
+                          )}
                         </td>
                         <td className="px-6 py-4 space-y-1">
                           <p className="font-bold text-black text-xs uppercase">{order.customerName}</p>
@@ -1804,14 +1826,14 @@ export function AdminOrdersPage() {
         </div>
       )}
 
-      {/* 🧾 THIẾT KẾ MỚI HÓA ĐƠN ULTRA-MINIMALIST PACKING SLIP (IN ẤN - PRINT ONLY - CỐ ĐỊNH 1 TRANG A4/A6) */}
+      {/* 🧾 THIẾT KẾ MỚI HÓA ĐƠN ULTRA-MINIMALIST PACKING SLIP (IN ẤN - PRINT ONLY - CỐ ĐỊNH 1 TRANG A6 100x150mm) */}
       {(selectedOrder || batchPrintOrders.length > 0) && (
         <div className="hidden print:block invoice-print-container">
-          {/* Style khóa trang in A6 (105mm x 148mm) - Cố định trang in */}
+          {/* Style khóa trang in A6 (100mm x 150mm) - Cố định tuyệt đối 1 trang in */}
           <style>{`
             @media print {
               @page {
-                size: A6 portrait !important;
+                size: 100mm 150mm !important;
                 margin: 0 !important;
               }
               body, html {
@@ -1831,145 +1853,161 @@ export function AdminOrdersPage() {
                 position: absolute !important;
                 left: 0 !important;
                 top: 0 !important;
-                width: 105mm !important;
+                width: 100mm !important;
                 padding: 0 !important;
+                margin: 0 !important;
                 box-sizing: border-box !important;
               }
               .invoice-page {
-                width: 105mm !important;
-                min-height: 148mm !important;
-                padding: 8mm 10mm !important;
+                width: 100mm !important;
+                height: 150mm !important;
+                max-height: 150mm !important;
+                padding: 6mm 8mm !important;
+                margin: 0 !important;
                 box-sizing: border-box !important;
-                page-break-after: always !important;
-                break-after: page !important;
+                overflow: hidden !important;
                 page-break-inside: avoid !important;
               }
             }
           `}</style>
           
-          {(batchPrintOrders.length > 0 ? batchPrintOrders : selectedOrder ? [selectedOrder] : []).map((printOrder, printIdx) => (
-            <div key={printIdx} className="invoice-page w-full text-black bg-white" style={{ fontFamily: "monospace", fontSize: "10px", lineHeight: "1.4" }}>
-              
-              {/* Header */}
-              <div className="text-center space-y-1 mb-4 pb-4 border-b-2 border-dashed border-black">
-                <div className="flex items-center justify-between">
-                  <img src={brandLogo} alt="MADMAD Studio" className="h-10 w-auto" />
-                  <div className="text-right font-mono">
-                    <h1 className="text-base font-black tracking-widest font-sans">MADMAD STUDIO</h1>
-                    <p className="text-[8px] uppercase tracking-wider text-black/60 font-sans">{settings.printInvoiceSubheader || "Tối giản . Độc bản . Cao cấp"}</p>
-                    <p className="text-[8px] text-black/60">{settings.printInvoiceAddress || "Showroom: 254 Nguyễn Trãi, Q.5, TP.HCM"}</p>
-                    <p className="text-[8px] text-black/60">{settings.printInvoicePhone || "Hotline: 099.999.9999"}</p>
+          {(batchPrintOrders.length > 0 ? batchPrintOrders : selectedOrder ? [selectedOrder] : []).map((printOrder, printIdx, arr) => (
+            <div 
+              key={printIdx} 
+              className="invoice-page w-full text-black bg-white flex flex-col justify-between" 
+              style={{ 
+                fontFamily: "monospace", 
+                fontSize: "9px", 
+                lineHeight: "1.3",
+                pageBreakAfter: printIdx === arr.length - 1 ? "avoid" : "always",
+                breakAfter: printIdx === arr.length - 1 ? "avoid" : "page"
+              }}
+            >
+              {/* Phần nội dung chính */}
+              <div className="space-y-2.5 overflow-hidden">
+                
+                {/* Header */}
+                <div className="text-center space-y-1 mb-2 pb-2 border-b-2 border-dashed border-black">
+                  <div className="flex items-center justify-between">
+                    <img src={brandLogo} alt="MADMAD Studio" className="h-8 w-auto" />
+                    <div className="text-right font-mono">
+                      <h1 className="text-sm font-black tracking-widest font-sans">MADMAD STUDIO</h1>
+                      <p className="text-[7px] uppercase tracking-wider text-black/60 font-sans">{settings.printInvoiceSubheader || "Tối giản . Độc bản . Cao cấp"}</p>
+                      <p className="text-[7px] text-black/60">{settings.printInvoiceAddress || "Showroom: 254 Nguyễn Trãi, Q.5, TP.HCM"}</p>
+                      <p className="text-[7px] text-black/60">{settings.printInvoicePhone || "Hotline: 099.999.9999"}</p>
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              {/* Tiêu đề chính */}
-              <div className="text-center space-y-0.5 mb-4">
-                <h2 className="text-sm font-black tracking-widest uppercase">{settings.printInvoiceTitle || "HÓA ĐƠN VẬN CHUYỂN & GÓI HÀNG"}</h2>
-                <p className="text-xs font-mono font-bold tracking-wider">{printOrder.orderNumber}</p>
-                <p className="text-[8px] text-black/50">Ngày in: {new Date().toLocaleDateString("vi-VN")} - {new Date().toLocaleTimeString("vi-VN")}</p>
-              </div>
+                {/* Tiêu đề chính */}
+                <div className="text-center space-y-0.5 mb-2">
+                  <h2 className="text-xs font-black tracking-widest uppercase">{settings.printInvoiceTitle || "HÓA ĐƠN VẬN CHUYỂN & GÓI HÀNG"}</h2>
+                  <p className="text-xs font-mono font-bold tracking-wider">{printOrder.orderNumber}</p>
+                  <p className="text-[7px] text-black/50">Ngày in: {new Date().toLocaleDateString("vi-VN")} - {new Date().toLocaleTimeString("vi-VN")}</p>
+                </div>
 
-              {/* Thông tin 2 cột */}
-              <div className="grid grid-cols-2 gap-4 mb-4 pb-4 border-b border-black">
-                <div>
-                  <h3 className="font-black border-b border-black pb-0.5 mb-2 uppercase tracking-wider text-[10px]">Thông tin người nhận</h3>
-                  <div className="space-y-0.5">
-                    <p>Họ tên: <span className="font-bold uppercase">{printOrder.customerName}</span></p>
-                    <p>Điện thoại: <span className="font-bold">{printOrder.customerPhone}</span></p>
-                    <p className="truncate">Email: {printOrder.customerEmail}</p>
-                    <p>Phương thức: <span className="uppercase font-bold">
-                      {printOrder.paymentMethod === "bank" || printOrder.paymentMethod === "banking" || printOrder.paymentMethod === "chuyen_khoan" || printOrder.paymentMethod?.toLowerCase().includes("chuyển")
-                        ? "CHUYỂN KHOẢN (BANKING)"
-                        : printOrder.paymentMethod === "cash"
-                        ? "TIỀN MẶT AT SHOP"
-                        : "COD (THANH TOÁN KHI NHẬN HÀNG)"}
-                    </span></p>
-                    {printOrder.shippingAddress.street !== "Mua trực tiếp tại Shop" && (
-                      <p>
-                        Vận chuyển: <span className="font-bold uppercase">
-                          {printOrder.shippingMethod === "express" || printOrder.shipping === 60000
-                            ? "HỎA TỐC (2H)"
-                            : "TIÊU CHUẨN (THƯỜNG)"}
-                        </span>
-                      </p>
-                    )}
+                {/* Thông tin 2 cột */}
+                <div className="grid grid-cols-2 gap-3 mb-2 pb-2 border-b border-black text-[9px]">
+                  <div>
+                    <h3 className="font-black border-b border-black pb-0.5 mb-1 uppercase tracking-wider text-[9px]">Thông tin người nhận</h3>
+                    <div className="space-y-0.5">
+                      <p>Họ tên: <span className="font-bold uppercase">{printOrder.customerName}</span></p>
+                      <p>Điện thoại: <span className="font-bold">{printOrder.customerPhone}</span></p>
+                      <p className="truncate">Email: {printOrder.customerEmail}</p>
+                      <p>Phương thức: <span className="uppercase font-bold">
+                        {printOrder.paymentMethod === "bank" || printOrder.paymentMethod === "banking" || printOrder.paymentMethod === "chuyen_khoan" || printOrder.paymentMethod?.toLowerCase().includes("chuyển")
+                          ? "CHUYỂN KHOẢN (BANKING)"
+                          : printOrder.paymentMethod === "cash"
+                          ? "TIỀN MẶT AT SHOP"
+                          : "COD (THANH TOÁN KHI NHẬN HÀNG)"}
+                      </span></p>
+                      {printOrder.shippingAddress.street !== "Mua trực tiếp tại Shop" && (
+                        <p>
+                          Vận chuyển: <span className="font-bold uppercase">
+                            {printOrder.shippingMethod === "express" || printOrder.shipping === 60000
+                              ? "HỎA TỐC (2H)"
+                              : "TIÊU CHUẨN (THƯỜNG)"}
+                          </span>
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                  <div>
+                    <h3 className="font-black border-b border-black pb-0.5 mb-1 uppercase tracking-wider text-[9px]">Địa chỉ giao hàng</h3>
+                    <div className="space-y-0.5 leading-normal">
+                      {printOrder.shippingAddress.street === "Mua trực tiếp tại Shop" ? (
+                        <p className="font-bold">ĐƠN MUA TRỰC TIẾP TẠI CỬA HÀNG (POS)</p>
+                      ) : (
+                        <>
+                          <p>{printOrder.shippingAddress.street}</p>
+                          {printOrder.shippingAddress.ward && <p>{printOrder.shippingAddress.ward}</p>}
+                          {printOrder.shippingAddress.district && <p>{printOrder.shippingAddress.district}</p>}
+                          {printOrder.shippingAddress.province && <p>{printOrder.shippingAddress.province}</p>}
+                        </>
+                      )}
+                    </div>
                   </div>
                 </div>
-                <div>
-                  <h3 className="font-black border-b border-black pb-0.5 mb-2 uppercase tracking-wider text-[10px]">Địa chỉ giao hàng</h3>
-                  <div className="space-y-0.5 leading-normal">
-                    {printOrder.shippingAddress.street === "Mua trực tiếp tại Shop" ? (
-                      <p className="font-bold">ĐƠN MUA TRỰC TIẾP TẠI CỬA HÀNG (POS)</p>
-                    ) : (
-                      <>
-                        <p>{printOrder.shippingAddress.street}</p>
-                        {printOrder.shippingAddress.ward && <p>{printOrder.shippingAddress.ward}</p>}
-                        {printOrder.shippingAddress.district && <p>{printOrder.shippingAddress.district}</p>}
-                        {printOrder.shippingAddress.province && <p>{printOrder.shippingAddress.province}</p>}
-                      </>
-                    )}
-                  </div>
-                </div>
-              </div>
 
-              {/* Bảng sản phẩm */}
-              <table className="w-full text-left text-[10px] border-collapse mb-4 font-mono">
-                <thead>
-                  <tr className="border-b-2 border-black font-black uppercase text-black font-sans">
-                    <th className="py-1.5">Sản phẩm</th>
-                    <th className="py-1.5">Phân loại</th>
-                    <th className="py-1.5 text-center">SL</th>
-                    <th className="py-1.5 text-right">Đơn giá</th>
-                    <th className="py-1.5 text-right">Thành tiền</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {printOrder.items.map((item, index) => (
-                    <tr key={index} className="border-b border-black/10">
-                      <td className="py-2 uppercase font-bold font-sans">{item.productName || item.product?.name || ""}</td>
-                      <td className="py-2 uppercase text-black/70">Size: {item.size} | Màu: {item.color}</td>
-                      <td className="py-2 text-center">{item.quantity}</td>
-                      <td className="py-2 text-right">{item.price.toLocaleString("vi-VN")}₫</td>
-                      <td className="py-2 text-right font-bold">{(item.price * item.quantity).toLocaleString("vi-VN")}₫</td>
+                {/* Bảng sản phẩm */}
+                <table className="w-full text-left text-[9px] border-collapse mb-2 font-mono">
+                  <thead>
+                    <tr className="border-b-2 border-black font-black uppercase text-black font-sans">
+                      <th className="py-1">Sản phẩm</th>
+                      <th className="py-1">Phân loại</th>
+                      <th className="py-1 text-center">SL</th>
+                      <th className="py-1 text-right">Đơn giá</th>
+                      <th className="py-1 text-right">Thành tiền</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {printOrder.items.map((item, index) => (
+                      <tr key={index} className="border-b border-black/10">
+                        <td className="py-1.5 uppercase font-bold font-sans">{item.productName || item.product?.name || ""}</td>
+                        <td className="py-1.5 uppercase text-black/70">Size: {item.size} | Màu: {item.color}</td>
+                        <td className="py-1.5 text-center">{item.quantity}</td>
+                        <td className="py-1.5 text-right">{item.price.toLocaleString("vi-VN")}₫</td>
+                        <td className="py-1.5 text-right font-bold">{(item.price * item.quantity).toLocaleString("vi-VN")}₫</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
 
-              {/* Tổng kết chi phí */}
-              <div className="mb-4 pb-4 border-b border-black font-mono">
-                <div className="w-full space-y-1.5 font-sans font-semibold text-[10px]">
-                  <div className="flex justify-between text-black/70">
-                    <span>Tạm tính:</span>
-                    <span className="font-mono">{printOrder.subtotal.toLocaleString("vi-VN")}₫</span>
-                  </div>
-                  {printOrder.discount > 0 && (
-                    <div className="flex justify-between font-bold text-red-600">
-                      <span>Giảm giá/Khuyến mãi:</span>
-                      <span className="font-mono">-{printOrder.discount.toLocaleString("vi-VN")}₫</span>
-                    </div>
-                  )}
-                  {printOrder.shippingAddress.street !== "Mua trực tiếp tại Shop" && (
+                {/* Tổng kết chi phí */}
+                <div className="mb-2 pb-2 border-b border-black font-mono">
+                  <div className="w-full space-y-1 font-sans font-semibold text-[9px]">
                     <div className="flex justify-between text-black/70">
-                      <span>Phí giao hàng:</span>
-                      <span className="font-mono">+{printOrder.shipping.toLocaleString("vi-VN")}₫</span>
+                      <span>Tạm tính:</span>
+                      <span className="font-mono">{printOrder.subtotal.toLocaleString("vi-VN")}₫</span>
                     </div>
-                  )}
-                  <div className="flex justify-between font-black text-xs border-t-2 border-black pt-1.5">
-                    <span>TỔNG CỘNG TIỀN:</span>
-                    <span className="font-mono text-xs">{printOrder.total.toLocaleString("vi-VN")}₫</span>
+                    {printOrder.discount > 0 && (
+                      <div className="flex justify-between font-bold text-red-600">
+                        <span>Giảm giá/Khuyến mãi:</span>
+                        <span className="font-mono">-{printOrder.discount.toLocaleString("vi-VN")}₫</span>
+                      </div>
+                    )}
+                    {printOrder.shippingAddress.street !== "Mua trực tiếp tại Shop" && (
+                      <div className="flex justify-between text-black/70">
+                        <span>Phí giao hàng:</span>
+                        <span className="font-mono">+{printOrder.shipping.toLocaleString("vi-VN")}₫</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between font-black text-[10px] border-t-2 border-black pt-1">
+                      <span>TỔNG CỘNG TIỀN:</span>
+                      <span className="font-mono text-[10px]">{printOrder.total.toLocaleString("vi-VN")}₫</span>
+                    </div>
                   </div>
                 </div>
+
               </div>
 
-              {/* Slogan */}
-              <div className="text-center space-y-1 mt-6">
+              {/* Phần Slogan ở đáy trang */}
+              <div className="text-center space-y-1 pt-2 border-t border-black/10 mt-auto">
                 <p className="font-black uppercase tracking-widest text-[9px] font-sans">{settings.printInvoiceFooterSlogan || "CẢM ƠN QUÝ KHÁCH ĐÃ CHỌN MADMAD STUDIO!"}</p>
-                <p className="text-black/50 text-[8px] leading-relaxed max-w-lg mx-auto font-sans">
+                <p className="text-black/50 text-[7px] leading-relaxed max-w-lg mx-auto font-sans line-clamp-2">
                   {settings.printInvoicePolicy || "* Quý khách vui lòng kiểm tra kỹ sản phẩm khi nhận hàng. Đối với các yêu cầu đổi trả sản phẩm nguyên tag mác, xin hãy nhắn tin trực tiếp fanpage Facebook/Instagram của MADMAD Studio trong vòng 3 ngày kể từ ngày nhận hàng."}
                 </p>
-                <div className="pt-2 text-black/25 text-[7px] font-mono tracking-widest">
+                <div className="pt-1 text-black/25 text-[6px] font-mono tracking-widest">
                   MADMAD STUDIO - NOIR NO DESIGN STANDARD
                 </div>
               </div>
