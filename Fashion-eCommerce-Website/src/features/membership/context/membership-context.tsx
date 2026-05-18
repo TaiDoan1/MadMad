@@ -60,6 +60,39 @@ export function MembershipProvider({ children }: { children: ReactNode }) {
     return local ? JSON.parse(local) : DEFAULT_TIER_CONFIGS;
   });
 
+  // 📥 Tải danh sách hội viên VIP từ máy chủ (Database Neon Postgres) để đồng bộ cho Admin
+  const loadMembers = async () => {
+    try {
+      const response = await fetch(`${API_URL}/members`);
+      if (response.ok) {
+        const data = await response.json();
+        const sorted = data.sort(
+          (a: any, b: any) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
+        );
+        const mapped = sorted.map((m: any) => ({
+          ...m,
+          id: String(m.id),
+          memberCardId: m.memberCardId || `MM-${String(m.id).padStart(6, "0")}`,
+          password: m.password || "123456",
+          tier: m.tier || "BRONZE",
+        }));
+        setMembers(mapped);
+      } else {
+        throw new Error("API response not ok");
+      }
+    } catch (error) {
+      console.warn("⚠️ Không lấy được danh sách hội viên từ API, dùng dữ liệu local:", error);
+      const localData = localStorage.getItem("madmad_members");
+      if (localData) {
+        setMembers(JSON.parse(localData));
+      }
+    }
+  };
+
+  useEffect(() => {
+    loadMembers();
+  }, []);
+
   // Đồng bộ hóa database local
   useEffect(() => {
     localStorage.setItem("madmad_members", JSON.stringify(members));
