@@ -32,7 +32,7 @@ export function ProductProvider({ children }: { children: ReactNode }) {
       if (!Array.isArray(parsed)) {
         return initialProducts;
       }
-      return parsed.length > 0 ? parsed : initialProducts;
+      return parsed;
     } catch {
       return initialProducts;
     }
@@ -44,7 +44,7 @@ export function ProductProvider({ children }: { children: ReactNode }) {
       const response = await fetch(`${API_URL}/products`);
       if (response.ok) {
         const data = await response.json();
-        if (Array.isArray(data) && data.length > 0) {
+        if (Array.isArray(data)) {
           setProducts(data);
           return;
         }
@@ -67,7 +67,8 @@ export function ProductProvider({ children }: { children: ReactNode }) {
       products,
       addProduct: async (product) => {
         const newId = Math.max(0, ...products.map((item) => item.id)) + 1;
-        const newProduct = { ...product, id: newId };
+        const sku = product.sku || `MAD-PR-${String(newId).padStart(4, "0")}`;
+        const newProduct = { ...product, id: newId, sku };
         setProducts((currentProducts) => [...currentProducts, newProduct]);
         try {
           await fetch(`${API_URL}/products`, {
