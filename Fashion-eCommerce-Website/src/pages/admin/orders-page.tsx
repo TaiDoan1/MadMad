@@ -88,6 +88,38 @@ export function AdminOrdersPage() {
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [showOrderDetail, setShowOrderDetail] = useState(false);
 
+  // Batch Printing States
+  const [selectedOrderIds, setSelectedOrderIds] = useState<number[]>([]);
+  const [batchPrintOrders, setBatchPrintOrders] = useState<Order[]>([]);
+  const [isBatchPrinting, setIsBatchPrinting] = useState(false);
+
+  const handleBatchPrint = async () => {
+    if (selectedOrderIds.length === 0) {
+      window.alert("Vui lòng chọn ít nhất 1 đơn hàng để in.");
+      return;
+    }
+    if (window.confirm(`Bạn có chắc chắn muốn in ${selectedOrderIds.length} đơn hàng đã chọn và tự động chuyển trạng thái sang "Đang chuẩn bị"?`)) {
+      setIsBatchPrinting(true);
+      const ordersToPrint = orders.filter((o) => selectedOrderIds.includes(o.id));
+      setBatchPrintOrders(ordersToPrint);
+      setSelectedOrder(null);
+
+      for (const id of selectedOrderIds) {
+        const order = orders.find((o) => o.id === id);
+        if (order && order.status === "pending") {
+          await updateOrderStatus(id, "processing");
+        }
+      }
+
+      setTimeout(() => {
+        window.print();
+        setIsBatchPrinting(false);
+        setBatchPrintOrders([]);
+        setSelectedOrderIds([]);
+      }, 500);
+    }
+  };
+
   // Manual Order Creation Modal State
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [manualCustomerName, setManualCustomerName] = useState("");
@@ -545,13 +577,25 @@ export function AdminOrdersPage() {
             Trung tâm kiểm soát đơn hàng Realtime & Quản lý Loyalty thăng hạng VIP.
           </p>
         </div>
-        <button
-          onClick={() => setShowCreateModal(true)}
-          className="flex items-center justify-center gap-2 rounded-xl bg-black hover:bg-red-700 text-white px-5 py-3 text-xs font-bold tracking-widest uppercase transition-all shadow-md shadow-black/10"
-        >
-          <Plus className="h-4 w-4" />
-          Tạo Đơn Offline
-        </button>
+        <div className="flex items-center gap-2">
+          {selectedOrderIds.length > 0 && (
+            <button
+              onClick={handleBatchPrint}
+              disabled={isBatchPrinting}
+              className="flex items-center justify-center gap-2 rounded-xl bg-red-600 hover:bg-red-700 text-white px-5 py-3 text-xs font-bold tracking-widest uppercase transition-all shadow-md shadow-red-600/20 disabled:opacity-50"
+            >
+              <Printer className="h-4 w-4 animate-bounce" />
+              {isBatchPrinting ? "Đang Xử Lý..." : `In ${selectedOrderIds.length} Đơn (Chuyển Đang Chuẩn Bị)`}
+            </button>
+          )}
+          <button
+            onClick={() => setShowCreateModal(true)}
+            className="flex items-center justify-center gap-2 rounded-xl bg-black hover:bg-red-700 text-white px-5 py-3 text-xs font-bold tracking-widest uppercase transition-all shadow-md shadow-black/10"
+          >
+            <Plus className="h-4 w-4" />
+            Tạo Đơn Offline
+          </button>
+        </div>
       </div>
 
       {/* 📊 MINI ANALYTICS DASHBOARD - ĐẲNG CẤP ERP NOIR */}
@@ -691,6 +735,22 @@ export function AdminOrdersPage() {
             <table className="w-full text-left text-xs border-collapse">
               <thead>
                 <tr className="bg-stone-50 border-b border-black/10 font-bold uppercase tracking-wider text-black/60">
+                  <th className="px-6 py-4 w-12 text-center">
+                    <input
+                      type="checkbox"
+                      checked={paginatedOrders.length > 0 && paginatedOrders.every((o) => selectedOrderIds.includes(o.id))}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          const allIds = paginatedOrders.map((o) => o.id);
+                          setSelectedOrderIds(Array.from(new Set([...selectedOrderIds, ...allIds])));
+                        } else {
+                          const paginatedIds = paginatedOrders.map((o) => o.id);
+                          setSelectedOrderIds(selectedOrderIds.filter((id) => !paginatedIds.includes(id)));
+                        }
+                      }}
+                      className="rounded border-black/20 text-black focus:ring-black h-4 w-4 cursor-pointer"
+                    />
+                  </th>
                   <th className="px-6 py-4">Mã Đơn Hàng</th>
                   <th className="px-6 py-4">Nguồn</th>
                   <th className="px-6 py-4">Khách Hàng (Phân Loại)</th>
@@ -705,7 +765,7 @@ export function AdminOrdersPage() {
               <tbody className="divide-y divide-black/5 font-semibold text-black/85">
                 {paginatedOrders.length === 0 ? (
                   <tr>
-                    <td colSpan={9} className="px-6 py-12 text-center text-black/40 bg-stone-50/50">
+                    <td colSpan={10} className="px-6 py-12 text-center text-black/40 bg-stone-50/50">
                       Không tìm thấy đơn hàng nào tương ứng.
                     </td>
                   </tr>
@@ -719,6 +779,20 @@ export function AdminOrdersPage() {
 
                     return (
                       <tr key={order.id} className="transition-colors hover:bg-stone-50/50">
+                        <td className="px-6 py-4 text-center">
+                          <input
+                            type="checkbox"
+                            checked={selectedOrderIds.includes(order.id)}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setSelectedOrderIds([...selectedOrderIds, order.id]);
+                              } else {
+                                setSelectedOrderIds(selectedOrderIds.filter((id) => id !== order.id));
+                              }
+                            }}
+                            className="rounded border-black/20 text-black focus:ring-black h-4 w-4 cursor-pointer"
+                          />
+                        </td>
                         <td className="px-6 py-4 font-mono font-bold text-black">{order.orderNumber}</td>
                         <td className="px-6 py-4">
                           <div className="flex flex-col gap-1">
@@ -1730,8 +1804,8 @@ export function AdminOrdersPage() {
         </div>
       )}
 
-      {/* 🧾 THIẾT KẾ MỚI HÓA ĐƠN ULTRA-MINIMALIST PACKING SLIP (IN ẤN - PRINT ONLY - CỐ ĐỊNH 1 TRANG A4) */}
-      {selectedOrder && (
+      {/* 🧾 THIẾT KẾ MỚI HÓA ĐƠN ULTRA-MINIMALIST PACKING SLIP (IN ẤN - PRINT ONLY - CỐ ĐỊNH 1 TRANG A4/A6) */}
+      {(selectedOrder || batchPrintOrders.length > 0) && (
         <div className="hidden print:block invoice-print-container">
           {/* Style khóa trang in A6 - Cố định 1 trang */}
           <style>{`
@@ -1746,8 +1820,6 @@ export function AdminOrdersPage() {
                 background: #fff !important;
                 -webkit-print-color-adjust: exact !important;
                 print-color-adjust: exact !important;
-                height: 100% !important;
-                overflow: hidden !important;
               }
               body * {
                 visibility: hidden !important;
@@ -1760,144 +1832,150 @@ export function AdminOrdersPage() {
                 left: 0 !important;
                 top: 0 !important;
                 width: 100vw !important;
+                padding: 0 !important;
+                box-sizing: border-box !important;
+              }
+              .invoice-page {
+                width: 100vw !important;
                 height: 100vh !important;
                 padding: 10mm 15mm !important;
                 box-sizing: border-box !important;
                 overflow: hidden !important;
-                page-break-after: avoid !important;
-                page-break-before: avoid !important;
-                page-break-inside: avoid !important;
+                page-break-after: always !important;
+                break-after: page !important;
               }
             }
           `}</style>
           
-          <div className="w-full text-black bg-white" style={{ fontFamily: "monospace", fontSize: "10px", lineHeight: "1.4" }}>
-            
-            {/* Header */}
-            <div className="text-center space-y-1 mb-4 pb-4 border-b-2 border-dashed border-black">
-              <div className="flex items-center justify-between">
-                <img src={brandLogo} alt="MADMAD Studio" className="h-10 w-auto" />
-                <div className="text-right font-mono">
-                  <h1 className="text-base font-black tracking-widest font-sans">MADMAD STUDIO</h1>
-                  <p className="text-[8px] uppercase tracking-wider text-black/60 font-sans">{settings.printInvoiceSubheader || "Tối giản . Độc bản . Cao cấp"}</p>
-                  <p className="text-[8px] text-black/60">{settings.printInvoiceAddress || "Showroom: 254 Nguyễn Trãi, Q.5, TP.HCM"}</p>
-                  <p className="text-[8px] text-black/60">{settings.printInvoicePhone || "Hotline: 099.999.9999"}</p>
+          {(batchPrintOrders.length > 0 ? batchPrintOrders : selectedOrder ? [selectedOrder] : []).map((printOrder, printIdx) => (
+            <div key={printIdx} className="invoice-page w-full text-black bg-white" style={{ fontFamily: "monospace", fontSize: "10px", lineHeight: "1.4" }}>
+              
+              {/* Header */}
+              <div className="text-center space-y-1 mb-4 pb-4 border-b-2 border-dashed border-black">
+                <div className="flex items-center justify-between">
+                  <img src={brandLogo} alt="MADMAD Studio" className="h-10 w-auto" />
+                  <div className="text-right font-mono">
+                    <h1 className="text-base font-black tracking-widest font-sans">MADMAD STUDIO</h1>
+                    <p className="text-[8px] uppercase tracking-wider text-black/60 font-sans">{settings.printInvoiceSubheader || "Tối giản . Độc bản . Cao cấp"}</p>
+                    <p className="text-[8px] text-black/60">{settings.printInvoiceAddress || "Showroom: 254 Nguyễn Trãi, Q.5, TP.HCM"}</p>
+                    <p className="text-[8px] text-black/60">{settings.printInvoicePhone || "Hotline: 099.999.9999"}</p>
+                  </div>
                 </div>
               </div>
-            </div>
 
-            {/* Tiêu đề chính */}
-            <div className="text-center space-y-0.5 mb-4">
-              <h2 className="text-sm font-black tracking-widest uppercase">{settings.printInvoiceTitle || "HÓA ĐƠN VẬN CHUYỂN & GÓI HÀNG"}</h2>
-              <p className="text-xs font-mono font-bold tracking-wider">{selectedOrder.orderNumber}</p>
-              <p className="text-[8px] text-black/50">Ngày in: {new Date().toLocaleDateString("vi-VN")} - {new Date().toLocaleTimeString("vi-VN")}</p>
-            </div>
+              {/* Tiêu đề chính */}
+              <div className="text-center space-y-0.5 mb-4">
+                <h2 className="text-sm font-black tracking-widest uppercase">{settings.printInvoiceTitle || "HÓA ĐƠN VẬN CHUYỂN & GÓI HÀNG"}</h2>
+                <p className="text-xs font-mono font-bold tracking-wider">{printOrder.orderNumber}</p>
+                <p className="text-[8px] text-black/50">Ngày in: {new Date().toLocaleDateString("vi-VN")} - {new Date().toLocaleTimeString("vi-VN")}</p>
+              </div>
 
-            {/* Thông tin 2 cột */}
-            <div className="grid grid-cols-2 gap-4 mb-4 pb-4 border-b border-black">
-              <div>
-                <h3 className="font-black border-b border-black pb-0.5 mb-2 uppercase tracking-wider text-[10px]">Thông tin người nhận</h3>
-                <div className="space-y-0.5">
-                  <p>Họ tên: <span className="font-bold uppercase">{selectedOrder.customerName}</span></p>
-                  <p>Điện thoại: <span className="font-bold">{selectedOrder.customerPhone}</span></p>
-                  <p className="truncate">Email: {selectedOrder.customerEmail}</p>
-                  <p>Phương thức: <span className="uppercase font-bold">
-                    {selectedOrder.paymentMethod === "bank" || selectedOrder.paymentMethod === "banking" || selectedOrder.paymentMethod === "chuyen_khoan" || selectedOrder.paymentMethod?.toLowerCase().includes("chuyển")
-                      ? "CHUYỂN KHOẢN (BANKING)"
-                      : selectedOrder.paymentMethod === "cash"
-                      ? "TIỀN MẶT AT SHOP"
-                      : "COD (THANH TOÁN KHI NHẬN HÀNG)"}
-                  </span></p>
-                  {selectedOrder.shippingAddress.street !== "Mua trực tiếp tại Shop" && (
-                    <p>
-                      Vận chuyển: <span className="font-bold uppercase">
-                        {selectedOrder.shippingMethod === "express" || selectedOrder.shipping === 60000
-                          ? "HỎA TỐC (2H)"
-                          : "TIÊU CHUẨN (THƯỜNG)"}
-                      </span>
-                    </p>
-                  )}
+              {/* Thông tin 2 cột */}
+              <div className="grid grid-cols-2 gap-4 mb-4 pb-4 border-b border-black">
+                <div>
+                  <h3 className="font-black border-b border-black pb-0.5 mb-2 uppercase tracking-wider text-[10px]">Thông tin người nhận</h3>
+                  <div className="space-y-0.5">
+                    <p>Họ tên: <span className="font-bold uppercase">{printOrder.customerName}</span></p>
+                    <p>Điện thoại: <span className="font-bold">{printOrder.customerPhone}</span></p>
+                    <p className="truncate">Email: {printOrder.customerEmail}</p>
+                    <p>Phương thức: <span className="uppercase font-bold">
+                      {printOrder.paymentMethod === "bank" || printOrder.paymentMethod === "banking" || printOrder.paymentMethod === "chuyen_khoan" || printOrder.paymentMethod?.toLowerCase().includes("chuyển")
+                        ? "CHUYỂN KHOẢN (BANKING)"
+                        : printOrder.paymentMethod === "cash"
+                        ? "TIỀN MẶT AT SHOP"
+                        : "COD (THANH TOÁN KHI NHẬN HÀNG)"}
+                    </span></p>
+                    {printOrder.shippingAddress.street !== "Mua trực tiếp tại Shop" && (
+                      <p>
+                        Vận chuyển: <span className="font-bold uppercase">
+                          {printOrder.shippingMethod === "express" || printOrder.shipping === 60000
+                            ? "HỎA TỐC (2H)"
+                            : "TIÊU CHUẨN (THƯỜNG)"}
+                        </span>
+                      </p>
+                    )}
+                  </div>
+                </div>
+                <div>
+                  <h3 className="font-black border-b border-black pb-0.5 mb-2 uppercase tracking-wider text-[10px]">Địa chỉ giao hàng</h3>
+                  <div className="space-y-0.5 leading-normal">
+                    {printOrder.shippingAddress.street === "Mua trực tiếp tại Shop" ? (
+                      <p className="font-bold">ĐƠN MUA TRỰC TIẾP TẠI CỬA HÀNG (POS)</p>
+                    ) : (
+                      <>
+                        <p>{printOrder.shippingAddress.street}</p>
+                        {printOrder.shippingAddress.ward && <p>{printOrder.shippingAddress.ward}</p>}
+                        {printOrder.shippingAddress.district && <p>{printOrder.shippingAddress.district}</p>}
+                        {printOrder.shippingAddress.province && <p>{printOrder.shippingAddress.province}</p>}
+                      </>
+                    )}
+                  </div>
                 </div>
               </div>
-              <div>
-                <h3 className="font-black border-b border-black pb-0.5 mb-2 uppercase tracking-wider text-[10px]">Địa chỉ giao hàng</h3>
-                <div className="space-y-0.5 leading-normal">
-                  {selectedOrder.shippingAddress.street === "Mua trực tiếp tại Shop" ? (
-                    <p className="font-bold">ĐƠN MUA TRỰC TIẾP TẠI CỬA HÀNG (POS)</p>
-                  ) : (
-                    <>
-                      <p>{selectedOrder.shippingAddress.street}</p>
-                      {selectedOrder.shippingAddress.ward && <p>{selectedOrder.shippingAddress.ward}</p>}
-                      {selectedOrder.shippingAddress.district && <p>{selectedOrder.shippingAddress.district}</p>}
-                      {selectedOrder.shippingAddress.province && <p>{selectedOrder.shippingAddress.province}</p>}
-                    </>
-                  )}
-                </div>
-              </div>
-            </div>
 
-            {/* Bảng sản phẩm */}
-            <table className="w-full text-left text-[10px] border-collapse mb-4 font-mono">
-              <thead>
-                <tr className="border-b-2 border-black font-black uppercase text-black font-sans">
-                  <th className="py-1.5">Sản phẩm</th>
-                  <th className="py-1.5">Phân loại</th>
-                  <th className="py-1.5 text-center">SL</th>
-                  <th className="py-1.5 text-right">Đơn giá</th>
-                  <th className="py-1.5 text-right">Thành tiền</th>
-                </tr>
-              </thead>
-              <tbody>
-                {selectedOrder.items.map((item, index) => (
-                  <tr key={index} className="border-b border-black/10">
-                    <td className="py-2 uppercase font-bold font-sans">{item.productName || item.product?.name || ""}</td>
-                    <td className="py-2 uppercase text-black/70">Size: {item.size} | Màu: {item.color}</td>
-                    <td className="py-2 text-center">{item.quantity}</td>
-                    <td className="py-2 text-right">{item.price.toLocaleString("vi-VN")}₫</td>
-                    <td className="py-2 text-right font-bold">{(item.price * item.quantity).toLocaleString("vi-VN")}₫</td>
+              {/* Bảng sản phẩm */}
+              <table className="w-full text-left text-[10px] border-collapse mb-4 font-mono">
+                <thead>
+                  <tr className="border-b-2 border-black font-black uppercase text-black font-sans">
+                    <th className="py-1.5">Sản phẩm</th>
+                    <th className="py-1.5">Phân loại</th>
+                    <th className="py-1.5 text-center">SL</th>
+                    <th className="py-1.5 text-right">Đơn giá</th>
+                    <th className="py-1.5 text-right">Thành tiền</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {printOrder.items.map((item, index) => (
+                    <tr key={index} className="border-b border-black/10">
+                      <td className="py-2 uppercase font-bold font-sans">{item.productName || item.product?.name || ""}</td>
+                      <td className="py-2 uppercase text-black/70">Size: {item.size} | Màu: {item.color}</td>
+                      <td className="py-2 text-center">{item.quantity}</td>
+                      <td className="py-2 text-right">{item.price.toLocaleString("vi-VN")}₫</td>
+                      <td className="py-2 text-right font-bold">{(item.price * item.quantity).toLocaleString("vi-VN")}₫</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
 
-            {/* Tổng kết chi phí */}
-            <div className="mb-4 pb-4 border-b border-black font-mono">
-              <div className="w-full space-y-1.5 font-sans font-semibold text-[10px]">
-                <div className="flex justify-between text-black/70">
-                  <span>Tạm tính:</span>
-                  <span className="font-mono">{selectedOrder.subtotal.toLocaleString("vi-VN")}₫</span>
-                </div>
-                {selectedOrder.discount > 0 && (
-                  <div className="flex justify-between font-bold text-red-600">
-                    <span>Giảm giá/Khuyến mãi:</span>
-                    <span className="font-mono">-{selectedOrder.discount.toLocaleString("vi-VN")}₫</span>
-                  </div>
-                )}
-                {selectedOrder.shippingAddress.street !== "Mua trực tiếp tại Shop" && (
+              {/* Tổng kết chi phí */}
+              <div className="mb-4 pb-4 border-b border-black font-mono">
+                <div className="w-full space-y-1.5 font-sans font-semibold text-[10px]">
                   <div className="flex justify-between text-black/70">
-                    <span>Phí giao hàng:</span>
-                    <span className="font-mono">+{selectedOrder.shipping.toLocaleString("vi-VN")}₫</span>
+                    <span>Tạm tính:</span>
+                    <span className="font-mono">{printOrder.subtotal.toLocaleString("vi-VN")}₫</span>
                   </div>
-                )}
-                <div className="flex justify-between font-black text-xs border-t-2 border-black pt-1.5">
-                  <span>TỔNG CỘNG TIỀN:</span>
-                  <span className="font-mono text-xs">{selectedOrder.total.toLocaleString("vi-VN")}₫</span>
+                  {printOrder.discount > 0 && (
+                    <div className="flex justify-between font-bold text-red-600">
+                      <span>Giảm giá/Khuyến mãi:</span>
+                      <span className="font-mono">-{printOrder.discount.toLocaleString("vi-VN")}₫</span>
+                    </div>
+                  )}
+                  {printOrder.shippingAddress.street !== "Mua trực tiếp tại Shop" && (
+                    <div className="flex justify-between text-black/70">
+                      <span>Phí giao hàng:</span>
+                      <span className="font-mono">+{printOrder.shipping.toLocaleString("vi-VN")}₫</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between font-black text-xs border-t-2 border-black pt-1.5">
+                    <span>TỔNG CỘNG TIỀN:</span>
+                    <span className="font-mono text-xs">{printOrder.total.toLocaleString("vi-VN")}₫</span>
+                  </div>
                 </div>
               </div>
-            </div>
 
-            {/* Slogan */}
-            <div className="text-center space-y-1 mt-6">
-              <p className="font-black uppercase tracking-widest text-[9px] font-sans">{settings.printInvoiceFooterSlogan || "CẢM ƠN QUÝ KHÁCH ĐÃ CHỌN MADMAD STUDIO!"}</p>
-              <p className="text-black/50 text-[8px] leading-relaxed max-w-lg mx-auto font-sans">
-                {settings.printInvoicePolicy || "* Quý khách vui lòng kiểm tra kỹ sản phẩm khi nhận hàng. Đối với các yêu cầu đổi trả sản phẩm nguyên tag mác, xin hãy nhắn tin trực tiếp fanpage Facebook/Instagram của MADMAD Studio trong vòng 3 ngày kể từ ngày nhận hàng."}
-              </p>
-              <div className="pt-2 text-black/25 text-[7px] font-mono tracking-widest">
-                MADMAD STUDIO - NOIR NO DESIGN STANDARD
+              {/* Slogan */}
+              <div className="text-center space-y-1 mt-6">
+                <p className="font-black uppercase tracking-widest text-[9px] font-sans">{settings.printInvoiceFooterSlogan || "CẢM ƠN QUÝ KHÁCH ĐÃ CHỌN MADMAD STUDIO!"}</p>
+                <p className="text-black/50 text-[8px] leading-relaxed max-w-lg mx-auto font-sans">
+                  {settings.printInvoicePolicy || "* Quý khách vui lòng kiểm tra kỹ sản phẩm khi nhận hàng. Đối với các yêu cầu đổi trả sản phẩm nguyên tag mác, xin hãy nhắn tin trực tiếp fanpage Facebook/Instagram của MADMAD Studio trong vòng 3 ngày kể từ ngày nhận hàng."}
+                </p>
+                <div className="pt-2 text-black/25 text-[7px] font-mono tracking-widest">
+                  MADMAD STUDIO - NOIR NO DESIGN STANDARD
+                </div>
               </div>
+              
             </div>
-            
-          </div>
+          ))}
         </div>
       )}
     </div>
