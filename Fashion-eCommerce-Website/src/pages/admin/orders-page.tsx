@@ -72,6 +72,15 @@ export function AdminOrdersPage() {
   const [filterCustomerType, setFilterCustomerType] = useState("all"); // all, vip, returning, first_time
   const [filterShippingMethod, setFilterShippingMethod] = useState("all"); // all, standard, express
 
+  // Pagination State
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 15;
+
+  // Reset trang về 1 khi đổi bộ lọc
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, filterStatus, filterSource, filterCustomerType, filterShippingMethod]);
+
   // Manual Shipping Method State
   const [manualShippingMethod, setManualShippingMethod] = useState<"standard" | "express">("standard");
 
@@ -210,6 +219,10 @@ export function AdminOrdersPage() {
 
     return matchesSearch && matchesStatus && matchesSource && matchesCustomerType && matchesShippingMethod;
   });
+
+  // PHÂN TRANG (PAGINATION)
+  const totalPages = Math.ceil(filteredOrders.length / itemsPerPage);
+  const paginatedOrders = filteredOrders.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
   // TÍNH TOÁN CÁC CHỈ SỐ DOANH THU CHO DASHBOARD
   const totalRevenue = orders
@@ -690,14 +703,14 @@ export function AdminOrdersPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-black/5 font-semibold text-black/85">
-                {filteredOrders.length === 0 ? (
+                {paginatedOrders.length === 0 ? (
                   <tr>
                     <td colSpan={9} className="px-6 py-12 text-center text-black/40 bg-stone-50/50">
                       Không tìm thấy đơn hàng nào tương ứng.
                     </td>
                   </tr>
                 ) : (
-                  filteredOrders.map((order) => {
+                  paginatedOrders.map((order) => {
                     const source = getOrderSourceDetails(order.orderNumber);
                     const SourceIcon = source.icon;
                     
@@ -820,6 +833,46 @@ export function AdminOrdersPage() {
               </tbody>
             </table>
           </div>
+          
+          {/* Pagination Controls */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between border-t border-black/10 bg-stone-50 px-6 py-4 rounded-b-xl">
+              <span className="text-[10px] font-bold text-black/50 uppercase tracking-widest">
+                Đang xem {(currentPage - 1) * itemsPerPage + 1} - {Math.min(currentPage * itemsPerPage, filteredOrders.length)} / {filteredOrders.length} ĐƠN
+              </span>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                  className="rounded-lg border border-black/10 bg-white px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest transition-all hover:bg-stone-100 hover:border-black/30 disabled:opacity-40"
+                >
+                  Trước
+                </button>
+                <div className="flex items-center gap-1">
+                  {Array.from({ length: totalPages }).map((_, i) => (
+                    <button
+                      key={i}
+                      onClick={() => setCurrentPage(i + 1)}
+                      className={`h-7 w-7 rounded-lg text-[10px] font-bold transition-all ${
+                        currentPage === i + 1
+                          ? "bg-black text-white shadow-md"
+                          : "text-black/50 hover:bg-white hover:text-black hover:border border-black/10"
+                      }`}
+                    >
+                      {i + 1}
+                    </button>
+                  ))}
+                </div>
+                <button
+                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                  disabled={currentPage === totalPages}
+                  className="rounded-lg border border-black/10 bg-white px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest transition-all hover:bg-stone-100 hover:border-black/30 disabled:opacity-40"
+                >
+                  Sau
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
