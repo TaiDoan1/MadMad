@@ -23,6 +23,11 @@ export function AdminSettingsPage() {
   const [shippingFeeStandard, setShippingFeeStandard] = useState(String(settings.shippingFeeStandard ?? 30000));
   const [shippingFeeExpress, setShippingFeeExpress] = useState(String(settings.shippingFeeExpress ?? 60000));
   const [shippingFreeThreshold, setShippingFreeThreshold] = useState(String(settings.shippingFreeThreshold ?? 500000));
+  const [enableCod, setEnableCod] = useState(settings.enableCod ?? true);
+  const [enableBank, setEnableBank] = useState(settings.enableBank ?? true);
+  const [enableMomo, setEnableMomo] = useState(settings.enableMomo ?? true);
+  const [enablePaypal, setEnablePaypal] = useState(settings.enablePaypal ?? true);
+  const [orderAutoCancelHours, setOrderAutoCancelHours] = useState(String(settings.orderAutoCancelHours ?? 24));
 
   // Branding States
   const [currentLogo, setCurrentLogo] = useState(settings.logo || brandLogo);
@@ -109,6 +114,11 @@ export function AdminSettingsPage() {
     setShippingFeeStandard(String(settings.shippingFeeStandard ?? 30000));
     setShippingFeeExpress(String(settings.shippingFeeExpress ?? 60000));
     setShippingFreeThreshold(String(settings.shippingFreeThreshold ?? 500000));
+    setEnableCod(settings.enableCod ?? true);
+    setEnableBank(settings.enableBank ?? true);
+    setEnableMomo(settings.enableMomo ?? true);
+    setEnablePaypal(settings.enablePaypal ?? true);
+    setOrderAutoCancelHours(String(settings.orderAutoCancelHours ?? 24));
 
     // Đọc danh sách coupon từ service
     const storedCoupons = readStoredCoupons();
@@ -169,6 +179,11 @@ export function AdminSettingsPage() {
       shippingFeeStandard: Number(shippingFeeStandard) || 0,
       shippingFeeExpress: Number(shippingFeeExpress) || 0,
       shippingFreeThreshold: Number(shippingFreeThreshold) || 0,
+      enableCod,
+      enableBank,
+      enableMomo,
+      enablePaypal,
+      orderAutoCancelHours: Number(orderAutoCancelHours) || 24,
     });
     window.alert("Đã lưu thiết lập Cổng Thanh Toán & Vận Chuyển thành công!");
   };
@@ -750,6 +765,45 @@ export function AdminSettingsPage() {
                   <p className="font-bold text-black uppercase">💡 Hướng dẫn kiểm thử thực tế:</p>
                   <p>• Phí ship và các thông số tài khoản ngân hàng/momo sẽ tự động cập nhật đồng bộ trực tiếp lên Trang Thanh Toán (Checkout).</p>
                   <p>• Khách hàng có thể quét mã QR thanh toán nhanh bằng VietQR được sinh động tự động với đúng giá trị đơn hàng thực tế!</p>
+                </div>
+              </div>
+
+              {/* Tùy chọn Thanh toán & Tự động hủy */}
+              <div className="border border-black/5 rounded-2xl p-5 bg-stone-50/50 space-y-3.5">
+                <h4 className="text-[10px] font-black tracking-widest text-black/60 uppercase border-b border-black/5 pb-2">
+                  ⚙️ TRẠNG THÁI THANH TOÁN & HỦY ĐƠN
+                </h4>
+                
+                <div className="space-y-2">
+                  <label className="block text-[9px] font-extrabold tracking-wider uppercase text-black/50 mb-1">Phương thức thanh toán khả dụng</label>
+                  <label className="flex items-center gap-2 text-xs">
+                    <input type="checkbox" checked={enableCod} onChange={(e) => setEnableCod(e.target.checked)} className="accent-black h-4 w-4" />
+                    Thanh toán khi nhận hàng (COD)
+                  </label>
+                  <label className="flex items-center gap-2 text-xs">
+                    <input type="checkbox" checked={enableBank} onChange={(e) => setEnableBank(e.target.checked)} className="accent-black h-4 w-4" />
+                    Chuyển khoản ngân hàng (VietQR)
+                  </label>
+                  <label className="flex items-center gap-2 text-xs">
+                    <input type="checkbox" checked={enableMomo} onChange={(e) => setEnableMomo(e.target.checked)} className="accent-black h-4 w-4" />
+                    Ví điện tử MoMo
+                  </label>
+                  <label className="flex items-center gap-2 text-xs">
+                    <input type="checkbox" checked={enablePaypal} onChange={(e) => setEnablePaypal(e.target.checked)} className="accent-black h-4 w-4" />
+                    Ví PayPal (USD)
+                  </label>
+                </div>
+
+                <div className="pt-2">
+                  <label className="block text-[9px] font-extrabold tracking-wider uppercase text-black/50 mb-1">Thời gian tự động hủy đơn chưa thanh toán (Giờ)</label>
+                  <input
+                    type="number"
+                    value={orderAutoCancelHours}
+                    onChange={(e) => setOrderAutoCancelHours(e.target.value)}
+                    placeholder="24"
+                    className="w-full rounded-xl border border-black/10 bg-white px-3 py-2 text-xs font-bold focus:border-black/60 focus:outline-none"
+                  />
+                  <p className="text-[8px] text-black/35 mt-1">Hệ thống sẽ tự động hủy đơn sau khoảng thời gian này nếu khách không chuyển khoản.</p>
                 </div>
               </div>
             </div>

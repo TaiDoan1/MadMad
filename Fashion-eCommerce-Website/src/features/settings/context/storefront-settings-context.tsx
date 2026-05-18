@@ -83,6 +83,11 @@ export const DEFAULT_STOREFRONT_SETTINGS: StorefrontSettings = {
   shippingFeeStandard: 30000,
   shippingFeeExpress: 60000,
   shippingFreeThreshold: 500000,
+  enableCod: true,
+  enableBank: true,
+  enableMomo: true,
+  enablePaypal: true,
+  orderAutoCancelHours: 24,
 };
 
 interface StorefrontSettingsContextValue {
@@ -214,6 +219,16 @@ function readStoredSettings(): StorefrontSettings {
         typeof parsed.shippingFeeExpress === "number" ? parsed.shippingFeeExpress : DEFAULT_STOREFRONT_SETTINGS.shippingFeeExpress,
       shippingFreeThreshold:
         typeof parsed.shippingFreeThreshold === "number" ? parsed.shippingFreeThreshold : DEFAULT_STOREFRONT_SETTINGS.shippingFreeThreshold,
+      enableCod:
+        typeof parsed.enableCod === "boolean" ? parsed.enableCod : DEFAULT_STOREFRONT_SETTINGS.enableCod,
+      enableBank:
+        typeof parsed.enableBank === "boolean" ? parsed.enableBank : DEFAULT_STOREFRONT_SETTINGS.enableBank,
+      enableMomo:
+        typeof parsed.enableMomo === "boolean" ? parsed.enableMomo : DEFAULT_STOREFRONT_SETTINGS.enableMomo,
+      enablePaypal:
+        typeof parsed.enablePaypal === "boolean" ? parsed.enablePaypal : DEFAULT_STOREFRONT_SETTINGS.enablePaypal,
+      orderAutoCancelHours:
+        typeof parsed.orderAutoCancelHours === "number" ? parsed.orderAutoCancelHours : DEFAULT_STOREFRONT_SETTINGS.orderAutoCancelHours,
     };
   } catch {
     return DEFAULT_STOREFRONT_SETTINGS;

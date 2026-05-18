@@ -84,7 +84,7 @@ export function CheckoutPage() {
       districtCode: savedInfo.districtCode || "",
       wardCode: savedInfo.wardCode || "",
       notes: "",
-      paymentMethod: "cod",
+      paymentMethod: (settings.enableCod ?? true) ? "cod" : ((settings.enableBank ?? true) ? "bank" : ((settings.enableMomo ?? true) ? "momo" : "paypal")),
       shippingMethod: "standard" as "standard" | "express",
     };
   });
@@ -113,9 +113,21 @@ export function CheckoutPage() {
 
   const memberConfig = currentMember ? tierConfigs.find((c) => c.tier === currentMember.tier) : null;
   const memberDiscountPercent = memberConfig ? memberConfig.discountPercent : 0;
-  const vipDiscountAmount = currentMember ? Math.round(subtotal * (memberDiscountPercent / 100)) : 0;
+  
+  // Rule A: VIP discount only applies to full-price items in the cart (exclude already discounted/sale items)
+  const nonSaleSubtotal = resolvedItems.reduce((sum, { item, product }) => {
+    const isSale = (product.discountPercent ?? 0) > 0;
+    return sum + (isSale ? 0 : item.priceAtAdd * item.quantity);
+  }, 0);
+  
+  const vipDiscountAmount = currentMember ? Math.round(nonSaleSubtotal * (memberDiscountPercent / 100)) : 0;
 
-  const totalDiscount = discountAmount + vipDiscountAmount;
+  // Rule B: Safety Cap to prevent excessive discount stacking (max 35% of total subtotal)
+  const rawDiscount = discountAmount + vipDiscountAmount;
+  const maxDiscountCap = Math.round(subtotal * 0.35); // 35% cap
+  const totalDiscount = Math.min(rawDiscount, maxDiscountCap);
+  const isDiscountCapped = rawDiscount > maxDiscountCap;
+
   const shippingBase = subtotal - totalDiscount;
   const feeStandard = settings.shippingFeeStandard ?? 30000;
   const feeExpress = settings.shippingFeeExpress ?? 60000;
@@ -414,7 +426,7 @@ export function CheckoutPage() {
                 <h2 className="mb-4 text-sm font-bold uppercase tracking-widest">Phương thức thanh toán</h2>
 
                 {/* Coupon / Voucher Entry */}
-                {!hasDiscountedProducts && (
+                {true && (
                   <div className="mb-6 rounded-xl border border-black/10 bg-stone-50 p-4 space-y-4">
                     <h3 className="text-xs font-bold uppercase tracking-widest text-black">Mã giảm giá / Voucher</h3>
                     
@@ -484,10 +496,11 @@ export function CheckoutPage() {
 
                 <div className="space-y-2">
                   {[
-                    { value: "cod",  label: "Thanh toán khi nhận hàng (COD)" },
-                    { value: "bank", label: "Chuyển khoản ngân hàng" },
-                    { value: "momo", label: "Ví điện tử MoMo" },
-                  ].map((m) => (
+                    { value: "cod",  label: "Thanh toán khi nhận hàng (COD)", active: settings.enableCod ?? true },
+                    { value: "bank", label: "Chuyển khoản ngân hàng", active: settings.enableBank ?? true },
+                    { value: "momo", label: "Ví điện tử MoMo", active: settings.enableMomo ?? true },
+                    { value: "paypal", label: "Thanh toán qua PayPal (USD)", active: settings.enablePaypal ?? true },
+                  ].filter(m => m.active).map((m) => (
                     <label key={m.value}
                       className={`flex cursor-pointer items-center gap-3 rounded-xl border-2 p-4 transition-colors ${
                         formData.paymentMethod === m.value ? "border-black bg-black/5" : "border-black/30 hover:border-black"
@@ -638,6 +651,62 @@ export function CheckoutPage() {
                     </div>
                   </div>
                 )}
+
+                {/* PayPal Detail Instructions Panel */}
+                {formData.paymentMethod === "paypal" && (
+                  <div className="mt-4 rounded-xl border border-black/10 bg-stone-50 p-4 space-y-4 animate-fadeIn">
+                    <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4">
+                      <div className="bg-white p-2 rounded-xl border border-black/5 flex-shrink-0 shadow-sm flex flex-col items-center gap-2">
+                        <img
+                          src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(`https://www.paypal.com/cgi-bin/webscr?cmd=_xclick&business=${encodeURIComponent(settings.storeEmail || 'mmadmadstudio@gmail.com')}&amount=${(total / 25000).toFixed(2)}&currency_code=USD&item_name=${encodeURIComponent(`MADMAD ORDER ${orderNumber}`)}`)}`}
+                          alt="PayPal QR"
+                          className="h-32 w-32 object-contain"
+                        />
+                        <span className="text-[8px] font-bold text-black/40 uppercase">Quét để thanh toán</span>
+                      </div>
+                      <div className="flex-1 space-y-2 text-xs w-full">
+                        <p className="font-bold uppercase text-[9px] tracking-wider text-black/50">Cổng thanh toán quốc tế PayPal</p>
+                        
+                        <div className="space-y-1">
+                          <p className="text-black/60 text-[9px]">Tài khoản PayPal nhận tiền:</p>
+                          <div className="flex items-center justify-between gap-2 bg-white rounded-lg border border-black/5 px-2.5 py-1.5">
+                            <span className="font-bold text-black text-xs break-all">{settings.storeEmail || "mmadmadstudio@gmail.com"}</span>
+                            <button
+                              type="button"
+                              onClick={() => handleCopy(settings.storeEmail || "mmadmadstudio@gmail.com", "paypalEmail")}
+                              className="text-stone-400 hover:text-black transition-colors"
+                            >
+                              {copiedField === "paypalEmail" ? <Check className="h-3.5 w-3.5 text-green-600" /> : <Copy className="h-3.5 w-3.5" />}
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="space-y-1">
+                          <p className="text-black/60 text-[9px]">Tổng thanh toán quy đổi (USD):</p>
+                          <div className="flex items-center justify-between gap-2 bg-white rounded-lg border border-black/5 px-2.5 py-1.5">
+                            <span className="font-black text-blue-600 text-xs">${(total / 25000).toFixed(2)} USD</span>
+                            <span className="text-[9px] text-black/45">(~{total.toLocaleString("vi-VN")}₫)</span>
+                          </div>
+                        </div>
+
+                        <div className="pt-2">
+                          <a
+                            href={`https://www.paypal.com/cgi-bin/webscr?cmd=_xclick&business=${encodeURIComponent(settings.storeEmail || 'mmadmadstudio@gmail.com')}&amount=${(total / 25000).toFixed(2)}&currency_code=USD&item_name=${encodeURIComponent(`MADMAD ORDER ${orderNumber}`)}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="w-full flex items-center justify-center gap-1.5 rounded-xl bg-[#FFC439] hover:bg-[#F2B222] py-2 px-4 text-xs font-black uppercase text-[#003087] transition-all tracking-wider shadow-sm cursor-pointer"
+                          >
+                            <span>Thanh toán bằng PayPal</span>
+                            <span className="font-black text-[10px] text-[#0079C1] italic">Pay</span>
+                            <span className="font-black text-[10px] text-[#00457C] italic">Pal</span>
+                          </a>
+                        </div>
+                        
+                        <p className="text-[10px] text-blue-800 font-bold pt-1">✓ Click nút màu vàng phía trên để mở trang thanh toán an toàn của PayPal.</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </section>
 
               {/* Submit */}
@@ -751,6 +820,12 @@ export function CheckoutPage() {
                   <p className="text-xs text-black/50">
                     Thêm {(500000 - shippingBase).toLocaleString("vi-VN")}₫ để miễn phí vận chuyển
                   </p>
+                )}
+                {isDiscountCapped && (
+                  <div className="rounded-lg bg-amber-50 border border-amber-200 p-2.5 text-[10px] font-semibold text-amber-800 space-y-0.5 mt-2 animate-fadeIn">
+                    <p className="font-bold uppercase tracking-wider">⚠️ Đã đạt giới hạn giảm giá (35%)</p>
+                    <p className="opacity-95">Để bảo đảm chính sách giá của thương hiệu, tổng chiết khấu (Voucher + VIP) được giới hạn tối đa ở mức 35%.</p>
+                  </div>
                 )}
               </div>
 

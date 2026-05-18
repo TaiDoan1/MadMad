@@ -53,4 +53,13 @@ export interface StorefrontSettings {
   shippingFeeStandard?: number;
   shippingFeeExpress?: number;
   shippingFreeThreshold?: number;
+  
+  // ⚙️ Tùy chọn Thanh Toán (Bật/Tắt)
+  enableCod?: boolean;
+  enableBank?: boolean;
+  enableMomo?: boolean;
+  enablePaypal?: boolean;
+  
+  // ⏳ Cấu hình tự động
+  orderAutoCancelHours?: number;
 }
