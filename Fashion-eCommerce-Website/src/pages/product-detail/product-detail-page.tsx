@@ -22,6 +22,35 @@ const COLOR_MAP: Record<string, { bg: string, text: string }> = {
   "Camel": { bg: "#D97706", text: "#FFFFFF" },
 };
 
+function findImageForColor(color: string, images: string[]): string | undefined {
+  if (!images || images.length === 0) return undefined;
+  
+  const normalizedColor = color.trim().toLowerCase();
+  
+  const colorKeywordsMap: Record<string, string[]> = {
+    "trắng": ["trang", "white"],
+    "đen": ["den", "black"],
+    "xám": ["xam", "gray", "grey"],
+    "đỏ": ["do", "red"],
+    "navy": ["navy", "blue"],
+    "be": ["be", "beige"],
+    "camel": ["camel", "brown"],
+    "sọc": ["soc", "stripe"],
+    "hoa": ["hoa", "floral"],
+    "xanh/trắng": ["xanh-trang", "blue-white"],
+    "đỏ/trắng": ["do-trang", "red-white"]
+  };
+  
+  const keywords = colorKeywordsMap[normalizedColor] || [normalizedColor];
+  
+  for (const keyword of keywords) {
+    const matched = images.find(img => img.toLowerCase().includes(keyword));
+    if (matched) return matched;
+  }
+  
+  return undefined;
+}
+
 export function ProductDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -58,7 +87,7 @@ export function ProductDetailPage() {
         {/* Back Button */}
         <button 
           onClick={() => navigate(-1)}
-          className="group flex items-center gap-2 text-[11px] font-bold tracking-[0.15em] uppercase text-muted-foreground hover:text-primary transition-colors mb-2 md:mb-0 pt-2"
+          className="group flex items-center gap-2 text-[11px] font-bold tracking-[0.15em] uppercase text-muted-foreground hover:text-black dark:hover:text-white transition-colors mb-2 md:mb-0 pt-2"
         >
           <ArrowLeft className="w-4 h-4 transition-transform group-hover:-translate-x-1" /> Quay lại
         </button>
@@ -102,23 +131,23 @@ export function ProductDetailPage() {
               </div>
               
               <div className="space-y-4 w-full lg:max-w-sm">
-                <h3 className="text-xs font-bold tracking-[0.15em] uppercase border-b border-border pb-3">Mô Tả Sản Phẩm</h3>
+                <h3 className="text-xs font-bold tracking-[0.15em] uppercase border-b border-black/10 dark:border-white/10 pb-3">Mô Tả Sản Phẩm</h3>
                 <p className={`text-sm text-muted-foreground leading-relaxed transition-all ${isDescExpanded ? "" : "line-clamp-4"}`}>
                   {product.description}
                 </p>
                 <button 
                   onClick={() => setIsDescExpanded(!isDescExpanded)}
-                  className="text-[11px] font-bold underline underline-offset-4 text-foreground uppercase tracking-[0.15em] hover:text-primary transition-colors pt-2"
+                  className="text-[11px] font-bold underline underline-offset-4 text-foreground uppercase tracking-[0.15em] hover:text-black dark:hover:text-white transition-colors pt-2"
                 >
                   {isDescExpanded ? "Thu gọn" : "Đọc thêm"}
                 </button>
               </div>
 
-              <div className="space-y-1 border-t border-border pt-6 w-full lg:max-w-sm">
-                <div className="border-b border-border">
+              <div className="space-y-1 border-t border-black/10 dark:border-white/10 pt-6 w-full lg:max-w-sm">
+                <div className="border-b border-black/10 dark:border-white/10">
                   <button 
                     onClick={() => setExpandedAccordion(expandedAccordion === "care" ? null : "care")}
-                    className="w-full flex justify-between items-center py-4 cursor-pointer hover:text-primary transition-colors group"
+                    className="w-full flex justify-between items-center py-4 cursor-pointer hover:text-black dark:hover:text-white transition-colors group"
                   >
                     <span className="text-xs font-bold uppercase tracking-[0.1em]">Chất Liệu & Bảo Quản</span>
                     <span className={`text-lg font-light transition-transform duration-300 ${expandedAccordion === "care" ? "rotate-180" : "group-hover:translate-y-1"}`}>⌄</span>
@@ -130,10 +159,10 @@ export function ProductDetailPage() {
                   </div>
                 </div>
 
-                <div className="border-b border-border">
+                <div className="border-b border-black/10 dark:border-white/10">
                   <button 
                     onClick={() => setExpandedAccordion(expandedAccordion === "shipping" ? null : "shipping")}
-                    className="w-full flex justify-between items-center py-4 cursor-pointer hover:text-primary transition-colors group"
+                    className="w-full flex justify-between items-center py-4 cursor-pointer hover:text-black dark:hover:text-white transition-colors group"
                   >
                     <span className="text-xs font-bold uppercase tracking-[0.1em]">Giao Hàng & Đổi Trả</span>
                     <span className={`text-lg font-light transition-transform duration-300 ${expandedAccordion === "shipping" ? "rotate-180" : "group-hover:translate-y-1"}`}>⌄</span>
@@ -164,7 +193,7 @@ export function ProductDetailPage() {
                     key={idx}
                     onClick={() => setCurrentImage(url)}
                     className={`shrink-0 w-16 h-20 rounded-lg overflow-hidden bg-white transition-all duration-300 ${
-                      currentImage === url ? "ring-2 ring-primary ring-offset-2 ring-offset-background" : "hover:ring-2 hover:ring-border hover:ring-offset-1 opacity-60 hover:opacity-100"
+                      currentImage === url ? "ring-2 ring-black dark:ring-white ring-offset-2 ring-offset-background" : "hover:ring-2 hover:ring-black/20 dark:hover:ring-white/20 hover:ring-offset-1 opacity-60 hover:opacity-100"
                     }`}
                   >
                     <ImageWithFallback src={url} alt={`${product.name} ${idx + 1}`} className="w-full h-full object-cover mix-blend-multiply" />
@@ -194,8 +223,8 @@ export function ProductDetailPage() {
                       onClick={() => setSelectedSize(size)}
                       className={`min-w-[3.5rem] px-3 py-2 border text-sm font-medium transition-all rounded-sm ${
                         selectedSize === size 
-                          ? "border-red-600 bg-red-600 text-white" 
-                          : "border-border bg-transparent text-foreground hover:border-gray-400"
+                          ? "border-black bg-black text-white dark:border-white dark:bg-white dark:text-black" 
+                          : "border-black/10 bg-transparent text-foreground hover:border-black/50 dark:border-white/10 dark:hover:border-white/50"
                       }`}
                     >
                       {size}
@@ -216,14 +245,15 @@ export function ProductDetailPage() {
                         key={color}
                         onClick={() => {
                           setSelectedColor(color);
-                          if (product.colorImages?.[color]) {
-                            setCurrentImage(product.colorImages[color]);
+                          const colorImage = product.colorImages?.[color] || findImageForColor(color, productImages);
+                          if (colorImage) {
+                            setCurrentImage(colorImage);
                           }
                         }}
                         className={`px-6 py-2 border transition-all text-sm font-medium rounded-sm ${
                           isSelected 
-                            ? "border-red-600" 
-                            : "border-border bg-transparent text-foreground hover:border-gray-400"
+                            ? "border-black dark:border-white" 
+                            : "border-black/10 bg-transparent text-foreground hover:border-black/50 dark:border-white/10 dark:hover:border-white/50"
                         }`}
                         style={isSelected ? { backgroundColor: colorStyle.bg, color: colorStyle.text } : {}}
                       >
@@ -238,9 +268,9 @@ export function ProductDetailPage() {
               <div className="w-full flex flex-col items-start">
                 <h3 className="text-sm font-bold mb-3">Số Lượng</h3>
                 <div className="flex items-center gap-2">
-                  <button onClick={() => setQuantity(Math.max(1, quantity - 1))} className="w-10 h-10 border border-border flex items-center justify-center bg-muted/10 hover:bg-muted/30 rounded-sm">-</button>
+                  <button onClick={() => setQuantity(Math.max(1, quantity - 1))} className="w-10 h-10 border border-black/10 dark:border-white/10 flex items-center justify-center bg-black/[0.02] dark:bg-white/[0.02] hover:bg-black/[0.08] dark:hover:bg-white/[0.08] rounded-sm">-</button>
                   <div className="w-10 h-10 flex items-center justify-center text-sm font-medium border border-transparent">{quantity}</div>
-                  <button onClick={() => setQuantity(quantity + 1)} className="w-10 h-10 border border-border flex items-center justify-center bg-muted/10 hover:bg-muted/30 rounded-sm">+</button>
+                  <button onClick={() => setQuantity(quantity + 1)} className="w-10 h-10 border border-black/10 dark:border-white/10 flex items-center justify-center bg-black/[0.02] dark:bg-white/[0.02] hover:bg-black/[0.08] dark:hover:bg-white/[0.08] rounded-sm">+</button>
                 </div>
               </div>
 
@@ -267,7 +297,7 @@ export function ProductDetailPage() {
                     <ShoppingCart className="h-4 w-4 shrink-0" />
                     <span className="text-center leading-tight whitespace-normal">THÊM VÀO GIỎ</span>
                   </button>
-                  <button className="h-12 w-12 shrink-0 rounded-sm border border-border transition-colors hover:bg-muted flex items-center justify-center">
+                  <button className="h-12 w-12 shrink-0 rounded-sm border border-black/10 dark:border-white/10 transition-colors hover:bg-black/5 dark:hover:bg-white/5 flex items-center justify-center">
                     <Share2 className="w-4 h-4" />
                   </button>
                 </div>
@@ -286,7 +316,7 @@ export function ProductDetailPage() {
                     });
                     transitionTo("/checkout");
                   }}
-                  className="w-full h-12 bg-[#b91c1c] text-white text-[13px] font-bold uppercase hover:bg-[#991b1b] transition-colors rounded-sm"
+                  className="w-full h-12 bg-black dark:bg-white text-white dark:text-black text-[13px] font-bold uppercase hover:bg-neutral-800 dark:hover:bg-neutral-200 transition-colors rounded-sm border border-black dark:border-white"
                 >
                   MUA NGAY
                 </button>
@@ -300,26 +330,6 @@ export function ProductDetailPage() {
         <div className="lg:hidden text-center mt-8 space-y-2 opacity-60">
           <p className="text-[9px] font-bold uppercase tracking-[0.2em]">Thiết kế tại Studio</p>
           <p className="text-[9px] font-bold uppercase tracking-[0.2em]">Sản xuất tại Việt Nam</p>
-        </div>
-
-        {/* Bottom Features Section */}
-        <div className="mt-20 md:mt-32 pt-16 md:pt-20 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-8 md:gap-12 relative border-t border-border">
-          {[
-            { title: "Vải Cao Cấp", desc: "Được chế tác từ chất liệu cao cấp với những chi tiết tinh tế làm nổi bật phong cách.", img: "https://images.unsplash.com/photo-1620799139507-2a76f79a2f4d?crop=entropy&cs=tinysrgb&fit=crop&fm=jpg&h=200&w=200" },
-            { title: "Thiết Kế Hiện Đại", desc: "Thiết kế không chỉ thời trang mà còn mang tính ứng dụng cao, mang lại form dáng hoàn hảo.", img: "https://images.unsplash.com/photo-1583743814966-8936f5b7be1a?crop=entropy&cs=tinysrgb&fit=crop&fm=jpg&h=200&w=200" },
-            { title: "Độ Bền Cao", desc: "Được thiết kế để chịu được sự hao mòn hằng ngày trong khi vẫn giữ nguyên form dáng.", img: "https://images.unsplash.com/photo-1648249755424-9e59af704645?crop=entropy&cs=tinysrgb&fit=crop&fm=jpg&h=200&w=200" },
-            { title: "Tính Thẩm Mỹ", desc: "Nổi bật với phong cách tối giản cùng các chi tiết hiện đại bắt mắt.", img: "https://images.unsplash.com/photo-1708523842501-800cd1c7505e?crop=entropy&cs=tinysrgb&fit=crop&fm=jpg&h=200&w=200" }
-          ].map((feature, i) => (
-            <div key={i} className="flex gap-5 items-start group">
-              <div className="w-[72px] h-[72px] shrink-0 rounded-2xl overflow-hidden bg-muted p-1 shadow-sm group-hover:shadow-md transition-shadow">
-                <ImageWithFallback src={feature.img} alt={feature.title} className="w-full h-full object-cover mix-blend-multiply rounded-xl grayscale opacity-80 group-hover:grayscale-0 group-hover:opacity-100 transition-all duration-500" />
-              </div>
-              <div className="pt-1">
-                <h4 className="text-[11px] font-bold uppercase tracking-[0.1em] mb-2">{feature.title}</h4>
-                <p className="text-[11px] text-muted-foreground leading-relaxed pr-4 opacity-80">{feature.desc}</p>
-              </div>
-            </div>
-          ))}
         </div>
 
       </div>
