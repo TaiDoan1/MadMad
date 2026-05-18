@@ -1,17 +1,107 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useOrders } from "@/features/orders/context/order-context";
-import { Search, MapPin, Truck, ShieldCheck, DollarSign, Calendar, Clock, Lock, XCircle, MessageCircle } from "lucide-react";
+import { Search, MapPin, Truck, ShieldCheck, DollarSign, Calendar, Clock, Lock, XCircle, MessageCircle, Mail, AlertTriangle } from "lucide-react";
+import { API_URL } from "@/config/api";
 
 export function TrackOrderPage() {
   const { orders, updateOrderStatus } = useOrders();
+  
+  const maskPhone = (phoneStr: string) => {
+    if (!phoneStr) return "********";
+    const clean = phoneStr.replace(/\s+/g, "");
+    if (clean.length <= 2) return "**";
+    return "********" + clean.slice(-2);
+  };
+
   const [orderNumberInput, setOrderNumberInput] = useState("");
   const [phoneOrEmailInput, setPhoneOrEmailInput] = useState("");
   const [searched, setSearched] = useState(false);
   const [results, setResults] = useState<any[]>([]);
+  const [errorMsg, setErrorMsg] = useState("");
 
-  const handleSearch = (e: React.FormEvent) => {
+  // Google Login tracking states
+  const [googleUser, setGoogleUser] = useState<any>(null);
+  const [googleOrders, setGoogleOrders] = useState<any[]>([]);
+  const [loadingGoogle, setLoadingGoogle] = useState(false);
+
+  // Load Google Identity Services SDK dynamically
+  useEffect(() => {
+    const script = document.createElement("script");
+    script.src = "https://accounts.google.com/gsi/client";
+    script.async = true;
+    script.defer = true;
+    document.body.appendChild(script);
+
+    script.onload = () => {
+      if (window.google) {
+        window.google.accounts.id.initialize({
+          client_id: "688461719293-6o194l77qg1808hgd339r2n6a15o4d6p.apps.googleusercontent.com",
+          callback: handleGoogleResponse,
+        });
+
+        window.google.accounts.id.renderButton(
+          document.getElementById("google-track-btn-container"),
+          {
+            theme: "outline",
+            size: "large",
+            width: 320,
+            text: "signin_with",
+            shape: "rectangular"
+          }
+        );
+      }
+    };
+
+    return () => {
+      if (document.body.contains(script)) {
+        document.body.removeChild(script);
+      }
+    };
+  }, []);
+
+  // Handle Google Login Callback for tracking
+  const handleGoogleResponse = async (response: any) => {
+    setErrorMsg("");
+    setLoadingGoogle(true);
+    try {
+      const loginRes = await fetch(`${API_URL}/auth/google-login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ credential: response.credential }),
+      });
+
+      if (!loginRes.ok) {
+        throw new Error("Xác thực Google thất bại!");
+      }
+
+      const data = await loginRes.json();
+      setGoogleUser(data.member);
+
+      // Fetch all orders matching this email in Postgres Neon DB
+      const ordersRes = await fetch(`${API_URL}/auth/my-orders`, {
+        headers: {
+          "x-member-email": data.member.email
+        }
+      });
+
+      if (ordersRes.ok) {
+        const orderData = await ordersRes.json();
+        setGoogleOrders(orderData);
+      }
+      setSearched(true);
+    } catch (err: any) {
+      setErrorMsg(err.message || "Lỗi xác thực Google!");
+    } finally {
+      setLoadingGoogle(false);
+    }
+  };
+
+  const handleManualSearch = (e: React.FormEvent) => {
     e.preventDefault();
     setSearched(true);
+    setErrorMsg("");
+    setGoogleUser(null);
+    setGoogleOrders([]);
     
     const cleanOrderNumber = orderNumberInput.trim().toLowerCase();
     const cleanContact = phoneOrEmailInput.trim().toLowerCase().replace(/\s+/g, "");
@@ -21,7 +111,8 @@ export function TrackOrderPage() {
       return;
     }
 
-    // Bắt buộc trùng khớp đồng thời cả 2 yếu tố để bảo mật tuyệt đối thông tin khách hàng
+    // 🔒 BẢO MẬT TUYỆT ĐỐI KHÁCH HÀNG:
+    // Bắt buộc trùng khớp đồng thời cả 2 yếu tố để ngăn cấm dò quét mã đơn hàng (Brute Force)
     const found = orders.filter(
       (o) =>
         o.orderNumber.toLowerCase() === cleanOrderNumber &&
@@ -31,7 +122,7 @@ export function TrackOrderPage() {
     setResults(found);
   };
 
-  // Xác định vị trí/độ rộng tiến trình dựa trên Status
+  // Xác định vị trí tiến trình dựa trên Status
   const getStatusStep = (status: string) => {
     switch (status) {
       case "completed":
@@ -59,16 +150,32 @@ export function TrackOrderPage() {
     }
   };
 
-  // Thực hiện hủy đơn hàng
+  // Thực hiện hủy đơn hàng vãng lai
   const handleCancelOrder = (orderId: number) => {
-    if (window.confirm("Bạn có chắc chắn muốn hủy đơn hàng này để đặt lại không? Hành động này không thể hoàn tác!")) {
-      updateOrderStatus(orderId, "cancelled");
-      // Cập nhật lại state kết quả tìm kiếm hiển thị
-      setResults((prev) =>
-        prev.map((o) => (o.id === orderId ? { ...o, status: "cancelled" } : o))
-      );
+    if (window.confirm("Bạn có chắc chắn muốn hủy đơn hàng này không? Hành động này không thể hoàn tác!")) {
+      fetch(`${API_URL}/orders/${orderId}/status`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "cancelled" }),
+      })
+        .then(res => {
+          if (res.ok) {
+            alert("Đã gửi yêu cầu hủy đơn hàng thành công!");
+            if (googleUser) {
+              setGoogleOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: "cancelled" } : o));
+            } else {
+              setResults(prev => prev.map(o => o.id === orderId ? { ...o, status: "cancelled" } : o));
+            }
+          } else {
+            alert("Sự cố xảy ra khi gửi yêu cầu hủy đơn.");
+          }
+        })
+        .catch(() => alert("Lỗi kết nối máy chủ."));
     }
   };
+
+  // Determine which list to render
+  const renderedOrders = googleUser ? googleOrders : results;
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-16 sm:px-6 lg:px-8">
@@ -76,68 +183,128 @@ export function TrackOrderPage() {
       <div className="text-center max-w-lg mx-auto mb-12">
         <h1 className="font-extrabold text-3xl tracking-tight text-black uppercase mb-2">TRA CỨU ĐƠN HÀNG</h1>
         <p className="text-black/50 text-xs leading-relaxed">
-          Nhập mã đơn hàng và thông tin liên hệ của bạn để theo dõi tiến độ giao hàng. Vì lý do bảo mật, thông tin chỉ được hiển thị khi khớp hoàn toàn cả 2 yếu tố.
+          Tra cứu nhanh tiến độ giao nhận. Vì lý do an toàn bảo mật thông tin cá nhân, chúng tôi hỗ trợ hai chế độ xác minh tối ưu dưới đây.
         </p>
       </div>
 
-      {/* Form tìm kiếm bảo mật hai yếu tố */}
-      <form onSubmit={handleSearch} className="mb-16 max-w-2xl mx-auto border border-black/10 rounded-2xl p-6 sm:p-8 bg-stone-50/50 space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-          <div>
-            <label className="block text-[10px] font-extrabold tracking-wider uppercase text-black/70 mb-1.5 flex items-center gap-1.5">
-              <Lock className="h-3 w-3 text-black/55" />
-              Mã đơn hàng
-            </label>
-            <input
-              type="text"
-              required
-              value={orderNumberInput}
-              onChange={(e) => setOrderNumberInput(e.target.value)}
-              placeholder="VÍ DỤ: DH2026..."
-              className="w-full rounded-xl border border-black/10 bg-white px-4 py-3.5 text-xs placeholder:text-black/35 focus:border-black/60 focus:outline-none focus:ring-0 transition-all uppercase font-semibold"
-            />
-          </div>
+      {errorMsg && (
+        <div className="max-w-2xl mx-auto mb-6 p-4 bg-red-50 border border-red-200 text-red-700 text-xs font-semibold rounded-xl">
+          {errorMsg}
+        </div>
+      )}
 
-          <div>
-            <label className="block text-[10px] font-extrabold tracking-wider uppercase text-black/70 mb-1.5">
-              Số điện thoại hoặc Email
-            </label>
-            <input
-              type="text"
-              required
-              value={phoneOrEmailInput}
-              onChange={(e) => setPhoneOrEmailInput(e.target.value)}
-              placeholder="SĐT hoặc Email đặt hàng..."
-              className="w-full rounded-xl border border-black/10 bg-white px-4 py-3.5 text-xs placeholder:text-black/35 focus:border-black/60 focus:outline-none focus:ring-0 transition-all"
-            />
-          </div>
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 mb-16 items-start">
+        {/* CHẾ ĐỘ 1: ĐĂNG NHẬP GOOGLE TRA CỨU AN TOÀN */}
+        <div className="lg:col-span-5 border border-black/10 rounded-2xl p-6 bg-white shadow-sm flex flex-col items-center justify-center text-center min-h-[290px]">
+          <Mail className="h-10 w-10 text-red-600 mb-4" />
+          <h3 className="font-extrabold text-sm text-black uppercase mb-2">Cách 1: Xác thực Google</h3>
+          <p className="text-[11px] text-black/50 mb-6 leading-relaxed max-w-xs">
+            Khuyên dùng! Google sẽ xác minh chủ sở hữu Gmail. Bạn sẽ xem được <strong>tất cả đơn hàng</strong> (cả khách vãng lai và VIP) từng đặt bằng Gmail này.
+          </p>
+          {loadingGoogle ? (
+            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-black"></div>
+          ) : (
+            <div id="google-track-btn-container" className="shadow-sm border border-black/10 rounded overflow-hidden"></div>
+          )}
         </div>
 
-        <button
-          type="submit"
-          className="w-full bg-black text-white hover:bg-red-700 h-12 text-xs font-bold tracking-widest uppercase transition-all rounded-xl flex items-center justify-center gap-2"
-        >
-          <Search className="h-4 w-4" />
-          Xác minh và Tra cứu đơn hàng
-        </button>
-      </form>
+        {/* CHẾ ĐỘ 2: TRA CỨU ĐƠN LẺ THỦ CÔNG HAI YẾU TỐ */}
+        <div className="lg:col-span-7 border border-black/10 rounded-2xl p-6 bg-stone-50/50 shadow-sm min-h-[290px] flex flex-col justify-between">
+          <form onSubmit={handleManualSearch} className="space-y-4">
+            <div className="flex items-center gap-2 mb-1">
+              <Lock className="h-4.5 w-4.5 text-black/60" />
+              <h3 className="font-extrabold text-sm text-black uppercase">Cách 2: Xác minh đơn lẻ</h3>
+            </div>
+            
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-[9px] font-extrabold tracking-wider uppercase text-black/60 mb-1 flex items-center gap-1">
+                  Mã đơn hàng
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={orderNumberInput}
+                  onChange={(e) => setOrderNumberInput(e.target.value)}
+                  placeholder="VÍ DỤ: DH2026..."
+                  className="w-full rounded-xl border border-black/10 bg-white px-3 py-2.5 text-xs placeholder:text-black/35 focus:border-black/60 focus:outline-none transition-all uppercase font-semibold"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[9px] font-extrabold tracking-wider uppercase text-black/60 mb-1">
+                  Số điện thoại hoặc Email
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={phoneOrEmailInput}
+                  onChange={(e) => setPhoneOrEmailInput(e.target.value)}
+                  placeholder="Nhập thông tin đặt hàng..."
+                  className="w-full rounded-xl border border-black/10 bg-white px-3 py-2.5 text-xs placeholder:text-black/35 focus:border-black/60 focus:outline-none transition-all"
+                />
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              className="w-full bg-black text-white hover:bg-red-700 py-3 text-xs font-bold tracking-widest uppercase transition-all rounded-xl flex items-center justify-center gap-2 mt-2"
+            >
+              <Search className="h-4 w-4" />
+              Tra cứu đơn lẻ
+            </button>
+          </form>
+
+          <div className="flex items-center gap-2 mt-4 p-3 bg-stone-100 rounded-lg text-[10px] text-black/50 leading-relaxed border border-black/5">
+            <ShieldCheck className="h-4 w-4 text-green-600 flex-shrink-0" />
+            <span><strong>Bảo mật:</strong> Bắt buộc khớp cả Mã đơn hàng và SĐT/Email để tránh rò rỉ dữ liệu cá nhân của bạn.</span>
+          </div>
+        </div>
+      </div>
 
       {/* Hiển thị kết quả */}
       {searched && (
         <div className="space-y-12 animate-fadeIn">
-          {results.length === 0 ? (
+          {googleUser && (
+            <div className="max-w-2xl mx-auto p-4 bg-stone-50 border border-black/5 rounded-xl flex items-center justify-between text-xs">
+              <div className="flex items-center gap-3">
+                {googleUser.avatarUrl && (
+                  <img src={googleUser.avatarUrl} alt="Avatar" className="h-9 w-9 rounded-full border border-black/10 object-cover" />
+                )}
+                <div>
+                  <p className="font-bold text-black uppercase">Gmail đã xác thực</p>
+                  <p className="text-[11px] text-black/50">{googleUser.email}</p>
+                </div>
+              </div>
+              <button
+                onClick={() => {
+                  setGoogleUser(null);
+                  setGoogleOrders([]);
+                  setSearched(false);
+                }}
+                className="text-[10px] font-bold text-red-600 hover:text-red-700 uppercase"
+              >
+                Hủy liên kết
+              </button>
+            </div>
+          )}
+
+          {renderedOrders.length === 0 ? (
             <div className="border border-dashed border-black/15 rounded-2xl p-12 text-center bg-stone-50 max-w-xl mx-auto">
-              <p className="text-sm font-semibold text-black/70 mb-2">Thông tin tra cứu không trùng khớp</p>
+              <AlertTriangle className="h-8 w-8 text-amber-500 mx-auto mb-3" />
+              <p className="text-sm font-semibold text-black/70 mb-2">Không tìm thấy đơn hàng trùng khớp</p>
               <p className="text-xs text-black/40 leading-relaxed">
-                Vui lòng kiểm tra lại Mã đơn hàng (ví dụ: DH2026...) và Số điện thoại hoặc Email đặt hàng của bạn. Hãy đảm bảo cả 2 thông tin đã được điền chính xác.
+                {googleUser 
+                  ? `Hệ thống không tìm thấy bất kỳ đơn hàng nào từng được đặt dưới địa chỉ Gmail: ${googleUser.email}.`
+                  : "Vui lòng kiểm tra lại Mã đơn hàng (DH2026...) và Số điện thoại hoặc Email liên hệ của bạn."}
               </p>
             </div>
           ) : (
-            results.map((order) => {
+            renderedOrders.map((order) => {
               const currentStep = getStatusStep(order.status);
               const progressWidth = `${((currentStep - 1) / 3) * 100}%`;
 
-              // Tính toán xem đơn hàng có nằm trong 5 phút đầu từ lúc tạo không
+              // Đơn hàng trong vòng 5 phút đầu
               const createdTime = new Date(order.createdAt).getTime();
               const diffMs = Date.now() - createdTime;
               const isWithin5Min = diffMs >= 0 && diffMs <= 5 * 60 * 1000;
@@ -148,7 +315,7 @@ export function TrackOrderPage() {
                   {/* Mã đơn và ngày mua */}
                   <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-black/10 pb-6 mb-8">
                     <div>
-                      <span className="text-[10px] font-bold tracking-wider text-black/40 uppercase">Đơn hàng xác minh thành công</span>
+                      <span className="text-[10px] font-bold tracking-wider text-black/40 uppercase">Xác minh đơn hàng thành công</span>
                       <h2 className="font-mono font-bold text-xl text-black mt-0.5">{order.orderNumber}</h2>
                     </div>
                     <div className="flex items-center gap-4 text-xs text-black/50">
@@ -163,19 +330,16 @@ export function TrackOrderPage() {
                     </div>
                   </div>
 
-                  {/* Thanh tiến trình Sleek Progress Tracking */}
+                  {/* Thanh tiến trình */}
                   {!isCancelled && (
                     <div className="mb-12">
                       <div className="relative">
-                        {/* Đường line xám nền */}
                         <div className="absolute top-1/2 left-0 right-0 h-1 bg-stone-100 -translate-y-1/2 z-0 rounded-full" />
-                        {/* Đường line tiến trình đỏ */}
                         <div
                           className="absolute top-1/2 left-0 h-1 bg-red-600 -translate-y-1/2 z-0 rounded-full transition-all duration-1000"
                           style={{ width: progressWidth }}
                         />
 
-                        {/* Các node trạng thái */}
                         <div className="relative z-10 flex justify-between">
                           {[
                             { step: 1, label: "Đã đặt hàng" },
@@ -214,7 +378,7 @@ export function TrackOrderPage() {
                   <div className="grid grid-cols-1 md:grid-cols-12 gap-8">
                     {/* Cột trái: Sản phẩm */}
                     <div className="md:col-span-7 space-y-4">
-                      <h3 className="text-xs font-bold tracking-wider text-black/40 uppercase mb-4">Sản phẩm</h3>
+                      <h3 className="text-xs font-bold tracking-wider text-black/40 uppercase mb-4">Danh sách sản phẩm mua</h3>
                       <div className="space-y-4 max-h-[300px] overflow-y-auto pr-2">
                         {order.items.map((item: any, i: number) => (
                           <div key={i} className="flex gap-4 items-center">
@@ -239,25 +403,25 @@ export function TrackOrderPage() {
                       </div>
                     </div>
 
-                    {/* Cột phải: Thông tin giao hàng */}
+                    {/* Cột phải: Thông tin giao nhận */}
                     <div className="md:col-span-5 bg-stone-50 rounded-xl p-5 border border-black/5 space-y-4">
-                      <h3 className="text-xs font-bold tracking-wider text-black/60 uppercase">Thông tin giao nhận</h3>
+                      <h3 className="text-xs font-bold tracking-wider text-black/60 uppercase">Thông tin nhận hàng</h3>
 
-                      <div className="space-y-3">
-                        <div className="flex gap-3 text-xs">
+                      <div className="space-y-3 text-xs">
+                        <div className="flex gap-3">
                           <MapPin className="h-4 w-4 text-black/40 flex-shrink-0 mt-0.5" />
                           <div>
-                            <p className="font-bold text-black">{order.customerName}</p>
-                            <p className="text-black/50 mt-1">
-                              {order.shippingAddress.street}, {order.shippingAddress.ward}, {order.shippingAddress.district}, {order.shippingAddress.province}
+                            <p className="font-bold text-black uppercase">{order.customerName}</p>
+                            <p className="text-black/50 mt-1 font-mono">
+                              SĐT: {maskPhone(order.customerPhone || order.phone)}
                             </p>
                           </div>
                         </div>
 
-                        <div className="flex gap-3 text-xs">
+                        <div className="flex gap-3">
                           <Truck className="h-4 w-4 text-black/40 flex-shrink-0" />
                           <div>
-                            <span className="font-bold text-black uppercase">Trạng thái: </span>
+                            <span className="font-bold text-black uppercase">Vận chuyển: </span>
                             {isCancelled ? (
                               <span className="font-bold text-stone-500">ĐÃ HỦY ĐƠN</span>
                             ) : (
@@ -266,11 +430,11 @@ export function TrackOrderPage() {
                           </div>
                         </div>
 
-                        <div className="flex gap-3 text-xs">
+                        <div className="flex gap-3">
                           <DollarSign className="h-4 w-4 text-black/40 flex-shrink-0" />
                           <div>
                             <span className="font-bold text-black uppercase">Thanh toán: </span>
-                            <span className="text-black/50">{order.paymentMethod}</span>
+                            <span className="text-black/50 uppercase font-medium">{order.paymentMethod}</span>
                           </div>
                         </div>
                       </div>
@@ -287,12 +451,12 @@ export function TrackOrderPage() {
                           </div>
                         )}
                         <div className="flex justify-between font-extrabold text-black text-sm pt-1.5 border-t border-black/5">
-                          <span>TỔNG TIỀN</span>
+                          <span>TỔNG TIỀN THỰC CHI</span>
                           <span>{order.total.toLocaleString("vi-VN")}₫</span>
                         </div>
                       </div>
 
-                      {/* ── NÚT BẤM HỦY ĐƠN 5 PHÚT / LIÊN HỆ CSKH ── */}
+                      {/* Nút bấm CSKH/Hủy đơn */}
                       <div className="border-t border-black/5 pt-4 mt-4">
                         {isCancelled ? (
                           <div className="text-[10px] text-center font-bold text-stone-500 uppercase py-2 bg-stone-100 rounded-lg">
@@ -333,8 +497,8 @@ export function TrackOrderPage() {
                                 INSTAGRAM
                               </a>
                             </div>
-                            <p className="text-[9px] text-red-600/80 font-bold text-center leading-relaxed">
-                              * Đã quá 5 phút để tự hủy. Vui lòng liên hệ CSKH qua Facebook hoặc Instagram của MADMAD để được hỗ trợ điều chỉnh/hủy đơn.
+                            <p className="text-[9px] text-red-600/85 font-bold text-center leading-relaxed">
+                              * Đã quá 5 phút để tự hủy. Vui lòng liên hệ CSKH của MADMAD để được hỗ trợ điều chỉnh/hủy đơn.
                             </p>
                           </div>
                         )}
