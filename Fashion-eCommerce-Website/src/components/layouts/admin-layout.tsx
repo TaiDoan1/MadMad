@@ -16,12 +16,12 @@ export function AdminLayout() {
   const isActive = (path: string) => location.pathname === path;
 
   const navItems = [
-    { path: "/admin", icon: LayoutDashboard, label: "Dashboard" },
-    { path: "/admin/storefront", icon: Monitor, label: "Storefront" },
-    { path: "/admin/products", icon: Package, label: "Products" },
-    { path: "/admin/orders", icon: ShoppingBag, label: "Orders" },
-    { path: "/admin/membership", icon: ShieldCheck, label: "VIP Club" },
-    { path: "/admin/settings", icon: Settings, label: "Settings" },
+    { path: "/admin", icon: LayoutDashboard, label: "Tổng quan" },
+    { path: "/admin/storefront", icon: Monitor, label: "Giao diện" },
+    { path: "/admin/products", icon: Package, label: "Sản phẩm" },
+    { path: "/admin/orders", icon: ShoppingBag, label: "Đơn hàng" },
+    { path: "/admin/membership", icon: ShieldCheck, label: "Hội viên VIP" },
+    { path: "/admin/settings", icon: Settings, label: "Cài đặt" },
   ];
 
   return (
@@ -70,7 +70,7 @@ export function AdminLayout() {
               }}
             >
               <LogOut className="h-5 w-5" />
-              {sidebarOpen && <span>Logout</span>}
+              {sidebarOpen && <span>Đăng xuất</span>}
             </button>
           </div>
         </aside>
@@ -78,7 +78,7 @@ export function AdminLayout() {
         <main className="flex-1">
           <header className="border-b border-border bg-white p-4">
             <div className="mx-auto max-w-7xl">
-              <h2 className="text-xl">Admin Panel</h2>
+              <h2 className="text-xl">Hệ thống Admin</h2>
             </div>
           </header>
 
