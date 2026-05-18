@@ -11,9 +11,11 @@ import { useAdminAuth } from "@/features/auth/context/admin-auth-context";
 import { useCart } from "@/features/cart/context/cart-context";
 import { useStorefrontSettings } from "@/features/settings/context/storefront-settings-context";
 import { useMembership } from "@/features/membership/context/membership-context";
+import { useLanguage } from "@/features/settings/context/language-context";
 
 export function MainLayout() {
   const { settings } = useStorefrontSettings();
+  const { t } = useLanguage();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [cartDrawerOpen, setCartDrawerOpen] = useState(false);
   const [showAdminLoginModal, setShowAdminLoginModal] = useState(false);
@@ -92,7 +94,7 @@ export function MainLayout() {
         className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ease-in-out ${
           isTransparent
             ? "bg-transparent"
-            : "bg-white border-b border-gray-100 shadow-sm"
+            : "bg-white"
         }`}
       >
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
@@ -110,9 +112,9 @@ export function MainLayout() {
 
               <nav className="hidden items-center gap-8 text-[11px] font-bold tracking-[0.2em] lg:flex">
                 {[
-                  { path: "/",            label: "HOME" },
-                  { path: "/shop",        label: "CỬA HÀNG" },
-                  { path: "/contact",     label: "LIÊN HỆ" },
+                  { path: "/",            label: t("HOME", "HOME") },
+                  { path: "/shop",        label: t("CỬA HÀNG", "SHOP") },
+                  { path: "/contact",     label: t("LIÊN HỆ", "CONTACT") },
                 ].map((item) => (
                   <Link
                     key={item.path}
@@ -159,7 +161,7 @@ export function MainLayout() {
                   isTransparent ? "hover:text-white/70" : "hover:text-primary"
                 }`}
                 onClick={() => navigate("/track-order")}
-                aria-label="Tra cứu đơn hàng"
+                aria-label={t("Tra cứu đơn hàng", "Track order")}
               >
                 <Truck className="h-5 w-5" />
               </button>
@@ -167,7 +169,7 @@ export function MainLayout() {
                 <button
                   onClick={() => navigate("/membership")}
                   className="relative transition-transform hover:scale-105 active:scale-95"
-                  aria-label="Xem hồ sơ thành viên"
+                  aria-label={t("Xem hồ sơ thành viên", "View member profile")}
                 >
                   {currentMember.avatarUrl ? (
                     <img
@@ -187,14 +189,14 @@ export function MainLayout() {
                     isTransparent ? "hover:text-white/70" : "hover:text-primary"
                   }`}
                   onClick={() => navigate("/membership")}
-                  aria-label="Đăng ký thành viên"
+                  aria-label={t("Đăng ký thành viên", "Member sign in")}
                 >
                   <User className="h-5 w-5" />
                 </button>
               )}
               <button
                 onClick={() => setCartDrawerOpen(true)}
-                aria-label="Mở giỏ hàng"
+                aria-label={t("Mở giỏ hàng", "Open cart")}
                 className={`relative transition-colors ${
                   isTransparent ? "hover:text-white/70" : "hover:text-primary"
                 }`}
@@ -227,12 +229,12 @@ export function MainLayout() {
             <nav className="p-6">
               <div className="space-y-1">
                 {[
-                  { path: "/",            label: "TRANG CHỦ" },
-                  { path: "/shop",        label: "CỬA HÀNG" },
-                  { path: "/membership",  label: "THÀNH VIÊN" },
-                  { path: "/track-order",  label: "TRA CỨU ĐƠN HÀNG" },
-                  { path: "/about",       label: "GIỚI THIỆU" },
-                  { path: "/contact",     label: "LIÊN HỆ" },
+                  { path: "/",            label: t("TRANG CHỦ", "HOME") },
+                  { path: "/shop",        label: t("CỬA HÀNG", "SHOP") },
+                  { path: "/membership",  label: t("THÀNH VIÊN", "MEMBERSHIP") },
+                  { path: "/track-order",  label: t("TRA CỨU ĐƠN HÀNG", "TRACK ORDER") },
+                  { path: "/about",       label: t("GIỚI THIỆU", "ABOUT") },
+                  { path: "/contact",     label: t("LIÊN HỆ", "CONTACT") },
                 ].map((item) => (
                   <Link
                     key={item.path}
@@ -255,7 +257,7 @@ export function MainLayout() {
                     className="flex items-center gap-3 rounded-lg px-4 py-3 transition-bounce hover:bg-muted hover:scale-105 active:scale-105 active:bg-muted"
                   >
                     <ShoppingCart className="h-5 w-5" />
-                    <span className="font-medium text-xs">Giỏ hàng</span>
+                    <span className="font-medium text-xs">{t("Giỏ hàng", "Cart")}</span>
                     {cartCount > 0 && (
                       <span className="ml-auto flex h-6 w-6 items-center justify-center rounded-full bg-primary text-xs text-white">
                         {cartCount}
@@ -264,7 +266,7 @@ export function MainLayout() {
                   </Link>
                   <button className="flex w-full items-center gap-3 rounded-lg px-4 py-3 transition-bounce hover:bg-muted hover:scale-105 active:scale-105 active:bg-muted" onClick={handleOpenAdmin}>
                     <User className="h-5 w-5" />
-                    <span className="font-medium text-xs">{isAdminAuthenticated ? "Vào Admin" : "Đăng nhập Admin"}</span>
+                    <span className="font-medium text-xs">{isAdminAuthenticated ? t("Vào Admin", "Admin Panel") : t("Đăng nhập Admin", "Admin Login")}</span>
                   </button>
                   {isAdminAuthenticated && (
                     <button
@@ -275,7 +277,7 @@ export function MainLayout() {
                       }}
                     >
                       <X className="h-5 w-5" />
-                      <span className="font-medium text-xs">Đăng xuất Admin</span>
+                      <span className="font-medium text-xs">{t("Đăng xuất Admin", "Admin Logout")}</span>
                     </button>
                   )}
                 </div>
@@ -338,9 +340,9 @@ export function MainLayout() {
         <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 gap-8 md:grid-cols-4">
             <div>
-              <h3 className="mb-4 text-xs font-extrabold tracking-widest uppercase text-white">Kết nối & Công ty</h3>
+              <h3 className="mb-4 text-xs font-extrabold tracking-widest uppercase text-white">{t("Kết nối & Công ty", "Connect & Company")}</h3>
               <ul className="space-y-2.5 text-xs text-gray-400 font-medium">
-                <li><Link to="/about" className="transition-all hover:text-white">Giới thiệu MADMAD</Link></li>
+                <li><Link to="/about" className="transition-all hover:text-white">{t("Giới thiệu MADMAD", "About MADMAD")}</Link></li>
                 {settings.facebookUrl && (
                   <li>
                     <a href={settings.facebookUrl} target="_blank" rel="noopener noreferrer" className="transition-all hover:text-white text-sky-400 font-semibold">
@@ -372,34 +374,38 @@ export function MainLayout() {
               </ul>
             </div>
             <div>
-              <h3 className="mb-4 text-xs font-extrabold tracking-widest uppercase">Thành viên</h3>
+              <h3 className="mb-4 text-xs font-extrabold tracking-widest uppercase text-white">{t("Thành viên", "Membership")}</h3>
               <ul className="space-y-2 text-xs text-gray-400 font-medium">
                 <li><Link to="/membership" className="transition-all hover:text-white">MADMAD Club VIP</Link></li>
-                <li><Link to="/membership" className="transition-all hover:text-white">Đăng ký / Đăng nhập</Link></li>
+                <li><Link to="/membership" className="transition-all hover:text-white">{t("Đăng ký / Đăng nhập", "Sign In / Sign Up")}</Link></li>
               </ul>
             </div>
             <div>
-              <h3 className="mb-4 text-xs font-extrabold tracking-widest uppercase">Hỗ trợ khách hàng</h3>
+              <h3 className="mb-4 text-xs font-extrabold tracking-widest uppercase text-white">{t("Hỗ trợ khách hàng", "Customer Support")}</h3>
               <ul className="space-y-2 text-xs text-gray-400 font-medium">
-                <li><Link to="/track-order" className="transition-all hover:text-white">Tra cứu đơn hàng</Link></li>
-                <li><Link to="/contact" className="transition-all hover:text-white">Liên hệ hỗ trợ</Link></li>
+                <li><Link to="/track-order" className="transition-all hover:text-white">{t("Tra cứu đơn hàng", "Track Order")}</Link></li>
+                <li><Link to="/contact" className="transition-all hover:text-white">{t("Liên hệ hỗ trợ", "Contact Support")}</Link></li>
               </ul>
             </div>
             <div>
-              <h3 className="mb-4">Đăng ký nhận tin</h3>
-              <p className="mb-4 text-gray-400">Cập nhật sớm nhất về bộ sưu tập mới và ưu đãi đặc biệt.</p>
+              <h3 className="mb-4 text-xs font-extrabold tracking-widest uppercase text-white">{t("Đăng ký nhận tin", "Newsletter Signup")}</h3>
+              <p className="mb-4 text-gray-400 text-xs font-medium leading-relaxed">
+                {t("Cập nhật sớm nhất về bộ sưu tập mới và ưu đãi đặc biệt.", "Be the first to know about new collections and exclusive offers.")}
+              </p>
               <div className="flex gap-2">
                 <input
                   type="email"
-                  placeholder="Địa chỉ email"
-                  className="flex-1 rounded border border-white/20 bg-white/10 px-4 py-2 text-white placeholder:text-gray-400"
+                  placeholder={t("Địa chỉ email", "Email address")}
+                  className="flex-1 rounded border border-white/20 bg-white/10 px-4 py-2 text-white placeholder:text-gray-400 text-xs"
                 />
-                <button className="rounded bg-primary px-6 py-2 transition-bounce hover:bg-primary/90 hover:scale-105 active:scale-110 active:bg-primary/90">Đăng ký</button>
+                <button className="rounded bg-primary px-6 py-2 transition-bounce hover:bg-primary/90 hover:scale-105 active:scale-110 active:bg-primary/90 text-xs font-bold uppercase tracking-wider">
+                  {t("Đăng ký", "Subscribe")}
+                </button>
               </div>
             </div>
           </div>
-          <div className="mt-12 border-t border-white/10 pt-8 text-center text-gray-400">
-            <p>&copy; 2026 MADMAD Studio. Bản quyền thuộc về chúng tôi.</p>
+          <div className="mt-12 border-t border-white/10 pt-8 text-center text-gray-400 text-[10px]">
+            <p>{t("© 2026 MADMAD Studio. Bản quyền thuộc về chúng tôi.", "© 2026 MADMAD Studio. All rights reserved.")}</p>
           </div>
         </div>
       </footer>

@@ -29,6 +29,13 @@ export function AdminSettingsPage() {
   const [enablePaypal, setEnablePaypal] = useState(settings.enablePaypal ?? true);
   const [orderAutoCancelHours, setOrderAutoCancelHours] = useState(String(settings.orderAutoCancelHours ?? 24));
 
+  // International Currency & Calculator States
+  const [currencyMode, setCurrencyMode] = useState<"auto" | "manual">(settings.currencyMode || "auto");
+  const [exchangeRate, setExchangeRate] = useState<string>(String(settings.exchangeRate ?? 25000));
+  const [intlConversionFeePercent, setIntlConversionFeePercent] = useState<string>(String(settings.intlConversionFeePercent ?? 3.5));
+  const [intlShippingFee, setIntlShippingFee] = useState<string>(String(settings.intlShippingFee ?? 250000));
+  const [intlMarkupPercent, setIntlMarkupPercent] = useState<string>(String(settings.intlMarkupPercent ?? 10));
+
   // Branding States
   const [currentLogo, setCurrentLogo] = useState(settings.logo || brandLogo);
   const [previewLogo, setPreviewLogo] = useState<string | null>(null);
@@ -121,6 +128,11 @@ export function AdminSettingsPage() {
     setEnableMomo(settings.enableMomo ?? true);
     setEnablePaypal(settings.enablePaypal ?? true);
     setOrderAutoCancelHours(String(settings.orderAutoCancelHours ?? 24));
+    setCurrencyMode(settings.currencyMode || "auto");
+    setExchangeRate(String(settings.exchangeRate ?? 25000));
+    setIntlConversionFeePercent(String(settings.intlConversionFeePercent ?? 3.5));
+    setIntlShippingFee(String(settings.intlShippingFee ?? 250000));
+    setIntlMarkupPercent(String(settings.intlMarkupPercent ?? 10));
 
     // Đọc danh sách coupon từ service
     const storedCoupons = readStoredCoupons();
@@ -186,6 +198,11 @@ export function AdminSettingsPage() {
       enableMomo,
       enablePaypal,
       orderAutoCancelHours: Number(orderAutoCancelHours) || 24,
+      currencyMode,
+      exchangeRate: Number(exchangeRate) || 25000,
+      intlConversionFeePercent: Number(intlConversionFeePercent) || 3.5,
+      intlShippingFee: Number(intlShippingFee) || 250000,
+      intlMarkupPercent: Number(intlMarkupPercent) || 10,
     });
     window.alert("Đã lưu thiết lập Cổng Thanh Toán & Vận Chuyển thành công!");
   };
@@ -856,6 +873,257 @@ export function AdminSettingsPage() {
                     className="w-full rounded-xl border border-black/10 bg-white px-3 py-2 text-xs font-bold focus:border-black/60 focus:outline-none"
                   />
                   <p className="text-[8px] text-black/35 mt-1">Hệ thống sẽ tự động hủy đơn sau khoảng thời gian này nếu khách không chuyển khoản.</p>
+                </div>
+              </div>
+            </div>
+
+            {/* 🌐 CẤU HÌNH TIỀN TỆ QUỐC TẾ & BẢNG SO SÁNH BIÊN LỢI NHUẬN */}
+            <div className="border border-black/5 rounded-2xl p-6 bg-stone-50/30 space-y-5 mt-6">
+              <div className="border-b border-black/5 pb-2.5">
+                <h4 className="text-[11px] font-black tracking-widest text-black uppercase flex items-center gap-2">
+                  🌐 CẤU HÌNH TIỀN TỆ QUỐC TẾ & BIÊN LỢI NHUẬN (PAYPAL RATE CALCULATOR)
+                </h4>
+                <p className="text-[9px] text-black/45 mt-1 leading-relaxed">
+                  Thiết lập tỷ giá quy đổi, phụ thu nâng giá quốc tế, và tính toán biên lợi nhuận thực tế sau các loại chi phí giao dịch của PayPal/Stripe.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                {/* Cấu hình Tỷ giá */}
+                <div>
+                  <label className="block text-[9px] font-extrabold tracking-wider uppercase text-black/50 mb-1">
+                    Chế độ tỷ giá (Currency Mode)
+                  </label>
+                  <select
+                    value={currencyMode}
+                    onChange={(e) => {
+                      const mode = e.target.value as "auto" | "manual";
+                      setCurrencyMode(mode);
+                      if (mode === "auto") {
+                        setExchangeRate("26280");
+                      }
+                    }}
+                    className="w-full rounded-xl border border-black/10 bg-white px-3 py-2 text-xs font-bold focus:border-black/60 focus:outline-none"
+                  >
+                    <option value="auto">Tự động (Theo thế giới: 1 USD = 26.280₫)</option>
+                    <option value="manual">Thủ công (Cố định theo ý bạn)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-[9px] font-extrabold tracking-wider uppercase text-black/50 mb-1 flex items-center justify-between">
+                    <span>Tỷ giá quy đổi (1 USD = ? VNĐ)</span>
+                    {currencyMode === "manual" && (
+                      <button
+                        type="button"
+                        onClick={() => setExchangeRate("26280")}
+                        className="text-[8px] font-black text-red-600 hover:text-black uppercase tracking-wider transition-colors"
+                      >
+                        [Lấy Tỷ Giá Tự Động]
+                      </button>
+                    )}
+                  </label>
+                  <input
+                    type="number"
+                    value={exchangeRate}
+                    onChange={(e) => setExchangeRate(e.target.value)}
+                    disabled={currencyMode === "auto"}
+                    placeholder="25000"
+                    className="w-full rounded-xl border border-black/10 bg-white px-3 py-2 text-xs font-bold disabled:bg-stone-100 disabled:text-stone-400 focus:border-black/60 focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[9px] font-extrabold tracking-wider uppercase text-black/50 mb-1">
+                    % Phụ thu nâng giá quốc tế (Markup)
+                  </label>
+                  <input
+                    type="number"
+                    value={intlMarkupPercent}
+                    onChange={(e) => setIntlMarkupPercent(e.target.value)}
+                    placeholder="10"
+                    className="w-full rounded-xl border border-black/10 bg-white px-3 py-2 text-xs font-bold focus:border-black/60 focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[9px] font-extrabold tracking-wider uppercase text-black/50 mb-1">
+                    % Phí chuyển đổi PayPal / Stripe
+                  </label>
+                  <input
+                    type="number"
+                    value={intlConversionFeePercent}
+                    onChange={(e) => setIntlConversionFeePercent(e.target.value)}
+                    placeholder="3.5"
+                    className="w-full rounded-xl border border-black/10 bg-white px-3 py-2 text-xs font-bold focus:border-black/60 focus:outline-none"
+                  />
+                </div>
+
+                <div className="md:col-span-2">
+                  <label className="block text-[9px] font-extrabold tracking-wider uppercase text-black/50 mb-1">
+                    Phí ship quốc tế dự phòng / đơn hàng (VNĐ)
+                  </label>
+                  <input
+                    type="number"
+                    value={intlShippingFee}
+                    onChange={(e) => setIntlShippingFee(e.target.value)}
+                    placeholder="250000"
+                    className="w-full rounded-xl border border-black/10 bg-white px-3 py-2 text-xs font-bold focus:border-black/60 focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              {/* LIVE COMPARISON CALCULATOR (Thực tế & Trực quan) */}
+              <div className="border border-black/10 rounded-2xl bg-black p-5 text-white space-y-4">
+                <h5 className="text-[10px] font-black tracking-widest uppercase border-b border-white/10 pb-2 flex items-center justify-between">
+                  <span>📈 BẢNG TÍNH & SO SÁNH DOANH THU THỰC TẾ (LIVE COMMERCIAL CALCULATOR)</span>
+                  <span className="text-[8px] bg-red-600 px-2 py-0.5 rounded tracking-wide text-white font-black">CHẠY TỰ ĐỘNG</span>
+                </h5>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-[10px] leading-relaxed">
+                  {/* Cột trái: Sản phẩm giá trung bình */}
+                  <div className="space-y-2 border-r border-white/10 pr-0 md:pr-6 last:border-0 last:pr-0">
+                    <div className="flex justify-between font-extrabold text-xs pb-1 border-b border-white/10 text-stone-200">
+                      <span>Mẫu áo thun thường (350.000₫)</span>
+                      <span className="text-red-500 font-extrabold">Giá mẫu</span>
+                    </div>
+                    {(() => {
+                      const rate = Number(exchangeRate) || 25000;
+                      const markup = Number(intlMarkupPercent) || 0;
+                      const fee = Number(intlConversionFeePercent) || 0;
+                      const ship = Number(intlShippingFee) || 0;
+
+                      // Calculate live pricing
+                      const rawUsd = 350000 / rate;
+                      const baseUsdWithMarkup = rawUsd * (1 + markup / 100);
+                      const finalUsd = baseUsdWithMarkup / (1 - fee / 100);
+                      const roundedUsd = Math.round(finalUsd);
+
+                      // Calculations
+                      const totalRevenueVnd = roundedUsd * rate * (1 - fee / 100);
+                      const netProfitVnd = totalRevenueVnd - ship;
+
+                      return (
+                        <div className="space-y-1.5 font-mono text-[9px] text-stone-300">
+                          <div className="flex justify-between">
+                            <span>Giá bán VN gốc:</span>
+                            <span className="font-bold text-white">350.000₫</span>
+                          </div>
+                          <div className="flex justify-between text-stone-400">
+                            <span>Tỷ giá quy đổi:</span>
+                            <span>1 USD = {rate.toLocaleString()}₫</span>
+                          </div>
+                          <div className="flex justify-between text-stone-400">
+                            <span>Giá thực tế (Thế giới):</span>
+                            <span>${rawUsd.toFixed(2)}</span>
+                          </div>
+                          <div className="flex justify-between text-stone-400">
+                            <span>Giá sau phụ thu (+{markup}%):</span>
+                            <span>${baseUsdWithMarkup.toFixed(2)}</span>
+                          </div>
+                          <div className="flex justify-between text-stone-400">
+                            <span>Giá sau bù phí PayPal (-{fee}%):</span>
+                            <span>${finalUsd.toFixed(2)}</span>
+                          </div>
+                          <div className="flex justify-between border-t border-white/10 pt-1 text-white">
+                            <span className="font-extrabold text-[10px] text-stone-200">Giá hiển thị (Làm tròn):</span>
+                            <span className="font-black text-red-500 text-xs">${roundedUsd}.00</span>
+                          </div>
+                          <div className="flex justify-between border-t border-white/10 pt-1">
+                            <span>Doanh thu quy đổi thực nhận:</span>
+                            <span className="font-bold text-white">{Math.round(totalRevenueVnd).toLocaleString()}₫</span>
+                          </div>
+                          <div className="flex justify-between text-stone-400">
+                            <span>Trừ phí ship nước ngoài dự phòng:</span>
+                            <span>-{ship.toLocaleString()}₫</span>
+                          </div>
+                          <div className="flex justify-between border-t border-white/15 pt-1.5 text-xs">
+                            <span className="font-extrabold text-stone-200">Lợi nhuận thực thu:</span>
+                            <span className={`font-black ${netProfitVnd >= 0 ? "text-green-400" : "text-red-400"}`}>
+                              {Math.round(netProfitVnd).toLocaleString()}₫
+                            </span>
+                          </div>
+                          <div className="text-[8px] text-stone-400 leading-normal mt-1 font-semibold">
+                            {netProfitVnd >= 0 
+                              ? `✓ Lợi nhuận gộp quốc tế cao hơn trong nước khi chưa tính ship: +${Math.round(totalRevenueVnd - 350000).toLocaleString()}₫ (+${((totalRevenueVnd / 350000 - 1) * 100).toFixed(1)}%)`
+                              : `⚠️ Phí ship nước ngoài cao hơn doanh số thực nhận sau chuyển đổi.`}
+                          </div>
+                        </div>
+                      );
+                    })()}
+                  </div>
+
+                  {/* Cột phải: Sản phẩm cao cấp 1M */}
+                  <div className="space-y-2 pl-0 md:pl-6 border-t md:border-t-0 pt-4 md:pt-0">
+                    <div className="flex justify-between font-extrabold text-xs pb-1 border-b border-white/10 text-stone-200">
+                      <span>Mẫu áo Hoodie cao cấp (1.000.000₫)</span>
+                      <span className="text-red-500 font-extrabold">Giá mẫu</span>
+                    </div>
+                    {(() => {
+                      const rate = Number(exchangeRate) || 25000;
+                      const markup = Number(intlMarkupPercent) || 0;
+                      const fee = Number(intlConversionFeePercent) || 0;
+                      const ship = Number(intlShippingFee) || 0;
+
+                      // Calculate live pricing
+                      const rawUsd = 1000000 / rate;
+                      const baseUsdWithMarkup = rawUsd * (1 + markup / 100);
+                      const finalUsd = baseUsdWithMarkup / (1 - fee / 100);
+                      const roundedUsd = Math.round(finalUsd);
+
+                      // Calculations
+                      const totalRevenueVnd = roundedUsd * rate * (1 - fee / 100);
+                      const netProfitVnd = totalRevenueVnd - ship;
+
+                      return (
+                        <div className="space-y-1.5 font-mono text-[9px] text-stone-300">
+                          <div className="flex justify-between">
+                            <span>Giá bán VN gốc:</span>
+                            <span className="font-bold text-white">1.000.000₫</span>
+                          </div>
+                          <div className="flex justify-between text-stone-400">
+                            <span>Tỷ giá quy đổi:</span>
+                            <span>1 USD = {rate.toLocaleString()}₫</span>
+                          </div>
+                          <div className="flex justify-between text-stone-400">
+                            <span>Giá thực tế (Thế giới):</span>
+                            <span>${rawUsd.toFixed(2)}</span>
+                          </div>
+                          <div className="flex justify-between text-stone-400">
+                            <span>Giá sau phụ thu (+{markup}%):</span>
+                            <span>${baseUsdWithMarkup.toFixed(2)}</span>
+                          </div>
+                          <div className="flex justify-between text-stone-400">
+                            <span>Giá sau bù phí PayPal (-{fee}%):</span>
+                            <span>${finalUsd.toFixed(2)}</span>
+                          </div>
+                          <div className="flex justify-between border-t border-white/10 pt-1 text-white">
+                            <span className="font-extrabold text-[10px] text-stone-200">Giá hiển thị (Làm tròn):</span>
+                            <span className="font-black text-red-500 text-xs">${roundedUsd}.00</span>
+                          </div>
+                          <div className="flex justify-between border-t border-white/10 pt-1">
+                            <span>Doanh thu quy đổi thực nhận:</span>
+                            <span className="font-bold text-white">{Math.round(totalRevenueVnd).toLocaleString()}₫</span>
+                          </div>
+                          <div className="flex justify-between text-stone-400">
+                            <span>Trừ phí ship nước ngoài dự phòng:</span>
+                            <span>-{ship.toLocaleString()}₫</span>
+                          </div>
+                          <div className="flex justify-between border-t border-white/15 pt-1.5 text-xs">
+                            <span className="font-extrabold text-stone-200">Lợi nhuận thực thu:</span>
+                            <span className={`font-black ${netProfitVnd >= 0 ? "text-green-400" : "text-red-400"}`}>
+                              {Math.round(netProfitVnd).toLocaleString()}₫
+                            </span>
+                          </div>
+                          <div className="text-[8px] text-stone-400 leading-normal mt-1 font-semibold">
+                            {netProfitVnd >= 0 
+                              ? `✓ Lợi nhuận gộp quốc tế cao hơn trong nước khi chưa tính ship: +${Math.round(totalRevenueVnd - 1000000).toLocaleString()}₫ (+${((totalRevenueVnd / 1000000 - 1) * 100).toFixed(1)}%)`
+                              : `⚠️ Phí ship nước ngoài cao hơn doanh số thực nhận sau chuyển đổi.`}
+                          </div>
+                        </div>
+                      );
+                    })()}
+                  </div>
                 </div>
               </div>
             </div>

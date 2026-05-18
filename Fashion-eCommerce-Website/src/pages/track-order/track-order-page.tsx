@@ -2,9 +2,11 @@ import { useState, useEffect } from "react";
 import { useOrders } from "@/features/orders/context/order-context";
 import { Search, MapPin, Truck, ShieldCheck, DollarSign, Calendar, Clock, Lock, XCircle, MessageCircle, Mail, AlertTriangle } from "lucide-react";
 import { API_URL, GOOGLE_CLIENT_ID } from "@/config/api";
+import { useLanguage } from "@/features/settings/context/language-context";
 
 export function TrackOrderPage() {
   const { orders, updateOrderStatus } = useOrders();
+  const { formatPrice, t } = useLanguage();
   
   const maskPhone = (phoneStr: string) => {
     if (!phoneStr) return "********";
@@ -71,7 +73,7 @@ export function TrackOrderPage() {
       });
 
       if (!loginRes.ok) {
-        throw new Error("Xác thực Google thất bại!");
+        throw new Error(t("Xác thực Google thất bại!", "Google authentication failed!"));
       }
 
       const data = await loginRes.json();
@@ -90,7 +92,7 @@ export function TrackOrderPage() {
       }
       setSearched(true);
     } catch (err: any) {
-      setErrorMsg(err.message || "Lỗi xác thực Google!");
+      setErrorMsg(err.message || t("Lỗi xác thực Google!", "Google authentication error!"));
     } finally {
       setLoadingGoogle(false);
     }
@@ -139,20 +141,20 @@ export function TrackOrderPage() {
   const getStatusLabel = (status: string) => {
     switch (status) {
       case "completed":
-        return "Đã giao thành công";
+        return t("Đã giao thành công", "Delivered");
       case "shipping":
-        return "Đang vận chuyển";
+        return t("Đang vận chuyển", "Shipping");
       case "processing":
-        return "Đang chuẩn bị hàng";
+        return t("Đang chuẩn bị hàng", "Preparing");
       case "pending":
       default:
-        return "Chờ xác nhận";
+        return t("Chờ xác nhận", "Pending");
     }
   };
 
   // Thực hiện hủy đơn hàng vãng lai
   const handleCancelOrder = (orderId: number) => {
-    if (window.confirm("Bạn có chắc chắn muốn hủy đơn hàng này không? Hành động này không thể hoàn tác!")) {
+    if (window.confirm(t("Bạn có chắc chắn muốn hủy đơn hàng này không? Hành động này không thể hoàn tác!", "Are you sure you want to cancel this order? This action cannot be undone!"))) {
       fetch(`${API_URL}/orders/${orderId}/status`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
@@ -160,17 +162,17 @@ export function TrackOrderPage() {
       })
         .then(res => {
           if (res.ok) {
-            alert("Đã gửi yêu cầu hủy đơn hàng thành công!");
+            alert(t("Đã gửi yêu cầu hủy đơn hàng thành công!", "Cancellation request submitted successfully!"));
             if (googleUser) {
               setGoogleOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: "cancelled" } : o));
             } else {
               setResults(prev => prev.map(o => o.id === orderId ? { ...o, status: "cancelled" } : o));
             }
           } else {
-            alert("Sự cố xảy ra khi gửi yêu cầu hủy đơn.");
+            alert(t("Sự cố xảy ra khi gửi yêu cầu hủy đơn.", "Failed to submit cancellation request."));
           }
         })
-        .catch(() => alert("Lỗi kết nối máy chủ."));
+        .catch(() => alert(t("Lỗi kết nối máy chủ.", "Server connection error.")));
     }
   };
 
@@ -181,9 +183,9 @@ export function TrackOrderPage() {
     <div className="mx-auto max-w-4xl px-4 py-16 sm:px-6 lg:px-8">
       {/* Header */}
       <div className="text-center max-w-lg mx-auto mb-12">
-        <h1 className="font-extrabold text-3xl tracking-tight text-black uppercase mb-2">TRA CỨU ĐƠN HÀNG</h1>
+        <h1 className="font-extrabold text-3xl tracking-tight text-black uppercase mb-2">{t("TRA CỨU ĐƠN HÀNG", "TRACK YOUR ORDER")}</h1>
         <p className="text-black/50 text-xs leading-relaxed">
-          Tra cứu nhanh tiến độ giao nhận. Vì lý do an toàn bảo mật thông tin cá nhân, chúng tôi hỗ trợ hai chế độ xác minh tối ưu dưới đây.
+          {t("Tra cứu nhanh tiến độ giao nhận. Vì lý do an toàn bảo mật thông tin cá nhân, chúng tôi hỗ trợ hai chế độ xác minh tối ưu dưới đây.", "Fast shipping progress search. For safety and personal information security, we support two optimal verification modes below.")}
         </p>
       </div>
 
@@ -197,9 +199,9 @@ export function TrackOrderPage() {
         {/* CHẾ ĐỘ 1: ĐĂNG NHẬP GOOGLE TRA CỨU AN TOÀN */}
         <div className="lg:col-span-5 border border-black/10 rounded-2xl p-6 bg-white shadow-sm flex flex-col items-center justify-center text-center min-h-[290px]">
           <Mail className="h-10 w-10 text-red-600 mb-4" />
-          <h3 className="font-extrabold text-sm text-black uppercase mb-2">Cách 1: Xác thực Google</h3>
+          <h3 className="font-extrabold text-sm text-black uppercase mb-2">{t("Cách 1: Xác thực Google", "Method 1: Google Verification")}</h3>
           <p className="text-[11px] text-black/50 mb-6 leading-relaxed max-w-xs">
-            Khuyên dùng! Google sẽ xác minh chủ sở hữu Gmail. Bạn sẽ xem được <strong>tất cả đơn hàng</strong> (cả khách vãng lai và VIP) từng đặt bằng Gmail này.
+            {t("Khuyên dùng! Google sẽ xác minh chủ sở hữu Gmail. Bạn sẽ xem được tất cả đơn hàng (cả khách vãng lai và VIP) từng đặt bằng Gmail này.", "Recommended! Google will verify your Gmail ownership. You can view all orders (both guest and VIP) placed using this Gmail.")}
           </p>
           {loadingGoogle ? (
             <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-black"></div>
@@ -213,34 +215,34 @@ export function TrackOrderPage() {
           <form onSubmit={handleManualSearch} className="space-y-4">
             <div className="flex items-center gap-2 mb-1">
               <Lock className="h-4.5 w-4.5 text-black/60" />
-              <h3 className="font-extrabold text-sm text-black uppercase">Cách 2: Xác minh đơn lẻ</h3>
+              <h3 className="font-extrabold text-sm text-black uppercase">{t("Cách 2: Xác minh đơn lẻ", "Method 2: Single Order Verification")}</h3>
             </div>
             
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-[9px] font-extrabold tracking-wider uppercase text-black/60 mb-1 flex items-center gap-1">
-                  Mã đơn hàng
+                  {t("Mã đơn hàng", "Order ID")}
                 </label>
                 <input
                   type="text"
                   required
                   value={orderNumberInput}
                   onChange={(e) => setOrderNumberInput(e.target.value)}
-                  placeholder="VÍ DỤ: DH2026..."
+                  placeholder={t("VÍ DỤ: DH2026...", "EXAMPLE: DH2026...")}
                   className="w-full rounded-xl border border-black/10 bg-white px-3 py-2.5 text-xs placeholder:text-black/35 focus:border-black/60 focus:outline-none transition-all uppercase font-semibold"
                 />
               </div>
 
               <div>
                 <label className="block text-[9px] font-extrabold tracking-wider uppercase text-black/60 mb-1">
-                  Số điện thoại hoặc Email
+                  {t("Số điện thoại hoặc Email", "Phone Number or Email")}
                 </label>
                 <input
                   type="text"
                   required
                   value={phoneOrEmailInput}
                   onChange={(e) => setPhoneOrEmailInput(e.target.value)}
-                  placeholder="Nhập thông tin đặt hàng..."
+                  placeholder={t("Nhập thông tin đặt hàng...", "Enter order contact info...")}
                   className="w-full rounded-xl border border-black/10 bg-white px-3 py-2.5 text-xs placeholder:text-black/35 focus:border-black/60 focus:outline-none transition-all"
                 />
               </div>
@@ -251,13 +253,13 @@ export function TrackOrderPage() {
               className="w-full bg-black text-white hover:bg-red-700 py-3 text-xs font-bold tracking-widest uppercase transition-all rounded-xl flex items-center justify-center gap-2 mt-2"
             >
               <Search className="h-4 w-4" />
-              Tra cứu đơn lẻ
+              {t("Tra cứu đơn lẻ", "Search Single Order")}
             </button>
           </form>
 
           <div className="flex items-center gap-2 mt-4 p-3 bg-stone-100 rounded-lg text-[10px] text-black/50 leading-relaxed border border-black/5">
             <ShieldCheck className="h-4 w-4 text-green-600 flex-shrink-0" />
-            <span><strong>Bảo mật:</strong> Bắt buộc khớp cả Mã đơn hàng và SĐT/Email để tránh rò rỉ dữ liệu cá nhân của bạn.</span>
+            <span><strong>{t("Bảo mật:", "Security:")}</strong> {t("Bảo mật: Bắt buộc khớp cả Mã đơn hàng và SĐT/Email để tránh rò rỉ dữ liệu cá nhân của bạn.", "Order ID and Phone/Email must match to prevent personal data leaks.")}</span>
           </div>
         </div>
       </div>
@@ -272,7 +274,7 @@ export function TrackOrderPage() {
                   <img src={googleUser.avatarUrl} alt="Avatar" className="h-9 w-9 rounded-full border border-black/10 object-cover" />
                 )}
                 <div>
-                  <p className="font-bold text-black uppercase">Gmail đã xác thực</p>
+                  <p className="font-bold text-black uppercase">{t("Gmail đã xác thực", "Verified Gmail")}</p>
                   <p className="text-[11px] text-black/50">{googleUser.email}</p>
                 </div>
               </div>
@@ -284,7 +286,7 @@ export function TrackOrderPage() {
                 }}
                 className="text-[10px] font-bold text-red-600 hover:text-red-700 uppercase"
               >
-                Hủy liên kết
+                {t("Hủy liên kết", "Disconnect")}
               </button>
             </div>
           )}
@@ -292,11 +294,11 @@ export function TrackOrderPage() {
           {renderedOrders.length === 0 ? (
             <div className="border border-dashed border-black/15 rounded-2xl p-12 text-center bg-stone-50 max-w-xl mx-auto">
               <AlertTriangle className="h-8 w-8 text-amber-500 mx-auto mb-3" />
-              <p className="text-sm font-semibold text-black/70 mb-2">Không tìm thấy đơn hàng</p>
+              <p className="text-sm font-semibold text-black/70 mb-2">{t("Không tìm thấy đơn hàng", "Order Not Found")}</p>
               <p className="text-xs text-black/40 leading-relaxed">
                 {googleUser 
-                  ? `Gmail không tồn tại hoặc chưa từng phát sinh mua hàng bằng Gmail này: ${googleUser.email}.`
-                  : "Vui lòng kiểm tra lại Mã đơn hàng (DH2026...) và Số điện thoại hoặc Email liên hệ của bạn."}
+                  ? `${t("Gmail không tồn tại hoặc chưa từng phát sinh mua hàng bằng Gmail này:", "Gmail does not exist or has never been used for any purchase:")} ${googleUser.email}.`
+                  : t("Vui lòng kiểm tra lại Mã đơn hàng (DH2026...) và Số điện thoại hoặc Email liên hệ của bạn.", "Please double check the Order ID (DH2026...) and your contact phone or email.")}
               </p>
             </div>
           ) : (
@@ -316,7 +318,7 @@ export function TrackOrderPage() {
                   {/* Mã đơn và ngày mua */}
                   <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-black/10 pb-6 mb-8">
                     <div>
-                      <span className="text-[10px] font-bold tracking-wider text-black/40 uppercase">Xác minh đơn hàng thành công</span>
+                      <span className="text-[10px] font-bold tracking-wider text-black/40 uppercase">{t("Xác minh đơn hàng thành công", "Order Verified Successfully")}</span>
                       <div className="flex items-center gap-3 mt-0.5">
                         <h2 className="font-mono font-bold text-xl text-black">{order.orderNumber}</h2>
                         {isCompletedOrCancelled && (
@@ -325,19 +327,19 @@ export function TrackOrderPage() {
                               ? "bg-green-50 text-green-700 border border-green-200"
                               : "bg-red-50 text-red-700 border border-red-200"
                           }`}>
-                            {order.status === "completed" ? "Đã hoàn thành" : "Đã hủy"}
+                            {order.status === "completed" ? t("Đã hoàn thành", "Completed") : t("Đã hủy", "Cancelled")}
                           </span>
                         )}
                       </div>
                     </div>
                     <div className="flex items-center gap-4 text-xs text-black/50">
-                      <span className="flex items-center gap-1">
+                      <span className="flex items-center gap-1 font-mono">
                         <Calendar className="h-4 w-4" />
-                        {new Date(order.createdAt).toLocaleDateString("vi-VN")}
+                        {new Date(order.createdAt).toLocaleDateString()}
                       </span>
-                      <span className="flex items-center gap-1">
+                      <span className="flex items-center gap-1 font-mono">
                         <Clock className="h-4 w-4" />
-                        {new Date(order.createdAt).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })}
+                        {new Date(order.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                       </span>
                     </div>
                   </div>
@@ -354,10 +356,10 @@ export function TrackOrderPage() {
 
                         <div className="relative z-10 flex justify-between">
                           {[
-                            { step: 1, label: "Đã đặt hàng" },
-                            { step: 2, label: "Đang chuẩn bị" },
-                            { step: 3, label: "Đang vận chuyển" },
-                            { step: 4, label: "Hoàn thành" },
+                            { step: 1, label: t("Đã đặt hàng", "Ordered") },
+                            { step: 2, label: t("Đang chuẩn bị", "Preparing") },
+                            { step: 3, label: t("Đang vận chuyển", "Shipping") },
+                            { step: 4, label: t("Hoàn thành", "Completed") },
                           ].map((node) => {
                             const isActive = currentStep >= node.step;
                             return (
@@ -390,7 +392,7 @@ export function TrackOrderPage() {
                   <div className="grid grid-cols-1 md:grid-cols-12 gap-8">
                     {/* Cột trái: Sản phẩm */}
                     <div className="md:col-span-7 space-y-4">
-                      <h3 className="text-xs font-bold tracking-wider text-black/40 uppercase mb-4">Danh sách sản phẩm mua</h3>
+                      <h3 className="text-xs font-bold tracking-wider text-black/40 uppercase mb-4">{t("Danh sách sản phẩm mua", "Items List")}</h3>
                       <div className="space-y-4 max-h-[300px] overflow-y-auto pr-2">
                         {order.items.map((item: any, i: number) => (
                           <div key={i} className="flex gap-4 items-center">
@@ -404,11 +406,11 @@ export function TrackOrderPage() {
                             <div className="flex-1 min-w-0">
                               <h4 className="text-xs font-bold text-black truncate uppercase">{item.productName || item.product?.name || ""}</h4>
                               <p className="text-[10px] text-black/40 mt-1 uppercase">
-                                Size: {item.size} | Màu: {item.color} | SL: {item.quantity}
+                                Size: {item.size} | {t("Màu:", "Color:")} {item.color} | {t("SL:", "Qty:")} {item.quantity}
                               </p>
                             </div>
-                            <span className="text-xs font-bold text-black flex-shrink-0">
-                              {(item.price * item.quantity).toLocaleString("vi-VN")}₫
+                            <span className="text-xs font-bold text-black flex-shrink-0 font-mono">
+                              {formatPrice(item.price * item.quantity)}
                             </span>
                           </div>
                         ))}
@@ -417,7 +419,7 @@ export function TrackOrderPage() {
 
                     {/* Cột phải: Thông tin giao nhận */}
                     <div className="md:col-span-5 bg-stone-50 rounded-xl p-5 border border-black/5 space-y-4">
-                      <h3 className="text-xs font-bold tracking-wider text-black/60 uppercase">Thông tin nhận hàng</h3>
+                      <h3 className="text-xs font-bold tracking-wider text-black/60 uppercase">{t("Thông tin nhận hàng", "Delivery Info")}</h3>
 
                       <div className="space-y-3 text-xs">
                         <div className="flex gap-3">
@@ -425,7 +427,7 @@ export function TrackOrderPage() {
                           <div>
                             <p className="font-bold text-black uppercase">{order.customerName}</p>
                             <p className="text-black/50 mt-1 font-mono">
-                              SĐT: {maskPhone(order.customerPhone || order.phone)}
+                              {t("SĐT:", "Phone:")} {maskPhone(order.customerPhone || order.phone)}
                             </p>
                           </div>
                         </div>
@@ -433,9 +435,9 @@ export function TrackOrderPage() {
                         <div className="flex gap-3">
                           <Truck className="h-4 w-4 text-black/40 flex-shrink-0" />
                           <div>
-                            <span className="font-bold text-black uppercase">Vận chuyển: </span>
+                            <span className="font-bold text-black uppercase">{t("Vận chuyển:", "Shipping:")} </span>
                             {isCancelled ? (
-                              <span className="font-bold text-stone-500">ĐÃ HỦY ĐƠN</span>
+                              <span className="font-bold text-stone-500">{t("ĐÃ HỦY ĐƠN", "CANCELLED")}</span>
                             ) : (
                               <span className="font-bold text-red-600">{getStatusLabel(order.status)}</span>
                             )}
@@ -445,7 +447,7 @@ export function TrackOrderPage() {
                         <div className="flex gap-3">
                           <DollarSign className="h-4 w-4 text-black/40 flex-shrink-0" />
                           <div>
-                            <span className="font-bold text-black uppercase">Thanh toán: </span>
+                            <span className="font-bold text-black uppercase">{t("Thanh toán:", "Payment:")} </span>
                             <span className="text-black/50 uppercase font-medium">{order.paymentMethod}</span>
                           </div>
                         </div>
@@ -453,18 +455,18 @@ export function TrackOrderPage() {
 
                       <div className="border-t border-black/5 pt-3 mt-4 space-y-1.5 text-xs">
                         <div className="flex justify-between text-black/50">
-                          <span>Tạm tính</span>
-                          <span>{order.subtotal.toLocaleString("vi-VN")}₫</span>
+                          <span>{t("Tạm tính", "Subtotal")}</span>
+                          <span className="font-mono">{formatPrice(order.subtotal)}</span>
                         </div>
                         {order.discount > 0 && (
                           <div className="flex justify-between text-red-600">
-                            <span>Giảm giá</span>
-                            <span>-{order.discount.toLocaleString("vi-VN")}₫</span>
+                            <span>{t("Giảm giá", "Discount")}</span>
+                            <span className="font-mono">-{formatPrice(order.discount)}</span>
                           </div>
                         )}
                         <div className="flex justify-between font-extrabold text-black text-sm pt-1.5 border-t border-black/5">
-                          <span>TỔNG TIỀN THỰC CHI</span>
-                          <span>{order.total.toLocaleString("vi-VN")}₫</span>
+                          <span>{t("TỔNG TIỀN THỰC CHI", "TOTAL AMOUNT")}</span>
+                          <span className="font-mono">{formatPrice(order.total)}</span>
                         </div>
                       </div>
 
@@ -472,11 +474,11 @@ export function TrackOrderPage() {
                       <div className="border-t border-black/5 pt-4 mt-4">
                         {isCancelled ? (
                           <div className="text-[10px] text-center font-bold text-stone-500 uppercase py-2 bg-stone-100 rounded-lg">
-                            Đơn hàng đã được hủy thành công
+                            {t("Đơn hàng đã được hủy thành công", "Order has been cancelled successfully")}
                           </div>
                         ) : order.status === "completed" ? (
                           <div className="text-[10px] text-center font-bold text-green-700 uppercase py-2 bg-green-50 border border-green-200 rounded-lg">
-                            Đơn hàng đã giao thành công
+                            {t("Đơn hàng đã giao thành công", "Order has been delivered successfully")}
                           </div>
                         ) : isWithin5Min ? (
                           <div className="space-y-2">
@@ -485,10 +487,10 @@ export function TrackOrderPage() {
                               className="w-full bg-red-600 text-white hover:bg-red-700 py-3 text-[10px] font-extrabold tracking-widest uppercase rounded-lg transition-all flex items-center justify-center gap-1.5 shadow-md shadow-red-600/10"
                             >
                               <XCircle className="h-3.5 w-3.5" />
-                              Hủy Đơn Hàng Tự Động (Còn 5 Phút)
+                              {t("Hủy Đơn Hàng Tự Động (Còn 5 Phút)", "Cancel Order Automatically (5 Mins Remaining)")}
                             </button>
                             <p className="text-[9px] text-black/40 text-center leading-relaxed">
-                              * Bạn có thể tự hủy đơn hàng trong vòng 5 phút đầu kể từ khi đặt để điều chỉnh lại thông tin hoặc đặt đơn mới.
+                              {t("* Bạn có thể tự hủy đơn hàng trong vòng 5 phút đầu kể từ khi đặt để điều chỉnh lại thông tin hoặc đặt đơn mới.", "* You can cancel the order within the first 5 minutes to adjust info or place a new one.")}
                             </p>
                           </div>
                         ) : (
@@ -514,7 +516,7 @@ export function TrackOrderPage() {
                               </a>
                             </div>
                             <p className="text-[9px] text-red-600/85 font-bold text-center leading-relaxed">
-                              * Đã quá 5 phút để tự hủy. Vui lòng liên hệ CSKH của MADMAD để được hỗ trợ điều chỉnh/hủy đơn.
+                              {t("* Đã quá 5 phút để tự hủy. Vui lòng liên hệ CSKH của MADMAD để được hỗ trợ điều chỉnh/hủy đơn.", "* Limit of 5 minutes exceeded. Please contact MADMAD Support for assistance.")}
                             </p>
                           </div>
                         )}

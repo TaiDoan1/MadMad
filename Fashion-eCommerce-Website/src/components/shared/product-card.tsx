@@ -4,6 +4,7 @@ import { Link } from "react-router";
 
 import { ImageWithFallback } from "@/components/common/image-with-fallback";
 import { useCart } from "@/features/cart/context/cart-context";
+import { useLanguage } from "@/features/settings/context/language-context";
 import type { Product } from "@/types/product";
 
 interface ProductCardProps {
@@ -13,6 +14,7 @@ interface ProductCardProps {
 
 export function ProductCard({ product, variant = "shop" }: ProductCardProps) {
   const { addItem } = useCart();
+  const { formatPrice, t, translate } = useLanguage();
   const [added, setAdded] = useState(false);
 
   const isHome = variant === "home";
@@ -36,7 +38,7 @@ export function ProductCard({ product, variant = "shop" }: ProductCardProps) {
       <Link to={`/product/${product.id}`} className={`relative block overflow-hidden ${imageFrameClass}`}>
         <ImageWithFallback
           src={product.image}
-          alt={product.name}
+          alt={translate(product.name)}
           className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
         />
 
@@ -59,7 +61,7 @@ export function ProductCard({ product, variant = "shop" }: ProductCardProps) {
           type="button"
           onClick={handleQuickAdd}
           className="absolute bottom-3 right-3 z-10 translate-y-2 opacity-0 transition-all duration-300 group-hover:translate-y-0 group-hover:opacity-100"
-          title="Thêm vào giỏ"
+          title={t("Thêm vào giỏ", "Add to cart")}
         >
           <span
             className={`flex items-center gap-1.5 px-3 py-2 text-[11px] font-bold uppercase tracking-wide transition-colors duration-200 ${
@@ -67,7 +69,7 @@ export function ProductCard({ product, variant = "shop" }: ProductCardProps) {
             }`}
           >
             <ShoppingCart className="h-3.5 w-3.5" />
-            {added ? "Đã thêm" : "Thêm nhanh"}
+            {added ? t("Đã thêm", "Added") : t("Thêm nhanh", "Quick Add")}
           </span>
         </button>
       </Link>
@@ -75,18 +77,18 @@ export function ProductCard({ product, variant = "shop" }: ProductCardProps) {
       {/* ── Info ─────────────────────────────────────────────────────────── */}
       <div className="flex flex-col gap-0.5 px-0 pb-5 pt-2.5">
         <Link to={`/product/${product.id}`}>
-          <h3 className="text-xs font-bold uppercase tracking-wider text-black transition-colors hover:text-primary line-clamp-1 leading-tight">
-            {product.name}
+          <h3 className="text-xs font-normal uppercase tracking-widest text-black hover:text-red-700 transition-colors line-clamp-1 leading-tight">
+            {translate(product.name)}
           </h3>
         </Link>
 
         <div className="flex items-center gap-2">
           <span className="text-sm font-semibold text-black">
-            {product.price.toLocaleString("vi-VN")}₫
+            {formatPrice(product.price)}
           </span>
           {product.originalPrice && product.originalPrice > product.price && (
             <span className="text-xs text-black/40 line-through">
-              {product.originalPrice.toLocaleString("vi-VN")}₫
+              {formatPrice(product.originalPrice)}
             </span>
           )}
         </div>

@@ -5,6 +5,7 @@ import { ImageWithFallback } from "@/components/common/image-with-fallback";
 import { ProductCard } from "@/components/shared/product-card";
 import { useProducts } from "@/features/products/context/product-context";
 import { useStorefrontSettings } from "@/features/settings/context/storefront-settings-context";
+import { useLanguage } from "@/features/settings/context/language-context";
 
 // ─── Countdown Timer ───────────────────────────────────────────────────────────
 function useCountdown(targetMs: number) {
@@ -38,6 +39,7 @@ function useCountdown(targetMs: number) {
 export function HomePage() {
   const { products } = useProducts();
   const { settings } = useStorefrontSettings();
+  const { t } = useLanguage();
 
   // ── Hero slideshow ─────────────────────────────────────────────────────────
   const heroImages = useMemo(() => {
@@ -206,13 +208,13 @@ export function HomePage() {
               className="font-black uppercase text-black tracking-wide"
               style={{ fontSize: "clamp(1.6rem, 3.5vw, 2.8rem)" }}
             >
-              NỔI BẬT
+              {t("NỔI BẬT", "FEATURED")}
             </h2>
             <Link
               to="/shop"
               className="text-[11px] uppercase tracking-[0.25em] text-black/40 transition-colors hover:text-black"
             >
-              Xem tất cả →
+              {t("Xem tất cả →", "View All →")}
             </Link>
           </div>
 
@@ -265,10 +267,10 @@ export function HomePage() {
             <div className="flex items-center gap-3 text-white">
               {(
                 [
-                  { label: "NGÀY",  value: timeLeft.days },
-                  { label: "GIỜ",   value: timeLeft.hours },
-                  { label: "PHÚT",  value: timeLeft.minutes },
-                  { label: "GIÂY",  value: timeLeft.seconds },
+                  { label: t("NGÀY", "DAYS"),  value: timeLeft.days },
+                  { label: t("GIỜ", "HOURS"),   value: timeLeft.hours },
+                  { label: t("PHÚT", "MINUTES"),  value: timeLeft.minutes },
+                  { label: t("GIÂY", "SECONDS"),  value: timeLeft.seconds },
                 ] as const
               ).map((item, index) => (
                 <div key={item.label} className="flex items-center gap-3">
@@ -287,7 +289,7 @@ export function HomePage() {
               to="/shop"
               className="rounded-none border border-white px-8 py-2.5 text-xs font-bold uppercase tracking-widest text-white transition-all duration-300 hover:bg-white hover:text-primary"
             >
-              MUA NGAY
+              {t("MUA NGAY", "SHOP NOW")}
             </Link>
           </div>
         </div>

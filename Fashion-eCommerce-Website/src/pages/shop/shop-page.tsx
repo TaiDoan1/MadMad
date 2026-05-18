@@ -3,10 +3,12 @@ import { useSearchParams } from "react-router";
 
 import { ProductCard } from "@/components/shared/product-card";
 import { useProducts } from "@/features/products/context/product-context";
+import { useLanguage } from "@/features/settings/context/language-context";
 
 export function ShopPage() {
   const { products } = useProducts();
   const [searchParams, setSearchParams] = useSearchParams();
+  const { t, translate } = useLanguage();
 
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [selectedPriceRange, setSelectedPriceRange] = useState<
@@ -99,14 +101,14 @@ export function ShopPage() {
         <div className="mx-auto max-w-[1400px] px-6 lg:px-12">
           {/* Large editorial title */}
           <h1 className="py-10 text-center text-4xl font-black uppercase tracking-[0.2em] lg:text-5xl">
-            Cửa hàng
+            {t("Cửa hàng", "Shop")}
           </h1>
 
           {/* Category tabs — like Flowbit's collection nav */}
           <div className="flex items-center overflow-x-auto scrollbar-hide -mx-1">
-            <TabBtn value="all" label="Tất cả" />
+            <TabBtn value="all" label={t("Tất cả", "All")} />
             {categories.map((cat) => (
-              <TabBtn key={cat} value={cat} label={cat} />
+              <TabBtn key={cat} value={cat} label={translate(cat)} />
             ))}
           </div>
         </div>
@@ -117,7 +119,7 @@ export function ShopPage() {
         <div className="mx-auto max-w-[1400px] px-6 lg:px-12">
           <div className="flex items-center justify-between py-3">
             <span className="text-[11px] uppercase tracking-widest text-black/40">
-              {filteredProducts.length} sản phẩm
+              {filteredProducts.length} {t("sản phẩm", "products")}
             </span>
 
             <div className="flex items-center gap-6">
@@ -131,11 +133,11 @@ export function ShopPage() {
                 }
                 className="cursor-pointer appearance-none bg-transparent text-[11px] font-bold uppercase tracking-widest text-black/50 transition-colors focus:outline-none hover:text-black"
               >
-                <option value="all">Mọi mức giá</option>
-                <option value="under-500k">Dưới 500K</option>
-                <option value="500k-1m">500K – 1M</option>
-                <option value="1m-2m">1M – 2M</option>
-                <option value="over-2m">Trên 2M</option>
+                <option value="all">{t("Mọi mức giá", "All Prices")}</option>
+                <option value="under-500k">{t("Dưới 500K", "Under 500K")}</option>
+                <option value="500k-1m">{t("500K – 1M", "500K – 1M")}</option>
+                <option value="1m-2m">{t("1M – 2M", "1M – 2M")}</option>
+                <option value="over-2m">{t("Trên 2M", "Over 2M")}</option>
               </select>
 
               {/* Divider */}
@@ -149,10 +151,10 @@ export function ShopPage() {
                 }
                 className="cursor-pointer appearance-none bg-transparent text-[11px] font-bold uppercase tracking-widest text-black/50 transition-colors focus:outline-none hover:text-black"
               >
-                <option value="featured">Nổi bật</option>
-                <option value="price-low">Giá: thấp → cao</option>
-                <option value="price-high">Giá: cao → thấp</option>
-                <option value="newest">Mới nhất</option>
+                <option value="featured">{t("Nổi bật", "Featured")}</option>
+                <option value="price-low">{t("Giá: thấp → cao", "Price: Low to High")}</option>
+                <option value="price-high">{t("Giá: cao → thấp", "Price: High to Low")}</option>
+                <option value="newest">{t("Mới nhất", "Newest")}</option>
               </select>
 
               {/* Clear filters */}
@@ -163,7 +165,7 @@ export function ShopPage() {
                     onClick={clearFilters}
                     className="text-[11px] uppercase tracking-widest text-black/40 transition-colors hover:text-black"
                   >
-                    Xóa lọc ×
+                    {t("Xóa lọc ×", "Clear ×")}
                   </button>
                 </>
               )}
@@ -183,13 +185,13 @@ export function ShopPage() {
         ) : (
           <div className="flex flex-col items-center justify-center py-32 text-center">
             <p className="text-sm uppercase tracking-widest text-black/30">
-              Không có sản phẩm phù hợp
+              {t("Không có sản phẩm phù hợp", "No matching products found")}
             </p>
             <button
               onClick={clearFilters}
               className="mt-8 border border-black px-10 py-3 text-[11px] font-bold uppercase tracking-widest transition-colors hover:bg-black hover:text-white"
             >
-              Xem tất cả sản phẩm
+              {t("Xem tất cả sản phẩm", "View All Products")}
             </button>
           </div>
         )}

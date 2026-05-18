@@ -21,6 +21,7 @@ import { useOrders } from "@/features/orders/context/order-context";
 import { useProducts } from "@/features/products/context/product-context";
 import { incrementCouponUsage } from "@/features/promotions/services/coupon-service";
 import { useStorefrontSettings } from "@/features/settings/context/storefront-settings-context";
+import { useLanguage } from "@/features/settings/context/language-context";
 import type { Order, OrderItem } from "@/types/order";
 
 /* ── Shared input className ───────────────────────────────────────────── */
@@ -32,6 +33,7 @@ export function CheckoutPage() {
   const { settings } = useStorefrontSettings();
   const { addOrder } = useOrders();
   const { currentMember, addPointsToCurrentMember, tierConfigs } = useMembership();
+  const { formatPrice, t, translate } = useLanguage();
   const {
     cartItems,
     subtotal,
@@ -216,7 +218,7 @@ export function CheckoutPage() {
             </div>
             <div className="max-h-56 overflow-auto">
               {filtered.length === 0
-                ? <div className="px-4 py-3 text-sm text-black/40">Không tìm thấy.</div>
+                ? <div className="px-4 py-3 text-sm text-black/40">{t("Không tìm thấy.", "Not found.")}</div>
                 : filtered.map((o) => (
                   <button key={o.code} type="button"
                     onClick={() => { onChange(o.code); setOpen(false); setQuery(""); }}
@@ -234,9 +236,9 @@ export function CheckoutPage() {
 
   const handleSubmit = (event?: FormEvent) => {
     event?.preventDefault();
-    if (resolvedItems.length === 0) { window.alert("Giỏ hàng đang trống."); return; }
+    if (resolvedItems.length === 0) { window.alert(t("Giỏ hàng đang trống.", "Your cart is empty.")); return; }
     if (!formData.fullName || !formData.phone || !formData.email || !formData.address || !formData.wardCode) {
-      window.alert("Vui lòng điền đầy đủ thông tin giao hàng!"); return;
+      window.alert(t("Vui lòng điền đầy đủ thông tin giao hàng!", "Please complete all shipping details!")); return;
     }
 
     // Save last delivery details to localStorage for next purchase autocomplete
@@ -319,14 +321,14 @@ export function CheckoutPage() {
           {/* Back to cart */}
           <Link to="/cart" className="flex items-center gap-1.5 text-xs text-black/50 uppercase tracking-widest hover:text-black transition-colors">
             <ArrowLeft className="h-3.5 w-3.5" />
-            Giỏ hàng
+            {t("Giỏ hàng", "Cart")}
           </Link>
           {/* Logo (centered) */}
           <Link to="/">
             <img src={brandLogo} alt="MADMAD" className="h-7 w-auto" />
           </Link>
           {/* Cart icon (right) */}
-          <Link to="/cart" className="flex items-center gap-1 text-black/50 hover:text-black transition-colors" aria-label="Giỏ hàng">
+          <Link to="/cart" className="flex items-center gap-1 text-black/50 hover:text-black transition-colors" aria-label={t("Giỏ hàng", "Shopping Cart")}>
             <ShoppingBag className="h-5 w-5" />
             {cartItems.length > 0 && (
               <span className="text-xs font-semibold text-black">{cartItems.length}</span>
@@ -345,53 +347,53 @@ export function CheckoutPage() {
 
               {/* Contact */}
               <section>
-                <h2 className="mb-4 text-sm font-bold uppercase tracking-widest">Liên hệ</h2>
+                <h2 className="mb-4 text-sm font-bold uppercase tracking-widest">{t("Liên hệ", "Contact")}</h2>
                 <div className="space-y-3">
                   <input type="email" required value={formData.email}
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                    className={inputCls} placeholder="Email" />
+                    className={inputCls} placeholder={t("Email", "Email Address")} />
                   <input type="tel" required value={formData.phone}
                     onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                    className={inputCls} placeholder="Số điện thoại" />
+                    className={inputCls} placeholder={t("Số điện thoại", "Phone Number")} />
                 </div>
               </section>
 
               {/* Delivery */}
               <section>
-                <h2 className="mb-4 text-sm font-bold uppercase tracking-widest">Giao hàng</h2>
+                <h2 className="mb-4 text-sm font-bold uppercase tracking-widest">{t("Giao hàng", "Delivery")}</h2>
                 <div className="space-y-3">
                   <input type="text" required value={formData.fullName}
                     onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
-                    className={inputCls} placeholder="Họ và tên" />
+                    className={inputCls} placeholder={t("Họ và tên", "Full Name")} />
                   <input type="text" required value={formData.address}
                     onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                    className={inputCls} placeholder="Địa chỉ (số nhà, tên đường)" />
+                    className={inputCls} placeholder={t("Địa chỉ (số nhà, tên đường)", "Address (Street, Number)")} />
 
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                     <SearchableDropdown value={formData.provinceCode} options={provinces}
-                      placeholder="Tỉnh/Thành phố" searchPlaceholder="Tìm tỉnh/thành..."
+                      placeholder={t("Tỉnh/Thành phố", "Province/City")} searchPlaceholder={t("Tìm tỉnh/thành...", "Search province...")}
                       onChange={(v) => setFormData({ ...formData, provinceCode: v, districtCode: "", wardCode: "" })} />
                     <SearchableDropdown value={formData.districtCode} options={districts}
                       disabled={!formData.provinceCode}
-                      placeholder={formData.provinceCode ? "Quận/Huyện" : "Chọn tỉnh trước"}
-                      searchPlaceholder="Tìm quận/huyện..."
+                      placeholder={formData.provinceCode ? t("Quận/Huyện", "District") : t("Chọn tỉnh trước", "Select province first")}
+                      searchPlaceholder={t("Tìm quận/huyện...", "Search district...")}
                       onChange={(v) => setFormData({ ...formData, districtCode: v, wardCode: "" })} />
                     <SearchableDropdown value={formData.wardCode} options={wards}
                       disabled={!formData.districtCode}
-                      placeholder={formData.districtCode ? "Phường/Xã" : "Chọn quận trước"}
-                      searchPlaceholder="Tìm phường/xã..."
+                      placeholder={formData.districtCode ? t("Phường/Xã", "Ward/Commune") : t("Chọn quận trước", "Select district first")}
+                      searchPlaceholder={t("Tìm phường/xã...", "Search ward...")}
                       onChange={(v) => setFormData({ ...formData, wardCode: v })} />
                   </div>
 
                   <textarea rows={2} value={formData.notes}
                     onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                    className={`${inputCls} resize-none`} placeholder="Ghi chú đơn hàng (tùy chọn)" />
+                    className={`${inputCls} resize-none`} placeholder={t("Ghi chú đơn hàng (tùy chọn)", "Order notes (optional)")} />
                 </div>
               </section>
 
               {/* Shipping Method Selection */}
               <section>
-                <h2 className="mb-4 text-sm font-bold uppercase tracking-widest">Phương thức vận chuyển</h2>
+                <h2 className="mb-4 text-sm font-bold uppercase tracking-widest">{t("Phương thức vận chuyển", "Shipping Method")}</h2>
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <button
                     type="button"
@@ -402,9 +404,9 @@ export function CheckoutPage() {
                         : "border-black/15 hover:border-black"
                     }`}
                   >
-                    <span className="text-xs font-bold uppercase tracking-wider">Ship Tiêu Chuẩn (Thường)</span>
+                    <span className="text-xs font-bold uppercase tracking-wider">{t("Ship Tiêu Chuẩn (Thường)", "Standard Shipping")}</span>
                     <span className="text-[10px] text-black/50 mt-1">
-                      Giá: {shippingBase >= freeThreshold ? "Miễn phí" : `${feeStandard.toLocaleString("vi-VN")}₫`} (2-4 ngày)
+                      {t("Giá:", "Price:")} {shippingBase >= freeThreshold ? t("Miễn phí", "Free") : `${formatPrice(feeStandard)}`} (2-4 {t("ngày", "days")})
                     </span>
                   </button>
 
@@ -418,10 +420,10 @@ export function CheckoutPage() {
                     }`}
                   >
                     <span className="text-xs font-bold uppercase tracking-wider text-red-700 flex items-center gap-1">
-                      Giao Hỏa Tốc (2h)
+                      {t("Giao Hỏa Tốc (2h)", "Express Delivery (2h)")}
                     </span>
                     <span className="text-[10px] text-black/50 mt-1">
-                      Giá: {feeExpress.toLocaleString("vi-VN")}₫ (Giao siêu tốc nội thành)
+                      {t("Giá:", "Price:")} {formatPrice(feeExpress)} ({t("Giao siêu tốc nội thành", "Intracity express delivery")})
                     </span>
                   </button>
                 </div>
@@ -429,12 +431,12 @@ export function CheckoutPage() {
 
               {/* Payment method */}
               <section>
-                <h2 className="mb-4 text-sm font-bold uppercase tracking-widest">Phương thức thanh toán</h2>
+                <h2 className="mb-4 text-sm font-bold uppercase tracking-widest">{t("Phương thức thanh toán", "Payment Method")}</h2>
 
                 {/* Coupon / Voucher Entry */}
                 {true && (
                   <div className="mb-6 rounded-xl border border-black/10 bg-stone-50 p-4 space-y-4">
-                    <h3 className="text-xs font-bold uppercase tracking-widest text-black">Mã giảm giá / Voucher</h3>
+                    <h3 className="text-xs font-bold uppercase tracking-widest text-black">{t("Mã giảm giá / Voucher", "Discount Code / Voucher")}</h3>
                     
                     {/* Manual input */}
                     <div className="flex gap-2">
@@ -442,14 +444,14 @@ export function CheckoutPage() {
                         type="text"
                         value={typedCoupon}
                         onChange={(e) => setTypedCoupon(e.target.value)}
-                        placeholder="Nhập mã giảm giá của bạn..."
+                        placeholder={t("Nhập mã giảm giá của bạn...", "Enter your discount code...")}
                         className="flex-1 rounded-xl border border-black/10 bg-white px-3.5 py-2 text-xs font-bold uppercase tracking-wider focus:border-black/60 focus:outline-none"
                       />
                       <button
                         type="button"
                         onClick={() => {
                           if (!typedCoupon.trim()) {
-                            window.alert("Vui lòng nhập mã giảm giá!");
+                            window.alert(t("Vui lòng nhập mã giảm giá!", "Please enter discount code!"));
                             return;
                           }
                           const r = applyCoupon(typedCoupon.trim().toUpperCase());
@@ -460,31 +462,31 @@ export function CheckoutPage() {
                         }}
                         className="rounded-xl bg-black text-white hover:bg-neutral-800 px-4 text-xs font-black tracking-widest uppercase transition-all"
                       >
-                        Áp dụng
+                        {t("Áp dụng", "Apply")}
                       </button>
                     </div>
 
                     {/* Suggestions */}
                     {availableCoupons.filter(c => !c.isExclusive).length > 0 && (
                       <div className="space-y-2 border-t border-black/5 pt-3">
-                        <p className="text-[10px] font-extrabold tracking-wider uppercase text-black/40">Gợi ý Voucher dành cho bạn:</p>
+                        <p className="text-[10px] font-extrabold tracking-wider uppercase text-black/40">{t("Gợi ý Voucher dành cho bạn:", "Suggested vouchers for you:")}</p>
                         <div className="flex flex-wrap gap-2">
                           {availableCoupons.filter(c => !c.isExclusive).map((coupon) => (
                             <button
-                              key={coupon.code}
-                              type="button"
-                              onClick={() => {
-                                const r = applyCoupon(coupon.code);
-                                window.alert(r.message);
-                              }}
-                              className={`rounded-lg border px-2.5 py-1.5 text-[10px] font-black uppercase tracking-wider transition-all hover:scale-[1.02] active:scale-[0.98] ${
-                                appliedCoupon?.code === coupon.code
-                                  ? "border-black bg-black text-white"
-                                  : "border-black/15 bg-white text-black/75 hover:border-black"
-                              }`}
-                            >
-                              {coupon.code} (-{coupon.discountAmount.toLocaleString("vi-VN")}₫)
-                            </button>
+                                key={coupon.code}
+                                type="button"
+                                onClick={() => {
+                                  const r = applyCoupon(coupon.code);
+                                  window.alert(r.message);
+                                }}
+                                className={`rounded-lg border px-2.5 py-1.5 text-[10px] font-black uppercase tracking-wider transition-all hover:scale-[1.02] active:scale-[0.98] ${
+                                  appliedCoupon?.code === coupon.code
+                                    ? "border-black bg-black text-white"
+                                    : "border-black/15 bg-white text-black/75 hover:border-black"
+                                }`}
+                              >
+                                {coupon.code} (-{formatPrice(coupon.discountAmount)})
+                              </button>
                           ))}
                         </div>
                       </div>
@@ -493,8 +495,8 @@ export function CheckoutPage() {
                     {/* Active Coupon Feedback */}
                     {appliedCoupon && (
                       <div className="flex items-center justify-between rounded-lg bg-green-50 border border-green-200 px-3 py-2 text-xs text-green-800 font-semibold mt-2">
-                        <span>✓ Đã áp dụng mã: <span className="font-black font-mono tracking-wider text-green-950 uppercase">{appliedCoupon.code}</span> (-{appliedCoupon.discountAmount.toLocaleString("vi-VN")}₫)</span>
-                        <button type="button" onClick={clearCoupon} className="text-[10px] font-black text-red-600 hover:text-red-800 hover:underline uppercase tracking-wider">Hủy mã</button>
+                        <span>{t("✓ Đã áp dụng mã: ", "✓ Code applied: ")}<span className="font-black font-mono tracking-wider text-green-950 uppercase">{appliedCoupon.code}</span> (-{formatPrice(appliedCoupon.discountAmount)})</span>
+                        <button type="button" onClick={clearCoupon} className="text-[10px] font-black text-red-600 hover:text-red-800 hover:underline uppercase tracking-wider">{t("Hủy mã", "Remove code")}</button>
                       </div>
                     )}
                   </div>
@@ -502,10 +504,10 @@ export function CheckoutPage() {
 
                 <div className="space-y-2">
                   {[
-                    { value: "cod",  label: "Thanh toán khi nhận hàng (COD)", active: settings.enableCod ?? true },
-                    { value: "bank", label: "Chuyển khoản ngân hàng", active: settings.enableBank ?? true },
-                    { value: "momo", label: "Ví điện tử MoMo", active: settings.enableMomo ?? true },
-                    { value: "paypal", label: "Thanh toán qua PayPal (USD)", active: settings.enablePaypal ?? true },
+                    { value: "cod",  label: t("Thanh toán khi nhận hàng (COD)", "Cash on Delivery (COD)"), active: settings.enableCod ?? true },
+                    { value: "bank", label: t("Chuyển khoản ngân hàng", "Bank Transfer"), active: settings.enableBank ?? true },
+                    { value: "momo", label: t("Ví điện tử MoMo", "MoMo E-wallet"), active: settings.enableMomo ?? true },
+                    { value: "paypal", label: t("Thanh toán qua PayPal (USD)", "Pay via PayPal (USD)"), active: settings.enablePaypal ?? true },
                   ].filter(m => m.active).map((m) => (
                     <label key={m.value}
                       className={`flex cursor-pointer items-center gap-3 rounded-xl border-2 p-4 transition-colors ${
@@ -532,20 +534,20 @@ export function CheckoutPage() {
                         />
                       </div>
                       <div className="flex-1 space-y-2 text-xs w-full">
-                        <p className="font-bold uppercase text-[9px] tracking-wider text-black/50">Thông tin chuyển khoản</p>
+                        <p className="font-bold uppercase text-[9px] tracking-wider text-black/50">{t("Thông tin chuyển khoản", "Bank Details")}</p>
                         
                         <div className="space-y-1">
-                          <p className="text-black/60 text-[9px]">Ngân hàng:</p>
+                          <p className="text-black/60 text-[9px]">{t("Ngân hàng:", "Bank:")}</p>
                           <p className="font-bold text-black text-sm uppercase">{settings.bankId || "MB Bank"}</p>
                         </div>
 
                         <div className="space-y-1">
-                          <p className="text-black/60 text-[9px]">Chủ tài khoản:</p>
+                          <p className="text-black/60 text-[9px]">{t("Chủ tài khoản:", "Account Name:")}</p>
                           <p className="font-black text-black">{settings.bankAccountName || "MADMAD STUDIO"}</p>
                         </div>
 
                         <div className="space-y-1">
-                          <p className="text-black/60 text-[9px]">Số tài khoản:</p>
+                          <p className="text-black/60 text-[9px]">{t("Số tài khoản:", "Account Number:")}</p>
                           <div className="flex items-center justify-between gap-2 bg-white rounded-lg border border-black/5 px-2.5 py-1.5">
                             <span className="font-mono font-bold text-black text-xs">{settings.bankAccount || "0999999999"}</span>
                             <button
@@ -559,7 +561,7 @@ export function CheckoutPage() {
                         </div>
 
                         <div className="space-y-1">
-                          <p className="text-black/60 text-[9px]">Nội dung chuyển khoản:</p>
+                          <p className="text-black/60 text-[9px]">{t("Nội dung chuyển khoản:", "Transfer Memo:")}</p>
                           <div className="flex items-center justify-between gap-2 bg-white rounded-lg border border-black/5 px-2.5 py-1.5">
                             <span className="font-mono font-black text-black tracking-wider text-xs uppercase">{`MADMAD ${orderNumber}`}</span>
                             <button
@@ -573,9 +575,9 @@ export function CheckoutPage() {
                         </div>
 
                         <div className="space-y-1">
-                          <p className="text-black/60 text-[9px]">Số tiền:</p>
+                          <p className="text-black/60 text-[9px]">{t("Số tiền:", "Amount:")}</p>
                           <div className="flex items-center justify-between gap-2 bg-white rounded-lg border border-black/5 px-2.5 py-1.5">
-                            <span className="font-bold text-red-600 text-xs">{total.toLocaleString("vi-VN")}₫</span>
+                            <span className="font-bold text-red-600 text-xs">{formatPrice(total)}</span>
                             <button
                               type="button"
                               onClick={() => handleCopy(String(total), "bankTotal")}
@@ -586,12 +588,11 @@ export function CheckoutPage() {
                           </div>
                         </div>
 
-                        <p className="text-[10px] text-green-700 font-bold pt-1">✓ Quét VietQR để điền tự động 100% hoặc sao chép nhanh ở trên.</p>
+                        <p className="text-[10px] text-green-700 font-bold pt-1">{t("✓ Quét VietQR để điền tự động 100% hoặc sao chép nhanh ở trên.", "✓ Scan VietQR to autofill or copy the details above.")}</p>
                       </div>
                     </div>
                   </div>
                 )}
-
                 {formData.paymentMethod === "momo" && (
                   <div className="mt-4 rounded-xl border border-black/10 bg-stone-50 p-4 space-y-4 animate-fadeIn">
                     <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4">
@@ -603,15 +604,15 @@ export function CheckoutPage() {
                         />
                       </div>
                       <div className="flex-1 space-y-2 text-xs w-full">
-                        <p className="font-bold uppercase text-[9px] tracking-wider text-black/50">Ví điện tử MoMo</p>
+                        <p className="font-bold uppercase text-[9px] tracking-wider text-black/50">{t("Ví điện tử MoMo", "MoMo E-wallet")}</p>
                         
                         <div className="space-y-1">
-                          <p className="text-black/60 text-[9px]">Tên tài khoản:</p>
+                          <p className="text-black/60 text-[9px]">{t("Tên tài khoản:", "Account Name:")}</p>
                           <p className="font-black text-black">{settings.momoAccountName || "MADMAD STUDIO"}</p>
                         </div>
 
                         <div className="space-y-1">
-                          <p className="text-black/60 text-[9px]">Số điện thoại MoMo:</p>
+                          <p className="text-black/60 text-[9px]">{t("Số điện thoại MoMo:", "MoMo Phone Number:")}</p>
                           <div className="flex items-center justify-between gap-2 bg-white rounded-lg border border-black/5 px-2.5 py-1.5">
                             <span className="font-mono font-bold text-black text-xs">{settings.momoPhone || "0999999999"}</span>
                             <button
@@ -625,7 +626,7 @@ export function CheckoutPage() {
                         </div>
 
                         <div className="space-y-1">
-                          <p className="text-black/60 text-[9px]">Nội dung chuyển tiền:</p>
+                          <p className="text-black/60 text-[9px]">{t("Nội dung chuyển tiền:", "Transfer Memo:")}</p>
                           <div className="flex items-center justify-between gap-2 bg-white rounded-lg border border-black/5 px-2.5 py-1.5">
                             <span className="font-mono font-black text-black tracking-wider text-xs uppercase">{`MADMAD ${orderNumber}`}</span>
                             <button
@@ -639,9 +640,9 @@ export function CheckoutPage() {
                         </div>
 
                         <div className="space-y-1">
-                          <p className="text-black/60 text-[9px]">Số tiền:</p>
+                          <p className="text-black/60 text-[9px]">{t("Số tiền:", "Amount:")}</p>
                           <div className="flex items-center justify-between gap-2 bg-white rounded-lg border border-black/5 px-2.5 py-1.5">
-                            <span className="font-bold text-red-600 text-xs">{total.toLocaleString("vi-VN")}₫</span>
+                            <span className="font-bold text-red-600 text-xs">{formatPrice(total)}</span>
                             <button
                               type="button"
                               onClick={() => handleCopy(String(total), "momoTotal")}
@@ -652,7 +653,7 @@ export function CheckoutPage() {
                           </div>
                         </div>
 
-                        <p className="text-[10px] text-red-600 font-bold pt-1">✓ Chuyển khoản đúng số tiền và nội dung để hệ thống duyệt tự động.</p>
+                        <p className="text-[10px] text-red-600 font-bold pt-1">{t("✓ Chuyển khoản đúng số tiền và nội dung để hệ thống duyệt tự động.", "✓ Please transfer the exact amount and memo for automatic approval.")}</p>
                       </div>
                     </div>
                   </div>
@@ -668,13 +669,13 @@ export function CheckoutPage() {
                           alt="PayPal QR"
                           className="h-32 w-32 object-contain"
                         />
-                        <span className="text-[8px] font-bold text-black/40 uppercase">Quét để thanh toán</span>
+                        <span className="text-[8px] font-bold text-black/40 uppercase">{t("Quét để thanh toán", "Scan to pay")}</span>
                       </div>
                       <div className="flex-1 space-y-2 text-xs w-full">
-                        <p className="font-bold uppercase text-[9px] tracking-wider text-black/50">Cổng thanh toán quốc tế PayPal</p>
+                        <p className="font-bold uppercase text-[9px] tracking-wider text-black/50">{t("Cổng thanh toán quốc tế PayPal", "PayPal International Gateway")}</p>
                         
                         <div className="space-y-1">
-                          <p className="text-black/60 text-[9px]">Tài khoản PayPal nhận tiền:</p>
+                          <p className="text-black/60 text-[9px]">{t("Tài khoản PayPal nhận tiền:", "PayPal Account Email:")}</p>
                           <div className="flex items-center justify-between gap-2 bg-white rounded-lg border border-black/5 px-2.5 py-1.5">
                             <span className="font-bold text-black text-xs break-all">{settings.storeEmail || "mmadmadstudio@gmail.com"}</span>
                             <button
@@ -688,10 +689,10 @@ export function CheckoutPage() {
                         </div>
 
                         <div className="space-y-1">
-                          <p className="text-black/60 text-[9px]">Tổng thanh toán quy đổi (USD):</p>
+                          <p className="text-black/60 text-[9px]">{t("Tổng thanh toán quy đổi (USD):", "Converted Amount (USD):")}</p>
                           <div className="flex items-center justify-between gap-2 bg-white rounded-lg border border-black/5 px-2.5 py-1.5">
                             <span className="font-black text-blue-600 text-xs">${(total / 25000).toFixed(2)} USD</span>
-                            <span className="text-[9px] text-black/45">(~{total.toLocaleString("vi-VN")}₫)</span>
+                            <span className="text-[9px] text-black/45">(~{formatPrice(total)})</span>
                           </div>
                         </div>
 
@@ -702,13 +703,13 @@ export function CheckoutPage() {
                             rel="noopener noreferrer"
                             className="w-full flex items-center justify-center gap-1.5 rounded-xl bg-[#FFC439] hover:bg-[#F2B222] py-2 px-4 text-xs font-black uppercase text-[#003087] transition-all tracking-wider shadow-sm cursor-pointer"
                           >
-                            <span>Thanh toán bằng PayPal</span>
+                            <span>{t("Thanh toán bằng PayPal", "Pay with PayPal")}</span>
                             <span className="font-black text-[10px] text-[#0079C1] italic">Pay</span>
                             <span className="font-black text-[10px] text-[#00457C] italic">Pal</span>
                           </a>
                         </div>
                         
-                        <p className="text-[10px] text-blue-800 font-bold pt-1">✓ Click nút màu vàng phía trên để mở trang thanh toán an toàn của PayPal.</p>
+                        <p className="text-[10px] text-blue-800 font-bold pt-1">{t("✓ Click nút màu vàng phía trên để mở trang thanh toán an toàn của PayPal.", "✓ Click the yellow button above to pay securely via PayPal.")}</p>
                       </div>
                     </div>
                   </div>
@@ -718,7 +719,7 @@ export function CheckoutPage() {
               {/* Submit */}
               <button type="submit"
                 className="w-full rounded-xl bg-black py-4 text-sm font-bold uppercase tracking-widest text-white transition-opacity hover:opacity-80">
-                Đặt hàng ngay
+                {t("Đặt hàng ngay", "Place Order Now")}
               </button>
             </form>
           </div>
@@ -728,7 +729,7 @@ export function CheckoutPage() {
         <div className="hidden lg:flex flex-1 bg-[#f5f5f5] border-l border-black/10 justify-start">
           <div className="w-full max-w-[420px] px-10 py-10">
             <div className="sticky top-6">
-              <h2 className="mb-5 text-xs font-bold uppercase tracking-widest text-black/60">Đơn hàng của bạn</h2>
+              <h2 className="mb-5 text-xs font-bold uppercase tracking-widest text-black/60">{t("Đơn hàng của bạn", "Your Order")}</h2>
 
               {/* Items */}
               <div className="mb-6 space-y-3.5">
@@ -736,13 +737,13 @@ export function CheckoutPage() {
                   <div key={item.id} className="flex items-center gap-3 bg-white border border-black/5 rounded-xl p-3 shadow-sm hover:shadow-md transition-shadow">
                     {/* Image */}
                     <div className="h-16 w-16 flex-shrink-0 overflow-hidden bg-white border border-black/10 rounded-lg">
-                      <ImageWithFallback src={product.image} alt={product.name}
+                      <ImageWithFallback src={product.image} alt={translate(product.name)}
                         className="h-full w-full object-cover" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="truncate text-xs font-extrabold uppercase tracking-wide text-black">{product.name}</p>
+                      <p className="truncate text-xs font-extrabold uppercase tracking-wide text-black">{translate(product.name)}</p>
                       <p className="text-[10px] text-black/45 mt-0.5 uppercase">
-                        {item.size}{item.color ? ` / ${item.color}` : ""}
+                        {item.size}{item.color ? ` / ${translate(item.color)}` : ""}
                       </p>
                       
                       {/* Interactive inline quantity adjuster + delete */}
@@ -785,14 +786,14 @@ export function CheckoutPage() {
                     
                     <div className="text-right flex-shrink-0">
                       <p className="text-xs font-bold text-black font-mono">
-                        {(item.priceAtAdd * item.quantity).toLocaleString("vi-VN")}₫
+                        {formatPrice(item.priceAtAdd * item.quantity)}
                       </p>
                     </div>
                   </div>
                 ))}
                 {resolvedItems.length === 0 && (
                   <div className="text-center py-6 border border-dashed border-black/10 rounded-xl bg-white">
-                    <p className="text-xs text-black/40">Giỏ hàng trống.</p>
+                    <p className="text-xs text-black/40">{t("Giỏ hàng trống.", "Your cart is empty.")}</p>
                   </div>
                 )}
               </div>
@@ -803,42 +804,42 @@ export function CheckoutPage() {
               {/* Totals */}
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between">
-                  <span className="text-black/60">Tạm tính · {resolvedItems.length} sản phẩm</span>
-                  <span>{subtotal.toLocaleString("vi-VN")}₫</span>
+                  <span className="text-black/60">{t("Tạm tính", "Subtotal")} · {resolvedItems.length} {t("sản phẩm", "items")}</span>
+                  <span>{formatPrice(subtotal)}</span>
                 </div>
                 {discountAmount > 0 && (
                   <div className="flex justify-between">
-                    <span className="text-black/60">Giảm giá {appliedCoupon ? `(${appliedCoupon.code})` : ""}</span>
-                    <span className="text-green-700">- {discountAmount.toLocaleString("vi-VN")}₫</span>
+                    <span className="text-black/60">{t("Giảm giá", "Discounts")} {appliedCoupon ? `(${appliedCoupon.code})` : ""}</span>
+                    <span className="text-green-700">- {formatPrice(discountAmount)}</span>
                   </div>
                 )}
                 {vipDiscountAmount > 0 && (
                   <div className="flex justify-between font-semibold text-stone-900 animate-fadeIn">
-                    <span className="text-black/60">Chiết khấu VIP {currentMember?.tier} ({memberDiscountPercent}%)</span>
-                    <span className="text-red-700">- {vipDiscountAmount.toLocaleString("vi-VN")}₫</span>
+                    <span className="text-black/60">{t("Chiết khấu VIP", "VIP Discount")} {currentMember?.tier} ({memberDiscountPercent}%)</span>
+                    <span className="text-red-700">- {formatPrice(vipDiscountAmount)}</span>
                   </div>
                 )}
                 <div className="flex justify-between">
-                  <span className="text-black/60">Vận chuyển</span>
-                  <span>{shipping === 0 ? <span className="text-green-700">Miễn phí</span> : `${shipping.toLocaleString("vi-VN")}₫`}</span>
+                  <span className="text-black/60">{t("Vận chuyển", "Shipping")}</span>
+                  <span>{shipping === 0 ? <span className="text-green-700">{t("Miễn phí", "Free")}</span> : `${formatPrice(shipping)}`}</span>
                 </div>
                 {shippingBase < 500000 && shipping > 0 && (
                   <p className="text-xs text-black/50">
-                    Thêm {(500000 - shippingBase).toLocaleString("vi-VN")}₫ để miễn phí vận chuyển
+                    {t("Thêm", "Add")} {formatPrice(500000 - shippingBase)} {t("để miễn phí vận chuyển", "more for free shipping")}
                   </p>
                 )}
                 {isDiscountCapped && (
                   <div className="rounded-lg bg-amber-50 border border-amber-200 p-2.5 text-[10px] font-semibold text-amber-800 space-y-0.5 mt-2 animate-fadeIn">
-                    <p className="font-bold uppercase tracking-wider">⚠️ Đã đạt giới hạn giảm giá (35%)</p>
-                    <p className="opacity-95">Để bảo đảm chính sách giá của thương hiệu, tổng chiết khấu (Voucher + VIP) được giới hạn tối đa ở mức 35%.</p>
+                    <p className="font-bold uppercase tracking-wider">{t("⚠️ Đã đạt giới hạn giảm giá (35%)", "⚠️ Discount Limit Reached (35%)")}</p>
+                    <p className="opacity-95">{t("Để bảo đảm chính sách giá của thương hiệu, tổng chiết khấu (Voucher + VIP) được giới hạn tối đa ở mức 35%.", "To maintain the brand price policy, the total discount (Voucher + VIP) is capped at 35%.")}</p>
                   </div>
                 )}
               </div>
 
               <div className="mt-4 border-t border-black/10 pt-4">
                 <div className="flex items-baseline justify-between">
-                  <span className="text-sm font-bold uppercase tracking-widest">Tổng cộng</span>
-                  <span className="text-xl font-semibold">{total.toLocaleString("vi-VN")}₫</span>
+                  <span className="text-sm font-bold uppercase tracking-widest">{t("Tổng cộng", "Total")}</span>
+                  <span className="text-xl font-semibold">{formatPrice(total)}</span>
                 </div>
               </div>
             </div>

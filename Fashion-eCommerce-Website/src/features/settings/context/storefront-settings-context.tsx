@@ -88,6 +88,13 @@ export const DEFAULT_STOREFRONT_SETTINGS: StorefrontSettings = {
   enableMomo: true,
   enablePaypal: true,
   orderAutoCancelHours: 24,
+
+  // 🌐 Cấu hình Tiền tệ & Ngoại thương quốc tế
+  currencyMode: "auto",
+  exchangeRate: 25000,
+  intlConversionFeePercent: 3.5,
+  intlShippingFee: 250000,
+  intlMarkupPercent: 10,
 };
 
 interface StorefrontSettingsContextValue {
@@ -229,6 +236,16 @@ function readStoredSettings(): StorefrontSettings {
         typeof parsed.enablePaypal === "boolean" ? parsed.enablePaypal : DEFAULT_STOREFRONT_SETTINGS.enablePaypal,
       orderAutoCancelHours:
         typeof parsed.orderAutoCancelHours === "number" ? parsed.orderAutoCancelHours : DEFAULT_STOREFRONT_SETTINGS.orderAutoCancelHours,
+      currencyMode:
+        parsed.currencyMode === "auto" || parsed.currencyMode === "manual" ? parsed.currencyMode : DEFAULT_STOREFRONT_SETTINGS.currencyMode,
+      exchangeRate:
+        typeof parsed.exchangeRate === "number" ? parsed.exchangeRate : DEFAULT_STOREFRONT_SETTINGS.exchangeRate,
+      intlConversionFeePercent:
+        typeof parsed.intlConversionFeePercent === "number" ? parsed.intlConversionFeePercent : DEFAULT_STOREFRONT_SETTINGS.intlConversionFeePercent,
+      intlShippingFee:
+        typeof parsed.intlShippingFee === "number" ? parsed.intlShippingFee : DEFAULT_STOREFRONT_SETTINGS.intlShippingFee,
+      intlMarkupPercent:
+        typeof parsed.intlMarkupPercent === "number" ? parsed.intlMarkupPercent : DEFAULT_STOREFRONT_SETTINGS.intlMarkupPercent,
     };
   } catch {
     return DEFAULT_STOREFRONT_SETTINGS;

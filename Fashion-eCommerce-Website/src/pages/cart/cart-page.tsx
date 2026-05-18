@@ -5,9 +5,11 @@ import { useEffect } from "react";
 import { ImageWithFallback } from "@/components/common/image-with-fallback";
 import { useCart } from "@/features/cart/context/cart-context";
 import { useProducts } from "@/features/products/context/product-context";
+import { useLanguage } from "@/features/settings/context/language-context";
 
 export function CartPage() {
   const { products } = useProducts();
+  const { formatPrice, t } = useLanguage();
   const {
     cartItems,
     subtotal,
@@ -45,8 +47,8 @@ export function CartPage() {
 
         {/* ── Heading ── */}
         <div className="mb-8">
-          <h1 className="text-3xl tracking-widest">
-            GIỎ HÀNG{" "}
+          <h1 className="text-3xl tracking-widest uppercase">
+            {t("GIỎ HÀNG", "SHOPPING CART")}{" "}
             <span className="text-xl text-black/40">{resolvedItems.length}</span>
           </h1>
         </div>
@@ -55,13 +57,13 @@ export function CartPage() {
           /* ── Empty state ── */
           <div className="bg-white py-20 text-center">
             <ShoppingBag className="mx-auto mb-4 h-14 w-14 text-black/20" />
-            <h2 className="mb-2 text-2xl tracking-widest">GIỎ HÀNG TRỐNG</h2>
-            <p className="mb-8 text-sm text-black/50">Thêm sản phẩm để bắt đầu mua sắm</p>
+            <h2 className="mb-2 text-2xl tracking-widest uppercase">{t("GIỎ HÀNG TRỐNG", "YOUR CART IS EMPTY")}</h2>
+            <p className="mb-8 text-sm text-black/50">{t("Thêm sản phẩm để bắt đầu mua sắm", "Add items to start shopping")}</p>
             <Link
               to="/shop"
               className="inline-block bg-black px-10 py-3 text-sm font-bold uppercase tracking-widest text-white transition-opacity hover:opacity-80"
             >
-              Tiếp tục mua sắm
+              {t("Tiếp tục mua sắm", "Continue Shopping")}
             </Link>
           </div>
         ) : (
@@ -79,7 +81,7 @@ export function CartPage() {
                     <Link to={`/product/${product.id}`} className="h-24 w-24 flex-shrink-0 overflow-hidden bg-[#f0f0f0]">
                       <ImageWithFallback
                         src={product.image}
-                        alt={product.name}
+                        alt={translate(product.name)}
                         className="h-full w-full object-cover"
                       />
                     </Link>
@@ -89,15 +91,15 @@ export function CartPage() {
                       <div className="flex items-start justify-between gap-4">
                         <div>
                           <Link to={`/product/${product.id}`} className="hover:opacity-70 transition-opacity">
-                            <p className="text-xs font-bold uppercase tracking-wider">{product.name}</p>
+                            <p className="text-xs font-bold uppercase tracking-wider">{translate(product.name)}</p>
                           </Link>
                           <p className="mt-0.5 text-xs text-black/50">
                             {item.size && `${item.size}`}
-                            {item.color && ` / ${item.color}`}
+                            {item.color && ` / ${translate(item.color)}`}
                           </p>
                         </div>
                         <p className="text-sm font-semibold whitespace-nowrap">
-                          {(item.priceAtAdd * item.quantity).toLocaleString("vi-VN")}₫
+                          {formatPrice(item.priceAtAdd * item.quantity)}
                         </p>
                       </div>
 
@@ -122,7 +124,7 @@ export function CartPage() {
                           onClick={() => removeFromCart(item.id)}
                           className="text-xs text-black/40 underline transition-colors hover:text-black"
                         >
-                          Xóa
+                          {t("Xóa", "Remove")}
                         </button>
                       </div>
                     </div>
@@ -134,39 +136,39 @@ export function CartPage() {
                 to="/shop"
                 className="mt-4 inline-block text-xs uppercase tracking-widest text-black/50 underline transition-colors hover:text-black"
               >
-                ← Tiếp tục mua sắm
+                {t("← Tiếp tục mua sắm", "← Continue Shopping")}
               </Link>
             </div>
 
             {/* ── Right: Order summary ── */}
             <div className="lg:col-span-1">
               <div className="sticky top-24 bg-[#efefef] p-6">
-                <p className="mb-1 text-xs font-bold uppercase tracking-widest text-black/60">Tổng tạm tính</p>
+                <p className="mb-1 text-xs font-bold uppercase tracking-widest text-black/60">{t("Tổng tạm tính", "Subtotal")}</p>
                 <p className="mb-1 text-2xl font-semibold">
-                  {(subtotal - discountAmount + shipping).toLocaleString("vi-VN")}₫
+                  {formatPrice(subtotal - discountAmount + shipping)}
                 </p>
                 <p className="mb-5 text-xs text-black/50">
-                  Thuế, giảm giá và phí vận chuyển được tính khi thanh toán.
+                  {t("Thuế, giảm giá và phí vận chuyển được tính khi thanh toán.", "Shipping & taxes calculated at checkout.")}
                 </p>
 
                 {/* Shipping notice */}
                 {shippingBase < 500000 && shipping > 0 && (
                   <p className="mb-4 text-xs text-black/60">
-                    Thêm{" "}
+                    {t("Thêm", "Add")}{" "}
                     <span className="font-bold">
-                      {(500000 - shippingBase).toLocaleString("vi-VN")}₫
+                      {formatPrice(500000 - shippingBase)}
                     </span>{" "}
-                    để được miễn phí vận chuyển.
+                    {t("để được miễn phí vận chuyển.", "more for free shipping.")}
                   </p>
                 )}
                 {shipping === 0 && (
-                  <p className="mb-4 text-xs font-medium text-green-700">✓ Miễn phí vận chuyển</p>
+                  <p className="mb-4 text-xs font-medium text-green-700">{t("✓ Miễn phí vận chuyển", "✓ Free shipping")}</p>
                 )}
 
                 {/* Coupon codes */}
                 {!hasDiscountedProducts && availableCoupons.length > 0 && (
                   <div className="mb-4">
-                    <p className="mb-2 text-xs text-black/50">Mã giảm giá</p>
+                    <p className="mb-2 text-xs text-black/50">{t("Mã giảm giá", "Discount Codes")}</p>
                     <div className="flex flex-wrap gap-2">
                       {availableCoupons.map((coupon) => (
                         <button
@@ -182,15 +184,15 @@ export function CartPage() {
                               : "border-black/30 bg-white hover:border-black"
                           }`}
                         >
-                          {coupon.code} (-{coupon.discountAmount.toLocaleString("vi-VN")}₫)
+                          {coupon.code} (-{formatPrice(coupon.discountAmount)})
                         </button>
                       ))}
                     </div>
                     {appliedCoupon && (
                       <div className="mt-2 flex items-center justify-between text-xs">
-                        <span className="text-green-700">✓ Mã: {appliedCoupon.code}</span>
+                        <span className="text-green-700">{t("✓ Mã: ", "✓ Code: ")}{appliedCoupon.code}</span>
                         <button onClick={clearCoupon} className="text-red-600 hover:underline">
-                          Bỏ mã
+                          {t("Bỏ mã", "Remove code")}
                         </button>
                       </div>
                     )}
@@ -202,7 +204,7 @@ export function CartPage() {
                   to="/checkout"
                   className="block w-full bg-black py-4 text-center text-sm font-bold uppercase tracking-widest text-white transition-opacity hover:opacity-80"
                 >
-                  Thanh toán
+                  {t("Thanh toán", "Checkout")}
                 </Link>
               </div>
             </div>

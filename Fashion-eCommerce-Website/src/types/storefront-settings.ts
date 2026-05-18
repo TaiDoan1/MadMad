@@ -62,4 +62,11 @@ export interface StorefrontSettings {
   
   // ⏳ Cấu hình tự động
   orderAutoCancelHours?: number;
+
+  // 🌐 Cấu hình Tiền tệ & Ngoại thương quốc tế
+  currencyMode?: "auto" | "manual";
+  exchangeRate?: number;
+  intlConversionFeePercent?: number;
+  intlShippingFee?: number;
+  intlMarkupPercent?: number;
 }

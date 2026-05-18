@@ -4,6 +4,7 @@ import { Link } from "react-router";
 import { ImageWithFallback } from "@/components/common/image-with-fallback";
 import { useCart } from "@/features/cart/context/cart-context";
 import { useProducts } from "@/features/products/context/product-context";
+import { useLanguage } from "@/features/settings/context/language-context";
 
 interface CartDrawerProps {
   open: boolean;
@@ -13,6 +14,7 @@ interface CartDrawerProps {
 export function CartDrawer({ open, onClose }: CartDrawerProps) {
   const { products } = useProducts();
   const { cartItems, subtotal, updateItemQuantity, removeFromCart } = useCart();
+  const { formatPrice, t, translate } = useLanguage();
 
   const resolvedItems = cartItems
     .map((item) => ({
@@ -41,7 +43,7 @@ export function CartDrawer({ open, onClose }: CartDrawerProps) {
       {/* ── Drawer panel ────────────────────────────────────────────────── */}
       <div
         role="dialog"
-        aria-label="Giỏ hàng"
+        aria-label={t("Giỏ hàng", "Shopping Cart")}
         aria-modal="true"
         className={`fixed inset-y-0 right-0 z-[201] flex w-full max-w-[390px] flex-col bg-white shadow-2xl transition-transform duration-300 ease-[cubic-bezier(0.76,0,0.24,1)] ${
           open ? "translate-x-0" : "translate-x-full"
@@ -50,7 +52,7 @@ export function CartDrawer({ open, onClose }: CartDrawerProps) {
         {/* ── Header ── */}
         <div className="flex items-center justify-between border-b border-black/10 px-6 py-5">
           <div className="flex items-center gap-2">
-            <span className="text-sm font-bold uppercase tracking-widest">Giỏ hàng</span>
+            <span className="text-sm font-bold uppercase tracking-widest">{t("Giỏ hàng", "Shopping Cart")}</span>
             {resolvedItems.length > 0 && (
               <span className="flex h-5 w-5 items-center justify-center rounded-full bg-black text-[10px] font-bold text-white">
                 {resolvedItems.length}
@@ -59,7 +61,7 @@ export function CartDrawer({ open, onClose }: CartDrawerProps) {
           </div>
           <button
             onClick={onClose}
-            aria-label="Đóng giỏ hàng"
+            aria-label={t("Đóng giỏ hàng", "Close Cart")}
             className="text-black/50 transition-colors hover:text-black"
           >
             <X className="h-5 w-5" />
@@ -72,13 +74,13 @@ export function CartDrawer({ open, onClose }: CartDrawerProps) {
             <div className="flex h-full flex-col items-center justify-center gap-4 text-center">
               <ShoppingBag className="h-12 w-12 text-black/20" />
               <p className="text-sm font-bold uppercase tracking-widest text-black/40">
-                Giỏ hàng trống
+                {t("Giỏ hàng trống", "Your cart is empty")}
               </p>
               <button
                 onClick={onClose}
                 className="mt-2 text-xs uppercase tracking-widest text-black underline transition-opacity hover:opacity-60"
               >
-                Tiếp tục mua sắm
+                {t("Tiếp tục mua sắm", "Continue Shopping")}
               </button>
             </div>
           ) : (
@@ -89,7 +91,7 @@ export function CartDrawer({ open, onClose }: CartDrawerProps) {
                   <Link to={`/product/${product.id}`} onClick={onClose} className="h-[72px] w-[72px] flex-shrink-0 overflow-hidden bg-[#f5f5f5]">
                     <ImageWithFallback
                       src={product.image}
-                      alt={product.name}
+                      alt={translate(product.name)}
                       className="h-full w-full object-cover"
                     />
                   </Link>
@@ -102,16 +104,16 @@ export function CartDrawer({ open, onClose }: CartDrawerProps) {
                         onClick={onClose}
                         className="flex-1 text-[11px] font-bold uppercase leading-tight tracking-wider hover:opacity-60 transition-opacity"
                       >
-                        {product.name}
+                        {translate(product.name)}
                       </Link>
                       <span className="text-[11px] font-semibold whitespace-nowrap">
-                        {(item.priceAtAdd * item.quantity).toLocaleString("vi-VN")}₫
+                        {formatPrice(item.priceAtAdd * item.quantity)}
                       </span>
                     </div>
 
                     {(item.size || item.color) && (
                       <p className="text-[11px] text-black/45">
-                        {item.size}{item.color ? ` / ${item.color}` : ""}
+                        {item.size}{item.color ? ` / ${translate(item.color)}` : ""}
                       </p>
                     )}
 
@@ -121,7 +123,7 @@ export function CartDrawer({ open, onClose }: CartDrawerProps) {
                         <button
                           onClick={() => updateItemQuantity(item.id, item.quantity - 1)}
                           className="flex h-7 w-7 items-center justify-center text-black/60 transition-colors hover:bg-black hover:text-white"
-                          aria-label="Giảm"
+                          aria-label={t("Giảm", "Decrease")}
                         >
                           <Minus className="h-2.5 w-2.5" />
                         </button>
@@ -129,7 +131,7 @@ export function CartDrawer({ open, onClose }: CartDrawerProps) {
                         <button
                           onClick={() => updateItemQuantity(item.id, item.quantity + 1)}
                           className="flex h-7 w-7 items-center justify-center text-black/60 transition-colors hover:bg-black hover:text-white"
-                          aria-label="Tăng"
+                          aria-label={t("Tăng", "Increase")}
                         >
                           <Plus className="h-2.5 w-2.5" />
                         </button>
@@ -138,7 +140,7 @@ export function CartDrawer({ open, onClose }: CartDrawerProps) {
                         onClick={() => removeFromCart(item.id)}
                         className="text-[11px] text-black/35 underline transition-colors hover:text-black"
                       >
-                        Xóa
+                        {t("Xóa", "Remove")}
                       </button>
                     </div>
                   </div>
@@ -152,18 +154,18 @@ export function CartDrawer({ open, onClose }: CartDrawerProps) {
         {resolvedItems.length > 0 && (
           <div className="border-t border-black/10 px-6 py-5">
             <div className="mb-1 flex items-center justify-between">
-              <span className="text-xs text-black/60">Tổng tạm tính</span>
-              <span className="text-base font-semibold">{total.toLocaleString("vi-VN")}₫</span>
+              <span className="text-xs text-black/60">{t("Tổng tạm tính", "Subtotal")}</span>
+              <span className="text-base font-semibold">{formatPrice(total)}</span>
             </div>
             <p className="mb-4 text-[11px] text-black/40">
-              Thuế, giảm giá và phí vận chuyển tính khi thanh toán.
+              {t("Thuế, giảm giá và phí vận chuyển tính khi thanh toán.", "Shipping & taxes calculated at checkout.")}
             </p>
             <Link
               to="/checkout"
               onClick={onClose}
               className="block w-full rounded bg-black py-3.5 text-center text-xs font-bold uppercase tracking-widest text-white transition-opacity hover:opacity-80"
             >
-              Thanh toán
+              {t("Thanh toán", "Checkout")}
             </Link>
           </div>
         )}

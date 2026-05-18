@@ -3,9 +3,11 @@ import { useMembership } from "@/features/membership/context/membership-context"
 import { Sparkles, Award, Receipt, LogOut, ArrowRight, UserCheck, ShieldCheck, Lock, XCircle, MessageCircle, Edit2, CheckCircle2, User, Phone, Mail } from "lucide-react";
 import { useTransitionTo } from "@/components/common/page-transition";
 import { API_URL, GOOGLE_CLIENT_ID } from "@/config/api";
+import { useLanguage } from "@/features/settings/context/language-context";
 
 export function MembershipPage() {
   const { currentMember, registerMember, loginMember, loginWithGoogle, updateMemberProfile, logoutMember, tierConfigs } = useMembership();
+  const { formatPrice, t } = useLanguage();
   const navigate = useTransitionTo();
 
   const [isRegister, setIsRegister] = useState(false);
@@ -103,12 +105,12 @@ export function MembershipPage() {
     try {
       const res = await loginWithGoogle(response.credential);
       if (res.success) {
-        setMessage("Đăng nhập tài khoản Google thành công!");
+        setMessage(t("Đăng nhập tài khoản Google thành công!", "Google login successful!"));
       } else {
-        setError(res.error || "Không thể đồng bộ tài khoản Google!");
+        setError(res.error || t("Không thể đồng bộ tài khoản Google!", "Failed to synchronize Google account!"));
       }
     } catch (err) {
-      setError("Không kết nối được dịch vụ Google OAuth!");
+      setError(t("Không kết nối được dịch vụ Google OAuth!", "Could not connect to Google OAuth service!"));
     }
   };
 
@@ -116,7 +118,7 @@ export function MembershipPage() {
     e.preventDefault();
     setError("");
     if (!phoneOrEmail || !password) {
-      setError("Vui lòng nhập đầy đủ thông tin Email/SĐT và Mật khẩu!");
+      setError(t("Vui lòng nhập đầy đủ thông tin Email/SĐT và Mật khẩu!", "Please fill in Email/Phone and Password!"));
       return;
     }
     const res = await loginMember(phoneOrEmail, password);
@@ -131,18 +133,18 @@ export function MembershipPage() {
     setMessage("");
 
     if (!fullName || !email || !phone || !password) {
-      setError("Vui lòng nhập đầy đủ thông tin và thiết lập Mật khẩu!");
+      setError(t("Vui lòng nhập đầy đủ thông tin và thiết lập Mật khẩu!", "Please enter full details and establish a Password!"));
       return;
     }
 
     if (password.length < 6) {
-      setError("Mật khẩu bảo mật phải có ít nhất 6 ký tự!");
+      setError(t("Mật khẩu bảo mật phải có ít nhất 6 ký tự!", "Security password must be at least 6 characters long!"));
       return;
     }
 
     const res = await registerMember(fullName, email, phone, password);
     if (res.success) {
-      setMessage("Chúc mừng! Đăng ký tài khoản VIP MADMAD thành công!");
+      setMessage(t("Chúc mừng! Đăng ký tài khoản VIP MADMAD thành công!", "Congratulations! MADMAD VIP account registered successfully!"));
     } else {
       setError(res.error || "");
     }
@@ -154,21 +156,21 @@ export function MembershipPage() {
     setError("");
     setMessage("");
     if (!profileName.trim()) {
-      setError("Họ tên không được để trống!");
+      setError(t("Họ tên không được để trống!", "Full name cannot be blank!"));
       return;
     }
     const res = await updateMemberProfile(profileName, profilePhone);
     if (res.success) {
-      setMessage("Cập nhật thông tin thành viên thành công!");
+      setMessage(t("Cập nhật thông tin thành viên thành công!", "Member profile updated successfully!"));
       setEditingProfile(false);
     } else {
-      setError(res.error || "Không thể cập nhật thông tin!");
+      setError(res.error || t("Không thể cập nhật thông tin!", "Failed to update profile info!"));
     }
   };
 
   // Perform order cancellation
   const handleCancelOrder = (orderId: number) => {
-    if (window.confirm("Bạn có chắc chắn muốn hủy đơn hàng này không? Hành động này không thể hoàn tác!")) {
+    if (window.confirm(t("Bạn có chắc chắn muốn hủy đơn hàng này không? Hành động này không thể hoàn tác!", "Are you sure you want to cancel this order? This action cannot be undone!"))) {
       fetch(`${API_URL}/orders/${orderId}/status`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
@@ -176,14 +178,14 @@ export function MembershipPage() {
       })
         .then(res => {
           if (res.ok) {
-            setMessage("Đã gửi yêu cầu hủy đơn hàng thành công!");
+            setMessage(t("Đã gửi yêu cầu hủy đơn hàng thành công!", "Cancellation request submitted successfully!"));
             // Refresh order history list in-place
             setMyOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: "cancelled" } : o));
           } else {
-            setError("Gặp sự cố khi gửi yêu cầu hủy đơn hàng.");
+            setError(t("Gặp sự cố khi gửi yêu cầu hủy đơn hàng.", "Failed to submit cancellation request."));
           }
         })
-        .catch(() => setError("Lỗi kết nối máy chủ khi hủy đơn."));
+        .catch(() => setError(t("Lỗi kết nối máy chủ khi hủy đơn.", "Server connection error.")));
     }
   };
 
@@ -208,14 +210,14 @@ export function MembershipPage() {
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 border-b border-black/10 pb-8 mb-12">
           <div>
             <h1 className="font-bold text-3xl tracking-tight text-black mb-2 uppercase">MADMAD CLUB</h1>
-            <p className="text-black/50 text-sm">Chào mừng thành viên danh giá trở lại</p>
+            <p className="text-black/50 text-sm">{t("Chào mừng thành viên danh giá trở lại", "Welcome back, honored member")}</p>
           </div>
           <button
             onClick={logoutMember}
             className="flex items-center justify-center gap-2 border border-black/15 hover:border-red-600 hover:text-red-600 px-5 py-2.5 text-xs font-bold tracking-widest uppercase transition-all rounded-sm"
           >
             <LogOut className="h-4 w-4" />
-            Đăng xuất
+            {t("Đăng xuất", "Log Out")}
           </button>
         </div>
 
@@ -246,7 +248,7 @@ export function MembershipPage() {
               <div className="flex justify-between items-start">
                 <div>
                   <p className="text-[10px] tracking-[0.2em] font-bold opacity-60">MADMAD CLUB</p>
-                  <p className="font-bold text-xs tracking-widest mt-1">BLACK CARD EDITION</p>
+                  <p className="font-bold text-xs tracking-widest mt-1">{t("BLACK CARD EDITION", "BLACK CARD EDITION")}</p>
                 </div>
                 <div className="px-3 py-1 bg-white/10 backdrop-blur-md rounded-full text-[9px] font-extrabold tracking-widest border border-white/10 uppercase">
                   {currentMember.tier}
@@ -261,16 +263,16 @@ export function MembershipPage() {
 
               <div className="flex justify-between items-end">
                 <div>
-                  <p className="text-[8px] tracking-[0.15em] opacity-40 uppercase">Chủ thẻ</p>
+                  <p className="text-[8px] tracking-[0.15em] opacity-40 uppercase">{t("Chủ thẻ", "Card Holder")}</p>
                   <p className="font-bold text-sm tracking-wider uppercase mt-0.5">{currentMember.fullName}</p>
                 </div>
                 {currentMember.avatarUrl ? (
                   <img src={currentMember.avatarUrl} alt="Avatar" className="h-10 w-10 rounded-full border-2 border-white/20 object-cover" />
                 ) : (
                   <div className="text-right">
-                    <p className="text-[8px] tracking-[0.15em] opacity-40 uppercase">Gia nhập</p>
-                    <p className="font-medium text-xs opacity-80 mt-0.5">
-                      {new Date(currentMember.createdAt).toLocaleDateString("vi-VN")}
+                    <p className="text-[8px] tracking-[0.15em] opacity-40 uppercase">{t("Gia nhập", "Joined")}</p>
+                    <p className="font-medium text-xs opacity-80 mt-0.5 font-mono">
+                      {new Date(currentMember.createdAt).toLocaleDateString()}
                     </p>
                   </div>
                 )}
@@ -280,19 +282,19 @@ export function MembershipPage() {
             {/* BOX ĐIỂM */}
             <div className="border border-black/10 rounded-xl p-6 bg-stone-50">
               <div className="flex justify-between items-center mb-4">
-                <span className="text-xs font-bold tracking-wider text-black/50 uppercase">ĐIỂM TÍCH LŨY</span>
+                <span className="text-xs font-bold tracking-wider text-black/50 uppercase">{t("ĐIỂM TÍCH LŨY", "LOYALTY POINTS")}</span>
                 <Sparkles className="h-5 w-5 text-red-600 animate-pulse" />
               </div>
               <div className="flex items-baseline gap-2">
                 <span className="text-4xl font-extrabold tracking-tight text-black">{currentMember.points}</span>
-                <span className="text-xs font-bold text-black/60">ĐIỂM</span>
+                <span className="text-xs font-bold text-black/60">{t("ĐIỂM", "POINTS")}</span>
               </div>
               {(() => {
                 const currentTierConfig = tierConfigs.find((c) => c.tier === currentMember.tier);
                 const cashbackPercent = currentTierConfig ? currentTierConfig.discountPercent : 2;
                 return (
                   <p className="text-[11px] text-black/40 mt-2">
-                    * 1 điểm tương đương 10.000₫ chi tiêu thực tế. Bạn đang hưởng đặc quyền giảm giá trực tiếp {cashbackPercent}% cho mọi đơn hàng tiếp theo!
+                    {t("* 1 điểm tương đương 10.000₫ chi tiêu thực tế. Bạn đang hưởng đặc quyền giảm giá trực tiếp", "* 1 point equals 10,000₫ spent. You enjoy a direct discount of")} {cashbackPercent}% {t("cho mọi đơn hàng tiếp theo!", "on all subsequent orders!")}
                   </p>
                 );
               })()}
@@ -303,14 +305,14 @@ export function MembershipPage() {
               <div className="flex justify-between items-center mb-4 border-b border-black/5 pb-2">
                 <span className="text-xs font-bold tracking-wider text-black/80 uppercase flex items-center gap-1.5">
                   <User className="h-4 w-4 text-black/60" />
-                  HỒ SƠ THÀNH VIÊN
+                  {t("HỒ SƠ THÀNH VIÊN", "MEMBER PROFILE")}
                 </span>
                 <button
                   onClick={() => setEditingProfile(!editingProfile)}
                   className="text-xs font-bold text-red-600 hover:text-red-700 flex items-center gap-1 transition-all"
                 >
                   <Edit2 className="h-3.5 w-3.5" />
-                  {editingProfile ? "Hủy bỏ" : "Chỉnh sửa"}
+                  {editingProfile ? t("Hủy bỏ", "Cancel") : t("Chỉnh sửa", "Edit")}
                 </button>
               </div>
 
@@ -319,27 +321,27 @@ export function MembershipPage() {
                 <form onSubmit={handleUpdateProfile} className="space-y-4">
                   <div>
                     <label className="block text-[10px] font-extrabold tracking-wider uppercase text-black/60 mb-1">
-                      Họ và Tên
+                      {t("Họ và Tên", "Full Name")}
                     </label>
                     <input
                       type="text"
                       required
                       value={profileName}
                       onChange={(e) => setProfileName(e.target.value)}
-                      placeholder="Nhập họ và tên mới..."
+                      placeholder={t("Nhập họ và tên mới...", "Enter new full name...")}
                       className="w-full rounded-lg border border-black/10 bg-stone-50 px-3 py-2 text-xs placeholder:text-black/30 focus:border-black/60 focus:bg-white focus:outline-none transition-all uppercase"
                     />
                   </div>
 
                   <div>
                     <label className="block text-[10px] font-extrabold tracking-wider uppercase text-black/60 mb-1">
-                      Số điện thoại
+                      {t("Số điện thoại", "Phone Number")}
                     </label>
                     <input
                       type="tel"
                       value={profilePhone}
                       onChange={(e) => setProfilePhone(e.target.value)}
-                      placeholder="Nhập số điện thoại liên hệ..."
+                      placeholder={t("Nhập số điện thoại liên hệ...", "Enter contact phone number...")}
                       className="w-full rounded-lg border border-black/10 bg-stone-50 px-3 py-2 text-xs placeholder:text-black/30 focus:border-black/60 focus:bg-white focus:outline-none transition-all"
                     />
                   </div>
@@ -348,7 +350,7 @@ export function MembershipPage() {
                     type="submit"
                     className="w-full bg-black text-white hover:bg-red-700 py-2.5 text-xs font-bold tracking-widest uppercase transition-all rounded-lg"
                   >
-                    Lưu thông tin
+                    {t("Lưu thông tin", "Save Profile")}
                   </button>
                 </form>
               ) : (
@@ -357,7 +359,7 @@ export function MembershipPage() {
                   <div className="flex items-center justify-between text-black/60">
                     <span className="flex items-center gap-1.5 font-medium">
                       <User className="h-4 w-4 opacity-50" />
-                      Tên thành viên:
+                      {t("Tên thành viên:", "Full Name:")}
                     </span>
                     <span className="font-extrabold text-black uppercase">{currentMember.fullName}</span>
                   </div>
@@ -365,7 +367,7 @@ export function MembershipPage() {
                   <div className="flex items-center justify-between text-black/60">
                     <span className="flex items-center gap-1.5 font-medium">
                       <Mail className="h-4 w-4 opacity-50" />
-                      Địa chỉ Gmail:
+                      {t("Địa chỉ Gmail:", "Gmail Address:")}
                     </span>
                     <span className="font-semibold text-black">{currentMember.email}</span>
                   </div>
@@ -373,15 +375,15 @@ export function MembershipPage() {
                   <div className="flex items-center justify-between text-black/60">
                     <span className="flex items-center gap-1.5 font-medium">
                       <Phone className="h-4 w-4 opacity-50" />
-                      Số điện thoại:
+                      {t("Số điện thoại:", "Phone Number:")}
                     </span>
-                    <span className="font-semibold text-black">{currentMember.phone || "Chưa cập nhật"}</span>
+                    <span className="font-semibold text-black">{currentMember.phone || t("Chưa cập nhật", "Not updated")}</span>
                   </div>
 
                   {/* Cảnh báo nếu chưa có sđt */}
                   {!currentMember.phone && (
                     <div className="mt-4 p-3 bg-amber-50 border border-amber-200 text-amber-800 rounded-lg text-[11px] leading-relaxed">
-                      💡 <strong>Mẹo:</strong> Hãy bấm <strong>Chỉnh sửa</strong> để bổ sung Số điện thoại liên lạc! Điều này giúp bạn tự động tích lũy điểm khi mua hàng.
+                      💡 {t("Mẹo: Hãy bấm Chỉnh sửa để bổ sung Số điện thoại liên lạc! Điều này giúp bạn tự động tích lũy điểm khi mua hàng.", "Tip: Click Edit to add your contact phone number! This helps you automatically earn points upon purchase.")}
                     </div>
                   )}
                 </div>
@@ -395,22 +397,22 @@ export function MembershipPage() {
             <div>
               <h2 className="text-lg font-bold tracking-wider uppercase mb-6 flex items-center gap-2">
                 <Receipt className="h-5 w-5 text-black/70" />
-                LỊCH SỬ ĐƠN HÀNG ({myOrders.length})
+                {t("LỊCH SỬ ĐƠN HÀNG", "ORDER HISTORY")} ({myOrders.length})
               </h2>
 
               {loadingOrders ? (
                 <div className="border border-black/10 rounded-xl p-12 text-center bg-white">
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-black mx-auto mb-4"></div>
-                  <p className="text-xs text-black/50">Đang quét tìm đơn hàng trên đám mây...</p>
+                  <p className="text-xs text-black/50">{t("Đang quét tìm đơn hàng trên đám mây...", "Scanning orders in the cloud...")}</p>
                 </div>
               ) : myOrders.length === 0 ? (
                 <div className="border border-dashed border-black/15 rounded-xl p-8 text-center bg-white">
-                  <p className="text-sm text-black/40 mb-4">Gmail không tồn tại hoặc chưa từng phát sinh mua hàng bằng Gmail này: <strong>{currentMember.email}</strong>.</p>
+                  <p className="text-sm text-black/40 mb-4">{t("Gmail không tồn tại hoặc chưa từng phát sinh mua hàng bằng Gmail này:", "Gmail does not exist or has never been used for any purchase:")} <strong>{currentMember.email}</strong>.</p>
                   <button
                     onClick={() => navigate("/shop")}
                     className="inline-flex items-center gap-2 bg-black text-white hover:bg-red-700 text-xs font-bold tracking-widest uppercase px-6 py-3 transition-all rounded-sm"
                   >
-                    Mua sắm ngay
+                    {t("Mua sắm ngay", "Shop Now")}
                     <ArrowRight className="h-4 w-4" />
                   </button>
                 </div>
@@ -420,11 +422,11 @@ export function MembershipPage() {
                     <table className="w-full text-left text-sm border-collapse">
                       <thead>
                         <tr className="bg-stone-50 border-b border-black/10 text-[10px] font-extrabold tracking-wider text-black/60 uppercase">
-                          <th className="p-4">Mã Đơn</th>
-                          <th className="p-4">Ngày mua</th>
-                          <th className="p-4">Trạng thái</th>
-                          <th className="p-4 text-right">Tổng tiền</th>
-                          <th className="p-4 text-center">Thao tác</th>
+                          <th className="p-4">{t("Mã Đơn", "Order ID")}</th>
+                          <th className="p-4">{t("Ngày mua", "Date")}</th>
+                          <th className="p-4">{t("Trạng thái", "Status")}</th>
+                          <th className="p-4 text-right">{t("Tổng tiền", "Total")}</th>
+                          <th className="p-4 text-center">{t("Thao tác", "Action")}</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-black/5 text-xs">
@@ -437,8 +439,8 @@ export function MembershipPage() {
                           return (
                             <tr key={order.id} className="hover:bg-stone-50/50 transition-colors">
                               <td className="p-4 font-mono font-bold text-black">{order.orderNumber}</td>
-                              <td className="p-4 text-black/60">
-                                {new Date(order.createdAt).toLocaleDateString("vi-VN")}
+                              <td className="p-4 text-black/60 font-mono">
+                                {new Date(order.createdAt).toLocaleDateString()}
                               </td>
                               <td className="p-4">
                                 <span
@@ -451,25 +453,25 @@ export function MembershipPage() {
                                   }`}
                                 >
                                   {order.status === "completed"
-                                    ? "Thành công"
+                                    ? t("Thành công", "Success")
                                     : order.status === "cancelled"
-                                    ? "Đã hủy"
-                                    : "Đang xử lý"}
+                                    ? t("Đã hủy", "Cancelled")
+                                    : t("Đang xử lý", "Processing")}
                                 </span>
                               </td>
                               <td className="p-4 text-right font-bold text-black font-mono">
-                                {order.total.toLocaleString("vi-VN")}₫
+                                {formatPrice(order.total)}
                               </td>
                               <td className="p-4 text-center">
                                 {isCancelled ? (
-                                  <span className="text-[10px] font-bold text-stone-400 uppercase">Đã hủy</span>
+                                  <span className="text-[10px] font-bold text-stone-400 uppercase">{t("Đã hủy", "Cancelled")}</span>
                                 ) : isWithin5Min ? (
                                   <button
                                     onClick={() => handleCancelOrder(order.id)}
                                     className="inline-flex items-center gap-1 bg-red-600 hover:bg-red-700 text-white text-[9px] font-extrabold tracking-wider uppercase px-3 py-1.5 rounded-md transition-all shadow-sm"
                                   >
                                     <XCircle className="h-3 w-3" />
-                                    Hủy Đơn
+                                    {t("Hủy Đơn", "Cancel")}
                                   </button>
                                 ) : (
                                   <div className="flex items-center justify-center gap-1.5">
@@ -477,12 +479,12 @@ export function MembershipPage() {
                                       href="https://facebook.com"
                                       target="_blank"
                                       rel="noopener noreferrer"
-                                      title="Liên hệ Facebook để hủy đơn"
+                                      title={t("Liên hệ Facebook để hủy đơn", "Contact Facebook to cancel order")}
                                       className="text-blue-600 hover:text-blue-700 transition-colors"
                                     >
                                       <MessageCircle className="h-4 w-4" />
                                     </a>
-                                    <span className="text-[9px] text-black/35 font-bold uppercase">CSKH</span>
+                                    <span className="text-[9px] text-black/35 font-bold uppercase">{t("CSKH", "Support")}</span>
                                   </div>
                                 )}
                               </td>
@@ -500,11 +502,11 @@ export function MembershipPage() {
             <div>
               <h2 className="text-sm font-black tracking-widest uppercase mb-6 flex items-center gap-2 text-black/60">
                 <Award className="h-4.5 w-4.5 text-black/70" />
-                ĐẶC QUYỀN MA TRẬN THÀNH VIÊN VIP
+                {t("ĐẶC QUYỀN MA TRẬN THÀNH VIÊN VIP", "VIP MEMBER PRIVILEGE MATRIX")}
               </h2>
               <div className="border border-black/10 rounded-2xl overflow-hidden bg-white shadow-sm">
                 <div className="bg-stone-50 border-b border-black/10 px-6 py-4">
-                  <h3 className="font-extrabold text-[10px] tracking-wider uppercase text-black">Bảng đặc quyền & chiết khấu thành viên active</h3>
+                  <h3 className="font-extrabold text-[10px] tracking-wider uppercase text-black">{t("Bảng đặc quyền & chiết khấu thành viên active", "Active membership perks & discount table")}</h3>
                 </div>
                 <div className="divide-y divide-black/5">
                   {tierConfigs.map((config) => (
@@ -518,14 +520,14 @@ export function MembershipPage() {
                         }`}>
                           {config.tier}
                         </span>
-                        <span className="text-black/40 font-bold uppercase tracking-wider text-[10px]">Từ {config.minPoints.toLocaleString()} điểm</span>
+                        <span className="text-black/40 font-bold uppercase tracking-wider text-[10px]">{t("Từ", "From")} {config.minPoints.toLocaleString()} {t("điểm", "points")}</span>
                       </div>
                       <div className="flex flex-wrap items-center gap-6 sm:text-right">
                         <span className="font-extrabold text-red-600 bg-red-50 border border-red-100 px-2 py-0.5 rounded-md">
-                          GIẢM {config.discountPercent}% MỌI HÓA ĐƠN
+                          {t("GIẢM", "GET")} {config.discountPercent}% {t("MỌI HÓA ĐƠN", "OFF ALL INVOICES")}
                         </span>
                         <span className="text-black/60 font-bold text-[11px] uppercase tracking-wide">
-                          🎁 {config.gifts || "Quà tặng thương hiệu"}
+                          🎁 {config.gifts || t("Quà tặng thương hiệu", "Brand Gift")}
                         </span>
                       </div>
                     </div>
@@ -552,10 +554,10 @@ export function MembershipPage() {
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent" />
           <div className="absolute bottom-12 left-12 right-12 text-white z-10">
-            <p className="text-[10px] tracking-[0.3em] font-extrabold uppercase text-red-600 mb-2">JOIN THE CLUB</p>
-            <h2 className="font-black text-3xl tracking-wider uppercase mb-4 leading-none">MADMAD MEMBERSHIP</h2>
+            <p className="text-[10px] tracking-[0.3em] font-extrabold uppercase text-red-600 mb-2">{t("JOIN THE CLUB", "JOIN THE CLUB")}</p>
+            <h2 className="font-black text-3xl tracking-wider uppercase mb-4 leading-none">{t("MADMAD MEMBERSHIP", "MADMAD MEMBERSHIP")}</h2>
             <p className="text-white/60 text-xs leading-relaxed max-w-sm">
-              Trở thành thành viên của MADMAD để mở khóa các đặc quyền cao cấp, giảm giá tích điểm 5% và nhận quyền ưu tiên đặt hàng sớm.
+              {t("Trở thành thành viên của MADMAD để mở khóa các đặc quyền cao cấp, giảm giá tích điểm 5% và nhận quyền ưu tiên đặt hàng sớm.", "Become a MADMAD member to unlock high-tier privileges, 5% point discounts, and receive early access privileges.")}
             </p>
           </div>
         </div>
@@ -566,12 +568,12 @@ export function MembershipPage() {
             {/* Header Form */}
             <div className="mb-6">
               <h2 className="font-extrabold text-2xl tracking-tight text-black uppercase mb-1.5">
-                {isRegister ? "ĐĂNG KÝ THÀNH VIÊN" : "MADMAD MEMBER"}
+                {isRegister ? t("ĐĂNG KÝ THÀNH VIÊN", "REGISTER MEMBERSHIP") : t("MADMAD MEMBER", "MADMAD MEMBER")}
               </h2>
               <p className="text-xs text-black/50">
                 {isRegister
-                  ? "Điền thông tin bên dưới để kích hoạt tài khoản VIP bảo mật của bạn"
-                  : "Nhập Email hoặc SĐT và mật khẩu bảo mật để mở khóa Black Card VIP"}
+                  ? t("Điền thông tin bên dưới để kích hoạt tài khoản VIP bảo mật của bạn", "Fill in the details below to activate your secure VIP account")
+                  : t("Nhập Email hoặc SĐT và mật khẩu bảo mật để mở khóa Black Card VIP", "Enter Email or Phone and password to unlock your VIP Black Card")}
               </p>
             </div>
 
@@ -593,7 +595,7 @@ export function MembershipPage() {
 
             {/* Google OAuth Login Button CONTAINER */}
             <div className="mb-6 flex flex-col items-center justify-center border-b border-black/5 pb-6">
-              <p className="text-[10px] font-extrabold tracking-widest text-black/40 mb-3 uppercase">ĐĂNG NHẬP NHANH BẰNG GOOGLE</p>
+              <p className="text-[10px] font-extrabold tracking-widest text-black/40 mb-3 uppercase">{t("ĐĂNG NHẬP NHANH BẰNG GOOGLE", "QUICK SIGN IN WITH GOOGLE")}</p>
               <div id="google-signin-btn-container" className="shadow-sm border border-black/10 rounded overflow-hidden"></div>
             </div>
 
@@ -603,21 +605,21 @@ export function MembershipPage() {
               <form onSubmit={handleRegister} className="space-y-4">
                 <div>
                   <label className="block text-[10px] font-extrabold tracking-wider uppercase text-black/70 mb-1.5">
-                    Họ và Tên
+                    {t("Họ và Tên", "Full Name")}
                   </label>
                   <input
                     type="text"
                     required
                     value={fullName}
                     onChange={(e) => setFullName(e.target.value)}
-                    placeholder="VÍ DỤ: NGUYỄN VĂN A"
+                    placeholder={t("VÍ DỤ: NGUYỄN VĂN A", "EXAMPLE: JOHN DOE")}
                     className="w-full rounded-lg border border-black/10 bg-stone-50 px-4 py-3 text-xs placeholder:text-black/30 focus:border-black/60 focus:bg-white focus:outline-none focus:ring-0 transition-all uppercase"
                   />
                 </div>
 
                 <div>
                   <label className="block text-[10px] font-extrabold tracking-wider uppercase text-black/70 mb-1.5">
-                    Địa chỉ Email
+                    {t("Địa chỉ Email", "Email Address")}
                   </label>
                   <input
                     type="email"
@@ -631,7 +633,7 @@ export function MembershipPage() {
 
                 <div>
                   <label className="block text-[10px] font-extrabold tracking-wider uppercase text-black/70 mb-1.5">
-                    Số Điện thoại
+                    {t("Số Điện thoại", "Phone Number")}
                   </label>
                   <input
                     type="tel"
@@ -646,21 +648,21 @@ export function MembershipPage() {
                 <div>
                   <label className="block text-[10px] font-extrabold tracking-wider uppercase text-black/70 mb-1.5 flex items-center gap-1">
                     <Lock className="h-3 w-3 text-black/50" />
-                    Thiết lập mật khẩu bảo mật (Tối thiểu 6 ký tự)
+                    {t("Thiết lập mật khẩu bảo mật (Tối thiểu 6 ký tự)", "Setup secure password (Min 6 characters)")}
                   </label>
                   <input
                     type="password"
                     required
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    placeholder="Nhập mật khẩu tài khoản..."
+                    placeholder={t("Nhập mật khẩu tài khoản...", "Enter account password...")}
                     className="w-full rounded-lg border border-black/10 bg-stone-50 px-4 py-3 text-xs placeholder:text-black/30 focus:border-black/60 focus:bg-white focus:outline-none focus:ring-0 transition-all"
                   />
                 </div>
 
                 <div className="flex items-center gap-2 pt-2 text-[10px] text-black/40">
                   <ShieldCheck className="h-4 w-4 text-green-600 flex-shrink-0" />
-                  Hệ thống bảo mật dữ liệu khách hàng theo chuẩn quốc tế.
+                  {t("Hệ thống bảo mật dữ liệu khách hàng theo chuẩn quốc tế.", "Customer data secured according to international standards.")}
                 </div>
 
                 <button
@@ -668,7 +670,7 @@ export function MembershipPage() {
                   className="w-full bg-black text-white hover:bg-red-700 h-12 text-xs font-bold tracking-widest uppercase transition-all rounded-lg flex items-center justify-center gap-2 mt-4"
                 >
                   <UserCheck className="h-4 w-4" />
-                  Đăng ký thành viên VIP
+                  {t("Đăng ký thành viên VIP", "Register VIP Member")}
                 </button>
               </form>
             ) : (
@@ -676,14 +678,14 @@ export function MembershipPage() {
               <form onSubmit={handleLogin} className="space-y-4">
                 <div>
                   <label className="block text-[10px] font-extrabold tracking-wider uppercase text-black/70 mb-1.5">
-                    Email hoặc Số điện thoại
+                    {t("Email hoặc Số điện thoại", "Email or Phone Number")}
                   </label>
                   <input
                     type="text"
                     required
                     value={phoneOrEmail}
                     onChange={(e) => setPhoneOrEmail(e.target.value)}
-                    placeholder="Nhập email hoặc SĐT thành viên..."
+                    placeholder={t("Nhập email hoặc SĐT thành viên...", "Enter member email or phone...")}
                     className="w-full rounded-lg border border-black/10 bg-stone-50 px-4 py-3 text-xs placeholder:text-black/30 focus:border-black/60 focus:bg-white focus:outline-none focus:ring-0 transition-all"
                   />
                 </div>
@@ -691,14 +693,14 @@ export function MembershipPage() {
                 <div>
                   <label className="block text-[10px] font-extrabold tracking-wider uppercase text-black/70 mb-1.5 flex items-center gap-1">
                     <Lock className="h-3 w-3 text-black/50" />
-                    Mật khẩu bảo mật
+                    {t("Mật khẩu bảo mật", "Password")}
                   </label>
                   <input
                     type="password"
                     required
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    placeholder="Nhập mật khẩu tài khoản..."
+                    placeholder={t("Nhập mật khẩu tài khoản...", "Enter account password...")}
                     className="w-full rounded-lg border border-black/10 bg-stone-50 px-4 py-3 text-xs placeholder:text-black/30 focus:border-black/60 focus:bg-white focus:outline-none focus:ring-0 transition-all"
                   />
                 </div>
@@ -707,7 +709,7 @@ export function MembershipPage() {
                   type="submit"
                   className="w-full bg-black text-white hover:bg-red-700 h-12 text-xs font-bold tracking-widest uppercase transition-all rounded-lg flex items-center justify-center gap-2 mt-4"
                 >
-                  Đăng nhập
+                  {t("Đăng nhập", "Sign In")}
                   <ArrowRight className="h-4 w-4" />
                 </button>
               </form>
@@ -716,7 +718,7 @@ export function MembershipPage() {
             {/* Toggle State */}
             <div className="mt-8 border-t border-black/5 pt-6 text-center">
               <p className="text-xs text-black/50">
-                {isRegister ? "Đã đăng ký trước đây?" : "Bạn là thành viên mới?"}{" "}
+                {isRegister ? t("Đã đăng ký trước đây?", "Already registered?") : t("Bạn là thành viên mới?", "New member?")}{" "}
                 <button
                   onClick={() => {
                     setIsRegister(!isRegister);
@@ -726,7 +728,7 @@ export function MembershipPage() {
                   }}
                   className="font-bold text-red-600 hover:text-red-700 transition-colors uppercase ml-1"
                 >
-                  {isRegister ? "Đăng nhập ngay" : "Đăng ký ngay"}
+                  {isRegister ? t("Đăng nhập ngay", "Sign In Now") : t("Đăng ký ngay", "Register Now")}
                 </button>
               </p>
             </div>
