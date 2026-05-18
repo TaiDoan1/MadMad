@@ -1807,7 +1807,7 @@ export function AdminOrdersPage() {
       {/* 🧾 THIẾT KẾ MỚI HÓA ĐƠN ULTRA-MINIMALIST PACKING SLIP (IN ẤN - PRINT ONLY - CỐ ĐỊNH 1 TRANG A4/A6) */}
       {(selectedOrder || batchPrintOrders.length > 0) && (
         <div className="hidden print:block invoice-print-container">
-          {/* Style khóa trang in A6 - Cố định 1 trang */}
+          {/* Style khóa trang in A6 (105mm x 148mm) - Cố định trang in */}
           <style>{`
             @media print {
               @page {
@@ -1831,18 +1831,18 @@ export function AdminOrdersPage() {
                 position: absolute !important;
                 left: 0 !important;
                 top: 0 !important;
-                width: 100vw !important;
+                width: 105mm !important;
                 padding: 0 !important;
                 box-sizing: border-box !important;
               }
               .invoice-page {
-                width: 100vw !important;
-                height: 100vh !important;
-                padding: 10mm 15mm !important;
+                width: 105mm !important;
+                min-height: 148mm !important;
+                padding: 8mm 10mm !important;
                 box-sizing: border-box !important;
-                overflow: hidden !important;
                 page-break-after: always !important;
                 break-after: page !important;
+                page-break-inside: avoid !important;
               }
             }
           `}</style>
