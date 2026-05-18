@@ -1733,11 +1733,11 @@ export function AdminOrdersPage() {
       {/* 🧾 THIẾT KẾ MỚI HÓA ĐƠN ULTRA-MINIMALIST PACKING SLIP (IN ẤN - PRINT ONLY - CỐ ĐỊNH 1 TRANG A4) */}
       {selectedOrder && (
         <div className="hidden print:block invoice-print-container">
-          {/* Style khóa trang in A4 - Cố định 1 trang */}
+          {/* Style khóa trang in A6 - Cố định 1 trang */}
           <style>{`
             @media print {
               @page {
-                size: A4 portrait !important;
+                size: A6 portrait !important;
                 margin: 0 !important;
               }
               body, html {

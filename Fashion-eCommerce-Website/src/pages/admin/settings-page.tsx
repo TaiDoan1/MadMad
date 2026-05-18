@@ -1213,6 +1213,39 @@ export function AdminSettingsPage() {
                   className="w-full rounded-none border border-black/20 bg-stone-50/50 px-4 py-3 focus:bg-white focus:border-black focus:outline-none transition-all font-medium leading-relaxed resize-none"
                 />
               </div>
+
+              <div className="pt-4 border-t border-black/10 mt-6 mb-4">
+                <h4 className="text-[10px] font-extrabold tracking-widest text-black/45 uppercase mb-4 flex items-center gap-1.5">
+                  <QrCode className="h-3.5 w-3.5" />
+                  Cấu Hình Mã Thanh Toán QR Tự Động
+                </h4>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-[10px] font-extrabold tracking-wider uppercase text-black/50 mb-1.5">Ngân hàng (Ví dụ: MB)</label>
+                    <input
+                      value={printInvoiceBankId}
+                      onChange={(e) => setPrintInvoiceBankId(e.target.value)}
+                      className="w-full rounded-none border border-black/20 bg-stone-50/50 px-4 py-2.5 focus:bg-white focus:border-black focus:outline-none transition-all font-bold uppercase text-[11px]"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-extrabold tracking-wider uppercase text-black/50 mb-1.5">Số tài khoản</label>
+                    <input
+                      value={printInvoiceBankAccount}
+                      onChange={(e) => setPrintInvoiceBankAccount(e.target.value)}
+                      className="w-full rounded-none border border-black/20 bg-stone-50/50 px-4 py-2.5 focus:bg-white focus:border-black focus:outline-none transition-all font-bold font-mono text-[11px]"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-extrabold tracking-wider uppercase text-black/50 mb-1.5">Chủ tài khoản</label>
+                    <input
+                      value={printInvoiceAccountName}
+                      onChange={(e) => setPrintInvoiceAccountName(e.target.value)}
+                      className="w-full rounded-none border border-black/20 bg-stone-50/50 px-4 py-2.5 focus:bg-white focus:border-black focus:outline-none transition-all font-bold uppercase text-[11px]"
+                    />
+                  </div>
+                </div>
+              </div>
             </div>
 
             <div className="pt-4 border-t border-black/10">
@@ -1228,86 +1261,132 @@ export function AdminSettingsPage() {
 
           {/* Cột phải (Live Preview mô phỏng chân thực hóa đơn giấy) */}
           <div className="lg:col-span-6 space-y-4">
-            <h3 className="text-xs font-extrabold tracking-widest text-black/45 uppercase">Live Preview (Mô phỏng bản in)</h3>
-            <div className="rounded-2xl border border-black/10 bg-[#e8e8e5] p-8 flex items-center justify-center min-h-[500px]">
-              {/* Giả lập tờ giấy in hóa đơn dạng receipt */}
-              <div className="w-full max-w-[320px] bg-white shadow-2xl space-y-5 font-mono text-[10px] text-black leading-relaxed relative" style={{ minHeight: "450px" }}>
-                {/* Rìa cắt hóa đơn */}
-                <div className="absolute top-0 left-0 right-0 h-1.5 bg-repeat-x" style={{ backgroundImage: "linear-gradient(135deg, transparent 50%, #fff 50%), linear-gradient(-135deg, transparent 50%, #fff 50%)", backgroundSize: "8px 100%", backgroundPosition: "0 0, 4px 0", marginTop: "-6px" }} />
+            <h3 className="text-xs font-extrabold tracking-widest text-black/45 uppercase">Live Preview (Khổ giấy A6)</h3>
+            <div className="rounded-2xl border border-black/10 bg-[#e8e8e5] p-8 flex items-center justify-center min-h-[500px] overflow-hidden">
+              {/* Giả lập tờ giấy in hóa đơn dạng A6 */}
+              <div className="w-full max-w-[420px] bg-white shadow-2xl p-6 text-black font-mono scale-[0.85] origin-center" style={{ fontSize: "9px", lineHeight: "1.4" }}>
                 
-                <div className="p-6 space-y-5">
-                  {/* Shop Header */}
-                  <div className="text-center pb-4 border-b border-dashed border-black/30 space-y-1.5">
-                    <h4 className="text-2xl font-black font-sans uppercase tracking-widest">MADMAD</h4>
-                    <p className="text-[8px] text-black/60 font-sans tracking-widest uppercase">{printInvoiceSubheader}</p>
-                    <div className="pt-1 space-y-0.5">
-                      <p className="text-[9px] text-black/80">{printInvoiceAddress}</p>
-                      <p className="text-[9px] text-black/80">{printInvoicePhone}</p>
-                    </div>
-                  </div>
-
-                  {/* Title */}
-                  <div className="text-center space-y-1">
-                    <h5 className="font-bold uppercase tracking-widest text-xs">{printInvoiceTitle}</h5>
-                    <p className="text-[8px] text-black/50 tracking-wider">RECEIPT #: M-1002 • 12/05/2026</p>
-                  </div>
-
-                  {/* Sample items table */}
-                  <table className="w-full border-collapse text-[9px] text-left">
-                    <thead>
-                      <tr className="border-b border-black font-bold uppercase tracking-wider">
-                        <th className="pb-1.5 w-8">QTY</th>
-                        <th className="pb-1.5">ITEM</th>
-                        <th className="pb-1.5 text-right">TOTAL</th>
-                      </tr>
-                    </thead>
-                    <tbody className="align-top">
-                      <tr>
-                        <td className="py-2 text-center font-bold">1</td>
-                        <td className="py-2 uppercase font-medium pr-2">Noir Distressed Hoodie (Black/L)</td>
-                        <td className="py-2 text-right font-bold">650.000</td>
-                      </tr>
-                      <tr>
-                        <td className="py-2 text-center font-bold">1</td>
-                        <td className="py-2 uppercase font-medium pr-2">Raw Edges Cargo Shorts (Stone/M)</td>
-                        <td className="py-2 text-right font-bold">420.000</td>
-                      </tr>
-                    </tbody>
-                  </table>
-
-                  {/* Total */}
-                  <div className="space-y-1.5 border-t border-black pt-3 text-[10px]">
-                    <div className="flex justify-between text-black/70">
-                      <span>Subtotal</span>
-                      <span>1.070.000₫</span>
-                    </div>
-                    <div className="flex justify-between text-black/70">
-                      <span>Discount (VIP)</span>
-                      <span>-53.500₫</span>
-                    </div>
-                    <div className="flex justify-between border-t border-dashed border-black/30 mt-2 pt-2 text-xs font-black">
-                      <span>TOTAL</span>
-                      <span>1.016.500₫</span>
-                    </div>
-                  </div>
-
-                  {/* Footer notes */}
-                  <div className="text-center pt-4 border-t border-dashed border-black/30 space-y-2">
-                    <p className="font-bold text-[9px] font-sans uppercase tracking-widest">{printInvoiceFooterSlogan}</p>
-                    <p className="text-[8px] text-black/60 font-sans leading-relaxed text-center px-2">
-                      {printInvoicePolicy || "Thank you for shopping with us."}
-                    </p>
-                    
-                    {/* Fake Barcode */}
-                    <div className="pt-4 pb-2 flex flex-col items-center opacity-60">
-                      <div className="h-8 w-40 bg-[repeating-linear-gradient(90deg,#000,#000_1px,transparent_1px,transparent_3px,#000_3px,#000_4px,transparent_4px,transparent_5px,#000_5px,#000_8px)]" />
-                      <p className="text-[7px] tracking-[0.3em] pt-1.5">MADMAD-1002-8890</p>
+                {/* Header */}
+                <div className="text-center space-y-1 mb-4 pb-4 border-b-2 border-dashed border-black">
+                  <div className="flex items-center justify-between">
+                    <img src={brandLogo} alt="MADMAD Studio" className="h-8 w-auto" />
+                    <div className="text-right font-mono">
+                      <h1 className="text-sm font-black tracking-widest font-sans">MADMAD STUDIO</h1>
+                      <p className="text-[7px] uppercase tracking-wider text-black/60 font-sans">{printInvoiceSubheader}</p>
+                      <p className="text-[7px] text-black/60">{printInvoiceAddress}</p>
+                      <p className="text-[7px] text-black/60">{printInvoicePhone}</p>
                     </div>
                   </div>
                 </div>
 
-                {/* Rìa cắt hóa đơn (bottom) */}
-                <div className="absolute bottom-0 left-0 right-0 h-1.5 bg-repeat-x" style={{ backgroundImage: "linear-gradient(45deg, transparent 50%, #fff 50%), linear-gradient(-45deg, transparent 50%, #fff 50%)", backgroundSize: "8px 100%", backgroundPosition: "0 100%, 4px 100%", marginBottom: "-6px" }} />
+                {/* Tiêu đề chính */}
+                <div className="text-center space-y-0.5 mb-4">
+                  <h2 className="text-xs font-black tracking-widest uppercase">{printInvoiceTitle}</h2>
+                  <p className="text-[10px] font-mono font-bold tracking-wider">M-1002</p>
+                  <p className="text-[7px] text-black/50">Ngày in: 12/05/2026 - 15:30:00</p>
+                </div>
+
+                {/* Thông tin 2 cột */}
+                <div className="grid grid-cols-2 gap-3 mb-4 pb-4 border-b border-black text-[8px]">
+                  <div>
+                    <h3 className="font-black border-b border-black pb-0.5 mb-1.5 uppercase tracking-wider text-[8px]">Thông tin người nhận</h3>
+                    <div className="space-y-0.5">
+                      <p>Họ tên: <span className="font-bold uppercase">NGUYỄN VĂN A</span></p>
+                      <p>Điện thoại: <span className="font-bold">0909123456</span></p>
+                      <p>Phương thức: <span className="uppercase font-bold">CHUYỂN KHOẢN (BANKING)</span></p>
+                      <p>Vận chuyển: <span className="font-bold uppercase">HỎA TỐC (2H)</span></p>
+                    </div>
+                  </div>
+                  <div>
+                    <h3 className="font-black border-b border-black pb-0.5 mb-1.5 uppercase tracking-wider text-[8px]">Địa chỉ giao hàng</h3>
+                    <div className="space-y-0.5 leading-normal">
+                      <p>254 Nguyễn Trãi</p>
+                      <p>Phường 3, Quận 5</p>
+                      <p>TP. Hồ Chí Minh</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Bảng sản phẩm */}
+                <table className="w-full text-left text-[8px] border-collapse mb-4 font-mono">
+                  <thead>
+                    <tr className="border-b-2 border-black font-black uppercase text-black font-sans">
+                      <th className="py-1">Sản phẩm</th>
+                      <th className="py-1 text-center">SL</th>
+                      <th className="py-1 text-right">Đơn giá</th>
+                      <th className="py-1 text-right">Thành tiền</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr className="border-b border-black/10">
+                      <td className="py-1.5 uppercase font-bold font-sans">Noir Distressed Hoodie<br/><span className="text-[7px] font-normal text-black/60 font-mono">Size: L | Màu: Đen</span></td>
+                      <td className="py-1.5 text-center">1</td>
+                      <td className="py-1.5 text-right">650.000₫</td>
+                      <td className="py-1.5 text-right font-bold">650.000₫</td>
+                    </tr>
+                    <tr className="border-b border-black/10">
+                      <td className="py-1.5 uppercase font-bold font-sans">Raw Edges Cargo Shorts<br/><span className="text-[7px] font-normal text-black/60 font-mono">Size: M | Màu: Stone</span></td>
+                      <td className="py-1.5 text-center">1</td>
+                      <td className="py-1.5 text-right">420.000₫</td>
+                      <td className="py-1.5 text-right font-bold">420.000₫</td>
+                    </tr>
+                  </tbody>
+                </table>
+
+                {/* Chi phí & Quét mã QR */}
+                <div className="grid grid-cols-12 gap-4 items-start mb-4 pb-4 border-b border-black font-mono">
+                  <div className="col-span-6 flex items-center gap-2 border border-black/10 rounded-lg p-1.5 bg-stone-50 font-sans">
+                    <div className="bg-white p-0.5 rounded border border-black/5 flex-shrink-0">
+                      <img
+                        src={`https://img.vietqr.io/image/${printInvoiceBankId}-${printInvoiceBankAccount}-compact.png?amount=1016500&addInfo=MADMAD%20M-1002&accountName=${encodeURIComponent(printInvoiceAccountName)}`}
+                        alt="VietQR MADMAD"
+                        className="h-10 w-10 object-contain"
+                      />
+                    </div>
+                    <div className="space-y-0.5">
+                      <p className="font-bold text-[7px] tracking-wider uppercase flex items-center gap-1">
+                        <QrCode className="h-2.5 w-2.5" />
+                        QUÉT THANH TOÁN
+                      </p>
+                      <p className="text-[6px] leading-tight text-black/60 font-semibold">
+                        Chuyển khoản QR với NH {printInvoiceBankId} - STK {printInvoiceBankAccount} ({printInvoiceAccountName}).
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="col-span-6 flex justify-end text-[8px]">
+                    <div className="w-full space-y-1 font-sans font-semibold">
+                      <div className="flex justify-between text-black/70">
+                        <span>Tạm tính:</span>
+                        <span className="font-mono">1.070.000₫</span>
+                      </div>
+                      <div className="flex justify-between font-bold text-red-600">
+                        <span>Giảm giá:</span>
+                        <span className="font-mono">-53.500₫</span>
+                      </div>
+                      <div className="flex justify-between text-black/70">
+                        <span>Phí giao hàng:</span>
+                        <span className="font-mono">+0₫</span>
+                      </div>
+                      <div className="flex justify-between font-black text-[9px] border-t border-black pt-1 mt-1">
+                        <span>TỔNG TIỀN:</span>
+                        <span className="font-mono">1.016.500₫</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Slogan */}
+                <div className="text-center space-y-1 mt-4">
+                  <p className="font-black uppercase tracking-widest text-[8px] font-sans">{printInvoiceFooterSlogan}</p>
+                  <p className="text-black/50 text-[7px] leading-relaxed max-w-[90%] mx-auto font-sans">
+                    {printInvoicePolicy}
+                  </p>
+                  <div className="pt-1 text-black/25 text-[6px] font-mono tracking-widest">
+                    MADMAD STUDIO - NOIR NO DESIGN STANDARD
+                  </div>
+                </div>
+
               </div>
             </div>
           </div>
