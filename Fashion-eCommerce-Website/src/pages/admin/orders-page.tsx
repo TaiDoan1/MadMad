@@ -1862,8 +1862,8 @@ export function AdminOrdersPage() {
             </table>
 
             {/* Tổng kết chi phí */}
-            <div className="flex justify-end items-start mb-4 pb-4 border-b border-black font-mono">
-              <div className="w-1/2 space-y-1.5 font-sans font-semibold text-[10px]">
+            <div className="mb-4 pb-4 border-b border-black font-mono">
+              <div className="w-full space-y-1.5 font-sans font-semibold text-[10px]">
                 <div className="flex justify-between text-black/70">
                   <span>Tạm tính:</span>
                   <span className="font-mono">{selectedOrder.subtotal.toLocaleString("vi-VN")}₫</span>

@@ -1303,8 +1303,8 @@ export function AdminSettingsPage() {
                 </table>
 
                 {/* Tổng kết chi phí */}
-                <div className="flex justify-end items-start mb-4 pb-4 border-b border-black font-mono">
-                  <div className="w-1/2 space-y-1 font-sans font-semibold text-[8px]">
+                <div className="mb-4 pb-4 border-b border-black font-mono">
+                  <div className="w-full space-y-1 font-sans font-semibold text-[8px]">
                     <div className="flex justify-between text-black/70">
                       <span>Tạm tính:</span>
                       <span className="font-mono">1.070.000₫</span>
