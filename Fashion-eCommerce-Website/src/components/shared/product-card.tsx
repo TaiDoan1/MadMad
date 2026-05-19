@@ -77,21 +77,27 @@ export function ProductCard({ product, variant = "shop" }: ProductCardProps) {
         )}
 
         {/* Quick-add button — appears on hover */}
-        <button
-          type="button"
-          onClick={handleQuickAdd}
-          className="absolute bottom-3 right-3 z-10 translate-y-2 opacity-0 transition-all duration-300 group-hover:translate-y-0 group-hover:opacity-100"
-          title={t("Thêm vào giỏ", "Add to cart")}
-        >
-          <span
-            className={`flex items-center gap-1.5 px-3 py-2 text-[11px] font-bold uppercase tracking-wide transition-colors duration-200 ${
-              added ? "bg-green-600 text-white" : "bg-black text-white hover:bg-primary"
-            }`}
-          >
-            <ShoppingCart className="h-3.5 w-3.5" />
-            {added ? t("Đã thêm", "Added") : t("Thêm nhanh", "Quick Add")}
+        {(!product.inStock || product.stock === 0) ? (
+          <span className="absolute bottom-3 right-3 z-10 bg-stone-100 border border-stone-300 px-3 py-2 text-[11px] font-bold uppercase tracking-wide text-stone-400 select-none">
+            Sold out
           </span>
-        </button>
+        ) : (
+          <button
+            type="button"
+            onClick={handleQuickAdd}
+            className="absolute bottom-3 right-3 z-10 translate-y-2 opacity-0 transition-all duration-300 group-hover:translate-y-0 group-hover:opacity-100"
+            title={t("Thêm vào giỏ", "Add to cart")}
+          >
+            <span
+              className={`flex items-center gap-1.5 px-3 py-2 text-[11px] font-bold uppercase tracking-wide transition-colors duration-200 ${
+                added ? "bg-green-600 text-white" : "bg-black text-white hover:bg-primary"
+              }`}
+            >
+              <ShoppingCart className="h-3.5 w-3.5" />
+              {added ? t("Đã thêm", "Added") : t("Thêm nhanh", "Quick Add")}
+            </span>
+          </button>
+        )}
       </Link>
 
       {/* ── Info ─────────────────────────────────────────────────────────── */}
@@ -112,6 +118,12 @@ export function ProductCard({ product, variant = "shop" }: ProductCardProps) {
             </span>
           )}
         </div>
+
+        {(!product.inStock || product.stock === 0) && (
+          <span className="text-[11px] font-black text-black uppercase tracking-wider mt-1 block">
+            Sold out
+          </span>
+        )}
       </div>
     </div>
   );

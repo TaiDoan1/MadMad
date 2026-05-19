@@ -470,6 +470,37 @@ export function AdminOrdersPage() {
         }
       });
     }
+
+    if (newStatus !== "cancelled" && order.status === "cancelled") {
+      order.items.forEach((item) => {
+        const product = products.find((p) => String(p.id) === String(item.productId));
+        if (product) {
+          const nextProduct = { ...product };
+          const key = `${item.color}-${item.size}`;
+
+          if (nextProduct.variantStock && nextProduct.variantStock[key] !== undefined) {
+            const currentStock = nextProduct.variantStock[key];
+            nextProduct.variantStock = {
+              ...nextProduct.variantStock,
+              [key]: Math.max(0, currentStock - item.quantity),
+            };
+            const totalStock = Object.values(nextProduct.variantStock).reduce((sum, v) => (sum as number) + (v as number), 0);
+            if (totalStock === 0) {
+              nextProduct.inStock = false;
+            }
+            updateProduct(product.id, nextProduct);
+            showToast(`📦 Đã khấu trừ -${item.quantity} biến thể [${item.color}-${item.size}] của "${product.name}" khỏi kho (Hoàn tác hủy đơn)!`, "info");
+          } else if (nextProduct.stock !== undefined) {
+            nextProduct.stock = Math.max(0, nextProduct.stock - item.quantity);
+            if (nextProduct.stock === 0) {
+              nextProduct.inStock = false;
+            }
+            updateProduct(product.id, nextProduct);
+            showToast(`📦 Đã khấu trừ -${item.quantity} sản phẩm "${product.name}" khỏi kho (Hoàn tác hủy đơn)!`, "info");
+          }
+        }
+      });
+    }
   };
 
   // Tạo đơn thủ công
@@ -517,6 +548,34 @@ export function AdminOrdersPage() {
     };
 
     addOrder(newOrder);
+
+    // Tự động trừ tồn kho khi tạo đơn hàng thủ công (đồng bộ bãi kho)
+    manualItems.forEach((item) => {
+      const product = products.find((p) => String(p.id) === String(item.productId));
+      if (product) {
+        const nextProduct = { ...product };
+        const key = `${item.color}-${item.size}`;
+
+        if (nextProduct.variantStock && nextProduct.variantStock[key] !== undefined) {
+          const currentStock = nextProduct.variantStock[key];
+          nextProduct.variantStock = {
+            ...nextProduct.variantStock,
+            [key]: Math.max(0, currentStock - item.quantity),
+          };
+          const totalStock = Object.values(nextProduct.variantStock).reduce((sum, v) => (sum as number) + (v as number), 0);
+          if (totalStock === 0) {
+            nextProduct.inStock = false;
+          }
+        } else if (nextProduct.stock !== undefined) {
+          const nextStock = Math.max(0, nextProduct.stock - item.quantity);
+          nextProduct.stock = nextStock;
+          if (nextStock === 0) {
+            nextProduct.inStock = false;
+          }
+        }
+        updateProduct(product.id, nextProduct);
+      }
+    });
 
     if (manualSource === "pos" && checkedMember) {
       const pointsEarned = Math.max(1, Math.floor(manualTotal / 10000));
