@@ -922,6 +922,9 @@ export function AdminOrdersPage() {
                             <button
                               onClick={() => {
                                 setSelectedOrder(order);
+                                if (order.status === "pending") {
+                                  updateOrderStatus(order.id, "processing");
+                                }
                                 setTimeout(() => window.print(), 100);
                               }}
                               className="rounded-lg p-2 text-blue-600 hover:bg-blue-50 transition-all"
