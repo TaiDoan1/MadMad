@@ -53,6 +53,7 @@ export function CheckoutPage() {
     return `DH${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}${String(now.getDate()).padStart(2, "0")}${String(Math.floor(1000 + Math.random() * 9000))}`;
   });
   const [copiedField, setCopiedField] = useState<string | null>(null);
+  const [showMobileSummary, setShowMobileSummary] = useState(false);
 
   const handleCopy = (text: string, field: string) => {
     navigator.clipboard.writeText(text);
@@ -343,6 +344,75 @@ export function CheckoutPage() {
         {/* LEFT: white half — form pushed to the right edge */}
         <div className="flex-1 bg-white flex justify-end">
           <div className="w-full max-w-[520px] px-10 py-10">
+            {/* Mobile Order Summary Accordion (Shopify Style) */}
+            <div className="block lg:hidden mb-6 border border-black/10 rounded-xl overflow-hidden bg-[#f5f5f5] shadow-sm">
+              <button
+                type="button"
+                onClick={() => setShowMobileSummary(!showMobileSummary)}
+                className="w-full flex items-center justify-between px-4 py-3.5 text-xs font-bold uppercase tracking-wider text-black/75 hover:bg-black/5 transition-colors"
+              >
+                <div className="flex items-center gap-2">
+                  <ShoppingBag className="h-4 w-4 text-black" />
+                  <span>{showMobileSummary ? t("Ẩn thông tin đơn hàng ▲", "Hide order summary ▲") : t("Hiện thông tin đơn hàng ▼", "Show order summary ▼")}</span>
+                </div>
+                <span className="font-mono text-sm font-black text-black">{formatPrice(total)}</span>
+              </button>
+
+              {showMobileSummary && (
+                <div className="px-4 pb-5 pt-3 border-t border-black/10 space-y-4 bg-white animate-fadeIn">
+                  {/* Items list */}
+                  <div className="space-y-3 max-h-60 overflow-y-auto pr-1">
+                    {resolvedItems.map(({ item, product }) => (
+                      <div key={item.id} className="flex items-center gap-3 bg-stone-50 border border-black/5 rounded-xl p-2.5">
+                        <div className="h-12 w-12 flex-shrink-0 overflow-hidden bg-white border border-black/10 rounded-lg">
+                          <ImageWithFallback src={product.image} alt={translate(product.name)} className="h-full w-full object-cover" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="truncate text-[11px] font-extrabold uppercase tracking-wide text-black">{translate(product.name)}</p>
+                          <p className="text-[9px] text-black/45 mt-0.5 uppercase">
+                            {item.size}{item.color ? ` / ${translate(item.color)}` : ""}
+                          </p>
+                          <p className="text-[9px] text-black/60 font-semibold mt-0.5">SL: {item.quantity}</p>
+                        </div>
+                        <div className="text-right flex-shrink-0">
+                          <p className="text-[11px] font-bold text-black font-mono">
+                            {formatPrice(item.priceAtAdd * item.quantity)}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="border-t border-black/10 pt-3 space-y-2 text-xs">
+                    <div className="flex justify-between">
+                      <span className="text-black/60">{t("Tạm tính", "Subtotal")}</span>
+                      <span className="font-medium">{formatPrice(subtotal)}</span>
+                    </div>
+                    {discountAmount > 0 && (
+                      <div className="flex justify-between text-green-700">
+                        <span className="text-black/60">{t("Giảm giá", "Discounts")}</span>
+                        <span className="font-bold">- {formatPrice(discountAmount)}</span>
+                      </div>
+                    )}
+                    {vipDiscountAmount > 0 && (
+                      <div className="flex justify-between text-red-700">
+                        <span className="text-black/60">{t("Chiết khấu VIP", "VIP Discount")}</span>
+                        <span className="font-bold">- {formatPrice(vipDiscountAmount)}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between">
+                      <span className="text-black/60">{t("Vận chuyển", "Shipping")}</span>
+                      <span className="font-medium">{shipping === 0 ? t("Miễn phí", "Free") : formatPrice(shipping)}</span>
+                    </div>
+                    <div className="flex justify-between border-t border-black/10 pt-2 text-sm font-bold uppercase tracking-wider">
+                      <span>{t("Tổng cộng", "Total")}</span>
+                      <span className="font-mono text-base">{formatPrice(total)}</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
             <form onSubmit={handleSubmit} className="space-y-8">
 
               {/* Contact */}

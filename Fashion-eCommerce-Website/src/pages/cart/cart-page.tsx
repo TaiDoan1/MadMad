@@ -9,7 +9,7 @@ import { useLanguage } from "@/features/settings/context/language-context";
 
 export function CartPage() {
   const { products } = useProducts();
-  const { formatPrice, t } = useLanguage();
+  const { formatPrice, t, translate } = useLanguage();
   const {
     cartItems,
     subtotal,
