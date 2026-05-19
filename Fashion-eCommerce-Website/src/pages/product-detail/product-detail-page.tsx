@@ -78,6 +78,50 @@ export function ProductDetailPage() {
     }
   }, [product?.id, productImages]);
 
+  const getAvailableStock = () => {
+    if (!product) return 999;
+    if (product.variantStock && Object.keys(product.variantStock).length > 0) {
+      if (selectedColor && selectedSize) {
+        const key = `${selectedColor}-${selectedSize}`;
+        return product.variantStock[key] !== undefined ? product.variantStock[key] : 0;
+      }
+      return Object.values(product.variantStock).reduce((sum, v) => sum + v, 0);
+    }
+    return product.stock !== undefined ? product.stock : 999;
+  };
+
+  const availableStock = getAvailableStock();
+
+  useEffect(() => {
+    if (availableStock > 0 && quantity > availableStock) {
+      setQuantity(availableStock);
+    }
+  }, [selectedColor, selectedSize, availableStock]);
+
+  const isSizeOutOfStock = (size: string) => {
+    if (!product || !product.variantStock || Object.keys(product.variantStock).length === 0) return false;
+    if (selectedColor) {
+      const key = `${selectedColor}-${size}`;
+      return (product.variantStock[key] ?? 0) <= 0;
+    }
+    return product.colors.every(c => {
+      const key = `${c}-${size}`;
+      return (product.variantStock?.[key] ?? 0) <= 0;
+    });
+  };
+
+  const isColorOutOfStock = (color: string) => {
+    if (!product || !product.variantStock || Object.keys(product.variantStock).length === 0) return false;
+    if (selectedSize) {
+      const key = `${color}-${selectedSize}`;
+      return (product.variantStock[key] ?? 0) <= 0;
+    }
+    return product.sizes.every(s => {
+      const key = `${color}-${s}`;
+      return (product.variantStock?.[key] ?? 0) <= 0;
+    });
+  };
+
   if (!product) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
@@ -191,10 +235,12 @@ export function ProductDetailPage() {
                 <div className="flex justify-start flex-wrap gap-2">
                   {product.colors.map((color) => {
                     const isSelected = selectedColor === color;
+                    const isSoldOut = isColorOutOfStock(color);
                     const colorStyle = COLOR_MAP[color] || { bg: "#9CA3AF", text: "#FFFFFF" };
                     return (
                       <button
                         key={color}
+                        disabled={isSoldOut && isSelected}
                         onClick={() => {
                           setSelectedColor(color);
                           const colorImage = product.colorImages?.[color] || findImageForColor(color, productImages);
@@ -202,14 +248,21 @@ export function ProductDetailPage() {
                             setCurrentImage(colorImage);
                           }
                         }}
-                        className={`px-4 py-2 border rounded-lg text-xs font-bold uppercase tracking-wider transition-all duration-300 cursor-pointer ${
+                        className={`relative px-4 py-2 border rounded-lg text-xs font-bold uppercase tracking-wider transition-all duration-300 cursor-pointer ${
                           isSelected 
                             ? "border-black dark:border-white border-[1.5px] shadow-sm" 
+                            : isSoldOut
+                            ? "border-neutral-200 dark:border-neutral-800 text-neutral-300 dark:text-neutral-600 opacity-40 cursor-not-allowed"
                             : "border-black/10 dark:border-white/10 bg-transparent text-foreground hover:border-black/30 dark:hover:border-white/30"
                         }`}
                         style={isSelected ? { backgroundColor: colorStyle.bg, color: colorStyle.text } : {}}
                       >
                         {translate(color)}
+                        {isSoldOut && (
+                          <span className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-20">
+                            <span className="w-full h-[1.5px] bg-black dark:bg-white rotate-12"></span>
+                          </span>
+                        )}
                       </button>
                     );
                   })}
@@ -220,19 +273,30 @@ export function ProductDetailPage() {
               <div className="w-full">
                 <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-neutral-400 mb-3">{t("Kích Cỡ (Size)", "Sizes")}</h3>
                 <div className="flex justify-start gap-2 flex-wrap">
-                  {product.sizes.map((size) => (
-                    <button
-                      key={size}
-                      onClick={() => setSelectedSize(size)}
-                      className={`px-4 py-2 border rounded-lg text-xs font-bold uppercase tracking-wider transition-all duration-300 cursor-pointer ${
-                        selectedSize === size 
-                          ? "border-black dark:border-white border-[1.5px] bg-neutral-50 dark:bg-neutral-900 text-foreground font-extrabold shadow-sm" 
-                          : "border-black/10 dark:border-white/10 bg-transparent text-neutral-500 dark:text-neutral-400 hover:border-black/30 dark:hover:border-white/30"
-                      }`}
-                    >
-                      {size}
-                    </button>
-                  ))}
+                  {product.sizes.map((size) => {
+                    const isSelected = selectedSize === size;
+                    const isSoldOut = isSizeOutOfStock(size);
+                    return (
+                      <button
+                        key={size}
+                        onClick={() => setSelectedSize(size)}
+                        className={`relative px-4 py-2 border rounded-lg text-xs font-bold uppercase tracking-wider transition-all duration-300 cursor-pointer ${
+                          isSelected 
+                            ? "border-black dark:border-white border-[1.5px] bg-neutral-50 dark:bg-neutral-900 text-foreground font-extrabold shadow-sm" 
+                            : isSoldOut
+                            ? "border-neutral-200 dark:border-neutral-800 text-neutral-300 dark:text-neutral-600 opacity-40 cursor-not-allowed"
+                            : "border-black/10 dark:border-white/10 bg-transparent text-neutral-500 dark:text-neutral-400 hover:border-black/30 dark:hover:border-white/30"
+                        }`}
+                      >
+                        {size}
+                        {isSoldOut && (
+                          <span className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-20">
+                            <span className="w-full h-[1.5px] bg-black dark:bg-white rotate-12"></span>
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 
@@ -242,26 +306,74 @@ export function ProductDetailPage() {
                 <div className="inline-flex items-center gap-1 bg-neutral-50 dark:bg-neutral-900 rounded-full p-1 border border-black/5 dark:border-white/5">
                   <button 
                     onClick={() => setQuantity(Math.max(1, quantity - 1))} 
-                    className="w-8 h-8 rounded-full flex items-center justify-center bg-white dark:bg-neutral-800 shadow-sm border border-black/5 dark:border-white/5 text-sm font-semibold transition-colors hover:bg-neutral-50 cursor-pointer"
+                    className="w-8 h-8 rounded-full flex items-center justify-center bg-white dark:bg-neutral-800 shadow-sm border border-black/5 dark:border-white/5 text-sm font-semibold transition-colors hover:bg-neutral-50 cursor-pointer text-foreground"
                   >
                     -
                   </button>
                   <div className="w-10 text-center text-xs font-bold tracking-wide text-foreground">{quantity}</div>
                   <button 
+                    disabled={quantity >= availableStock}
                     onClick={() => setQuantity(quantity + 1)} 
-                    className="w-8 h-8 rounded-full flex items-center justify-center bg-white dark:bg-neutral-800 shadow-sm border border-black/5 dark:border-white/5 text-sm stroke-2 font-semibold transition-colors hover:bg-neutral-50 cursor-pointer"
+                    className="w-8 h-8 rounded-full flex items-center justify-center bg-white dark:bg-neutral-800 shadow-sm border border-black/5 dark:border-white/5 text-sm stroke-2 font-semibold transition-colors hover:bg-neutral-50 cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed text-foreground"
                   >
                     +
                   </button>
                 </div>
               </div>
 
+              {/* Real-time Inventory Alert */}
+              {(() => {
+                if (!product) return null;
+                if (selectedColor && selectedSize) {
+                  if (availableStock <= 0) {
+                    return (
+                      <div className="w-full bg-red-50 dark:bg-red-950/20 text-red-650 dark:text-red-400 px-4 py-3 rounded-2xl border border-red-200/50 dark:border-red-900/50 text-[10px] uppercase tracking-widest font-black flex items-center gap-2 animate-fadeIn">
+                        <span className="w-2 h-2 rounded-full bg-red-600 animate-pulse"></span>
+                        {t("BIẾN THỂ NÀY ĐÀ HẾT HÀNG!", "THIS VARIANT IS OUT OF STOCK!")}
+                      </div>
+                    );
+                  }
+                  if (availableStock <= 5) {
+                    return (
+                      <div className="w-full bg-amber-50 dark:bg-amber-950/20 text-amber-600 dark:text-amber-400 px-4 py-3 rounded-2xl border border-amber-200/50 dark:border-amber-900/50 text-[10px] uppercase tracking-widest font-black flex items-center gap-2 animate-fadeIn">
+                        <span className="w-2 h-2 rounded-full bg-amber-500 animate-ping"></span>
+                        {t(`CỰC HIẾM - CHỈ CÒN ${availableStock} SẢN PHẨM CUỐI CÙNG!`, `EXTREMELY RARE - ONLY ${availableStock} LEFT!`)}
+                      </div>
+                    );
+                  }
+                  return (
+                    <div className="w-full bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 dark:text-emerald-400 px-4 py-3 rounded-2xl border border-emerald-200/50 dark:border-emerald-900/50 text-[10px] uppercase tracking-widest font-black flex items-center gap-2 animate-fadeIn">
+                      <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                      {t(`CÒN HÀNG - ${availableStock} SẢN PHẨM TRONG KHO`, `IN STOCK - ${availableStock} ITEMS AVAILABLE`)}
+                    </div>
+                  );
+                }
+                const totalStock = product.variantStock && Object.keys(product.variantStock).length > 0
+                  ? Object.values(product.variantStock).reduce((sum, v) => sum + v, 0)
+                  : (product.stock !== undefined ? product.stock : 999);
+                  
+                if (totalStock <= 0) {
+                  return (
+                    <div className="w-full bg-red-50 dark:bg-red-950/20 text-red-650 dark:text-red-400 px-4 py-3 rounded-2xl border border-red-200/50 dark:border-red-900/50 text-[10px] uppercase tracking-widest font-black flex items-center gap-2 animate-fadeIn">
+                      <span className="w-2 h-2 rounded-full bg-red-600"></span>
+                      {t("SẢN PHẨM NÀY ĐÃ HẾT HÀNG TOÀN BỘ!", "THIS PRODUCT IS ENTIRELY OUT OF STOCK!")}
+                    </div>
+                  );
+                }
+                return null;
+              })()}
+
               {/* Main Actions Stack */}
               <div className="w-full pt-4">
                 <button
+                  disabled={availableStock <= 0}
                   onClick={() => {
                     if (!selectedSize || !selectedColor) {
                       showToast(t("Vui lòng chọn size và màu sắc!", "Please select size and color!"), "warning");
+                      return;
+                    }
+                    if (quantity > availableStock) {
+                      showToast(t("Không đủ hàng trong kho!", "Not enough stock available!"), "error");
                       return;
                     }
                     addToCart({
@@ -273,10 +385,10 @@ export function ProductDetailPage() {
                     });
                     showToast(t("Đã thêm vào giỏ hàng!", "Added to cart successfully!"), "success");
                   }}
-                  className="w-full py-4 rounded-[14px] bg-black dark:bg-white text-white dark:text-black text-xs font-bold uppercase tracking-widest flex items-center justify-center gap-2.5 shadow-md transition-all duration-300 hover:bg-neutral-900 dark:hover:bg-neutral-100 active:scale-[0.98] cursor-pointer"
+                  className="w-full py-4 rounded-[14px] bg-black dark:bg-white text-white dark:text-black text-xs font-bold uppercase tracking-widest flex items-center justify-center gap-2.5 shadow-md transition-all duration-300 hover:bg-neutral-900 dark:hover:bg-neutral-100 active:scale-[0.98] cursor-pointer disabled:bg-neutral-200 dark:disabled:bg-neutral-800 disabled:text-neutral-400 dark:disabled:text-neutral-600 disabled:cursor-not-allowed"
                 >
                   <ShoppingCart className="h-4 w-4 shrink-0" />
-                  <span>{t("THÊM VÀO GIỎ HÀNG", "ADD TO CART")}</span>
+                  <span>{availableStock <= 0 ? t("HẾT HÀNG", "OUT OF STOCK") : t("THÊM VÀO GIỎ HÀNG", "ADD TO CART")}</span>
                 </button>
               </div>
 

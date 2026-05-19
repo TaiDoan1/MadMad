@@ -89,7 +89,11 @@ export function AdminProductsPage() {
     reviews: 0,
   });
 
-  const [formTab, setFormTab] = useState<"info" | "attributes" | "media">("info");
+  const [stockType, setStockType] = useState<"simple" | "variant">("simple");
+  const [stockInput, setStockInput] = useState<number>(999);
+  const [variantStockDraft, setVariantStockDraft] = useState<Record<string, number>>({});
+
+  const [formTab, setFormTab] = useState<"info" | "attributes" | "media" | "inventory">("info");
 
   const resetForm = () => {
     setFormData({ name: "", price: 0, originalPrice: 0, discountPercent: 0, category: productOptions.categories[0] ?? "", image: "", sizeChartImage: "", description: "", sizes: "", inStock: true, rating: 5, reviews: 0 });
@@ -99,7 +103,18 @@ export function AdminProductsPage() {
     setColorImageDrafts({});
     setProductImages([""]);
     setSelectedProduct(null);
+    setStockType("simple");
+    setStockInput(999);
+    setVariantStockDraft({});
     setFormTab("info");
+  };
+
+  const getProductStockInfo = (prod: Product) => {
+    if (prod.variantStock && Object.keys(prod.variantStock).length > 0) {
+      const total = Object.values(prod.variantStock).reduce((sum, val) => sum + val, 0);
+      return { total, isVariant: true };
+    }
+    return { total: prod.stock !== undefined ? prod.stock : null, isVariant: false };
   };
 
   const normalizedImages = productImages.map((value) => value.trim()).filter(Boolean);
@@ -296,9 +311,38 @@ export function AdminProductsPage() {
                         ) : null}
                       </td>
                       <td className="px-6 py-4">
-                        <span className={`rounded-full px-3 py-1 text-xs ${product.inStock ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}`}>
-                          {product.inStock ? "Còn hàng" : "Hết hàng"}
-                        </span>
+                        {(() => {
+                          const stockInfo = getProductStockInfo(product);
+                          if (stockInfo.total === null) {
+                            return (
+                              <span className={`rounded-full px-3 py-1 text-xs font-semibold ${product.inStock ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}`}>
+                                {product.inStock ? "Còn hàng" : "Hết hàng"}
+                              </span>
+                            );
+                          }
+                          
+                          if (stockInfo.total <= 0) {
+                            return (
+                              <span className="rounded-full bg-red-100 px-3 py-1 text-xs font-bold text-red-800">
+                                Hết hàng (0)
+                              </span>
+                            );
+                          }
+                          
+                          if (stockInfo.total <= 5) {
+                            return (
+                              <span className="rounded-full bg-amber-105 px-3 py-1 text-xs font-bold text-amber-800" title={stockInfo.isVariant ? "Tồn kho theo biến thể" : "Tồn kho tổng"}>
+                                Sắp hết ({stockInfo.total})
+                              </span>
+                            );
+                          }
+                          
+                          return (
+                            <span className="rounded-full bg-green-100 px-3 py-1 text-xs font-semibold text-green-800" title={stockInfo.isVariant ? "Tồn kho theo biến thể" : "Tồn kho tổng"}>
+                              Còn {stockInfo.total} chiếc
+                            </span>
+                          );
+                        })()}
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex items-center justify-end gap-2">
@@ -334,12 +378,15 @@ export function AdminProductsPage() {
                                 reviews: product.reviews,
                               });
                               setProductImages((product.images && product.images.length > 0 ? product.images : [product.image]).concat(""));
-                          setSelectedSizes(product.sizes);
-                          setSelectedColors(product.colors);
-                          setSelectedTags(product.tags ?? []);
-                          setColorImageDrafts(product.colorImages || {});
-                          setFormTab("info");
-                          setShowEditModal(true);
+                              setSelectedSizes(product.sizes);
+                              setSelectedColors(product.colors);
+                              setSelectedTags(product.tags ?? []);
+                              setColorImageDrafts(product.colorImages || {});
+                              setStockInput(product.stock !== undefined ? product.stock : 999);
+                              setVariantStockDraft(product.variantStock || {});
+                              setStockType(product.variantStock && Object.keys(product.variantStock).length > 0 ? "variant" : "simple");
+                              setFormTab("info");
+                              setShowEditModal(true);
                             }}
                           >
                             <Edit className="h-4 w-4" />
@@ -445,6 +492,17 @@ export function AdminProductsPage() {
                 }`}
               >
                 Hình ảnh & Mô tả
+              </button>
+              <button
+                type="button"
+                onClick={() => setFormTab("inventory")}
+                className={`flex-1 py-3 text-center text-[10px] font-extrabold tracking-widest uppercase border-b-2 transition-all ${
+                  formTab === "inventory"
+                    ? "border-black text-black"
+                    : "border-transparent text-black/35 hover:text-black"
+                }`}
+              >
+                Tồn kho
               </button>
             </div>
 
@@ -829,6 +887,105 @@ export function AdminProductsPage() {
                 </div>
               )}
 
+              {/* TAB 4: INVENTORY */}
+              {formTab === "inventory" && (
+                <div className="space-y-6 animate-fadeIn">
+                  <div className="space-y-1.5">
+                    <label className="block text-[9px] font-extrabold tracking-widest uppercase text-black/50">
+                      Phương thức quản lý kho
+                    </label>
+                    <div className="grid grid-cols-2 gap-3">
+                      <button
+                        type="button"
+                        onClick={() => setStockType("simple")}
+                        className={`flex flex-col items-center justify-center p-4 border rounded-2xl transition-all ${
+                          stockType === "simple"
+                            ? "border-black bg-stone-50 text-black font-extrabold"
+                            : "border-black/10 text-stone-400 hover:border-black/40 hover:text-black"
+                        }`}
+                      >
+                        <span className="text-xs uppercase tracking-wider font-extrabold">Đơn giản</span>
+                        <span className="text-[9px] mt-1 opacity-70">Một số lượng tồn kho cho toàn bộ sản phẩm</span>
+                      </button>
+                      <button
+                        type="button"
+                        disabled={selectedColors.length === 0 || selectedSizes.length === 0}
+                        onClick={() => setStockType("variant")}
+                        className={`flex flex-col items-center justify-center p-4 border rounded-2xl transition-all ${
+                          selectedColors.length === 0 || selectedSizes.length === 0
+                            ? "opacity-40 cursor-not-allowed border-dashed"
+                            : stockType === "variant"
+                            ? "border-black bg-stone-50 text-black font-extrabold"
+                            : "border-black/10 text-stone-400 hover:border-black/40 hover:text-black"
+                        }`}
+                      >
+                        <span className="text-xs uppercase tracking-wider font-extrabold">Theo biến thể</span>
+                        <span className="text-[9px] mt-1 opacity-70">Quản lý số lượng riêng cho từng Màu + Size</span>
+                      </button>
+                    </div>
+                    {(selectedColors.length === 0 || selectedSizes.length === 0) && (
+                      <p className="text-[9px] text-amber-600 font-bold mt-1">
+                        * Vui lòng chọn ít nhất một Màu sắc và Size tại tab "Đặc tính sản phẩm" để kích hoạt quản lý kho theo biến thể.
+                      </p>
+                    )}
+                  </div>
+
+                  {stockType === "simple" ? (
+                    <div className="space-y-1.5 bg-stone-50/50 p-4 border border-black/5 rounded-2xl">
+                      <label className="block text-[9px] font-extrabold tracking-widest uppercase text-black/50">
+                        Số lượng tồn kho tổng
+                      </label>
+                      <input
+                        type="number"
+                        min={0}
+                        required
+                        value={stockInput}
+                        onChange={(e) => setStockInput(Math.max(0, Number(e.target.value)))}
+                        className="w-full max-w-xs rounded-xl border border-black/10 bg-white px-4 py-3 text-xs focus:border-black/60 focus:outline-none transition-all font-mono font-bold"
+                        placeholder="Ví dụ: 100"
+                      />
+                    </div>
+                  ) : (
+                    <div className="space-y-3 bg-stone-50/50 p-4 border border-black/5 rounded-2xl">
+                      <div>
+                        <label className="block text-[9px] font-extrabold tracking-widest uppercase text-black/50">
+                          Số lượng chi tiết theo biến thể (Màu sắc - Kích cỡ)
+                        </label>
+                        <p className="text-[9px] text-black/40 mt-0.5">Nhập số lượng tồn kho cụ thể cho từng biến thể để hiển thị tại trang sản phẩm.</p>
+                      </div>
+                      <div className="max-h-60 overflow-y-auto pr-1 space-y-2">
+                        {selectedColors.map((color) =>
+                          selectedSizes.map((size) => {
+                            const key = `${color}-${size}`;
+                            const value = variantStockDraft[key] !== undefined ? variantStockDraft[key] : 10;
+                            return (
+                              <div key={key} className="flex items-center justify-between bg-white px-4 py-2.5 border border-black/5 rounded-xl gap-4">
+                                <span className="text-[10px] font-black uppercase tracking-wider text-black">
+                                  {color} <span className="opacity-40">/</span> {size}
+                                </span>
+                                <input
+                                  type="number"
+                                  min={0}
+                                  value={value}
+                                  onChange={(e) => {
+                                    const nextVal = Math.max(0, Number(e.target.value));
+                                    setVariantStockDraft((current) => ({
+                                      ...current,
+                                      [key]: nextVal,
+                                    }));
+                                  }}
+                                  className="w-24 rounded-lg border border-black/10 bg-stone-50/40 px-3 py-1.5 text-center text-xs focus:border-black/65 focus:outline-none transition-all font-mono font-bold"
+                                />
+                              </div>
+                            );
+                          })
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
             </div>
 
             {/* Modal Actions Footer */}
@@ -844,12 +1001,13 @@ export function AdminProductsPage() {
                 Hủy bỏ
               </button>
               
-              {formTab !== "media" ? (
+              {formTab !== "inventory" ? (
                 <button
                   type="button"
                   onClick={() => {
                     if (formTab === "info") setFormTab("attributes");
                     else if (formTab === "attributes") setFormTab("media");
+                    else if (formTab === "media") setFormTab("inventory");
                   }}
                   className="bg-black hover:bg-red-700 text-white px-6 py-3 rounded-xl text-[10px] font-extrabold tracking-widest uppercase transition-all shadow-md shadow-black/10"
                 >
@@ -863,6 +1021,37 @@ export function AdminProductsPage() {
                       const url = (colorImageDrafts[color] || "").trim();
                       if (url) colorImages[color] = url;
                     });
+
+                    let finalStock: number | undefined = undefined;
+                    let finalVariantStock: Record<string, number> | undefined = undefined;
+                    let autoInStock = formData.inStock;
+
+                    if (stockType === "simple") {
+                      finalStock = stockInput;
+                      finalVariantStock = undefined;
+                      if (stockInput === 0) {
+                        autoInStock = false;
+                      } else {
+                        autoInStock = true;
+                      }
+                    } else {
+                      finalVariantStock = {};
+                      let totalVariantQty = 0;
+                      selectedColors.forEach((color) => {
+                        selectedSizes.forEach((size) => {
+                          const k = `${color}-${size}`;
+                          const qty = variantStockDraft[k] !== undefined ? variantStockDraft[k] : 10;
+                          finalVariantStock![k] = qty;
+                          totalVariantQty += qty;
+                        });
+                      });
+                      finalStock = undefined;
+                      if (totalVariantQty === 0) {
+                        autoInStock = false;
+                      } else {
+                        autoInStock = true;
+                      }
+                    }
 
                     const nextProduct: Product = {
                       ...(selectedProduct ?? { id: 0 }),
@@ -879,7 +1068,9 @@ export function AdminProductsPage() {
                       sizes: selectedSizes,
                       colors: selectedColors,
                       colorImages: Object.keys(colorImages).length ? colorImages : undefined,
-                      inStock: formData.inStock,
+                      inStock: autoInStock,
+                      stock: finalStock,
+                      variantStock: finalVariantStock,
                       rating: formData.rating,
                       reviews: formData.reviews,
                     };

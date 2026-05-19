@@ -445,6 +445,31 @@ export function AdminOrdersPage() {
 
       setMembers(updatedMembersList);
     }
+
+    if (newStatus === "cancelled" && order.status !== "cancelled") {
+      order.items.forEach((item) => {
+        const product = products.find((p) => String(p.id) === String(item.productId));
+        if (product) {
+          const nextProduct = { ...product };
+          const key = `${item.color}-${item.size}`;
+
+          if (nextProduct.variantStock && nextProduct.variantStock[key] !== undefined) {
+            nextProduct.variantStock = {
+              ...nextProduct.variantStock,
+              [key]: nextProduct.variantStock[key] + item.quantity,
+            };
+            nextProduct.inStock = true;
+            updateProduct(product.id, nextProduct);
+            showToast(`📦 Đã hoàn trả +${item.quantity} biến thể [${item.color}-${item.size}] của "${product.name}" về kho hàng!`, "success");
+          } else if (nextProduct.stock !== undefined) {
+            nextProduct.stock = nextProduct.stock + item.quantity;
+            nextProduct.inStock = true;
+            updateProduct(product.id, nextProduct);
+            showToast(`📦 Đã hoàn trả +${item.quantity} sản phẩm "${product.name}" về kho hàng!`, "success");
+          }
+        }
+      });
+    }
   };
 
   // Tạo đơn thủ công

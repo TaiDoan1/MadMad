@@ -131,7 +131,7 @@ const SearchableDropdown = ({
 
 export function CheckoutPage() {
   const { showToast } = useToast();
-  const { products } = useProducts();
+  const { products, updateProduct } = useProducts();
   const { settings } = useStorefrontSettings();
   const { addOrder } = useOrders();
   const { currentMember, addPointsToCurrentMember, tierConfigs } = useMembership();
@@ -320,6 +320,33 @@ export function CheckoutPage() {
         if (appliedCoupon?.code) {
           incrementCouponUsage(appliedCoupon.code);
         }
+
+        // Tự động trừ tồn kho (Checkout Auto-Deduction)
+        resolvedItems.forEach(({ item, product }) => {
+          const qty = item.quantity;
+          const key = `${item.color}-${item.size}`;
+          const nextProduct = { ...product };
+
+          if (nextProduct.variantStock && nextProduct.variantStock[key] !== undefined) {
+            const currentStock = nextProduct.variantStock[key];
+            nextProduct.variantStock = {
+              ...nextProduct.variantStock,
+              [key]: Math.max(0, currentStock - qty),
+            };
+            const totalStock = Object.values(nextProduct.variantStock).reduce((sum, v) => sum + v, 0);
+            if (totalStock === 0) {
+              nextProduct.inStock = false;
+            }
+          } else if (nextProduct.stock !== undefined) {
+            const nextStock = Math.max(0, nextProduct.stock - qty);
+            nextProduct.stock = nextStock;
+            if (nextStock === 0) {
+              nextProduct.inStock = false;
+            }
+          }
+
+          updateProduct(product.id, nextProduct);
+        });
 
         clearCart();
         setSuccessModal({

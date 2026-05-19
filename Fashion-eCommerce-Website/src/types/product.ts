@@ -17,6 +17,8 @@ export interface Product {
   sizes: string[];
   colors: string[];
   inStock: boolean;
+  stock?: number;
+  variantStock?: Record<string, number>;
   createdAt?: string;
 }
 
