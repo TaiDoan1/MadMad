@@ -4,6 +4,36 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <script>
+    // Tự động reload trang khi có phiên bản build mới trên máy chủ (chunk load error)
+    (function() {
+      function handleChunkError() {
+        var now = Date.now();
+        var lastReload = sessionStorage.getItem('madmad_last_chunk_reload');
+        if (!lastReload || (now - parseInt(lastReload, 10) > 10000)) {
+          sessionStorage.setItem('madmad_last_chunk_reload', String(now));
+          window.location.reload();
+        }
+      }
+      window.addEventListener('vite:preloadError', handleChunkError);
+      window.addEventListener('error', function(e) {
+        if (e.message && (
+          e.message.indexOf('Failed to fetch dynamically imported module') !== -1 ||
+          e.message.indexOf('Expected a JavaScript-or-Wasm module') !== -1
+        )) {
+          handleChunkError();
+        }
+      }, true);
+      window.addEventListener('unhandledrejection', function(e) {
+        if (e.reason && (
+          String(e.reason).indexOf('Failed to fetch dynamically imported module') !== -1 ||
+          String(e.reason).indexOf('Expected a JavaScript-or-Wasm module') !== -1
+        )) {
+          handleChunkError();
+        }
+      });
+    })();
+  </script>
   <title>MADMAD Studio | Make Your Own Style</title>
   <link rel="icon" type="image/png" href="/favicon.png" />
   <link rel="preconnect" href="https://fonts.googleapis.com">

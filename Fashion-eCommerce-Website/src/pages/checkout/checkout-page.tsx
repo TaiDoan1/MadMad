@@ -180,10 +180,17 @@ export function CheckoutPage() {
     const [query, setQuery] = useState("");
     const containerRef = useRef<HTMLDivElement | null>(null);
     const inputRef = useRef<HTMLInputElement | null>(null);
+    const touchMoved = useRef(false);
 
     useEffect(() => {
       if (!open) return;
-      inputRef.current?.focus();
+      
+      // Chỉ tự động focus ô tìm kiếm trên Desktop để tránh tự động hiện bàn phím ảo (bung bàn phím) trên Mobile
+      const isMobile = window.matchMedia("(pointer: coarse)").matches || window.innerWidth < 1024;
+      if (!isMobile) {
+        inputRef.current?.focus();
+      }
+
       const onMouseDown = (e: MouseEvent) => {
         if (containerRef.current && e.target instanceof Node && !containerRef.current.contains(e.target)) {
           setOpen(false); setQuery("");
@@ -199,12 +206,30 @@ export function CheckoutPage() {
       return q ? options.filter((o) => normalizeText(o.name).includes(q)) : options;
     }, [options, query]);
 
+    const handleTouchStart = () => {
+      touchMoved.current = false;
+    };
+
+    const handleTouchMove = () => {
+      touchMoved.current = true;
+    };
+
+    const handleButtonClick = () => {
+      if (touchMoved.current) {
+        touchMoved.current = false;
+        return;
+      }
+      setOpen((c) => !c);
+    };
+
     return (
       <div ref={containerRef} className="relative">
         <button
           type="button"
           disabled={disabled}
-          onClick={() => setOpen((c) => !c)}
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onClick={handleButtonClick}
           className={`${inputCls} flex items-center justify-between text-left disabled:opacity-50`}
         >
           <span className={selectedLabel ? "" : "text-black/35"}>{selectedLabel || placeholder}</span>
