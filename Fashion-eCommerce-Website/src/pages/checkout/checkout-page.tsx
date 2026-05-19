@@ -24,6 +24,7 @@ import { useStorefrontSettings } from "@/features/settings/context/storefront-se
 import { useLanguage } from "@/features/settings/context/language-context";
 import { useToast } from "@/components/common/toast";
 import type { Order, OrderItem } from "@/types/order";
+import { API_URL } from "@/config/api";
 
 /* ── Shared input className ───────────────────────────────────────────── */
 const inputCls =
@@ -264,12 +265,64 @@ export function CheckoutPage() {
     return () => { alive = false; };
   }, [formData.districtCode]);
 
-  const handleSubmit = (event?: FormEvent) => {
+  const checkStockBeforeCheckout = async (): Promise<boolean> => {
+    try {
+      const response = await fetch(`${API_URL}/products`);
+      if (!response.ok) throw new Error("Could not verify stock");
+      const freshProducts = await response.json();
+      
+      for (const { item, product } of resolvedItems) {
+        const freshProd = freshProducts.find((p: any) => String(p.id) === String(product.id));
+        if (!freshProd) {
+          showToast(t(`Sản phẩm "${product.name}" không còn tồn tại trên hệ thống!`, `Product "${product.name}" no longer exists!`), "error");
+          return false;
+        }
+        if (!freshProd.inStock) {
+          showToast(t(`Rất tiếc, sản phẩm "${product.name}" đã vừa hết hàng!`, `Sorry, "${product.name}" has just sold out!`), "error");
+          return false;
+        }
+        const key = `${item.color}-${item.size}`;
+        const freshVariantStock = typeof freshProd.variantStock === "string" ? JSON.parse(freshProd.variantStock) : freshProd.variantStock;
+        
+        if (freshVariantStock && freshVariantStock[key] !== undefined) {
+          const available = freshVariantStock[key];
+          if (available < item.quantity) {
+            if (available <= 0) {
+              showToast(t(`Rất tiếc, biến thể [${item.color}-${item.size}] của "${product.name}" đã vừa hết hàng do có người khác mua trước!`, `Variant [${item.color}-${item.size}] of "${product.name}" is sold out!`), "error");
+            } else {
+              showToast(t(`Chỉ còn ${available} sản phẩm [${item.color}-${item.size}] của "${product.name}" trong kho! Vui lòng giảm số lượng.`, `Only ${available} items of [${item.color}-${item.size}] left in stock!`), "error");
+            }
+            return false;
+          }
+        } else if (freshProd.stock !== undefined) {
+          const available = freshProd.stock;
+          if (available < item.quantity) {
+            if (available <= 0) {
+              showToast(t(`Sản phẩm "${product.name}" đã vừa hết hàng do có người khác mua trước!`, `"${product.name}" has sold out!`), "error");
+            } else {
+              showToast(t(`Chỉ còn ${available} sản phẩm "${product.name}" trong kho! Vui lòng giảm số lượng.`, `Only ${available} items of "${product.name}" left in stock!`), "error");
+            }
+            return false;
+          }
+        }
+      }
+      return true;
+    } catch (err) {
+      console.error("Error during stock validation:", err);
+      return true;
+    }
+  };
+
+  const handleSubmit = async (event?: FormEvent) => {
     event?.preventDefault();
     if (resolvedItems.length === 0) { showToast(t("Giỏ hàng đang trống.", "Your cart is empty."), "warning"); return; }
     if (!formData.fullName || !formData.phone || !formData.email || !formData.address || !formData.wardCode) {
       showToast(t("Vui lòng điền đầy đủ thông tin giao hàng!", "Please complete all shipping details!"), "warning"); return;
     }
+
+    // Kiểm tra tồn kho realtime trực tiếp từ database trước khi đặt hàng
+    const isStockAvailable = await checkStockBeforeCheckout();
+    if (!isStockAvailable) return;
 
     // Save last delivery details to localStorage for next purchase autocomplete
     const lastDeliveryInfo = {
