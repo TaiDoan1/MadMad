@@ -54,17 +54,8 @@ export function AdminOrdersPage() {
     setSelectedOrder({ ...order, isPaid });
   };
 
-  // Local storage state cho danh sách thành viên để đồng bộ thăng hạng realtime
-  const [localMembers, setLocalMembers] = useState<any[]>([]);
-
-  useEffect(() => {
-    const raw = localStorage.getItem("madmad_members");
-    if (raw) {
-      setLocalMembers(JSON.parse(raw));
-    } else {
-      setLocalMembers(members);
-    }
-  }, [members]);
+  // Đồng bộ danh sách thành viên trực tiếp từ Database
+  const localMembers = members;
 
   // Search & Filter
   const [searchTerm, setSearchTerm] = useState("");
@@ -1890,7 +1881,14 @@ export function AdminOrdersPage() {
                 {/* Header */}
                 <div className="text-center space-y-1 mb-2 pb-2 border-b-2 border-dashed border-black">
                   <div className="flex items-center justify-between">
-                    <img src={brandLogo} alt="MADMAD Studio" className="h-8 w-auto" />
+                    <img 
+                      src={brandLogo} 
+                      alt="MADMAD Studio" 
+                      className="h-8 w-auto" 
+                      style={{ 
+                        filter: "brightness(0) drop-shadow(0.3px 0px 0px #000) drop-shadow(-0.3px 0px 0px #000) drop-shadow(0px 0.3px 0px #000)" 
+                      }} 
+                    />
                     <div className="text-right">
                       <h1 className="text-sm font-black tracking-widest">MADMAD STUDIO</h1>
                       <p className="text-[8px] uppercase tracking-wider text-black font-bold">{settings.printInvoiceSubheader || "Tối giản . Độc bản . Cao cấp"}</p>
