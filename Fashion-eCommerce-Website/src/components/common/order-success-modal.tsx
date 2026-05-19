@@ -133,7 +133,7 @@ export function OrderSuccessModal({
         </div>
 
         <p className="order-success-note">
-          Mã đơn hàng đã được gửi về Gmail, quý khách vui lòng dùng mã đơn hàng để tra cứu nhé!
+          Mã đơn hàng đã được gửi về Gmail của bạn. Quý khách có thể sử dụng mã này hoặc bằng gmail để <strong>tra cứu đơn hàng trực tiếp trên website</strong> bất cứ lúc nào!
         </p>
 
         {/* CTA button */}
@@ -143,7 +143,7 @@ export function OrderSuccessModal({
         </button>
 
         {/* Track Order Button */}
-        <button 
+        <button
           className="w-full mt-3 py-3 border border-stone-850 hover:border-stone-500 text-stone-500 hover:text-white rounded-xl text-[10px] font-extrabold tracking-widest uppercase transition-all duration-300 flex items-center justify-center gap-1.5 cursor-pointer bg-transparent"
           onClick={() => handleClose("/track-order")}
         >
