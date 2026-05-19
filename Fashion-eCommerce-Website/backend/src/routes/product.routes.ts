@@ -19,6 +19,9 @@ const parseProduct = (p: any) => ({
   colors: p.colors ? p.colors.split(",") : [],
   colorImages: p.colorImages ? JSON.parse(p.colorImages) : {},
   images: p.images ? JSON.parse(p.images) : [],
+  variantStock: p.variantStock ? JSON.parse(p.variantStock) : {},
+  stock: p.stock !== null && p.stock !== undefined ? Number(p.stock) : 999,
+  inStock: p.inStock !== null && p.inStock !== undefined ? !!p.inStock : true,
 });
 
 // 1. GET /api/products - Lấy danh sách sản phẩm (có lọc theo category)
@@ -55,7 +58,7 @@ router.get("/:id", async (req, res, next) => {
 // 3. POST /api/products - Tạo sản phẩm mới (Admin)
 router.post("/", async (req, res, next) => {
   try {
-    const { name, sku, price, image, category, description, sizes, colors, colorImages, images, isFeatured } = req.body;
+    const { name, sku, price, image, category, description, sizes, colors, colorImages, images, isFeatured, stock, variantStock, inStock } = req.body;
 
     if (!name || !sku || !price || !image || !category) {
       return res.status(400).json({ message: "Vui lòng nhập đầy đủ thông tin bắt buộc!" });
@@ -78,7 +81,10 @@ router.post("/", async (req, res, next) => {
         colors: colorsStr,
         colorImages: colorImagesStr,
         images: imagesStr,
-        isFeatured: !!isFeatured
+        isFeatured: !!isFeatured,
+        stock: stock !== undefined && stock !== null ? Number(stock) : 999,
+        variantStock: variantStock !== undefined && variantStock !== null ? (typeof variantStock === "object" ? JSON.stringify(variantStock) : String(variantStock)) : "{}",
+        inStock: inStock !== undefined ? !!inStock : true
       }
     });
 
@@ -95,7 +101,7 @@ router.post("/", async (req, res, next) => {
 router.put("/:id", async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { name, sku, price, image, category, description, sizes, colors, colorImages, images, isFeatured } = req.body;
+    const { name, sku, price, image, category, description, sizes, colors, colorImages, images, isFeatured, stock, variantStock, inStock } = req.body;
 
     const sizesStr = Array.isArray(sizes) ? sizes.join(",") : String(sizes || "");
     const colorsStr = Array.isArray(colors) ? colors.join(",") : String(colors || "");
@@ -115,7 +121,10 @@ router.put("/:id", async (req, res, next) => {
         colors: colorsStr,
         colorImages: colorImagesStr,
         images: imagesStr,
-        isFeatured: isFeatured !== undefined ? !!isFeatured : undefined
+        isFeatured: isFeatured !== undefined ? !!isFeatured : undefined,
+        stock: stock !== undefined && stock !== null ? Number(stock) : undefined,
+        variantStock: variantStock !== undefined && variantStock !== null ? (typeof variantStock === "object" ? JSON.stringify(variantStock) : String(variantStock)) : undefined,
+        inStock: inStock !== undefined ? !!inStock : undefined
       }
     });
 

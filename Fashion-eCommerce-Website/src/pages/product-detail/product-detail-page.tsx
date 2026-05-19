@@ -215,15 +215,24 @@ export function ProductDetailPage() {
 
           {/* 3. Right Column (Actions, Price & Accordions) - span 3 */}
           <div className="lg:col-span-3 flex flex-col justify-start items-start w-full space-y-6 lg:space-y-8 order-3 lg:order-3 pt-6 lg:pt-0">
-            
             {/* Price */}
             <div className="w-full">
               <div className="text-2xl lg:text-3xl font-black tracking-wide text-foreground">
                 {formatPrice(product.price)}
               </div>
-              {!product.inStock && (
-                <span className="inline-block bg-red-50 dark:bg-red-950/30 text-red-600 dark:text-red-400 px-3 py-1 text-[10px] font-bold tracking-wider uppercase rounded-full mt-3">{t("Hết hàng", "Out of stock")}</span>
-              )}
+              {(() => {
+                const totalStock = product.variantStock && Object.keys(product.variantStock).length > 0
+                  ? Object.values(product.variantStock).reduce((sum, v) => sum + v, 0)
+                  : (product.stock !== undefined ? product.stock : 999);
+                if (totalStock <= 0 || !product.inStock) {
+                  return (
+                    <span className="inline-block text-xs font-bold uppercase tracking-widest text-black dark:text-white mt-3">
+                      Sold out
+                    </span>
+                  );
+                }
+                return null;
+              })()}
             </div>
 
             {/* Selectors Stack */}
@@ -240,7 +249,7 @@ export function ProductDetailPage() {
                     return (
                       <button
                         key={color}
-                        disabled={isSoldOut && isSelected}
+                        disabled={isSoldOut}
                         onClick={() => {
                           setSelectedColor(color);
                           const colorImage = product.colorImages?.[color] || findImageForColor(color, productImages);
@@ -252,7 +261,7 @@ export function ProductDetailPage() {
                           isSelected 
                             ? "border-black dark:border-white border-[1.5px] shadow-sm" 
                             : isSoldOut
-                            ? "border-neutral-200 dark:border-neutral-800 text-neutral-300 dark:text-neutral-600 opacity-40 cursor-not-allowed"
+                            ? "border-neutral-200 dark:border-neutral-800 text-neutral-300 dark:text-neutral-600 opacity-20 cursor-not-allowed"
                             : "border-black/10 dark:border-white/10 bg-transparent text-foreground hover:border-black/30 dark:hover:border-white/30"
                         }`}
                         style={isSelected ? { backgroundColor: colorStyle.bg, color: colorStyle.text } : {}}
@@ -279,12 +288,13 @@ export function ProductDetailPage() {
                     return (
                       <button
                         key={size}
+                        disabled={isSoldOut}
                         onClick={() => setSelectedSize(size)}
                         className={`relative px-4 py-2 border rounded-lg text-xs font-bold uppercase tracking-wider transition-all duration-300 cursor-pointer ${
                           isSelected 
                             ? "border-black dark:border-white border-[1.5px] bg-neutral-50 dark:bg-neutral-900 text-foreground font-extrabold shadow-sm" 
                             : isSoldOut
-                            ? "border-neutral-200 dark:border-neutral-800 text-neutral-300 dark:text-neutral-600 opacity-40 cursor-not-allowed"
+                            ? "border-neutral-200 dark:border-neutral-800 text-neutral-300 dark:text-neutral-600 opacity-20 cursor-not-allowed"
                             : "border-black/10 dark:border-white/10 bg-transparent text-neutral-500 dark:text-neutral-400 hover:border-black/30 dark:hover:border-white/30"
                         }`}
                       >
@@ -327,36 +337,14 @@ export function ProductDetailPage() {
                 if (selectedColor && selectedSize) {
                   if (availableStock <= 0) {
                     return (
-                      <div className="w-full bg-red-50 dark:bg-red-950/20 text-red-650 dark:text-red-400 px-4 py-3 rounded-2xl border border-red-200/50 dark:border-red-900/50 text-[10px] uppercase tracking-widest font-black flex items-center gap-2 animate-fadeIn">
-                        <span className="w-2 h-2 rounded-full bg-red-600 animate-pulse"></span>
-                        {t("BIẾN THỂ NÀY ĐÀ HẾT HÀNG!", "THIS VARIANT IS OUT OF STOCK!")}
-                      </div>
-                    );
-                  }
-                  if (availableStock <= 5) {
-                    return (
-                      <div className="w-full bg-amber-50 dark:bg-amber-950/20 text-amber-600 dark:text-amber-400 px-4 py-3 rounded-2xl border border-amber-200/50 dark:border-amber-900/50 text-[10px] uppercase tracking-widest font-black flex items-center gap-2 animate-fadeIn">
-                        <span className="w-2 h-2 rounded-full bg-amber-500 animate-ping"></span>
-                        {t(`CỰC HIẾM - CHỈ CÒN ${availableStock} SẢN PHẨM CUỐI CÙNG!`, `EXTREMELY RARE - ONLY ${availableStock} LEFT!`)}
+                      <div className="text-xs font-bold uppercase tracking-widest text-black dark:text-white">
+                        {t("Hết hàng", "Sold out")}
                       </div>
                     );
                   }
                   return (
-                    <div className="w-full bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 dark:text-emerald-400 px-4 py-3 rounded-2xl border border-emerald-200/50 dark:border-emerald-900/50 text-[10px] uppercase tracking-widest font-black flex items-center gap-2 animate-fadeIn">
-                      <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-                      {t(`CÒN HÀNG - ${availableStock} SẢN PHẨM TRONG KHO`, `IN STOCK - ${availableStock} ITEMS AVAILABLE`)}
-                    </div>
-                  );
-                }
-                const totalStock = product.variantStock && Object.keys(product.variantStock).length > 0
-                  ? Object.values(product.variantStock).reduce((sum, v) => sum + v, 0)
-                  : (product.stock !== undefined ? product.stock : 999);
-                  
-                if (totalStock <= 0) {
-                  return (
-                    <div className="w-full bg-red-50 dark:bg-red-950/20 text-red-650 dark:text-red-400 px-4 py-3 rounded-2xl border border-red-200/50 dark:border-red-900/50 text-[10px] uppercase tracking-widest font-black flex items-center gap-2 animate-fadeIn">
-                      <span className="w-2 h-2 rounded-full bg-red-600"></span>
-                      {t("SẢN PHẨM NÀY ĐÃ HẾT HÀNG TOÀN BỘ!", "THIS PRODUCT IS ENTIRELY OUT OF STOCK!")}
+                    <div className="text-xs font-bold uppercase tracking-widest text-black dark:text-white">
+                      {t(`Số lượng: ${availableStock}`, `Quantity: ${availableStock}`)}
                     </div>
                   );
                 }
