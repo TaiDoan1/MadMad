@@ -53,6 +53,32 @@ function findImageForColor(color: string, images: string[]): string | undefined 
   return undefined;
 }
 
+function findImagesForColor(color: string, images: string[]): string[] {
+  if (!images || images.length === 0) return [];
+  
+  const normalizedColor = color.trim().toLowerCase();
+  
+  const colorKeywordsMap: Record<string, string[]> = {
+    "trắng": ["trang", "white"],
+    "đen": ["den", "black"],
+    "xám": ["xam", "gray", "grey"],
+    "đỏ": ["do", "red"],
+    "navy": ["navy", "blue"],
+    "be": ["be", "beige"],
+    "camel": ["camel", "brown"],
+    "sọc": ["soc", "stripe"],
+    "hoa": ["hoa", "floral"],
+    "xanh/trắng": ["xanh-trang", "blue-white"],
+    "đỏ/trắng": ["do-trang", "red-white"]
+  };
+  
+  const keywords = colorKeywordsMap[normalizedColor] || [normalizedColor];
+  
+  return images.filter(img => {
+    return keywords.some(keyword => img.toLowerCase().includes(keyword));
+  });
+}
+
 export function ProductDetailPage() {
   const { showToast } = useToast();
   const { id } = useParams();
@@ -69,6 +95,12 @@ export function ProductDetailPage() {
   const [expandedAccordion, setExpandedAccordion] = useState<string | null>(null);
   const productImages = product?.images && product.images.length > 0 ? product.images : product ? [product.image] : [];
   const [currentImage, setCurrentImage] = useState(productImages[0] || product?.image || "");
+
+  const getFilteredImages = () => {
+    if (!selectedColor) return productImages;
+    const activeColorImages = findImagesForColor(selectedColor, productImages);
+    return activeColorImages.length > 0 ? activeColorImages : productImages;
+  };
 
   useEffect(() => {
     if (productImages.length > 0) {
@@ -189,9 +221,9 @@ export function ProductDetailPage() {
               />
             </div>
             
-            {productImages.length > 1 && (
+            {getFilteredImages().length > 1 && (
               <div className="mt-6 flex items-center justify-center gap-3 overflow-x-auto w-full max-w-md px-4 hide-scrollbar">
-                {productImages.map((url, idx) => (
+                {getFilteredImages().map((url, idx) => (
                   <button
                     key={idx}
                     onClick={() => setCurrentImage(url)}
@@ -250,13 +282,18 @@ export function ProductDetailPage() {
                       <button
                         key={color}
                         disabled={isSoldOut}
-                        onClick={() => {
-                          setSelectedColor(color);
-                          const colorImage = product.colorImages?.[color] || findImageForColor(color, productImages);
-                          if (colorImage) {
-                            setCurrentImage(colorImage);
-                          }
-                        }}
+                         onClick={() => {
+                           setSelectedColor(color);
+                           const colorImagesList = findImagesForColor(color, productImages);
+                           if (colorImagesList.length > 0) {
+                             setCurrentImage(colorImagesList[0]);
+                           } else {
+                             const colorImage = product.colorImages?.[color] || findImageForColor(color, productImages);
+                             if (colorImage) {
+                               setCurrentImage(colorImage);
+                             }
+                           }
+                         }}
                         className={`relative px-4 py-2 border rounded-lg text-xs font-bold uppercase tracking-wider transition-all duration-300 cursor-pointer ${
                           isSelected 
                             ? "border-black dark:border-white border-[1.5px] shadow-sm" 
