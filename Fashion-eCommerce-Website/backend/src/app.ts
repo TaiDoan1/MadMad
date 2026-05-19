@@ -20,7 +20,8 @@ app.use(cors({
   allowedHeaders: ["Content-Type", "Authorization", "x-member-email"]
 }));
 
-app.use(express.json());
+app.use(express.json({ limit: "10mb" }));
+app.use(express.urlencoded({ limit: "10mb", extended: true }));
 
 // 📝 Middleware ghi nhận mọi yêu cầu HTTP để chuẩn đoán kết nối local
 app.use((req, res, next) => {
