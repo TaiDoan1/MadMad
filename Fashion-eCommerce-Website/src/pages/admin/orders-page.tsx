@@ -1893,9 +1893,9 @@ export function AdminOrdersPage() {
                     <img src={brandLogo} alt="MADMAD Studio" className="h-8 w-auto" />
                     <div className="text-right font-mono">
                       <h1 className="text-sm font-black tracking-widest font-sans">MADMAD STUDIO</h1>
-                      <p className="text-[7px] uppercase tracking-wider text-black/60 font-sans">{settings.printInvoiceSubheader || "Tối giản . Độc bản . Cao cấp"}</p>
-                      <p className="text-[7px] text-black/60">{settings.printInvoiceAddress || "Showroom: 254 Nguyễn Trãi, Q.5, TP.HCM"}</p>
-                      <p className="text-[7px] text-black/60">{settings.printInvoicePhone || "Hotline: 099.999.9999"}</p>
+                      <p className="text-[7px] uppercase tracking-wider text-black font-semibold font-sans">{settings.printInvoiceSubheader || "Tối giản . Độc bản . Cao cấp"}</p>
+                      <p className="text-[7px] text-black font-semibold">{settings.printInvoiceAddress || "Showroom: 254 Nguyễn Trãi, Q.5, TP.HCM"}</p>
+                      <p className="text-[7px] text-black font-semibold">{settings.printInvoicePhone || "Hotline: 099.999.9999"}</p>
                     </div>
                   </div>
                 </div>
@@ -1904,7 +1904,7 @@ export function AdminOrdersPage() {
                 <div className="text-center space-y-0.5 mb-2">
                   <h2 className="text-xs font-black tracking-widest uppercase">{settings.printInvoiceTitle || "HÓA ĐƠN VẬN CHUYỂN & GÓI HÀNG"}</h2>
                   <p className="text-xs font-mono font-bold tracking-wider">{printOrder.orderNumber}</p>
-                  <p className="text-[7px] text-black/50">Ngày in: {new Date().toLocaleDateString("vi-VN")} - {new Date().toLocaleTimeString("vi-VN")}</p>
+                  <p className="text-[7px] text-black font-semibold">Ngày in: {new Date().toLocaleDateString("vi-VN")} - {new Date().toLocaleTimeString("vi-VN")}</p>
                 </div>
 
                 {/* Thông tin 2 cột */}
@@ -1935,7 +1935,7 @@ export function AdminOrdersPage() {
                   </div>
                   <div>
                     <h3 className="font-black border-b border-black pb-0.5 mb-1 uppercase tracking-wider text-[9px]">Địa chỉ giao hàng</h3>
-                    <div className="space-y-0.5 leading-normal">
+                    <div className="space-y-0.5 leading-normal font-semibold">
                       {printOrder.shippingAddress.street === "Mua trực tiếp tại Shop" ? (
                         <p className="font-bold">ĐƠN MUA TRỰC TIẾP TẠI CỬA HÀNG (POS)</p>
                       ) : (
@@ -1963,10 +1963,10 @@ export function AdminOrdersPage() {
                   </thead>
                   <tbody>
                     {printOrder.items.map((item, index) => (
-                      <tr key={index} className="border-b border-black/10">
+                      <tr key={index} className="border-b border-black/20">
                         <td className="py-1.5 uppercase font-bold font-sans">{item.productName || item.product?.name || ""}</td>
-                        <td className="py-1.5 uppercase text-black/70">Size: {item.size} | Màu: {item.color}</td>
-                        <td className="py-1.5 text-center">{item.quantity}</td>
+                        <td className="py-1.5 uppercase text-black font-semibold">Size: {item.size} | Màu: {item.color}</td>
+                        <td className="py-1.5 text-center font-bold">{item.quantity}</td>
                         <td className="py-1.5 text-right">{item.price.toLocaleString("vi-VN")}₫</td>
                         <td className="py-1.5 text-right font-bold">{(item.price * item.quantity).toLocaleString("vi-VN")}₫</td>
                       </tr>
@@ -1977,25 +1977,25 @@ export function AdminOrdersPage() {
                 {/* Tổng kết chi phí */}
                 <div className="mb-2 pb-2 border-b border-black font-mono">
                   <div className="w-full space-y-1 font-sans font-semibold text-[9px]">
-                    <div className="flex justify-between text-black/70">
+                    <div className="flex justify-between text-black">
                       <span>Tạm tính:</span>
-                      <span className="font-mono">{printOrder.subtotal.toLocaleString("vi-VN")}₫</span>
+                      <span className="font-mono font-bold">{printOrder.subtotal.toLocaleString("vi-VN")}₫</span>
                     </div>
                     {printOrder.discount > 0 && (
-                      <div className="flex justify-between font-bold text-red-600">
+                      <div className="flex justify-between font-bold text-black">
                         <span>Giảm giá/Khuyến mãi:</span>
                         <span className="font-mono">-{printOrder.discount.toLocaleString("vi-VN")}₫</span>
                       </div>
                     )}
                     {printOrder.shippingAddress.street !== "Mua trực tiếp tại Shop" && (
-                      <div className="flex justify-between text-black/70">
+                      <div className="flex justify-between text-black">
                         <span>Phí giao hàng:</span>
-                        <span className="font-mono">+{printOrder.shipping.toLocaleString("vi-VN")}₫</span>
+                        <span className="font-mono font-bold">+{printOrder.shipping.toLocaleString("vi-VN")}₫</span>
                       </div>
                     )}
-                    <div className="flex justify-between font-black text-[10px] border-t-2 border-black pt-1">
+                    <div className="flex justify-between items-center font-black text-xs border-t-2 border-black pt-1.5 mt-1">
                       <span>TỔNG CỘNG TIỀN:</span>
-                      <span className="font-mono text-[10px]">{printOrder.total.toLocaleString("vi-VN")}₫</span>
+                      <span className="font-mono text-sm tracking-tighter">{printOrder.total.toLocaleString("vi-VN")}₫</span>
                     </div>
                   </div>
                 </div>
@@ -2003,12 +2003,12 @@ export function AdminOrdersPage() {
               </div>
 
               {/* Phần Slogan ở đáy trang */}
-              <div className="text-center space-y-1 pt-2 border-t border-black/10 mt-auto">
+              <div className="text-center space-y-1 pt-2 border-t-2 border-black mt-auto">
                 <p className="font-black uppercase tracking-widest text-[9px] font-sans">{settings.printInvoiceFooterSlogan || "CẢM ƠN QUÝ KHÁCH ĐÃ CHỌN MADMAD STUDIO!"}</p>
-                <p className="text-black/50 text-[7px] leading-relaxed max-w-lg mx-auto font-sans line-clamp-2">
+                <p className="text-black text-[7px] font-semibold leading-relaxed max-w-lg mx-auto font-sans line-clamp-2">
                   {settings.printInvoicePolicy || "* Quý khách vui lòng kiểm tra kỹ sản phẩm khi nhận hàng. Đối với các yêu cầu đổi trả sản phẩm nguyên tag mác, xin hãy nhắn tin trực tiếp fanpage Facebook/Instagram của MADMAD Studio trong vòng 3 ngày kể từ ngày nhận hàng."}
                 </p>
-                <div className="pt-1 text-black/25 text-[6px] font-mono tracking-widest">
+                <div className="pt-1 text-black font-bold text-[6px] font-mono tracking-widest">
                   MADMAD STUDIO - NOIR NO DESIGN STANDARD
                 </div>
               </div>
