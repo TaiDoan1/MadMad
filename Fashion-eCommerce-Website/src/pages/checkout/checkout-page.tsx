@@ -28,6 +28,106 @@ import type { Order, OrderItem } from "@/types/order";
 const inputCls =
   "w-full rounded-xl border-2 border-black/15 bg-white px-4 py-3 text-sm placeholder:text-black/35 focus:border-black/80 focus:outline-none focus:ring-0 transition-colors";
 
+/* ── Normalization Helper ── */
+const normalizeText = (value: string) =>
+  value
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replaceAll("đ", "d");
+
+/* ── Searchable dropdown Component ── */
+const SearchableDropdown = ({
+  value, options, onChange, placeholder, disabled, searchPlaceholder,
+}: {
+  value: string; options: AddressOption[]; onChange: (v: string) => void;
+  placeholder: string; disabled?: boolean; searchPlaceholder: string;
+}) => {
+  const { t, translate } = useLanguage();
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const inputRef = useRef<HTMLInputElement | null>(null);
+  const touchMoved = useRef(false);
+
+  useEffect(() => {
+    if (!open) return;
+    
+    // Chỉ tự động focus ô tìm kiếm trên Desktop để tránh tự động hiện bàn phím ảo (bung bàn phím) trên Mobile
+    const isMobile = window.matchMedia("(pointer: coarse)").matches || window.innerWidth < 1024;
+    if (!isMobile) {
+      inputRef.current?.focus();
+    }
+
+    const onMouseDown = (e: MouseEvent) => {
+      if (containerRef.current && e.target instanceof Node && !containerRef.current.contains(e.target)) {
+        setOpen(false); setQuery("");
+      }
+    };
+    document.addEventListener("mousedown", onMouseDown);
+    return () => document.removeEventListener("mousedown", onMouseDown);
+  }, [open]);
+
+  const selectedLabel = options.find((o) => o.code === value)?.name ?? "";
+  const filtered = useMemo(() => {
+    const q = normalizeText(query.trim());
+    return q ? options.filter((o) => normalizeText(o.name).includes(q)) : options;
+  }, [options, query]);
+
+  const handleTouchStart = () => {
+    touchMoved.current = false;
+  };
+
+  const handleTouchMove = () => {
+    touchMoved.current = true;
+  };
+
+  const handleButtonClick = () => {
+    if (touchMoved.current) {
+      touchMoved.current = false;
+      return;
+    }
+    setOpen((c) => !c);
+  };
+
+  return (
+    <div ref={containerRef} className="relative">
+      <button
+        type="button"
+        disabled={disabled}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onClick={handleButtonClick}
+        className={`${inputCls} flex items-center justify-between text-left disabled:opacity-50`}
+      >
+        <span className={selectedLabel ? "" : "text-black/35"}>{selectedLabel || placeholder}</span>
+        <span className="text-black/40">▾</span>
+      </button>
+      {open && !disabled && (
+        <div className="absolute left-0 right-0 z-50 mt-1 rounded-xl border-2 border-black/15 bg-white shadow-lg">
+          <div className="border-b border-black/10 p-2">
+            <input ref={inputRef} value={query} onChange={(e) => setQuery(e.target.value)}
+              className="w-full border border-black/20 px-3 py-2 text-sm focus:outline-none"
+              placeholder={searchPlaceholder} />
+          </div>
+          <div className="max-h-56 overflow-auto">
+            {filtered.length === 0
+              ? <div className="px-4 py-3 text-sm text-black/40">{t("Không tìm thấy.", "Not found.")}</div>
+              : filtered.map((o) => (
+                <button key={o.code} type="button"
+                  onClick={() => { onChange(o.code); setOpen(false); setQuery(""); }}
+                  className={`w-full px-4 py-2.5 text-left text-sm transition-colors hover:bg-black/5 ${o.code === value ? "font-semibold" : ""}`}>
+                  {o.name}
+                </button>
+              ))
+            }
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
 export function CheckoutPage() {
   const { products } = useProducts();
   const { settings } = useStorefrontSettings();
@@ -108,13 +208,6 @@ export function CheckoutPage() {
     }
   }, [currentMember]);
 
-  const normalizeText = (value: string) =>
-    value
-      .toLowerCase()
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "")
-      .replaceAll("đ", "d");
-
   const resolvedItems = cartItems
     .map((item) => ({ item, product: products.find((p) => String(p.id) === String(item.productId)) }))
     .filter((e): e is { item: (typeof cartItems)[number]; product: NonNullable<(typeof products)[number]> } => Boolean(e.product));
@@ -168,97 +261,6 @@ export function CheckoutPage() {
     getWardsByDistrictCode(formData.districtCode).then((data) => { if (alive) setWards(data); });
     return () => { alive = false; };
   }, [formData.districtCode]);
-
-  /* ── Searchable dropdown ─────────────────────────────────────────────── */
-  const SearchableDropdown = ({
-    value, options, onChange, placeholder, disabled, searchPlaceholder,
-  }: {
-    value: string; options: AddressOption[]; onChange: (v: string) => void;
-    placeholder: string; disabled?: boolean; searchPlaceholder: string;
-  }) => {
-    const [open, setOpen] = useState(false);
-    const [query, setQuery] = useState("");
-    const containerRef = useRef<HTMLDivElement | null>(null);
-    const inputRef = useRef<HTMLInputElement | null>(null);
-    const touchMoved = useRef(false);
-
-    useEffect(() => {
-      if (!open) return;
-      
-      // Chỉ tự động focus ô tìm kiếm trên Desktop để tránh tự động hiện bàn phím ảo (bung bàn phím) trên Mobile
-      const isMobile = window.matchMedia("(pointer: coarse)").matches || window.innerWidth < 1024;
-      if (!isMobile) {
-        inputRef.current?.focus();
-      }
-
-      const onMouseDown = (e: MouseEvent) => {
-        if (containerRef.current && e.target instanceof Node && !containerRef.current.contains(e.target)) {
-          setOpen(false); setQuery("");
-        }
-      };
-      document.addEventListener("mousedown", onMouseDown);
-      return () => document.removeEventListener("mousedown", onMouseDown);
-    }, [open]);
-
-    const selectedLabel = options.find((o) => o.code === value)?.name ?? "";
-    const filtered = useMemo(() => {
-      const q = normalizeText(query.trim());
-      return q ? options.filter((o) => normalizeText(o.name).includes(q)) : options;
-    }, [options, query]);
-
-    const handleTouchStart = () => {
-      touchMoved.current = false;
-    };
-
-    const handleTouchMove = () => {
-      touchMoved.current = true;
-    };
-
-    const handleButtonClick = () => {
-      if (touchMoved.current) {
-        touchMoved.current = false;
-        return;
-      }
-      setOpen((c) => !c);
-    };
-
-    return (
-      <div ref={containerRef} className="relative">
-        <button
-          type="button"
-          disabled={disabled}
-          onTouchStart={handleTouchStart}
-          onTouchMove={handleTouchMove}
-          onClick={handleButtonClick}
-          className={`${inputCls} flex items-center justify-between text-left disabled:opacity-50`}
-        >
-          <span className={selectedLabel ? "" : "text-black/35"}>{selectedLabel || placeholder}</span>
-          <span className="text-black/40">▾</span>
-        </button>
-        {open && !disabled && (
-          <div className="absolute left-0 right-0 z-50 mt-1 rounded-xl border-2 border-black/15 bg-white shadow-lg">
-            <div className="border-b border-black/10 p-2">
-              <input ref={inputRef} value={query} onChange={(e) => setQuery(e.target.value)}
-                className="w-full border border-black/20 px-3 py-2 text-sm focus:outline-none"
-                placeholder={searchPlaceholder} />
-            </div>
-            <div className="max-h-56 overflow-auto">
-              {filtered.length === 0
-                ? <div className="px-4 py-3 text-sm text-black/40">{t("Không tìm thấy.", "Not found.")}</div>
-                : filtered.map((o) => (
-                  <button key={o.code} type="button"
-                    onClick={() => { onChange(o.code); setOpen(false); setQuery(""); }}
-                    className={`w-full px-4 py-2.5 text-left text-sm transition-colors hover:bg-black/5 ${o.code === value ? "font-semibold" : ""}`}>
-                    {o.name}
-                  </button>
-                ))
-              }
-            </div>
-          </div>
-        )}
-      </div>
-    );
-  };
 
   const handleSubmit = (event?: FormEvent) => {
     event?.preventDefault();
