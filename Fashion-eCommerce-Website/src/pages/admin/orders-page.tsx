@@ -1950,21 +1950,22 @@ export function AdminOrdersPage() {
                 </div>
 
                 {/* Bảng sản phẩm */}
-                <table className="w-full text-left text-[10px] border-collapse mb-2">
+                <table className="w-full text-left text-[10px] border-collapse mb-2 table-fixed">
                   <thead>
                     <tr className="border-b-2 border-black font-black uppercase text-black">
-                      <th className="py-1">Sản phẩm</th>
-                      <th className="py-1">Phân loại</th>
-                      <th className="py-1 text-center">SL</th>
-                      <th className="py-1 text-right">Đơn giá</th>
-                      <th className="py-1 text-right">Thành tiền</th>
+                      <th className="py-1 w-[60%]">Sản phẩm / Phân loại</th>
+                      <th className="py-1 text-center w-[8%]">SL</th>
+                      <th className="py-1 text-right w-[16%]">Đơn giá</th>
+                      <th className="py-1 text-right w-[16%]">Thành tiền</th>
                     </tr>
                   </thead>
                   <tbody className="font-bold">
                     {printOrder.items.map((item, index) => (
                       <tr key={index} className="border-b border-black/20">
-                        <td className="py-1.5 uppercase font-black">{item.productName || item.product?.name || ""}</td>
-                        <td className="py-1.5 uppercase text-black font-bold">Size: {item.size} | Màu: {item.color}</td>
+                        <td className="py-1.5 break-words">
+                          <div className="uppercase font-black text-black leading-tight">{item.productName || item.product?.name || ""}</div>
+                          <div className="uppercase text-black/80 text-[8px] font-bold mt-0.5">Size: {item.size} | Màu: {item.color}</div>
+                        </td>
                         <td className="py-1.5 text-center font-black">{item.quantity}</td>
                         <td className="py-1.5 text-right">{item.price.toLocaleString("vi-VN")}₫</td>
                         <td className="py-1.5 text-right font-black">{(item.price * item.quantity).toLocaleString("vi-VN")}₫</td>
@@ -2004,7 +2005,7 @@ export function AdminOrdersPage() {
               {/* Phần Slogan ở đáy trang */}
               <div className="text-center space-y-1 pt-2 border-t-2 border-black mt-auto">
                 <p className="font-black uppercase tracking-widest text-[10px]">{settings.printInvoiceFooterSlogan || "CẢM ƠN QUÝ KHÁCH ĐÃ CHỌN MADMAD STUDIO!"}</p>
-                <p className="text-black text-[8px] font-bold leading-relaxed max-w-lg mx-auto line-clamp-2">
+                <p className="text-black text-[8px] font-bold leading-relaxed max-w-lg mx-auto">
                   {settings.printInvoicePolicy || "* Quý khách vui lòng kiểm tra kỹ sản phẩm khi nhận hàng. Đối với các yêu cầu đổi trả sản phẩm nguyên tag mác, xin hãy nhắn tin trực tiếp fanpage Facebook/Instagram của MADMAD Studio trong vòng 3 ngày kể từ ngày nhận hàng."}
                 </p>
                 <div className="pt-1 text-black font-black text-[7px] tracking-widest">
