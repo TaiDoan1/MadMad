@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useParams, useNavigate } from "react-router";
 import { Search, ShoppingCart, User, Share2, ArrowLeft } from "lucide-react";
 
@@ -8,6 +8,7 @@ import { useCart } from "@/features/cart/context/cart-context";
 import { useProducts } from "@/features/products/context/product-context";
 import { useStorefrontSettings } from "@/features/settings/context/storefront-settings-context";
 import { useLanguage } from "@/features/settings/context/language-context";
+import { useToast } from "@/components/common/toast";
 
 const COLOR_MAP: Record<string, { bg: string, text: string }> = {
   "Trắng": { bg: "#FFFFFF", text: "#000000" },
@@ -53,6 +54,7 @@ function findImageForColor(color: string, images: string[]): string | undefined 
 }
 
 export function ProductDetailPage() {
+  const { showToast } = useToast();
   const { id } = useParams();
   const navigate = useNavigate();
   const transitionTo = useTransitionTo();
@@ -67,6 +69,14 @@ export function ProductDetailPage() {
   const [expandedAccordion, setExpandedAccordion] = useState<string | null>(null);
   const productImages = product?.images && product.images.length > 0 ? product.images : product ? [product.image] : [];
   const [currentImage, setCurrentImage] = useState(productImages[0] || product?.image || "");
+
+  useEffect(() => {
+    if (productImages.length > 0) {
+      setCurrentImage(productImages[0]);
+    } else if (product?.image) {
+      setCurrentImage(product.image);
+    }
+  }, [product?.id, productImages]);
 
   if (!product) {
     return (
@@ -251,7 +261,7 @@ export function ProductDetailPage() {
                 <button
                   onClick={() => {
                     if (!selectedSize || !selectedColor) {
-                      window.alert(t("Vui lòng chọn size và màu sắc!", "Please select size and color!"));
+                      showToast(t("Vui lòng chọn size và màu sắc!", "Please select size and color!"), "warning");
                       return;
                     }
                     addToCart({
@@ -261,7 +271,7 @@ export function ProductDetailPage() {
                       quantity,
                       priceAtAdd: product.price,
                     });
-                    window.alert(t("Đã thêm vào giỏ hàng!", "Added to cart successfully!"));
+                    showToast(t("Đã thêm vào giỏ hàng!", "Added to cart successfully!"), "success");
                   }}
                   className="w-full py-4 rounded-[14px] bg-black dark:bg-white text-white dark:text-black text-xs font-bold uppercase tracking-widest flex items-center justify-center gap-2.5 shadow-md transition-all duration-300 hover:bg-neutral-900 dark:hover:bg-neutral-100 active:scale-[0.98] cursor-pointer"
                 >

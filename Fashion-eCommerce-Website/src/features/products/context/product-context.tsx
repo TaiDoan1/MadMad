@@ -3,6 +3,7 @@ import { API_URL } from "@/config/api";
 
 import { products as initialProducts } from "@/features/products/data/products";
 import type { Product } from "@/types/product";
+import { useToast } from "@/components/common/toast";
 
 interface ProductContextValue {
   products: Product[];
@@ -17,6 +18,7 @@ const ProductContext = createContext<ProductContextValue | undefined>(undefined)
 const PRODUCTS_STORAGE_KEY = "fashion-ecommerce.products-v7";
 
 export function ProductProvider({ children }: { children: ReactNode }) {
+  const { showToast } = useToast();
   const [products, setProducts] = useState<Product[]>(() => {
     if (typeof window === "undefined") {
       return initialProducts;
@@ -82,6 +84,7 @@ export function ProductProvider({ children }: { children: ReactNode }) {
             setProducts((currentProducts) =>
               currentProducts.map((p) => (p.id === tempId ? savedProduct : p))
             );
+            showToast("Thêm sản phẩm thành công!", "success");
           } else {
             const errText = await response.text();
             console.error("Lỗi khi thêm sản phẩm lên API:", errText);
@@ -91,13 +94,15 @@ export function ProductProvider({ children }: { children: ReactNode }) {
               const errJson = JSON.parse(errText);
               if (errJson.message) errMsg = errJson.message;
             } catch {}
-            window.alert(errMsg);
+            showToast(errMsg, "error");
           }
         } catch (e) {
           console.warn("⚠️ Lỗi lưu sản phẩm lên server, đã lưu local", e);
+          showToast("Có lỗi xảy ra khi kết nối máy chủ!", "error");
         }
       },
       updateProduct: async (id, updatedProduct) => {
+        const oldProducts = [...products];
         setProducts((currentProducts) =>
           currentProducts.map((product) => (product.id === id ? updatedProduct : product)),
         );
@@ -112,17 +117,36 @@ export function ProductProvider({ children }: { children: ReactNode }) {
             setProducts((currentProducts) =>
               currentProducts.map((product) => (product.id === id ? savedProduct : product)),
             );
+            showToast("Cập nhật sản phẩm thành công!", "success");
+          } else {
+            const errText = await response.text();
+            let errMsg = "Lỗi khi cập nhật sản phẩm!";
+            try {
+              const errJson = JSON.parse(errText);
+              if (errJson.message) errMsg = errJson.message;
+            } catch {}
+            setProducts(oldProducts);
+            showToast(errMsg, "error");
           }
         } catch (e) {
           console.warn("⚠️ Lỗi cập nhật sản phẩm lên server, đã lưu local", e);
+          showToast("Lỗi kết nối máy chủ khi cập nhật!", "error");
         }
       },
       deleteProduct: async (id) => {
+        const oldProducts = [...products];
         setProducts((currentProducts) => currentProducts.filter((product) => product.id !== id));
         try {
-          await fetch(`${API_URL}/products/${id}`, { method: "DELETE" });
+          const response = await fetch(`${API_URL}/products/${id}`, { method: "DELETE" });
+          if (response.ok) {
+            showToast("Đã xóa sản phẩm thành công!", "success");
+          } else {
+            setProducts(oldProducts);
+            showToast("Không thể xóa sản phẩm trên server!", "error");
+          }
         } catch (e) {
           console.warn("⚠️ Lỗi xóa sản phẩm trên server, đã xóa local", e);
+          showToast("Lỗi kết nối máy chủ khi xóa sản phẩm!", "error");
         }
       },
       updateProductColorImages: (id, colorImages) => {

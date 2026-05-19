@@ -1,9 +1,11 @@
 import { useState, type FormEvent } from "react";
 import { Clock, Mail, MapPin, Phone, Send } from "lucide-react";
 import { useLanguage } from "@/features/settings/context/language-context";
+import { useToast } from "@/components/common/toast";
 
 export function ContactPage() {
   const { t } = useLanguage();
+  const { showToast } = useToast();
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -14,7 +16,7 @@ export function ContactPage() {
 
   const handleSubmit = (event: FormEvent) => {
     event.preventDefault();
-    window.alert(t("Cảm ơn bạn đã liên hệ! Chúng tôi sẽ phản hồi sớm nhất.", "Thank you for contacting us! We will respond as soon as possible."));
+    showToast(t("Cảm ơn bạn đã liên hệ! Chúng tôi sẽ phản hồi sớm nhất.", "Thank you for contacting us! We will respond as soon as possible."), "success");
     setFormData({ name: "", email: "", phone: "", subject: "", message: "" });
   };
 

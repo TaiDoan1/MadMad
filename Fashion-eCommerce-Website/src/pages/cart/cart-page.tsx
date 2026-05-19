@@ -6,10 +6,12 @@ import { ImageWithFallback } from "@/components/common/image-with-fallback";
 import { useCart } from "@/features/cart/context/cart-context";
 import { useProducts } from "@/features/products/context/product-context";
 import { useLanguage } from "@/features/settings/context/language-context";
+import { useToast } from "@/components/common/toast";
 
 export function CartPage() {
   const { products } = useProducts();
   const { formatPrice, t, translate } = useLanguage();
+  const { showToast } = useToast();
   const {
     cartItems,
     subtotal,
@@ -176,7 +178,7 @@ export function CartPage() {
                           type="button"
                           onClick={() => {
                             const result = applyCoupon(coupon.code);
-                            window.alert(result.message);
+                            showToast(result.message, result.success ? "success" : "error");
                           }}
                           className={`border px-3 py-1.5 text-xs font-bold uppercase tracking-wide transition-colors ${
                             appliedCoupon?.code === coupon.code

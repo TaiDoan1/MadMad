@@ -43,6 +43,8 @@ export function ProductCard({ product, variant = "shop" }: ProductCardProps) {
     setTimeout(() => setAdded(false), 1500);
   };
 
+  const secondaryImage = product.images && product.images.length > 1 ? product.images[1] : null;
+
   return (
     <div className={`group relative flex h-full flex-col overflow-hidden ${cardBg} transition-all duration-300`}>
       {/* ── Image ─────────────────────────────────────────────────────────── */}
@@ -50,8 +52,15 @@ export function ProductCard({ product, variant = "shop" }: ProductCardProps) {
         <ImageWithFallback
           src={product.image}
           alt={translate(product.name)}
-          className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
+          className={`h-full w-full object-cover transition-all duration-700 group-hover:scale-105 ${secondaryImage ? "group-hover:opacity-0" : ""}`}
         />
+        {secondaryImage && (
+          <ImageWithFallback
+            src={secondaryImage}
+            alt={`${translate(product.name)} hover`}
+            className="absolute inset-0 h-full w-full object-cover transition-all duration-700 opacity-0 group-hover:opacity-100 group-hover:scale-105"
+          />
+        )}
 
         {/* Sale badge — bottom-left, Protect.LDN style */}
         {isOnSale && (

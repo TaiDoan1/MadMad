@@ -43,7 +43,10 @@ import { useStorefrontSettings } from "@/features/settings/context/storefront-se
 import type { Order, OrderItem } from "@/types/order";
 import type { Product } from "@/types/product";
 
+import { useToast } from "@/components/common/toast";
+
 export function AdminOrdersPage() {
+  const { showToast } = useToast();
   const { settings } = useStorefrontSettings();
   const { orders, updateOrderStatus, updateOrderPaymentStatus, addOrder } = useOrders();
   const { products } = useProducts();
@@ -87,7 +90,7 @@ export function AdminOrdersPage() {
 
   const handleBatchPrint = async () => {
     if (selectedOrderIds.length === 0) {
-      window.alert("Vui lòng chọn ít nhất 1 đơn hàng để in.");
+      showToast("Vui lòng chọn ít nhất 1 đơn hàng để in.", "warning");
       return;
     }
     if (window.confirm(`Bạn có chắc chắn muốn in ${selectedOrderIds.length} đơn hàng đã chọn và tự động chuyển trạng thái sang "Đang chuẩn bị"?`)) {
@@ -429,7 +432,7 @@ export function AdminOrdersPage() {
           const nextPoints = m.points + pointsEarned;
           const nextTier = calculateTierForPoints(nextPoints);
 
-          window.alert(`👑 THÀNH VIÊN THÂN THIẾT! Đã tự động tích lũy thêm +${pointsEarned} điểm VIP cho khách hàng ${m.fullName}. (Tổng tích lũy hiện tại: ${nextPoints} điểm - Hạng: ${nextTier})`);
+          showToast(`👑 Đã tích lũy thêm +${pointsEarned} điểm VIP cho khách hàng ${m.fullName} (${nextTier})!`, "success");
 
           return {
             ...m,
@@ -449,7 +452,7 @@ export function AdminOrdersPage() {
     e.preventDefault();
 
     if (manualItems.length === 0) {
-      window.alert("Vui lòng thêm ít nhất một sản phẩm vào đơn hàng!");
+      showToast("Vui lòng thêm ít nhất một sản phẩm vào đơn hàng!", "warning");
       return;
     }
 
@@ -510,7 +513,7 @@ export function AdminOrdersPage() {
       });
       
       setMembers(updatedMembersList);
-      window.alert(`Đơn hàng POS thành công! Đã tích +${pointsEarned} điểm VIP cho khách hàng.`);
+      showToast(`Đơn hàng POS thành công! Đã tích +${pointsEarned} điểm VIP cho khách hàng.`, "success");
     }
 
     if (manualNotes) {
@@ -533,7 +536,7 @@ export function AdminOrdersPage() {
     setVipCheckMessage("");
     setShowCreateModal(false);
 
-    window.alert("Tạo đơn hàng thủ công thành công!");
+    showToast("Tạo đơn hàng thủ công thành công!", "success");
   };
 
   const getStatusBadge = (status: string) => {
@@ -871,7 +874,7 @@ export function AdminOrdersPage() {
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   updateOrderPaymentStatus(order.id, true);
-                                  window.alert(`✓ Đã xác nhận giao dịch chuyển khoản cho đơn hàng ${order.orderNumber}!`);
+                                  showToast(`Đã xác nhận giao dịch chuyển khoản cho đơn hàng ${order.orderNumber}!`, "success");
                                 }}
                                 className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[9px] font-black bg-amber-50 border border-amber-200 text-amber-700 w-max hover:bg-amber-100 hover:border-amber-300 transition-colors uppercase tracking-wider"
                                 title="Click để xác nhận Đã nhận chuyển khoản"
@@ -1670,7 +1673,7 @@ export function AdminOrdersPage() {
                       type="button"
                       onClick={() => {
                         navigator.clipboard.writeText(`0999999999 - MB Bank - MADMAD STUDIO. Chuyển khoản số tiền ${selectedOrder.total.toLocaleString("vi-VN")}đ với nội dung: MADMAD ${selectedOrder.orderNumber}`);
-                        window.alert("Đã copy thông tin thanh toán chuyển khoản của khách hàng!");
+                        showToast("Đã copy thông tin thanh toán chuyển khoản!", "info");
                       }}
                       className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-stone-900 border border-stone-800 hover:bg-stone-800 text-[9px] font-black tracking-wider uppercase text-stone-300 rounded-lg transition-all font-mono"
                     >

@@ -3,8 +3,10 @@ import { Award, Gift, Percent, Plus, Search, ShieldCheck, Sparkles, Trash2, User
 
 import { useMembership, type Member, type MembershipTierConfig } from "@/features/membership/context/membership-context";
 import { API_URL } from "@/config/api";
+import { useToast } from "@/components/common/toast";
 
 export function AdminMembershipPage() {
+  const { showToast } = useToast();
   const { members, setMembers, tierConfigs, updateTierConfigs } = useMembership();
 
   // Search & Filter State
@@ -75,7 +77,7 @@ export function AdminMembershipPage() {
     updateTierConfigs(updatedConfigs);
     triggerRecalculateAllTiers(updatedConfigs);
     setEditingTier(null);
-    window.alert(`Đã cập nhật cấu hình hạng VIP ${editingTier.tier} thành công! Các hạng thành viên liên quan đã tự động được tính lại.`);
+    showToast(`Đã cập nhật cấu hình hạng VIP ${editingTier.tier} thành công!`, "success");
   };
 
   // Handle Add/Edit Member Submit
@@ -86,7 +88,7 @@ export function AdminMembershipPage() {
     const email = memberEmail.trim().toLowerCase();
 
     if (!memberName.trim() || !phone || !email) {
-      window.alert("Vui lòng điền đầy đủ Tên, SĐT và Email!");
+      showToast("Vui lòng điền đầy đủ Tên, SĐT và Email!", "warning");
       return;
     }
 
@@ -120,18 +122,18 @@ export function AdminMembershipPage() {
         console.warn("⚠️ Lỗi cập nhật lên server, đã lưu local", err);
       }
 
-      window.alert("Đã cập nhật thông tin thành viên thành công!");
+      showToast("Đã cập nhật thông tin thành viên thành công!", "success");
     } else {
       // Add mode
       const phoneExists = members.some((m) => m.phone === phone);
       const emailExists = members.some((m) => m.email.toLowerCase() === email);
 
       if (phoneExists) {
-        window.alert("Số điện thoại này đã đăng ký thành viên VIP!");
+        showToast("Số điện thoại này đã đăng ký thành viên VIP!", "error");
         return;
       }
       if (emailExists) {
-        window.alert("Email này đã đăng ký thành viên VIP!");
+        showToast("Email này đã đăng ký thành viên VIP!", "error");
         return;
       }
 
@@ -163,7 +165,7 @@ export function AdminMembershipPage() {
         console.warn("⚠️ Lỗi lưu thành viên lên server, đã lưu local", err);
       }
 
-      window.alert(`Đã đăng ký thành công thành viên VIP mới! (Số thẻ: ${memberCardId})`);
+      showToast(`Đăng ký thành viên VIP thành công! Thẻ: ${memberCardId}`, "success");
     }
 
     setShowMemberModal(false);
@@ -178,7 +180,7 @@ export function AdminMembershipPage() {
       } catch (err) {
         console.warn("⚠️ Lỗi xóa trên server, đã xóa local", err);
       }
-      window.alert("Đã xóa thành viên.");
+      showToast("Đã xóa thành viên VIP thành công.", "success");
     }
   };
 

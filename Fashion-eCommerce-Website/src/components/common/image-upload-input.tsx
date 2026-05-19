@@ -3,6 +3,8 @@ import { Link2, Upload } from "lucide-react";
 
 import { ImageWithFallback } from "@/components/common/image-with-fallback";
 
+import { useToast } from "@/components/common/toast";
+
 type ImageUploadInputProps = {
   value: string;
   onChange: (value: string) => void;
@@ -20,6 +22,7 @@ export function ImageUploadInput({
   className = "",
   disabled = false,
 }: ImageUploadInputProps) {
+  const { showToast } = useToast();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const previewSrc = value.trim();
   const isDataImage = useMemo(() => value.startsWith(BASE64_PREFIX), [value]);
@@ -29,7 +32,7 @@ export function ImageUploadInput({
     if (!file) return;
 
     if (!file.type.startsWith("image/")) {
-      window.alert("Vui lòng chọn file ảnh hợp lệ.");
+      showToast("Vui lòng chọn file ảnh hợp lệ.", "warning");
       event.target.value = "";
       return;
     }

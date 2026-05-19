@@ -9,6 +9,7 @@ import { readStoredCoupons, saveCoupons } from "@/features/promotions/services/c
 import { useStorefrontSettings } from "@/features/settings/context/storefront-settings-context";
 import type { Coupon } from "@/types/coupon";
 import type { Product } from "@/types/product";
+import { useToast } from "@/components/common/toast";
 
 const PRODUCT_OPTIONS_STORAGE_KEY = "fashion-ecommerce.product-options";
 
@@ -27,6 +28,7 @@ const DEFAULT_PRODUCT_OPTIONS: ProductOptions = {
 };
 
 export function AdminProductsPage() {
+  const { showToast } = useToast();
   const { products, addProduct, updateProduct, deleteProduct, updateProductColorImages, reorderProducts } = useProducts();
   const { settings, updateSettings } = useStorefrontSettings();
   const [draggedProductId, setDraggedProductId] = useState<string | number | null>(null);
@@ -643,7 +645,7 @@ export function AdminProductsPage() {
                           const nextColor = newColorInput.trim();
                           if (!nextColor) return;
                           if (productOptions.colors.includes(nextColor)) {
-                            window.alert("Màu sắc này đã tồn tại trong danh mục.");
+                            showToast("Màu sắc này đã tồn tại trong danh mục.", "warning");
                             return;
                           }
                           const nextOptions: ProductOptions = {
@@ -1131,7 +1133,7 @@ export function AdminProductsPage() {
                         .map((item) => item.trim().toLowerCase())
                         .filter(Boolean);
                       if (currentTags.includes(nextTag)) {
-                        window.alert("Tag đã tồn tại.");
+                        showToast("Tag đã tồn tại.", "warning");
                         return;
                       }
                       const merged = [...currentTags, nextTag];
@@ -1244,7 +1246,7 @@ export function AdminProductsPage() {
                     setFormData((current) => ({ ...current, category: nextProductOptions.categories[0] ?? "" }));
                   }
                   setShowOptionsModal(false);
-                  window.alert("Đã lưu tuỳ chọn cố định.");
+                  showToast("Đã lưu tuỳ chọn cố định thành công.", "success");
                 }}
                 className="rounded bg-primary px-6 py-2 text-white transition-colors hover:bg-primary/90"
               >

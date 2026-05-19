@@ -7,8 +7,10 @@ import { useStorefrontSettings } from "@/features/settings/context/storefront-se
 import { readStoredCoupons, saveCoupons } from "@/features/promotions/services/coupon-service";
 import type { Coupon } from "@/types/coupon";
 import { API_URL } from "@/config/api";
+import { useToast } from "@/components/common/toast";
 
 export function AdminSettingsPage() {
+  const { showToast } = useToast();
   const { settings, updateSettings } = useStorefrontSettings();
   
   // Tab State
@@ -165,7 +167,7 @@ export function AdminSettingsPage() {
       tiktokUrl,
       shopeeUrl,
     });
-    window.alert("Đã lưu cài đặt nhận diện thương hiệu thành công!");
+    showToast("Đã lưu cài đặt nhận diện thương hiệu thành công!", "success");
   };
 
   const handleSaveInvoiceSettings = () => {
@@ -180,7 +182,7 @@ export function AdminSettingsPage() {
       printInvoiceBankAccount,
       printInvoiceAccountName,
     });
-    window.alert("Đã lưu thiết lập mẫu in hóa đơn thành công!");
+    showToast("Đã lưu thiết lập mẫu in hóa đơn thành công!", "success");
   };
 
   const handleSaveGateways = () => {
@@ -204,7 +206,7 @@ export function AdminSettingsPage() {
       intlShippingFee: Number(intlShippingFee) || 250000,
       intlMarkupPercent: Number(intlMarkupPercent) || 10,
     });
-    window.alert("Đã lưu thiết lập Cổng Thanh Toán & Vận Chuyển thành công!");
+    showToast("Đã lưu thiết lập Cổng Thanh Toán & Vận Chuyển thành công!", "success");
   };
 
   // 💾 Lưu cài đặt cấu hình SMTP Gmail & Mẫu email động
@@ -218,14 +220,14 @@ export function AdminSettingsPage() {
       customerEmailSubject,
       customerEmailTemplate,
     });
-    window.alert("Đã lưu cấu hình SMTP & Mẫu Email Khách hàng thành công!");
+    showToast("Đã lưu cấu hình SMTP & Mẫu Email Khách hàng thành công!", "success");
   };
 
   // 📬 Gửi Email Thủ Công trực tiếp từ biểu mẫu (Admin Form)
   const handleSendTestEmail = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!testEmailTo || !testEmailSubject || !testEmailBody) {
-      window.alert("Vui lòng nhập đầy đủ các thông tin: Người nhận, Tiêu đề và Nội dung!");
+      showToast("Vui lòng nhập đầy đủ các thông tin: Người nhận, Tiêu đề và Nội dung!", "warning");
       return;
     }
 
@@ -302,7 +304,7 @@ export function AdminSettingsPage() {
     setNewDiscountAmount("");
     setNewUsageLimit("");
     setNewCouponExclusive(false);
-    window.alert(`Đã kích hoạt mã giảm giá ${code} thành công!`);
+    showToast(`Đã kích hoạt mã giảm giá ${code} thành công!`, "success");
   };
 
   // Xóa mã giảm giá
@@ -361,10 +363,10 @@ export function AdminSettingsPage() {
       memberLink.download = `MADMAD_VIPMembers_Backup_${new Date().toISOString().split("T")[0]}.csv`;
       memberLink.click();
 
-      window.alert("Đã tải xuống thành công bản sao lưu Dữ liệu Đơn hàng và Thành viên VIP!");
+      showToast("Đã tải xuống thành công bản sao lưu Dữ liệu Đơn hàng và Thành viên VIP!", "success");
     } catch (error) {
       console.error(error);
-      window.alert("Lỗi khi tải bản sao lưu. Vui lòng kiểm tra lại kết nối mạng!");
+      showToast("Lỗi khi tải bản sao lưu. Vui lòng kiểm tra lại kết nối mạng!", "error");
     }
   };
 

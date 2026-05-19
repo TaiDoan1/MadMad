@@ -10,8 +10,10 @@ import {
   DEFAULT_STOREFRONT_SETTINGS,
   useStorefrontSettings,
 } from "../../features/settings/context/storefront-settings-context";
+import { useToast } from "../../components/common/toast";
 
 export function AdminStorefrontPage() {
+  const { showToast } = useToast();
   const { products } = useProducts();
   const { settings, updateSettings } = useStorefrontSettings();
   const [bestSellerSearch, setBestSellerSearch] = useState("");
@@ -157,7 +159,7 @@ export function AdminStorefrontPage() {
             Xem trang chủ →
           </Link>
           <button 
-            onClick={() => window.alert("Cài đặt Storefront đã được lưu thành công!")} 
+            onClick={() => showToast("Cài đặt Storefront đã được lưu thành công!", "success")} 
             className="flex items-center gap-2 rounded bg-black px-4 py-2 text-sm text-white font-medium hover:bg-black/85 transition-colors"
           >
             <Save className="h-4 w-4" /> Lưu cấu hình

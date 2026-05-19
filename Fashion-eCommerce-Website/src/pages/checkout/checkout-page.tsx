@@ -22,6 +22,7 @@ import { useProducts } from "@/features/products/context/product-context";
 import { incrementCouponUsage } from "@/features/promotions/services/coupon-service";
 import { useStorefrontSettings } from "@/features/settings/context/storefront-settings-context";
 import { useLanguage } from "@/features/settings/context/language-context";
+import { useToast } from "@/components/common/toast";
 import type { Order, OrderItem } from "@/types/order";
 
 /* ── Shared input className ───────────────────────────────────────────── */
@@ -129,6 +130,7 @@ const SearchableDropdown = ({
 };
 
 export function CheckoutPage() {
+  const { showToast } = useToast();
   const { products } = useProducts();
   const { settings } = useStorefrontSettings();
   const { addOrder } = useOrders();
@@ -264,9 +266,9 @@ export function CheckoutPage() {
 
   const handleSubmit = (event?: FormEvent) => {
     event?.preventDefault();
-    if (resolvedItems.length === 0) { window.alert(t("Giỏ hàng đang trống.", "Your cart is empty.")); return; }
+    if (resolvedItems.length === 0) { showToast(t("Giỏ hàng đang trống.", "Your cart is empty."), "warning"); return; }
     if (!formData.fullName || !formData.phone || !formData.email || !formData.address || !formData.wardCode) {
-      window.alert(t("Vui lòng điền đầy đủ thông tin giao hàng!", "Please complete all shipping details!")); return;
+      showToast(t("Vui lòng điền đầy đủ thông tin giao hàng!", "Please complete all shipping details!"), "warning"); return;
     }
 
     // Save last delivery details to localStorage for next purchase autocomplete
@@ -548,11 +550,11 @@ export function CheckoutPage() {
                         type="button"
                         onClick={() => {
                           if (!typedCoupon.trim()) {
-                            window.alert(t("Vui lòng nhập mã giảm giá!", "Please enter discount code!"));
+                            showToast(t("Vui lòng nhập mã giảm giá!", "Please enter discount code!"), "warning");
                             return;
                           }
                           const r = applyCoupon(typedCoupon.trim().toUpperCase());
-                          window.alert(r.message);
+                          showToast(r.message, r.success ? "success" : "error");
                           if (r.success) {
                             setTypedCoupon("");
                           }
@@ -574,7 +576,7 @@ export function CheckoutPage() {
                                 type="button"
                                 onClick={() => {
                                   const r = applyCoupon(coupon.code);
-                                  window.alert(r.message);
+                                  showToast(r.message, r.success ? "success" : "error");
                                 }}
                                 className={`rounded-lg border px-2.5 py-1.5 text-[10px] font-black uppercase tracking-wider transition-all hover:scale-[1.02] active:scale-[0.98] ${
                                   appliedCoupon?.code === coupon.code

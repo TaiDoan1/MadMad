@@ -3,38 +3,38 @@ import { prisma } from "../config/prisma";
 
 const router = Router();
 
+// Helper: serialize/parse images array
+const serializeImages = (images: any): string => {
+  if (!images) return "[]";
+  if (Array.isArray(images)) return JSON.stringify(images.filter(Boolean));
+  if (typeof images === "string") {
+    try { JSON.parse(images); return images; } catch { return "[]"; }
+  }
+  return "[]";
+};
+
+const parseProduct = (p: any) => ({
+  ...p,
+  sizes: p.sizes ? p.sizes.split(",") : [],
+  colors: p.colors ? p.colors.split(",") : [],
+  colorImages: p.colorImages ? JSON.parse(p.colorImages) : {},
+  images: p.images ? JSON.parse(p.images) : [],
+});
+
 // 1. GET /api/products - Lấy danh sách sản phẩm (có lọc theo category)
 router.get("/", async (req, res, next) => {
   try {
     const { category, featured } = req.query;
-    
     const whereClause: any = {};
-    
-    if (category && category !== "all") {
-      whereClause.category = String(category);
-    }
-    
-    if (featured === "true") {
-      whereClause.isFeatured = true;
-    }
+    if (category && category !== "all") whereClause.category = String(category);
+    if (featured === "true") whereClause.isFeatured = true;
 
     const products = await prisma.product.findMany({
       where: whereClause,
-      orderBy: [
-        { orderIndex: "asc" },
-        { createdAt: "desc" }
-      ]
+      orderBy: [{ orderIndex: "asc" }, { createdAt: "desc" }]
     });
 
-    // Parse JSON strings của sizes, colors, colorImages trước khi trả về
-    const parsedProducts = products.map(p => ({
-      ...p,
-      sizes: p.sizes ? p.sizes.split(",") : [],
-      colors: p.colors ? p.colors.split(",") : [],
-      colorImages: p.colorImages ? JSON.parse(p.colorImages) : {}
-    }));
-
-    res.json(parsedProducts);
+    res.json(products.map(parseProduct));
   } catch (error) {
     next(error);
   }
@@ -44,20 +44,9 @@ router.get("/", async (req, res, next) => {
 router.get("/:id", async (req, res, next) => {
   try {
     const { id } = req.params;
-    const product = await prisma.product.findUnique({
-      where: { id }
-    });
-
-    if (!product) {
-      return res.status(404).json({ message: "Không tìm thấy sản phẩm" });
-    }
-
-    res.json({
-      ...product,
-      sizes: product.sizes ? product.sizes.split(",") : [],
-      colors: product.colors ? product.colors.split(",") : [],
-      colorImages: product.colorImages ? JSON.parse(product.colorImages) : {}
-    });
+    const product = await prisma.product.findUnique({ where: { id } });
+    if (!product) return res.status(404).json({ message: "Không tìm thấy sản phẩm" });
+    res.json(parseProduct(product));
   } catch (error) {
     next(error);
   }
@@ -66,16 +55,16 @@ router.get("/:id", async (req, res, next) => {
 // 3. POST /api/products - Tạo sản phẩm mới (Admin)
 router.post("/", async (req, res, next) => {
   try {
-    const { name, sku, price, image, category, description, sizes, colors, colorImages, isFeatured } = req.body;
+    const { name, sku, price, image, category, description, sizes, colors, colorImages, images, isFeatured } = req.body;
 
     if (!name || !sku || !price || !image || !category) {
       return res.status(400).json({ message: "Vui lòng nhập đầy đủ thông tin bắt buộc!" });
     }
 
-    // Convert sizes và colors thành string ngăn cách bởi dấu phẩy
     const sizesStr = Array.isArray(sizes) ? sizes.join(",") : String(sizes || "S,M,L");
     const colorsStr = Array.isArray(colors) ? colors.join(",") : String(colors || "Black");
-    const colorImagesStr = typeof colorImages === "object" ? JSON.stringify(colorImages) : String(colorImages || "{}");
+    const colorImagesStr = typeof colorImages === "object" && colorImages !== null ? JSON.stringify(colorImages) : String(colorImages || "{}");
+    const imagesStr = serializeImages(images);
 
     const newProduct = await prisma.product.create({
       data: {
@@ -88,16 +77,12 @@ router.post("/", async (req, res, next) => {
         sizes: sizesStr,
         colors: colorsStr,
         colorImages: colorImagesStr,
+        images: imagesStr,
         isFeatured: !!isFeatured
       }
     });
 
-    res.status(201).json({
-      ...newProduct,
-      sizes: newProduct.sizes ? newProduct.sizes.split(",") : [],
-      colors: newProduct.colors ? newProduct.colors.split(",") : [],
-      colorImages: newProduct.colorImages ? JSON.parse(newProduct.colorImages) : {}
-    });
+    res.status(201).json(parseProduct(newProduct));
   } catch (error: any) {
     if (error.code === "P2002") {
       return res.status(400).json({ message: "Mã SKU này đã tồn tại!" });
@@ -110,11 +95,12 @@ router.post("/", async (req, res, next) => {
 router.put("/:id", async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { name, sku, price, image, category, description, sizes, colors, colorImages, isFeatured } = req.body;
+    const { name, sku, price, image, category, description, sizes, colors, colorImages, images, isFeatured } = req.body;
 
-    const sizesStr = Array.isArray(sizes) ? sizes.join(",") : String(sizes);
-    const colorsStr = Array.isArray(colors) ? colors.join(",") : String(colors);
-    const colorImagesStr = typeof colorImages === "object" ? JSON.stringify(colorImages) : String(colorImages);
+    const sizesStr = Array.isArray(sizes) ? sizes.join(",") : String(sizes || "");
+    const colorsStr = Array.isArray(colors) ? colors.join(",") : String(colors || "");
+    const colorImagesStr = typeof colorImages === "object" && colorImages !== null ? JSON.stringify(colorImages) : String(colorImages || "{}");
+    const imagesStr = serializeImages(images);
 
     const updatedProduct = await prisma.product.update({
       where: { id },
@@ -128,16 +114,12 @@ router.put("/:id", async (req, res, next) => {
         sizes: sizesStr,
         colors: colorsStr,
         colorImages: colorImagesStr,
+        images: imagesStr,
         isFeatured: isFeatured !== undefined ? !!isFeatured : undefined
       }
     });
 
-    res.json({
-      ...updatedProduct,
-      sizes: updatedProduct.sizes ? updatedProduct.sizes.split(",") : [],
-      colors: updatedProduct.colors ? updatedProduct.colors.split(",") : [],
-      colorImages: updatedProduct.colorImages ? JSON.parse(updatedProduct.colorImages) : {}
-    });
+    res.json(parseProduct(updatedProduct));
   } catch (error) {
     next(error);
   }
@@ -147,9 +129,7 @@ router.put("/:id", async (req, res, next) => {
 router.delete("/:id", async (req, res, next) => {
   try {
     const { id } = req.params;
-    await prisma.product.delete({
-      where: { id }
-    });
+    await prisma.product.delete({ where: { id } });
     res.json({ success: true, message: "Xóa sản phẩm thành công" });
   } catch (error) {
     next(error);
@@ -160,18 +140,11 @@ router.delete("/:id", async (req, res, next) => {
 router.put("/reorder", async (req, res, next) => {
   try {
     const { items } = req.body;
-    
-    if (!Array.isArray(items)) {
-      return res.status(400).json({ message: "Dữ liệu không hợp lệ" });
-    }
+    if (!Array.isArray(items)) return res.status(400).json({ message: "Dữ liệu không hợp lệ" });
 
-    // Dùng transaction để cập nhật hàng loạt
     await prisma.$transaction(
       items.map((item: any) =>
-        prisma.product.update({
-          where: { id: item.id },
-          data: { orderIndex: item.orderIndex }
-        })
+        prisma.product.update({ where: { id: item.id }, data: { orderIndex: item.orderIndex } })
       )
     );
 

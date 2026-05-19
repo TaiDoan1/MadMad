@@ -7,22 +7,25 @@ import { MembershipProvider } from "@/features/membership/context/membership-con
 import { OrderProvider } from "@/features/orders/context/order-context";
 import { ProductProvider } from "@/features/products/context/product-context";
 import { StorefrontSettingsProvider } from "@/features/settings/context/storefront-settings-context";
+import { ToastProvider } from "@/components/common/toast";
 
 export function AppProviders({ children }: { children: ReactNode }) {
   return (
-    <AdminAuthProvider>
-      <StorefrontSettingsProvider>
-        <LanguageProvider>
-          <CartProvider>
-            <ProductProvider>
-              <MembershipProvider>
-                <OrderProvider>{children}</OrderProvider>
-              </MembershipProvider>
-            </ProductProvider>
-          </CartProvider>
-        </LanguageProvider>
-      </StorefrontSettingsProvider>
-    </AdminAuthProvider>
+    <ToastProvider>
+      <AdminAuthProvider>
+        <StorefrontSettingsProvider>
+          <LanguageProvider>
+            <CartProvider>
+              <ProductProvider>
+                <MembershipProvider>
+                  <OrderProvider>{children}</OrderProvider>
+                </MembershipProvider>
+              </ProductProvider>
+            </CartProvider>
+          </LanguageProvider>
+        </StorefrontSettingsProvider>
+      </AdminAuthProvider>
+    </ToastProvider>
   );
 }
 

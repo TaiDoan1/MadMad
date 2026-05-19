@@ -21,8 +21,10 @@ import {
 import { useOrders } from "@/features/orders/context/order-context";
 import { useProducts } from "@/features/products/context/product-context";
 import type { Order } from "@/types/order";
+import { useToast } from "@/components/common/toast";
 
 export function AdminDashboardPage() {
+  const { showToast } = useToast();
   const { products } = useProducts();
   const { orders, updateOrderStatus, updateOrderPaymentStatus } = useOrders();
 
@@ -168,7 +170,7 @@ export function AdminDashboardPage() {
 
     if (window.confirm(`Bạn có chắc chắn muốn chuyển đơn hàng ${order.orderNumber} sang trạng thái "${label}"?`)) {
       await updateOrderStatus(order.id, nextStatus);
-      window.alert(`✓ Cập nhật trạng thái thành công!`);
+      showToast(`Cập nhật trạng thái đơn hàng thành công!`, "success");
     }
   };
 
