@@ -1914,7 +1914,6 @@ export function AdminOrdersPage() {
                     <div className="space-y-0.5">
                       <p>Họ tên: <span className="font-bold uppercase">{printOrder.customerName}</span></p>
                       <p>Điện thoại: <span className="font-bold">{printOrder.customerPhone}</span></p>
-                      <p className="truncate">Email: {printOrder.customerEmail}</p>
                       <p>Phương thức: <span className="uppercase font-bold">
                         {printOrder.paymentMethod === "bank" || printOrder.paymentMethod === "banking" || printOrder.paymentMethod === "chuyen_khoan" || printOrder.paymentMethod?.toLowerCase().includes("chuyển")
                           ? "CHUYỂN KHOẢN (BANKING)"
