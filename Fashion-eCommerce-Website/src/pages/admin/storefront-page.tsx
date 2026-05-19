@@ -60,19 +60,20 @@ export function AdminStorefrontPage() {
   }, [previewHeroImages.length, settings.heroSlideIntervalMs]);
 
   const bestSellers = settings.bestSellerProductIds
-    .map((id) => products.find((product) => product.id === id))
+    .map((id) => products.find((product) => String(product.id) === String(id)))
     .filter((product): product is NonNullable<typeof product> => Boolean(product))
     .map((product) => ({
       ...product,
-      image: settings.bestSellerImageOverrides[product.id] ?? product.image,
+      image: settings.bestSellerImageOverrides[String(product.id) as any] ?? product.image,
     }));
 
-  const toggleBestSeller = (productId: number) => {
+  const toggleBestSeller = (productId: string | number) => {
     const currentIds = settings.bestSellerProductIds ?? [];
-    if (currentIds.includes(productId)) {
+    const isIncluded = currentIds.some((id) => String(id) === String(productId));
+    if (isIncluded) {
       const { [productId]: _, ...rest } = settings.bestSellerImageOverrides;
       updateSettings({
-        bestSellerProductIds: currentIds.filter((id) => id !== productId),
+        bestSellerProductIds: currentIds.filter((id) => String(id) !== String(productId)),
         bestSellerImageOverrides: rest,
       });
       return;
@@ -80,8 +81,8 @@ export function AdminStorefrontPage() {
     updateSettings({ bestSellerProductIds: [...currentIds, productId] });
   };
 
-  const buildImageOptions = (productId: number) => {
-    const product = products.find((p) => p.id === productId);
+  const buildImageOptions = (productId: string | number) => {
+    const product = products.find((p) => String(p.id) === String(productId));
     if (!product) return [];
 
     const unique = new Set<string>();
@@ -111,7 +112,7 @@ export function AdminStorefrontPage() {
   const selectedBestSellerProducts = useMemo(
     () =>
       (settings.bestSellerProductIds ?? [])
-        .map((id) => products.find((product) => product.id === id))
+        .map((id) => products.find((product) => String(product.id) === String(id)))
         .filter((product): product is NonNullable<(typeof products)[number]> => Boolean(product)),
     [products, settings.bestSellerProductIds],
   );
@@ -128,14 +129,14 @@ export function AdminStorefrontPage() {
       const matchesCategory =
         bestSellerCategory === "all" || product.category === bestSellerCategory;
       const matchesSelected =
-        !showOnlyUnselected || !settings.bestSellerProductIds.includes(product.id);
+        !showOnlyUnselected || !settings.bestSellerProductIds.some((id) => String(id) === String(product.id));
       return matchesSearch && matchesCategory && matchesSelected;
     });
   }, [bestSellerCategory, bestSellerSearch, products, settings.bestSellerProductIds, showOnlyUnselected]);
 
-  const moveBestSeller = (productId: number, direction: "up" | "down") => {
+  const moveBestSeller = (productId: string | number, direction: "up" | "down") => {
     const current = settings.bestSellerProductIds ?? [];
-    const index = current.indexOf(productId);
+    const index = current.findIndex((id) => String(id) === String(productId));
     if (index < 0) return;
     const targetIndex = direction === "up" ? index - 1 : index + 1;
     if (targetIndex < 0 || targetIndex >= current.length) return;

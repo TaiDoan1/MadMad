@@ -19,7 +19,7 @@ export function CartDrawer({ open, onClose }: CartDrawerProps) {
   const resolvedItems = cartItems
     .map((item) => ({
       item,
-      product: products.find((p) => p.id === item.productId),
+      product: products.find((p) => String(p.id) === String(item.productId)),
     }))
     .filter(
       (e): e is { item: (typeof cartItems)[number]; product: NonNullable<(typeof products)[number]> } =>

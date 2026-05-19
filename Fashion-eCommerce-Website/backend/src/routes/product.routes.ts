@@ -92,7 +92,12 @@ router.post("/", async (req, res, next) => {
       }
     });
 
-    res.status(201).json(newProduct);
+    res.status(201).json({
+      ...newProduct,
+      sizes: newProduct.sizes ? newProduct.sizes.split(",") : [],
+      colors: newProduct.colors ? newProduct.colors.split(",") : [],
+      colorImages: newProduct.colorImages ? JSON.parse(newProduct.colorImages) : {}
+    });
   } catch (error: any) {
     if (error.code === "P2002") {
       return res.status(400).json({ message: "Mã SKU này đã tồn tại!" });
@@ -127,7 +132,12 @@ router.put("/:id", async (req, res, next) => {
       }
     });
 
-    res.json(updatedProduct);
+    res.json({
+      ...updatedProduct,
+      sizes: updatedProduct.sizes ? updatedProduct.sizes.split(",") : [],
+      colors: updatedProduct.colors ? updatedProduct.colors.split(",") : [],
+      colorImages: updatedProduct.colorImages ? JSON.parse(updatedProduct.colorImages) : {}
+    });
   } catch (error) {
     next(error);
   }

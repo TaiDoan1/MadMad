@@ -29,8 +29,8 @@ const DEFAULT_PRODUCT_OPTIONS: ProductOptions = {
 export function AdminProductsPage() {
   const { products, addProduct, updateProduct, deleteProduct, updateProductColorImages, reorderProducts } = useProducts();
   const { settings, updateSettings } = useStorefrontSettings();
-  const [draggedProductId, setDraggedProductId] = useState<number | null>(null);
-  const [dragOverProductId, setDragOverProductId] = useState<number | null>(null);
+  const [draggedProductId, setDraggedProductId] = useState<string | number | null>(null);
+  const [dragOverProductId, setDragOverProductId] = useState<string | number | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [showAddModal, setShowAddModal] = useState(false);
@@ -251,9 +251,9 @@ export function AdminProductsPage() {
                       }}
                       onDrop={(e) => {
                         e.preventDefault();
-                        if (draggedProductId && draggedProductId !== product.id) {
-                          const dragIndex = products.findIndex((p) => p.id === draggedProductId);
-                          const dropIndex = products.findIndex((p) => p.id === product.id);
+                        if (draggedProductId && String(draggedProductId) !== String(product.id)) {
+                          const dragIndex = products.findIndex((p) => String(p.id) === String(draggedProductId));
+                          const dropIndex = products.findIndex((p) => String(p.id) === String(product.id));
                           if (dragIndex !== -1 && dropIndex !== -1) {
                             const newOrder = [...products];
                             const [draggedItem] = newOrder.splice(dragIndex, 1);
@@ -268,7 +268,7 @@ export function AdminProductsPage() {
                         setDraggedProductId(null);
                         setDragOverProductId(null);
                       }}
-                      className={`transition-colors hover:bg-muted/50 ${draggedProductId === product.id ? "opacity-50 bg-stone-50" : ""} ${dragOverProductId === product.id ? "border-t-2 border-black bg-stone-100" : ""}`}
+                      className={`transition-colors hover:bg-muted/50 ${String(draggedProductId) === String(product.id) ? "opacity-50 bg-stone-50" : ""} ${String(dragOverProductId) === String(product.id) ? "border-t-2 border-black bg-stone-100" : ""}`}
                     >
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">

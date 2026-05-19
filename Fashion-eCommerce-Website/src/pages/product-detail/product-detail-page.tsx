@@ -60,7 +60,7 @@ export function ProductDetailPage() {
   const { addToCart } = useCart();
   const { settings } = useStorefrontSettings();
   const { formatPrice, t, translate } = useLanguage();
-  const product = products.find((item) => item.id === Number(id));
+  const product = products.find((item) => String(item.id) === String(id));
   const [selectedSize, setSelectedSize] = useState("");
   const [selectedColor, setSelectedColor] = useState("");
   const [quantity, setQuantity] = useState(1);

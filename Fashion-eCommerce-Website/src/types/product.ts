@@ -1,5 +1,5 @@
 export interface Product {
-  id: number;
+  id: string | number;
   sku?: string;
   name: string;
   price: number;
@@ -17,6 +17,7 @@ export interface Product {
   sizes: string[];
   colors: string[];
   inStock: boolean;
+  createdAt?: string;
 }
 
 export interface ProductCategory {

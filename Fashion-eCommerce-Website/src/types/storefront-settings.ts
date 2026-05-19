@@ -19,8 +19,8 @@ export interface StorefrontSettings {
   heroContentAlign: "left" | "center" | "right";
   heroFontStyle: "default" | "serif" | "mono";
   popularCategoryImages: string[];
-  bestSellerProductIds: number[];
-  bestSellerImageOverrides: Record<number, string>;
+  bestSellerProductIds: (string | number)[];
+  bestSellerImageOverrides: Record<string | number, string>;
   colorHexMap: Record<string, string>;
   instagramImages: string[];
   instagramUrl: string;

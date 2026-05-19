@@ -115,7 +115,7 @@ export function CheckoutPage() {
       .replaceAll("đ", "d");
 
   const resolvedItems = cartItems
-    .map((item) => ({ item, product: products.find((p) => p.id === item.productId) }))
+    .map((item) => ({ item, product: products.find((p) => String(p.id) === String(item.productId)) }))
     .filter((e): e is { item: (typeof cartItems)[number]; product: NonNullable<(typeof products)[number]> } => Boolean(e.product));
   const hasDiscountedProducts = resolvedItems.some(({ product }) => (product.discountPercent ?? 0) > 0);
 

@@ -13,7 +13,7 @@ interface ProductCardProps {
 }
 
 export function ProductCard({ product, variant = "shop" }: ProductCardProps) {
-  const { addItem } = useCart();
+  const { addToCart } = useCart();
   const { formatPrice, t, translate } = useLanguage();
   const [added, setAdded] = useState(false);
 
@@ -27,9 +27,20 @@ export function ProductCard({ product, variant = "shop" }: ProductCardProps) {
   const handleQuickAdd = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    addItem(product, 1);
+    
+    const defaultSize = product.sizes && product.sizes.length > 0 ? product.sizes[0] : "Free Size";
+    const defaultColor = product.colors && product.colors.length > 0 ? product.colors[0] : "Default";
+    
+    addToCart({
+      productId: product.id,
+      size: defaultSize,
+      color: defaultColor,
+      quantity: 1,
+      priceAtAdd: product.price
+    });
+    
     setAdded(true);
-    setTimeout(() => setAdded(false), 1_500);
+    setTimeout(() => setAdded(false), 1500);
   };
 
   return (

@@ -8,7 +8,7 @@ const CART_STORAGE_KEY = "fashion-ecommerce.cart";
 const CART_COUPON_STORAGE_KEY = "fashion-ecommerce.cart-coupon";
 
 interface AddCartItemPayload {
-  productId: number;
+  productId: string | number;
   size: string;
   color: string;
   quantity: number;
@@ -85,7 +85,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       addToCart: ({ productId, size, color, quantity, priceAtAdd }) => {
         const normalizedQty = Math.max(1, quantity);
         const existing = cartItems.find(
-          (item) => item.productId === productId && item.size === size && item.color === color,
+          (item) => String(item.productId) === String(productId) && item.size === size && item.color === color,
         );
         if (existing) {
           persist(

@@ -65,14 +65,14 @@ export function HomePage() {
 
   // ── Products ───────────────────────────────────────────────────────────────
   const bestSellers = settings.bestSellerProductIds
-    .map((id) => products.find((p) => p.id === id))
+    .map((id) => products.find((p) => String(p.id) === String(id)))
     .filter((p): p is NonNullable<typeof p> => Boolean(p));
 
   const resolvedBestSellers = bestSellers.length > 0 ? bestSellers : products.slice(0, 6);
 
   const featuredProducts = resolvedBestSellers.slice(0, 6).map((product) => ({
     ...product,
-    image: settings.bestSellerImageOverrides[product.id] ?? product.image,
+    image: settings.bestSellerImageOverrides[String(product.id) as any] ?? product.image,
   }));
 
   // ── Popular category images ────────────────────────────────────────────────

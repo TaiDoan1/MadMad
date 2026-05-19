@@ -7,9 +7,9 @@ import type { Product } from "@/types/product";
 interface ProductContextValue {
   products: Product[];
   addProduct: (product: Product) => void;
-  updateProduct: (id: number, product: Product) => void;
-  deleteProduct: (id: number) => void;
-  updateProductColorImages: (id: number, colorImages: Record<string, string>) => void;
+  updateProduct: (id: string | number, product: Product) => void;
+  deleteProduct: (id: string | number) => void;
+  updateProductColorImages: (id: string | number, colorImages: Record<string, string>) => void;
   reorderProducts: (newOrderedList: Product[]) => void;
 }
 
@@ -66,16 +66,31 @@ export function ProductProvider({ children }: { children: ReactNode }) {
     () => ({
       products,
       addProduct: async (product) => {
-        const newId = Math.max(0, ...products.map((item) => item.id)) + 1;
-        const sku = product.sku || `MAD-PR-${String(newId).padStart(4, "0")}`;
-        const newProduct = { ...product, id: newId, sku };
+        const numericIds = products
+          .map((item) => Number(item.id))
+          .filter((id) => !isNaN(id));
+        const maxId = numericIds.length > 0 ? Math.max(...numericIds) : 0;
+        const newIdSeq = maxId + 1;
+        const tempId = `temp-${Date.now()}`;
+        const sku = product.sku || `MAD-PR-${String(newIdSeq).padStart(4, "0")}`;
+        const newProduct = { ...product, id: tempId, sku };
         setProducts((currentProducts) => [...currentProducts, newProduct]);
         try {
-          await fetch(`${API_URL}/products`, {
+          const response = await fetch(`${API_URL}/products`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(newProduct),
           });
+          if (response.ok) {
+            const savedProduct = await response.json();
+            setProducts((currentProducts) =>
+              currentProducts.map((p) => (p.id === tempId ? savedProduct : p))
+            );
+          } else {
+            console.error("Lỗi khi thêm sản phẩm lên API:", await response.text());
+            setProducts((currentProducts) => currentProducts.filter((p) => p.id !== tempId));
+            window.alert("Không thể lưu sản phẩm lên server!");
+          }
         } catch (e) {
           console.warn("⚠️ Lỗi lưu sản phẩm lên server, đã lưu local", e);
         }
@@ -85,11 +100,17 @@ export function ProductProvider({ children }: { children: ReactNode }) {
           currentProducts.map((product) => (product.id === id ? updatedProduct : product)),
         );
         try {
-          await fetch(`${API_URL}/products/${id}`, {
+          const response = await fetch(`${API_URL}/products/${id}`, {
             method: "PUT",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(updatedProduct),
           });
+          if (response.ok) {
+            const savedProduct = await response.json();
+            setProducts((currentProducts) =>
+              currentProducts.map((product) => (product.id === id ? savedProduct : product)),
+            );
+          }
         } catch (e) {
           console.warn("⚠️ Lỗi cập nhật sản phẩm lên server, đã lưu local", e);
         }

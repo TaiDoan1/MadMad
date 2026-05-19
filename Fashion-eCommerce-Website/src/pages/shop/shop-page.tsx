@@ -55,7 +55,17 @@ export function ShopPage() {
     return [...result].sort((a, b) => {
       if (sortBy === "price-low") return a.price - b.price;
       if (sortBy === "price-high") return b.price - a.price;
-      if (sortBy === "newest") return b.id - a.id;
+      if (sortBy === "newest") {
+        if (a.createdAt && b.createdAt) {
+          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+        }
+        const idA = Number(a.id);
+        const idB = Number(b.id);
+        if (!isNaN(idA) && !isNaN(idB)) {
+          return idB - idA;
+        }
+        return String(b.id).localeCompare(String(a.id));
+      }
       return 0; // featured → Giữ nguyên thứ tự custom từ context
     });
   }, [products, selectedCategory, selectedPriceRange, sortBy]);
