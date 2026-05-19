@@ -94,17 +94,25 @@ const LOCAL_ORDERS_KEY = "madmad_orders_fallback";
       orders,
       loading,
 
-      // 🛒 Thêm đơn hàng mới khi khách hàng nhấn Checkout (Dat Hang)
       addOrder: async (orderData) => {
+        const { shippingAddress, ...rest } = orderData;
+        const payload = {
+          ...rest,
+          street: shippingAddress?.street || "Mua trực tiếp tại Shop",
+          ward: shippingAddress?.ward || "",
+          district: shippingAddress?.district || "",
+          province: shippingAddress?.province || "",
+        };
+
         console.log("%c🌐 [BROWSER CALL] Bắt đầu gửi API đặt hàng...", "color: #00ffff; font-weight: bold; font-size: 13px;");
         console.log(`- API URL Đích: "${API_URL}/orders"`);
-        console.log("- Dữ liệu (Payload) gửi đi:", orderData);
+        console.log("- Dữ liệu (Payload) gửi đi:", payload);
 
         try {
           const response = await fetch(`${API_URL}/orders`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(orderData),
+            body: JSON.stringify(payload),
           });
 
           console.log(`- Response HTTP Status: ${response.status} (${response.statusText})`);
