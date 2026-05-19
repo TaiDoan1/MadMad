@@ -98,8 +98,20 @@ export function ProductDetailPage() {
 
   const getFilteredImages = () => {
     if (!selectedColor) return productImages;
-    const activeColorImages = findImagesForColor(selectedColor, productImages);
-    return activeColorImages.length > 0 ? activeColorImages : productImages;
+
+    // Ưu tiên lấy từ cấu hình Ảnh mặt trước / mặt sau rõ ràng của Admin
+    const frontImg = product.colorImages?.[`${selectedColor}-front`] || product.colorImages?.[selectedColor];
+    const backImg = product.colorImages?.[`${selectedColor}-back`];
+
+    const activeColorImages: string[] = [];
+    if (frontImg) activeColorImages.push(frontImg);
+    if (backImg) activeColorImages.push(backImg);
+
+    if (activeColorImages.length > 0) return activeColorImages;
+
+    // Fallback nếu Admin không upload thủ công theo từng màu sắc
+    const activeMatchedImages = findImagesForColor(selectedColor, productImages);
+    return activeMatchedImages.length > 0 ? activeMatchedImages : productImages;
   };
 
   useEffect(() => {

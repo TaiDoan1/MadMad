@@ -759,20 +759,34 @@ export function AdminProductsPage() {
                         <label className="block text-[9px] font-extrabold tracking-widest uppercase text-black/50">
                           Hình ảnh cụ thể theo từng màu (Tùy chọn)
                         </label>
-                        <p className="text-[9px] text-black/35 mt-0.5">Đặt URL ảnh riêng cho từng màu để khách xem khi đổi màu sản phẩm.</p>
+                        <p className="text-[9px] text-black/35 mt-0.5">Tải lên hoặc dán URL ảnh mặt trước và mặt sau cho từng màu sắc.</p>
                       </div>
-                      <div className="space-y-2.5 max-h-48 overflow-y-auto pr-1">
+                      <div className="space-y-3 max-h-64 overflow-y-auto pr-1">
                         {selectedColors.map((color) => (
-                          <div key={color} className="flex items-center gap-3 bg-stone-50 p-2.5 border border-black/5 rounded-xl">
-                            <span className="w-20 text-[10px] font-extrabold uppercase tracking-wide text-black/70">{color}</span>
-                            <ImageUploadInput
-                              value={colorImageDrafts[color] || ""}
-                              onChange={(value) =>
-                                setColorImageDrafts((current) => ({ ...current, [color]: value }))
-                              }
-                              className="flex-1"
-                              placeholder={`URL ảnh màu ${color}`}
-                            />
+                          <div key={color} className="flex flex-col gap-2.5 bg-stone-50 p-3.5 border border-black/5 rounded-xl">
+                            <span className="text-[10px] font-black uppercase tracking-wide text-black/80">{color}</span>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                              <div className="space-y-1">
+                                <label className="block text-[8px] font-extrabold tracking-widest uppercase text-black/40">Ảnh mặt trước</label>
+                                <ImageUploadInput
+                                  value={colorImageDrafts[`${color}-front`] || colorImageDrafts[color] || ""}
+                                  onChange={(value) =>
+                                    setColorImageDrafts((current) => ({ ...current, [`${color}-front`]: value }))
+                                  }
+                                  placeholder="Tải lên ảnh mặt trước"
+                                />
+                              </div>
+                              <div className="space-y-1">
+                                <label className="block text-[8px] font-extrabold tracking-widest uppercase text-black/40">Ảnh mặt sau (Tùy chọn)</label>
+                                <ImageUploadInput
+                                  value={colorImageDrafts[`${color}-back`] || ""}
+                                  onChange={(value) =>
+                                    setColorImageDrafts((current) => ({ ...current, [`${color}-back`]: value }))
+                                  }
+                                  placeholder="Tải lên ảnh mặt sau"
+                                />
+                              </div>
+                            </div>
                           </div>
                         ))}
                       </div>
@@ -1018,8 +1032,10 @@ export function AdminProductsPage() {
                   onClick={() => {
                     const colorImages: Record<string, string> = {};
                     selectedColors.forEach((color) => {
-                      const url = (colorImageDrafts[color] || "").trim();
-                      if (url) colorImages[color] = url;
+                      const frontUrl = (colorImageDrafts[`${color}-front`] || colorImageDrafts[color] || "").trim();
+                      const backUrl = (colorImageDrafts[`${color}-back`] || "").trim();
+                      if (frontUrl) colorImages[`${color}-front`] = frontUrl;
+                      if (backUrl) colorImages[`${color}-back`] = backUrl;
                     });
 
                     let finalStock: number | undefined = undefined;
