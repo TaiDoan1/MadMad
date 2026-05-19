@@ -49,7 +49,7 @@ export function AdminOrdersPage() {
   const { showToast } = useToast();
   const { settings } = useStorefrontSettings();
   const { orders, updateOrderStatus, updateOrderPaymentStatus, addOrder } = useOrders();
-  const { products } = useProducts();
+  const { products, updateProduct } = useProducts();
   const { members, tierConfigs, setMembers } = useMembership(); // Đọc danh sách tất cả thành viên VIP
 
   const handleTogglePaid = (order: Order, isPaid: boolean) => {

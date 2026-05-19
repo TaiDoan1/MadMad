@@ -261,15 +261,15 @@ export function ProductDetailPage() {
                           isSelected 
                             ? "border-black dark:border-white border-[1.5px] shadow-sm" 
                             : isSoldOut
-                            ? "border-neutral-200 dark:border-neutral-800 text-neutral-300 dark:text-neutral-600 opacity-20 cursor-not-allowed"
+                            ? "border-neutral-250 dark:border-neutral-750 text-neutral-400 dark:text-neutral-555 opacity-40 cursor-not-allowed"
                             : "border-black/10 dark:border-white/10 bg-transparent text-foreground hover:border-black/30 dark:hover:border-white/30"
                         }`}
                         style={isSelected ? { backgroundColor: colorStyle.bg, color: colorStyle.text } : {}}
                       >
                         {translate(color)}
                         {isSoldOut && (
-                          <span className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-20">
-                            <span className="w-full h-[1.5px] bg-black dark:bg-white rotate-12"></span>
+                          <span className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                            <span className="w-full h-[2px] bg-neutral-600 dark:bg-neutral-400 rotate-12"></span>
                           </span>
                         )}
                       </button>
@@ -294,14 +294,14 @@ export function ProductDetailPage() {
                           isSelected 
                             ? "border-black dark:border-white border-[1.5px] bg-neutral-50 dark:bg-neutral-900 text-foreground font-extrabold shadow-sm" 
                             : isSoldOut
-                            ? "border-neutral-200 dark:border-neutral-800 text-neutral-300 dark:text-neutral-600 opacity-20 cursor-not-allowed"
+                            ? "border-neutral-250 dark:border-neutral-750 text-neutral-400 dark:text-neutral-555 opacity-40 cursor-not-allowed"
                             : "border-black/10 dark:border-white/10 bg-transparent text-neutral-500 dark:text-neutral-400 hover:border-black/30 dark:hover:border-white/30"
                         }`}
                       >
                         {size}
                         {isSoldOut && (
-                          <span className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-20">
-                            <span className="w-full h-[1.5px] bg-black dark:bg-white rotate-12"></span>
+                          <span className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                            <span className="w-full h-[2px] bg-neutral-600 dark:bg-neutral-400 rotate-12"></span>
                           </span>
                         )}
                       </button>
