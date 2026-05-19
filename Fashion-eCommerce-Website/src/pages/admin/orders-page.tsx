@@ -1953,10 +1953,10 @@ export function AdminOrdersPage() {
                 <table className="w-full text-left text-[10px] border-collapse mb-2 table-fixed">
                   <thead>
                     <tr className="border-b-2 border-black font-black uppercase text-black">
-                      <th className="py-1 w-[60%]">Sản phẩm / Phân loại</th>
+                      <th className="py-1 w-[50%]">Sản phẩm / Phân loại</th>
                       <th className="py-1 text-center w-[8%]">SL</th>
-                      <th className="py-1 text-right w-[16%]">Đơn giá</th>
-                      <th className="py-1 text-right w-[16%]">Thành tiền</th>
+                      <th className="py-1 text-right w-[18%]">Đơn giá</th>
+                      <th className="py-1 text-right w-[24%]">Thành tiền</th>
                     </tr>
                   </thead>
                   <tbody className="font-bold">
