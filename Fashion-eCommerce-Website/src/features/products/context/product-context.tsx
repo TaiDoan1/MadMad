@@ -66,13 +66,9 @@ export function ProductProvider({ children }: { children: ReactNode }) {
     () => ({
       products,
       addProduct: async (product) => {
-        const numericIds = products
-          .map((item) => Number(item.id))
-          .filter((id) => !isNaN(id));
-        const maxId = numericIds.length > 0 ? Math.max(...numericIds) : 0;
-        const newIdSeq = maxId + 1;
         const tempId = `temp-${Date.now()}`;
-        const sku = product.sku || `MAD-PR-${String(newIdSeq).padStart(4, "0")}`;
+        // Dùng timestamp để tạo SKU duy nhất, tránh trùng lặp với các sản phẩm đã có trong DB
+        const sku = product.sku || `MAD-${Date.now().toString(36).toUpperCase()}`;
         const newProduct = { ...product, id: tempId, sku };
         setProducts((currentProducts) => [...currentProducts, newProduct]);
         try {
@@ -87,9 +83,15 @@ export function ProductProvider({ children }: { children: ReactNode }) {
               currentProducts.map((p) => (p.id === tempId ? savedProduct : p))
             );
           } else {
-            console.error("Lỗi khi thêm sản phẩm lên API:", await response.text());
+            const errText = await response.text();
+            console.error("Lỗi khi thêm sản phẩm lên API:", errText);
             setProducts((currentProducts) => currentProducts.filter((p) => p.id !== tempId));
-            window.alert("Không thể lưu sản phẩm lên server!");
+            let errMsg = "Không thể lưu sản phẩm lên server!";
+            try {
+              const errJson = JSON.parse(errText);
+              if (errJson.message) errMsg = errJson.message;
+            } catch {}
+            window.alert(errMsg);
           }
         } catch (e) {
           console.warn("⚠️ Lỗi lưu sản phẩm lên server, đã lưu local", e);
