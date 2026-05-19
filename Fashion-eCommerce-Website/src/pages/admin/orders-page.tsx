@@ -323,19 +323,23 @@ export function AdminOrdersPage() {
     setVipCheckMessage("");
     setCheckedMember(null);
 
-    const query = manualCustomerPhone.trim().replace(/\s+/g, "");
-    const emailQuery = manualCustomerEmail.trim().toLowerCase();
+    const inputVal = manualCustomerPhone.trim().toLowerCase().replace(/\s+/g, "");
+    const emailVal = manualCustomerEmail.trim().toLowerCase();
 
-    if (!query && !emailQuery) {
+    if (!inputVal && !emailVal) {
       setVipCheckMessage("⚠️ Vui lòng nhập Số điện thoại hoặc Email để tra cứu VIP!");
       return;
     }
 
-    const found = localMembers.find(
-      (m) =>
-        (query && m.phone === query) ||
-        (emailQuery && m.email.toLowerCase() === emailQuery)
-    );
+    const found = localMembers.find((m) => {
+      const dbPhone = (m.phone || "").replace(/\s+/g, "");
+      const dbEmail = (m.email || "").toLowerCase();
+      
+      return (
+        (inputVal && (dbPhone === inputVal || dbEmail === inputVal)) ||
+        (emailVal && dbEmail === emailVal)
+      );
+    });
 
     if (found) {
       setCheckedMember(found);
@@ -1885,9 +1889,6 @@ export function AdminOrdersPage() {
                       src={brandLogo} 
                       alt="MADMAD Studio" 
                       className="h-8 w-auto" 
-                      style={{ 
-                        filter: "brightness(0) drop-shadow(0.3px 0px 0px #000) drop-shadow(-0.3px 0px 0px #000) drop-shadow(0px 0.3px 0px #000)" 
-                      }} 
                     />
                     <div className="text-right">
                       <h1 className="text-sm font-black tracking-widest">MADMAD STUDIO</h1>
