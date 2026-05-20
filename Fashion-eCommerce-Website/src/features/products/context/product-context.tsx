@@ -64,6 +64,39 @@ export function ProductProvider({ children }: { children: ReactNode }) {
     window.localStorage.setItem(PRODUCTS_STORAGE_KEY, JSON.stringify(products));
   }, [products]);
 
+  const handleUpdateProduct = async (id: string | number, updatedProduct: Product) => {
+    const oldProducts = [...products];
+    setProducts((currentProducts) =>
+      currentProducts.map((product) => (product.id === id ? updatedProduct : product))
+    );
+    try {
+      const response = await fetch(`${API_URL}/products/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updatedProduct),
+      });
+      if (response.ok) {
+        const savedProduct = await response.json();
+        setProducts((currentProducts) =>
+          currentProducts.map((product) => (product.id === id ? savedProduct : product))
+        );
+        showToast("Cập nhật sản phẩm thành công!", "success");
+      } else {
+        const errText = await response.text();
+        let errMsg = "Lỗi khi cập nhật sản phẩm!";
+        try {
+          const errJson = JSON.parse(errText);
+          if (errJson.message) errMsg = errJson.message;
+        } catch {}
+        setProducts(oldProducts);
+        showToast(errMsg, "error");
+      }
+    } catch (e) {
+      console.warn("⚠️ Lỗi cập nhật sản phẩm lên server, đã lưu local", e);
+      showToast("Lỗi kết nối máy chủ khi cập nhật!", "error");
+    }
+  };
+
   const value = useMemo<ProductContextValue>(
     () => ({
       products,
@@ -101,38 +134,7 @@ export function ProductProvider({ children }: { children: ReactNode }) {
           showToast("Có lỗi xảy ra khi kết nối máy chủ!", "error");
         }
       },
-      updateProduct: async (id, updatedProduct) => {
-        const oldProducts = [...products];
-        setProducts((currentProducts) =>
-          currentProducts.map((product) => (product.id === id ? updatedProduct : product)),
-        );
-        try {
-          const response = await fetch(`${API_URL}/products/${id}`, {
-            method: "PUT",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(updatedProduct),
-          });
-          if (response.ok) {
-            const savedProduct = await response.json();
-            setProducts((currentProducts) =>
-              currentProducts.map((product) => (product.id === id ? savedProduct : product)),
-            );
-            showToast("Cập nhật sản phẩm thành công!", "success");
-          } else {
-            const errText = await response.text();
-            let errMsg = "Lỗi khi cập nhật sản phẩm!";
-            try {
-              const errJson = JSON.parse(errText);
-              if (errJson.message) errMsg = errJson.message;
-            } catch {}
-            setProducts(oldProducts);
-            showToast(errMsg, "error");
-          }
-        } catch (e) {
-          console.warn("⚠️ Lỗi cập nhật sản phẩm lên server, đã lưu local", e);
-          showToast("Lỗi kết nối máy chủ khi cập nhật!", "error");
-        }
-      },
+      updateProduct: handleUpdateProduct,
       deleteProduct: async (id) => {
         const oldProducts = [...products];
         setProducts((currentProducts) => currentProducts.filter((product) => product.id !== id));
@@ -149,12 +151,11 @@ export function ProductProvider({ children }: { children: ReactNode }) {
           showToast("Lỗi kết nối máy chủ khi xóa sản phẩm!", "error");
         }
       },
-      updateProductColorImages: (id, colorImages) => {
-        setProducts((currentProducts) =>
-          currentProducts.map((product) =>
-            product.id === id ? { ...product, colorImages } : product,
-          ),
-        );
+      updateProductColorImages: async (id, colorImages) => {
+        const product = products.find((p) => String(p.id) === String(id));
+        if (!product) return;
+        const updatedProduct = { ...product, colorImages };
+        await handleUpdateProduct(id, updatedProduct);
       },
       reorderProducts: (newOrderedList) => {
         setProducts(newOrderedList);

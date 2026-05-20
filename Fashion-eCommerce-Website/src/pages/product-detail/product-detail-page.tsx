@@ -115,6 +115,25 @@ export function ProductDetailPage() {
   };
 
   useEffect(() => {
+    if (!product) return;
+
+    // Auto-select first color on load if available to show matched front/back images immediately
+    if (product.colors && product.colors.length > 0 && !selectedColor) {
+      const defaultColor = product.colors[0];
+      setSelectedColor(defaultColor);
+      const frontImg = product.colorImages?.[`${defaultColor}-front`] || product.colorImages?.[defaultColor];
+      if (frontImg) {
+        setCurrentImage(frontImg);
+        return;
+      } else {
+        const colorImagesList = findImagesForColor(defaultColor, productImages);
+        if (colorImagesList.length > 0) {
+          setCurrentImage(colorImagesList[0]);
+          return;
+        }
+      }
+    }
+
     if (productImages.length > 0) {
       setCurrentImage(productImages[0]);
     } else if (product?.image) {
@@ -296,13 +315,18 @@ export function ProductDetailPage() {
                         disabled={isSoldOut}
                          onClick={() => {
                            setSelectedColor(color);
-                           const colorImagesList = findImagesForColor(color, productImages);
-                           if (colorImagesList.length > 0) {
-                             setCurrentImage(colorImagesList[0]);
+                           const frontImg = product.colorImages?.[`${color}-front`] || product.colorImages?.[color];
+                           if (frontImg) {
+                             setCurrentImage(frontImg);
                            } else {
-                             const colorImage = product.colorImages?.[color] || findImageForColor(color, productImages);
-                             if (colorImage) {
-                               setCurrentImage(colorImage);
+                             const colorImagesList = findImagesForColor(color, productImages);
+                             if (colorImagesList.length > 0) {
+                               setCurrentImage(colorImagesList[0]);
+                             } else {
+                               const colorImage = findImageForColor(color, productImages);
+                               if (colorImage) {
+                                 setCurrentImage(colorImage);
+                               }
                              }
                            }
                          }}

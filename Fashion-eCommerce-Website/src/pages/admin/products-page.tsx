@@ -1109,51 +1109,103 @@ export function AdminProductsPage() {
       , document.body) : null}
 
       {showColorImagesModal && selectedProduct ? createPortal(
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 sm:p-6">
-          <div className="flex max-h-[90vh] w-full max-w-3xl flex-col overflow-hidden rounded-lg bg-white shadow-2xl">
-            <div className="shrink-0 flex items-start justify-between border-b border-border bg-white p-6 z-10">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 sm:p-6 animate-fadeIn">
+          <div className="flex max-h-[90vh] w-full max-w-3xl flex-col overflow-hidden rounded-3xl bg-white border border-black/10 shadow-2xl relative animate-scaleUp">
+            <div className="shrink-0 flex items-center justify-between border-b border-black/5 bg-white p-6 z-10">
               <div>
-                <h2 className="text-2xl">Quản Lý Hình Ảnh Theo Màu</h2>
-                <p className="mt-1 text-sm text-muted-foreground">{selectedProduct.name}</p>
+                <h2 className="text-lg font-black tracking-tight text-black uppercase">Quản Lý Hình Ảnh Theo Màu</h2>
+                <p className="text-[10px] text-black/40 uppercase font-semibold mt-0.5">{selectedProduct.name}</p>
               </div>
               <button
                 onClick={() => {
                   setShowColorImagesModal(false);
                   setSelectedProduct(null);
+                  setEditingColorImages({});
                 }}
-                className="rounded p-2 transition-colors hover:bg-muted"
+                className="p-2 text-stone-400 hover:text-red-650 transition-colors"
               >
                 <X className="h-5 w-5" />
               </button>
             </div>
-            <div className="flex-1 overflow-y-auto min-h-0 space-y-4 p-6">
-              {selectedProduct.colors.map((color) => (
-                <div key={color} className="flex items-center gap-4 rounded-lg bg-muted/30 p-4">
-                  <div className="h-24 w-24 overflow-hidden rounded-lg border border-border bg-white">
-                    {selectedProduct.colorImages?.[color] ? (
-                      <ImageWithFallback src={selectedProduct.colorImages[color]} alt={`${selectedProduct.name} - ${color}`} className="h-full w-full object-cover" />
-                    ) : null}
+            <div className="flex-1 overflow-y-auto min-h-0 space-y-4 p-6 bg-stone-50/20">
+              {selectedProduct.colors.map((color) => {
+                const frontValue = editingColorImages[`${color}-front`] || editingColorImages[color] || "";
+                const backValue = editingColorImages[`${color}-back`] || "";
+                return (
+                  <div key={color} className="flex flex-col gap-3 rounded-2xl bg-white p-4 border border-black/5 shadow-sm">
+                    <div className="flex items-center justify-between border-b border-black/5 pb-2">
+                      <span className="text-xs font-black uppercase tracking-wider text-black">{color}</span>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      {/* Front image */}
+                      <div className="flex items-center gap-3">
+                        <div className="h-16 w-16 shrink-0 overflow-hidden rounded-xl border border-black/10 bg-white">
+                          {frontValue ? (
+                            <ImageWithFallback src={frontValue} alt={`${selectedProduct.name} - ${color} - Mặt trước`} className="h-full w-full object-cover" />
+                          ) : (
+                            <div className="flex h-full w-full items-center justify-center bg-stone-100 text-[9px] font-bold text-black/30">Mặt trước</div>
+                          )}
+                        </div>
+                        <div className="flex-1 space-y-1">
+                          <label className="block text-[8px] font-extrabold tracking-widest uppercase text-black/40">Ảnh mặt trước</label>
+                          <ImageUploadInput
+                            value={frontValue}
+                            onChange={(value) => setEditingColorImages((current) => ({ ...current, [`${color}-front`]: value }))}
+                            placeholder={`URL ảnh mặt trước màu ${color}`}
+                          />
+                        </div>
+                      </div>
+
+                      {/* Back image */}
+                      <div className="flex items-center gap-3">
+                        <div className="h-16 w-16 shrink-0 overflow-hidden rounded-xl border border-black/10 bg-white">
+                          {backValue ? (
+                            <ImageWithFallback src={backValue} alt={`${selectedProduct.name} - ${color} - Mặt sau`} className="h-full w-full object-cover" />
+                          ) : (
+                            <div className="flex h-full w-full items-center justify-center bg-stone-100 text-[9px] font-bold text-black/30">Mặt sau</div>
+                          )}
+                        </div>
+                        <div className="flex-1 space-y-1">
+                          <label className="block text-[8px] font-extrabold tracking-widest uppercase text-black/40">Ảnh mặt sau</label>
+                          <ImageUploadInput
+                            value={backValue}
+                            onChange={(value) => setEditingColorImages((current) => ({ ...current, [`${color}-back`]: value }))}
+                            placeholder={`URL ảnh mặt sau màu ${color}`}
+                          />
+                        </div>
+                      </div>
+                    </div>
                   </div>
-                  <ImageUploadInput
-                    value={editingColorImages[color] || ""}
-                    onChange={(value) => setEditingColorImages({ ...editingColorImages, [color]: value })}
-                    className="flex-1"
-                    placeholder={`URL hình ảnh cho màu ${color}`}
-                  />
-                </div>
-              ))}
-                  <p className="text-xs text-muted-foreground">Khuyến nghị ảnh theo màu: 1200x1200 (tỉ lệ 1:1), ánh sáng và góc chụp giống ảnh chính.</p>
+                );
+              })}
+              <p className="text-[9px] text-black/35 mt-2 uppercase font-semibold tracking-wider text-center">Khuyến nghị ảnh theo màu: 1200x1200px (tỉ lệ 1:1), ánh sáng và góc chụp giống ảnh chính.</p>
             </div>
-            <div className="shrink-0 flex justify-end gap-3 border-t border-border p-6 bg-white rounded-b-lg">
-              <button onClick={() => { setShowColorImagesModal(false); setSelectedProduct(null); }} className="rounded border border-border px-6 py-2 transition-colors hover:bg-muted">Đóng</button>
+            <div className="shrink-0 flex justify-end gap-3 border-t border-black/5 p-6 bg-white rounded-b-3xl">
               <button
                 onClick={() => {
-                  updateProductColorImages(selectedProduct.id, editingColorImages);
                   setShowColorImagesModal(false);
                   setSelectedProduct(null);
                   setEditingColorImages({});
                 }}
-                className="rounded bg-primary px-6 py-2 text-white transition-colors hover:bg-primary/90"
+                className="border border-black/10 hover:bg-stone-50 px-6 py-3 rounded-xl text-[10px] font-extrabold tracking-widest uppercase transition-colors"
+              >
+                Đóng
+              </button>
+              <button
+                onClick={() => {
+                  const nextColorImages: Record<string, string> = {};
+                  selectedProduct.colors.forEach((color) => {
+                    const frontUrl = (editingColorImages[`${color}-front`] || editingColorImages[color] || "").trim();
+                    const backUrl = (editingColorImages[`${color}-back`] || "").trim();
+                    if (frontUrl) nextColorImages[`${color}-front`] = frontUrl;
+                    if (backUrl) nextColorImages[`${color}-back`] = backUrl;
+                  });
+                  updateProductColorImages(selectedProduct.id, nextColorImages);
+                  setShowColorImagesModal(false);
+                  setSelectedProduct(null);
+                  setEditingColorImages({});
+                }}
+                className="bg-black hover:bg-red-700 text-white px-6 py-3 rounded-xl text-[10px] font-extrabold tracking-widest uppercase transition-all shadow-md shadow-black/10"
               >
                 Lưu Thay Đổi
               </button>

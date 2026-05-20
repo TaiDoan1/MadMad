@@ -373,7 +373,9 @@ export function AdminOrdersPage() {
   const handleAddManualItem = () => {
     if (!selectedProductToAdd) return;
     
-    const colors = Object.keys(selectedProductToAdd.colorImages || {});
+    const colors = selectedProductToAdd.colors && selectedProductToAdd.colors.length > 0
+       ? selectedProductToAdd.colors
+       : Array.from(new Set(Object.keys(selectedProductToAdd.colorImages || {}).map(c => c.replace(/-front$|-back$/, ""))));
     const finalColor = selectedColorToAdd || (colors.length > 0 ? colors[0] : "Default");
 
     const newItem: OrderItem = {
@@ -1128,7 +1130,9 @@ export function AdminOrdersPage() {
                               type="button"
                               onClick={() => {
                                 setSelectedProductToAdd(p);
-                                const colors = Object.keys(p.colorImages || {});
+                                const colors = p.colors && p.colors.length > 0
+                                  ? p.colors
+                                  : Array.from(new Set(Object.keys(p.colorImages || {}).map(c => c.replace(/-front$|-back$/, ""))));
                                 setSelectedColorToAdd(colors.length > 0 ? colors[0] : "Default");
                                 setProductSearchQuery("");
                               }}
@@ -1196,15 +1200,20 @@ export function AdminOrdersPage() {
                               onChange={(e) => setSelectedColorToAdd(e.target.value)}
                               className="w-full rounded-lg border border-black/10 bg-stone-50 px-2.5 py-1.5 focus:border-black/60 focus:bg-white focus:outline-none transition-all text-[11px] uppercase"
                             >
-                              {Object.keys(selectedProductToAdd.colorImages || {}).length > 0 ? (
-                                Object.keys(selectedProductToAdd.colorImages || {}).map((c) => (
-                                  <option key={c} value={c}>
-                                    {c}
-                                  </option>
-                                ))
-                              ) : (
-                                <option value="Default">TIÊU CHUẨN</option>
-                              )}
+                              {(() => {
+                                const cleanColors = selectedProductToAdd.colors && selectedProductToAdd.colors.length > 0
+                                  ? selectedProductToAdd.colors
+                                  : Array.from(new Set(Object.keys(selectedProductToAdd.colorImages || {}).map(c => c.replace(/-front$|-back$/, ""))));
+                                return cleanColors.length > 0 ? (
+                                  cleanColors.map((c) => (
+                                    <option key={c} value={c}>
+                                      {c}
+                                    </option>
+                                  ))
+                                ) : (
+                                  <option value="Default">TIÊU CHUẨN</option>
+                                );
+                              })()}
                             </select>
                           </div>
 
