@@ -8,6 +8,8 @@ import { useToast } from "@/components/common/toast";
 interface ProductContextValue {
   products: Product[];
   isLoading: boolean;
+  apiError: string | null;
+  refreshProducts: () => Promise<void>;
   addProduct: (product: Product) => void;
   updateProduct: (id: string | number, product: Product) => void;
   deleteProduct: (id: string | number) => void;
@@ -21,6 +23,7 @@ const PRODUCTS_STORAGE_KEY = "fashion-ecommerce.products-v7";
 export function ProductProvider({ children }: { children: ReactNode }) {
   const { showToast } = useToast();
   const [isLoading, setIsLoading] = useState(true);
+  const [apiError, setApiError] = useState<string | null>(null);
   const [products, setProducts] = useState<Product[]>(() => {
     if (typeof window === "undefined") {
       return [];
@@ -46,19 +49,31 @@ export function ProductProvider({ children }: { children: ReactNode }) {
   // 📥 Tải danh sách sản phẩm từ máy chủ (Database Neon Postgres)
   const loadProducts = async () => {
     setIsLoading(true);
+    setApiError(null);
     try {
       // Thêm tham số _cb=timestamp để vượt qua mọi tầng cache trình duyệt/CDN một cách triệt để
-      const response = await fetch(`${API_URL}/products?_cb=${Date.now()}`);
+      const url = `${API_URL}/products?_cb=${Date.now()}`;
+      console.log("📡 [MADMAD SDK] Đang gửi yêu cầu GET tới API:", url);
+      const response = await fetch(url);
+      
       if (response.ok) {
         const data = await response.json();
+        console.log("📡 [MADMAD SDK] API trả về dữ liệu thành công. Số lượng sản phẩm:", data.length);
         if (Array.isArray(data)) {
           setProducts(data);
           setIsLoading(false);
           return;
+        } else {
+          setApiError("Cấu trúc dữ liệu API không hợp lệ: Không phải là một mảng.");
         }
+      } else {
+        const errText = await response.text().catch(() => "");
+        console.error(`🔴 [MADMAD SDK] API trả về mã lỗi HTTP ${response.status}:`, errText);
+        setApiError(`Lỗi máy chủ HTTP ${response.status}: ${response.statusText || ""}. Chi tiết: ${errText.substring(0, 100)}`);
       }
-    } catch (error) {
-      console.warn("⚠️ Không lấy được danh sách sản phẩm từ API, dùng dữ liệu local:", error);
+    } catch (error: any) {
+      console.error("🔴 [MADMAD SDK] Lỗi kết nối API:", error);
+      setApiError(`Không thể kết nối đến API máy chủ: ${error.message || error}`);
     } finally {
       setIsLoading(false);
     }
@@ -111,6 +126,8 @@ export function ProductProvider({ children }: { children: ReactNode }) {
     () => ({
       products,
       isLoading,
+      apiError,
+      refreshProducts: loadProducts,
       addProduct: async (product) => {
         const tempId = `temp-${Date.now()}`;
         // Dùng timestamp để tạo SKU duy nhất, tránh trùng lặp với các sản phẩm đã có trong DB
@@ -172,7 +189,7 @@ export function ProductProvider({ children }: { children: ReactNode }) {
         setProducts(newOrderedList);
       },
     }),
-    [products, isLoading],
+    [products, isLoading, apiError],
   );
 
   return <ProductContext.Provider value={value}>{children}</ProductContext.Provider>;

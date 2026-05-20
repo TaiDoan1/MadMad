@@ -29,7 +29,7 @@ const DEFAULT_PRODUCT_OPTIONS: ProductOptions = {
 
 export function AdminProductsPage() {
   const { showToast } = useToast();
-  const { products, addProduct, updateProduct, deleteProduct, updateProductColorImages, reorderProducts } = useProducts();
+  const { products, addProduct, updateProduct, deleteProduct, updateProductColorImages, reorderProducts, apiError, refreshProducts } = useProducts();
   const { settings, updateSettings } = useStorefrontSettings();
   const [draggedProductId, setDraggedProductId] = useState<string | number | null>(null);
   const [dragOverProductId, setDragOverProductId] = useState<string | number | null>(null);
@@ -185,6 +185,24 @@ export function AdminProductsPage() {
           </button>
         </div>
       </div>
+
+      {apiError && (
+        <div className="rounded-lg border border-red-200 bg-red-50 p-5 dark:border-red-900/30 dark:bg-red-950/20 text-red-700 dark:text-red-400">
+          <h3 className="text-xs font-black uppercase tracking-wider flex items-center gap-1.5">
+            ⚠️ PHÁT HIỆN LỖI ĐỒNG BỘ ĐƯỜNG TRUYỀN API (ADMIN VIEW)
+          </h3>
+          <p className="mt-2 text-xs font-mono break-all">{apiError}</p>
+          <p className="mt-3 text-[10px] text-red-500 uppercase tracking-widest font-bold">
+            API Endpoint: {import.meta.env.DEV ? "http://localhost:5000/api" : "https://madmad-backend.vercel.app/api"}/products
+          </p>
+          <button
+            onClick={() => refreshProducts()}
+            className="mt-4 border border-red-300 hover:border-red-700 px-4 py-1.5 text-[10px] font-bold uppercase tracking-widest transition-colors bg-white hover:bg-red-50 text-red-700 cursor-pointer rounded"
+          >
+            🔄 Gửi Lại Yêu Cầu Kết Nối (Retry)
+          </button>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
         <aside className="lg:col-span-4">
