@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { Link, useParams, useNavigate } from "react-router";
 import { Search, ShoppingCart, User, Share2, ArrowLeft } from "lucide-react";
 
@@ -95,6 +95,57 @@ export function ProductDetailPage() {
   const [expandedAccordion, setExpandedAccordion] = useState<string | null>(null);
   const productImages = product?.images && product.images.length > 0 ? product.images : product ? [product.image] : [];
   const [currentImage, setCurrentImage] = useState(productImages[0] || product?.image || "");
+
+  // Drag to scroll functionality for thumbnails container on desktop
+  const thumbnailsRef = useRef<HTMLDivElement>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const [startX, setStartX] = useState(0);
+  const [scrollLeftState, setScrollLeftState] = useState(0);
+  const dragStartPos = useRef({ x: 0, y: 0 });
+  const isMouseDown = useRef(false);
+
+  const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!thumbnailsRef.current) return;
+    setIsDragging(true);
+    setStartX(e.pageX - thumbnailsRef.current.offsetLeft);
+    setScrollLeftState(thumbnailsRef.current.scrollLeft);
+    
+    // Track click prevention
+    dragStartPos.current = { x: e.clientX, y: e.clientY };
+    isMouseDown.current = true;
+  };
+
+  const handleMouseLeave = () => {
+    setIsDragging(false);
+    isMouseDown.current = false;
+  };
+
+  const handleMouseUp = () => {
+    setIsDragging(false);
+  };
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!isDragging || !thumbnailsRef.current) return;
+    e.preventDefault();
+    const x = e.pageX - thumbnailsRef.current.offsetLeft;
+    const walk = (x - startX) * 1.5; // Drag scroll multiplier
+    thumbnailsRef.current.scrollLeft = scrollLeftState - walk;
+  };
+
+  const handleThumbnailClick = (e: React.MouseEvent, url: string) => {
+    if (isMouseDown.current) {
+      const dx = Math.abs(e.clientX - dragStartPos.current.x);
+      const dy = Math.abs(e.clientY - dragStartPos.current.y);
+      isMouseDown.current = false;
+      if (dx > 5 || dy > 5) {
+        // It was a drag, ignore click
+        e.preventDefault();
+        return;
+      }
+    }
+    setCurrentImage(url);
+    updateColorForImage(url);
+  };
 
   const getAllUniqueImages = () => {
     if (!product) return [];
@@ -369,21 +420,26 @@ export function ProductDetailPage() {
             </div>
             
             {getAllUniqueImages().length > 1 && (
-              <div className="mt-6 flex items-center justify-center gap-3 overflow-x-auto w-full max-w-md px-4 hide-scrollbar">
+              <div
+                ref={thumbnailsRef}
+                onMouseDown={handleMouseDown}
+                onMouseLeave={handleMouseLeave}
+                onMouseUp={handleMouseUp}
+                onMouseMove={handleMouseMove}
+                className="mt-6 flex items-center justify-center gap-3 overflow-x-auto w-full max-w-md px-4 hide-scrollbar cursor-grab select-none active:cursor-grabbing"
+              >
                 {getAllUniqueImages().map((url, idx) => (
                   <button
                     key={idx}
-                    onClick={() => {
-                      setCurrentImage(url);
-                      updateColorForImage(url);
-                    }}
+                    onClick={(e) => handleThumbnailClick(e, url)}
+                    onDragStart={(e) => e.preventDefault()}
                     className={`shrink-0 w-16 h-20 overflow-hidden bg-transparent transition-all duration-300 ${
                       currentImage === url 
                         ? "border border-black dark:border-white opacity-100" 
                         : "opacity-40 hover:opacity-100"
                     }`}
                   >
-                    <ImageWithFallback src={url} alt={`${translate(product.name)} ${idx + 1}`} className="w-full h-full object-contain" />
+                    <ImageWithFallback src={url} alt={`${translate(product.name)} ${idx + 1}`} className="w-full h-full object-contain pointer-events-none" />
                   </button>
                 ))}
               </div>
