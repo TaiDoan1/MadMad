@@ -96,6 +96,22 @@ export function ProductDetailPage() {
   const productImages = product?.images && product.images.length > 0 ? product.images : product ? [product.image] : [];
   const [currentImage, setCurrentImage] = useState(productImages[0] || product?.image || "");
 
+  const handlePrevImage = () => {
+    const images = getFilteredImages();
+    if (images.length <= 1) return;
+    const currentIndex = images.indexOf(currentImage);
+    const prevIndex = currentIndex === -1 || currentIndex === 0 ? images.length - 1 : currentIndex - 1;
+    setCurrentImage(images[prevIndex]);
+  };
+
+  const handleNextImage = () => {
+    const images = getFilteredImages();
+    if (images.length <= 1) return;
+    const currentIndex = images.indexOf(currentImage);
+    const nextIndex = currentIndex === -1 || currentIndex === images.length - 1 ? 0 : currentIndex + 1;
+    setCurrentImage(images[nextIndex]);
+  };
+
   const getFilteredImages = () => {
     if (!selectedColor) return productImages;
 
@@ -244,12 +260,51 @@ export function ProductDetailPage() {
 
           {/* 2. Center Column (Giữ nguyên phần hình ảnh) - span 6 */}
           <div className="lg:col-span-6 flex flex-col items-center w-full order-1 lg:order-2">
-            <div className="relative w-full aspect-[3/4] overflow-hidden bg-transparent">
+            <div className="relative w-full aspect-[3/4] overflow-hidden bg-transparent group">
               <ImageWithFallback 
                 src={currentImage} 
                 alt={translate(product.name)} 
                 className="absolute inset-0 w-full h-full object-contain hover:scale-105 transition-transform duration-700" 
               />
+              
+              {/* Navigation Arrows */}
+              {getFilteredImages().length > 1 && (
+                <>
+                  <button
+                    onClick={handlePrevImage}
+                    className="absolute left-4 top-1/2 -translate-y-1/2 z-10 flex h-10 w-10 items-center justify-center rounded-full border border-black/5 dark:border-white/5 bg-white/20 dark:bg-black/20 hover:bg-white/40 dark:hover:bg-black/40 backdrop-blur-md text-foreground transition-all duration-300 opacity-60 hover:opacity-100 cursor-pointer active:scale-95 shadow-sm"
+                    title={t("Ảnh trước", "Previous image")}
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      strokeWidth="1.2"
+                      stroke="currentColor"
+                      className="w-5 h-5"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
+                    </svg>
+                  </button>
+
+                  <button
+                    onClick={handleNextImage}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 z-10 flex h-10 w-10 items-center justify-center rounded-full border border-black/5 dark:border-white/5 bg-white/20 dark:bg-black/20 hover:bg-white/40 dark:hover:bg-black/40 backdrop-blur-md text-foreground transition-all duration-300 opacity-60 hover:opacity-100 cursor-pointer active:scale-95 shadow-sm"
+                    title={t("Ảnh sau", "Next image")}
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      strokeWidth="1.2"
+                      stroke="currentColor"
+                      className="w-5 h-5"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+                    </svg>
+                  </button>
+                </>
+              )}
             </div>
             
             {getFilteredImages().length > 1 && (
