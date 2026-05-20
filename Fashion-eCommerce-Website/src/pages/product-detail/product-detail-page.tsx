@@ -96,20 +96,78 @@ export function ProductDetailPage() {
   const productImages = product?.images && product.images.length > 0 ? product.images : product ? [product.image] : [];
   const [currentImage, setCurrentImage] = useState(productImages[0] || product?.image || "");
 
+  const getAllUniqueImages = () => {
+    if (!product) return [];
+    const all = [...productImages];
+    if (product.colorImages) {
+      Object.values(product.colorImages).forEach(img => {
+        if (img && !all.includes(img)) {
+          all.push(img);
+        }
+      });
+    }
+    return all;
+  };
+
+  const updateColorForImage = (imageSrc: string) => {
+    if (!product) return;
+    
+    // 1. Kiểm tra cấu hình màu trong colorImages
+    if (product.colorImages) {
+      for (const [colorKey, val] of Object.entries(product.colorImages)) {
+        if (val === imageSrc) {
+          const cleanColor = colorKey.replace(/-front$/, "").replace(/-back$/, "");
+          if (product.colors.includes(cleanColor)) {
+            setSelectedColor(cleanColor);
+            return;
+          }
+        }
+      }
+    }
+    
+    // 2. Phân tích từ khóa từ tên file/URL làm phương án dự phòng
+    for (const color of product.colors) {
+      const normalizedColor = color.trim().toLowerCase();
+      const colorKeywordsMap: Record<string, string[]> = {
+        "trắng": ["trang", "white"],
+        "đen": ["den", "black"],
+        "xám": ["xam", "gray", "grey"],
+        "đỏ": ["do", "red"],
+        "navy": ["navy", "blue"],
+        "be": ["be", "beige"],
+        "camel": ["camel", "brown"],
+        "sọc": ["soc", "stripe"],
+        "hoa": ["hoa", "floral"],
+        "xanh/trắng": ["xanh-trang", "blue-white"],
+        "đỏ/trắng": ["do-trang", "red-white"]
+      };
+      
+      const keywords = colorKeywordsMap[normalizedColor] || [normalizedColor];
+      if (keywords.some(keyword => imageSrc.toLowerCase().includes(keyword))) {
+        setSelectedColor(color);
+        return;
+      }
+    }
+  };
+
   const handlePrevImage = () => {
-    const images = getFilteredImages();
+    const images = getAllUniqueImages();
     if (images.length <= 1) return;
     const currentIndex = images.indexOf(currentImage);
     const prevIndex = currentIndex === -1 || currentIndex === 0 ? images.length - 1 : currentIndex - 1;
-    setCurrentImage(images[prevIndex]);
+    const prevImg = images[prevIndex];
+    setCurrentImage(prevImg);
+    updateColorForImage(prevImg);
   };
 
   const handleNextImage = () => {
-    const images = getFilteredImages();
+    const images = getAllUniqueImages();
     if (images.length <= 1) return;
     const currentIndex = images.indexOf(currentImage);
     const nextIndex = currentIndex === -1 || currentIndex === images.length - 1 ? 0 : currentIndex + 1;
-    setCurrentImage(images[nextIndex]);
+    const nextImg = images[nextIndex];
+    setCurrentImage(nextImg);
+    updateColorForImage(nextImg);
   };
 
   const getFilteredImages = () => {
@@ -268,20 +326,20 @@ export function ProductDetailPage() {
               />
               
               {/* Navigation Arrows */}
-              {getFilteredImages().length > 1 && (
+              {getAllUniqueImages().length > 1 && (
                 <>
                   <button
                     onClick={handlePrevImage}
-                    className="absolute left-4 top-1/2 -translate-y-1/2 z-10 flex h-10 w-10 items-center justify-center rounded-full border border-black/5 dark:border-white/5 bg-white/20 dark:bg-black/20 hover:bg-white/40 dark:hover:bg-black/40 backdrop-blur-md text-foreground transition-all duration-300 opacity-60 hover:opacity-100 cursor-pointer active:scale-95 shadow-sm"
+                    className="absolute left-4 top-1/2 -translate-y-1/2 z-10 flex h-10 w-10 items-center justify-center rounded-full border border-black/5 dark:border-white/5 bg-white/15 dark:bg-black/15 hover:bg-white/25 dark:hover:bg-black/25 backdrop-blur-sm text-foreground transition-all duration-300 opacity-90 hover:opacity-100 cursor-pointer active:scale-95 shadow-sm"
                     title={t("Ảnh trước", "Previous image")}
                   >
                     <svg
                       xmlns="http://www.w3.org/2000/svg"
                       fill="none"
                       viewBox="0 0 24 24"
-                      strokeWidth="1.2"
+                      strokeWidth="1.0"
                       stroke="currentColor"
-                      className="w-5 h-5"
+                      className="w-5.5 h-5.5"
                     >
                       <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
                     </svg>
@@ -289,16 +347,16 @@ export function ProductDetailPage() {
 
                   <button
                     onClick={handleNextImage}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 z-10 flex h-10 w-10 items-center justify-center rounded-full border border-black/5 dark:border-white/5 bg-white/20 dark:bg-black/20 hover:bg-white/40 dark:hover:bg-black/40 backdrop-blur-md text-foreground transition-all duration-300 opacity-60 hover:opacity-100 cursor-pointer active:scale-95 shadow-sm"
+                    className="absolute right-4 top-1/2 -translate-y-1/2 z-10 flex h-10 w-10 items-center justify-center rounded-full border border-black/5 dark:border-white/5 bg-white/15 dark:bg-black/15 hover:bg-white/25 dark:hover:bg-black/25 backdrop-blur-sm text-foreground transition-all duration-300 opacity-90 hover:opacity-100 cursor-pointer active:scale-95 shadow-sm"
                     title={t("Ảnh sau", "Next image")}
                   >
                     <svg
                       xmlns="http://www.w3.org/2000/svg"
                       fill="none"
                       viewBox="0 0 24 24"
-                      strokeWidth="1.2"
+                      strokeWidth="1.0"
                       stroke="currentColor"
-                      className="w-5 h-5"
+                      className="w-5.5 h-5.5"
                     >
                       <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
                     </svg>
