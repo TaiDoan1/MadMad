@@ -333,7 +333,7 @@ export function ProductDetailPage() {
                 <>
                   <button
                     onClick={handlePrevImage}
-                    className="absolute left-2 lg:-left-12 top-1/2 -translate-y-1/2 z-10 flex h-10 w-10 items-center justify-center rounded-full border border-black/5 dark:border-white/5 bg-white/15 dark:bg-black/15 hover:bg-white/25 dark:hover:bg-black/25 backdrop-blur-sm text-foreground transition-all duration-300 opacity-90 hover:opacity-100 cursor-pointer active:scale-95 shadow-sm"
+                    className="absolute left-2 lg:-left-12 top-[58%] lg:top-1/2 -translate-y-1/2 z-10 flex h-10 w-10 items-center justify-center rounded-full border border-black/5 dark:border-white/5 bg-white/15 dark:bg-black/15 hover:bg-white/25 dark:hover:bg-black/25 backdrop-blur-sm text-foreground transition-all duration-300 opacity-90 hover:opacity-100 cursor-pointer active:scale-95 shadow-sm"
                     title={t("Ảnh trước", "Previous image")}
                   >
                     <svg
@@ -350,7 +350,7 @@ export function ProductDetailPage() {
 
                   <button
                     onClick={handleNextImage}
-                    className="absolute right-2 lg:-right-12 top-1/2 -translate-y-1/2 z-10 flex h-10 w-10 items-center justify-center rounded-full border border-black/5 dark:border-white/5 bg-white/15 dark:bg-black/15 hover:bg-white/25 dark:hover:bg-black/25 backdrop-blur-sm text-foreground transition-all duration-300 opacity-90 hover:opacity-100 cursor-pointer active:scale-95 shadow-sm"
+                    className="absolute right-2 lg:-right-12 top-[58%] lg:top-1/2 -translate-y-1/2 z-10 flex h-10 w-10 items-center justify-center rounded-full border border-black/5 dark:border-white/5 bg-white/15 dark:bg-black/15 hover:bg-white/25 dark:hover:bg-black/25 backdrop-blur-sm text-foreground transition-all duration-300 opacity-90 hover:opacity-100 cursor-pointer active:scale-95 shadow-sm"
                     title={t("Ảnh sau", "Next image")}
                   >
                     <svg
