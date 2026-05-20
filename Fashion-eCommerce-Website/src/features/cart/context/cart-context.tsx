@@ -1,5 +1,6 @@
-import { createContext, useContext, useMemo, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 
+import { useProducts } from "@/features/products/context/product-context";
 import { readStoredCoupons } from "@/features/promotions/services/coupon-service";
 import type { Coupon } from "@/types/coupon";
 import type { CartItem } from "@/types/cart";
@@ -39,13 +40,27 @@ function readStoredCart(): CartItem[] {
 
   try {
     const parsed = JSON.parse(raw) as CartItem[];
-    return Array.isArray(parsed) ? parsed : [];
+    if (!Array.isArray(parsed)) return [];
+
+    // Tự động lọc bỏ các sản phẩm mẫu (mock products) có ID là số hoặc chuỗi số nhỏ (1, 2, 3, 4)
+    // để làm sạch bộ nhớ đệm (localStorage) một lần và mãi mãi.
+    const cleaned = parsed.filter((item) => {
+      const idStr = String(item.productId);
+      const isMockId = !isNaN(Number(idStr)) && Number(idStr) < 100;
+      return !isMockId;
+    });
+
+    if (cleaned.length !== parsed.length) {
+      window.localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(cleaned));
+    }
+    return cleaned;
   } catch {
     return [];
   }
 }
 
 export function CartProvider({ children }: { children: ReactNode }) {
+  const { products } = useProducts();
   const [cartItems, setCartItems] = useState<CartItem[]>(readStoredCart);
   const [appliedCouponCode, setAppliedCouponCode] = useState<string | null>(() => {
     if (typeof window === "undefined") return null;
@@ -67,17 +82,39 @@ export function CartProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  // Lọc bỏ các sản phẩm không còn tồn tại trong cơ sở dữ liệu.
+  const activeCartItems = useMemo(() => {
+    if (!products || products.length === 0) return cartItems;
+    return cartItems.filter((item) => products.some((p) => String(p.id) === String(item.productId)));
+  }, [cartItems, products]);
+
+  // Tự động dọn dẹp các sản phẩm không tồn tại trong Database khỏi LocalStorage khi products đã tải xong.
+  // Điều này giải quyết triệt để vấn đề cache sản phẩm cũ, giỏ hàng bị lệch số lượng (ví dụ hiển thị 2 trong khi chỉ có 1).
+  useEffect(() => {
+    if (!products || products.length === 0) return;
+    
+    const validItems = cartItems.filter((item) => 
+      products.some((p) => String(p.id) === String(item.productId))
+    );
+
+    if (validItems.length !== cartItems.length) {
+      persist(validItems);
+    }
+  }, [products, cartItems]);
+
+
+
   const value = useMemo<CartContextValue>(
     () => {
       const availableCoupons: Coupon[] = readStoredCoupons();
       return {
-      cartItems,
-      itemCount: cartItems.reduce((sum, item) => sum + item.quantity, 0),
-      subtotal: cartItems.reduce((sum, item) => sum + item.priceAtAdd * item.quantity, 0),
+      cartItems: activeCartItems,
+      itemCount: activeCartItems.reduce((sum, item) => sum + item.quantity, 0),
+      subtotal: activeCartItems.reduce((sum, item) => sum + item.priceAtAdd * item.quantity, 0),
       availableCoupons,
       appliedCoupon: availableCoupons.find((coupon) => coupon.code === appliedCouponCode) ?? null,
       discountAmount: (() => {
-        const subtotal = cartItems.reduce((sum, item) => sum + item.priceAtAdd * item.quantity, 0);
+        const subtotal = activeCartItems.reduce((sum, item) => sum + item.priceAtAdd * item.quantity, 0);
         const coupon = availableCoupons.find((item) => item.code === appliedCouponCode);
         if (!coupon) return 0;
         return Math.min(coupon.discountAmount, subtotal);
@@ -143,7 +180,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       },
       };
     },
-    [appliedCouponCode, cartItems],
+    [appliedCouponCode, activeCartItems, cartItems],
   );
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;

@@ -15,13 +15,13 @@ export function AppProviders({ children }: { children: ReactNode }) {
       <AdminAuthProvider>
         <StorefrontSettingsProvider>
           <LanguageProvider>
-            <CartProvider>
-              <ProductProvider>
+            <ProductProvider>
+              <CartProvider>
                 <MembershipProvider>
                   <OrderProvider>{children}</OrderProvider>
                 </MembershipProvider>
-              </ProductProvider>
-            </CartProvider>
+              </CartProvider>
+            </ProductProvider>
           </LanguageProvider>
         </StorefrontSettingsProvider>
       </AdminAuthProvider>
