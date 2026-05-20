@@ -21,29 +21,31 @@ export function ProductProvider({ children }: { children: ReactNode }) {
   const { showToast } = useToast();
   const [products, setProducts] = useState<Product[]>(() => {
     if (typeof window === "undefined") {
-      return initialProducts;
+      return [];
     }
 
     const raw = window.localStorage.getItem(PRODUCTS_STORAGE_KEY);
     if (!raw) {
-      return initialProducts;
+      return [];
     }
 
     try {
       const parsed = JSON.parse(raw) as Product[];
       if (!Array.isArray(parsed)) {
-        return initialProducts;
+        return [];
       }
-      return parsed;
+      // Lọc bỏ mọi sản phẩm mock cũ (ID < 100) khỏi local cache của products
+      return parsed.filter((p) => !(!isNaN(Number(p.id)) && Number(p.id) < 100));
     } catch {
-      return initialProducts;
+      return [];
     }
   });
 
   // 📥 Tải danh sách sản phẩm từ máy chủ (Database Neon Postgres)
   const loadProducts = async () => {
     try {
-      const response = await fetch(`${API_URL}/products`);
+      // Thêm tham số _cb=timestamp để vượt qua mọi tầng cache trình duyệt/CDN một cách triệt để
+      const response = await fetch(`${API_URL}/products?_cb=${Date.now()}`);
       if (response.ok) {
         const data = await response.json();
         if (Array.isArray(data)) {
