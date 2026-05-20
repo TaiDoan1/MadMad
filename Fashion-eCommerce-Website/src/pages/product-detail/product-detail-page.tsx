@@ -84,7 +84,7 @@ export function ProductDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const transitionTo = useTransitionTo();
-  const { products } = useProducts();
+  const { products, isLoading } = useProducts();
   const { addToCart } = useCart();
   const { settings } = useStorefrontSettings();
   const { formatPrice, t, translate } = useLanguage();
@@ -309,6 +309,19 @@ export function ProductDetailPage() {
       return (product.variantStock?.[key] ?? 0) <= 0;
     });
   };
+
+  if (isLoading) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center bg-background text-foreground">
+        <div className="flex flex-col items-center gap-4">
+          <div className="h-10 w-10 animate-spin rounded-full border-[1.5px] border-neutral-200 border-t-black dark:border-neutral-800 dark:border-t-white" />
+          <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-neutral-400 animate-pulse">
+            {t("Đang tải sản phẩm...", "Loading product...")}
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   if (!product) {
     return (

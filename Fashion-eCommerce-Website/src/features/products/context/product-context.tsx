@@ -7,6 +7,7 @@ import { useToast } from "@/components/common/toast";
 
 interface ProductContextValue {
   products: Product[];
+  isLoading: boolean;
   addProduct: (product: Product) => void;
   updateProduct: (id: string | number, product: Product) => void;
   deleteProduct: (id: string | number) => void;
@@ -19,6 +20,7 @@ const PRODUCTS_STORAGE_KEY = "fashion-ecommerce.products-v7";
 
 export function ProductProvider({ children }: { children: ReactNode }) {
   const { showToast } = useToast();
+  const [isLoading, setIsLoading] = useState(true);
   const [products, setProducts] = useState<Product[]>(() => {
     if (typeof window === "undefined") {
       return [];
@@ -43,6 +45,7 @@ export function ProductProvider({ children }: { children: ReactNode }) {
 
   // 📥 Tải danh sách sản phẩm từ máy chủ (Database Neon Postgres)
   const loadProducts = async () => {
+    setIsLoading(true);
     try {
       // Thêm tham số _cb=timestamp để vượt qua mọi tầng cache trình duyệt/CDN một cách triệt để
       const response = await fetch(`${API_URL}/products?_cb=${Date.now()}`);
@@ -50,11 +53,14 @@ export function ProductProvider({ children }: { children: ReactNode }) {
         const data = await response.json();
         if (Array.isArray(data)) {
           setProducts(data);
+          setIsLoading(false);
           return;
         }
       }
     } catch (error) {
       console.warn("⚠️ Không lấy được danh sách sản phẩm từ API, dùng dữ liệu local:", error);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -63,8 +69,10 @@ export function ProductProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    window.localStorage.setItem(PRODUCTS_STORAGE_KEY, JSON.stringify(products));
-  }, [products]);
+    if (!isLoading) {
+      window.localStorage.setItem(PRODUCTS_STORAGE_KEY, JSON.stringify(products));
+    }
+  }, [products, isLoading]);
 
   const handleUpdateProduct = async (id: string | number, updatedProduct: Product) => {
     const oldProducts = [...products];
@@ -102,6 +110,7 @@ export function ProductProvider({ children }: { children: ReactNode }) {
   const value = useMemo<ProductContextValue>(
     () => ({
       products,
+      isLoading,
       addProduct: async (product) => {
         const tempId = `temp-${Date.now()}`;
         // Dùng timestamp để tạo SKU duy nhất, tránh trùng lặp với các sản phẩm đã có trong DB
@@ -163,7 +172,7 @@ export function ProductProvider({ children }: { children: ReactNode }) {
         setProducts(newOrderedList);
       },
     }),
-    [products],
+    [products, isLoading],
   );
 
   return <ProductContext.Provider value={value}>{children}</ProductContext.Provider>;

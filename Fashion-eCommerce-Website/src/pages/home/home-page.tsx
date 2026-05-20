@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router";
 
 import { ImageWithFallback } from "@/components/common/image-with-fallback";
-import { ProductCard } from "@/components/shared/product-card";
+import { ProductCard, ProductCardSkeleton } from "@/components/shared/product-card";
 import { useProducts } from "@/features/products/context/product-context";
 import { useStorefrontSettings } from "@/features/settings/context/storefront-settings-context";
 import { useLanguage } from "@/features/settings/context/language-context";
@@ -37,7 +37,7 @@ function useCountdown(targetMs: number) {
 
 // ─── HomePage ──────────────────────────────────────────────────────────────────
 export function HomePage() {
-  const { products } = useProducts();
+  const { products, isLoading } = useProducts();
   const { settings } = useStorefrontSettings();
   const { t } = useLanguage();
 
@@ -220,11 +220,19 @@ export function HomePage() {
 
           {/* 3-column product grid */}
           <div className="grid grid-cols-1 gap-px sm:grid-cols-2 lg:grid-cols-3">
-            {featuredProducts.map((product, index) => (
-              <div key={product.id} className={`animate-fadeInUp stagger-${Math.min(index + 1, 6)}`}>
-                <ProductCard product={product} variant="home" />
-              </div>
-            ))}
+            {isLoading && products.length === 0 ? (
+              Array.from({ length: 3 }).map((_, index) => (
+                <div key={index} className={`animate-fadeInUp stagger-${index + 1}`}>
+                  <ProductCardSkeleton variant="home" />
+                </div>
+              ))
+            ) : (
+              featuredProducts.map((product, index) => (
+                <div key={product.id} className={`animate-fadeInUp stagger-${Math.min(index + 1, 6)}`}>
+                  <ProductCard product={product} variant="home" />
+                </div>
+              ))
+            )}
           </div>
         </div>
       </section>

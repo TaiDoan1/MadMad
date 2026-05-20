@@ -128,3 +128,21 @@ export function ProductCard({ product, variant = "shop" }: ProductCardProps) {
     </div>
   );
 }
+
+export function ProductCardSkeleton({ variant = "shop" }: { variant?: "home" | "shop" }) {
+  const isHome = variant === "home";
+  const cardBg = isHome ? "bg-transparent" : "bg-white";
+
+  return (
+    <div className={`flex flex-col h-full overflow-hidden ${cardBg} animate-pulse`}>
+      {/* Aspect Ratio Box 3:4 */}
+      <div className="relative aspect-[3/4] w-full bg-neutral-100 dark:bg-neutral-800" />
+      {/* Text Lines */}
+      <div className="flex flex-col gap-2 px-0 pb-5 pt-2.5">
+        <div className="h-3.5 w-3/4 bg-neutral-200 dark:bg-neutral-700 rounded" />
+        <div className="h-4 w-1/3 bg-neutral-200 dark:bg-neutral-700 rounded" />
+      </div>
+    </div>
+  );
+}
+

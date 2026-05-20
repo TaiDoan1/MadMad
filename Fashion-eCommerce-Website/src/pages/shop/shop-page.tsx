@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router";
 
-import { ProductCard } from "@/components/shared/product-card";
+import { ProductCard, ProductCardSkeleton } from "@/components/shared/product-card";
 import { useProducts } from "@/features/products/context/product-context";
 import { useLanguage } from "@/features/settings/context/language-context";
 
 export function ShopPage() {
-  const { products } = useProducts();
+  const { products, isLoading } = useProducts();
   const [searchParams, setSearchParams] = useSearchParams();
   const { t, translate } = useLanguage();
 
@@ -186,7 +186,13 @@ export function ShopPage() {
 
       {/* ── Product grid ─────────────────────────────────────────────────── */}
       <div className="mx-auto max-w-[1400px] px-6 py-8 lg:px-12">
-        {filteredProducts.length > 0 ? (
+        {isLoading && products.length === 0 ? (
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-x-4 gap-y-10 lg:gap-x-6 lg:gap-y-14">
+            {Array.from({ length: 6 }).map((_, index) => (
+              <ProductCardSkeleton key={index} variant="shop" />
+            ))}
+          </div>
+        ) : filteredProducts.length > 0 ? (
           <div className="grid grid-cols-2 md:grid-cols-3 gap-x-4 gap-y-10 lg:gap-x-6 lg:gap-y-14">
             {filteredProducts.map((product) => (
               <ProductCard key={product.id} product={product} variant="shop" />
