@@ -29,7 +29,7 @@ const DEFAULT_PRODUCT_OPTIONS: ProductOptions = {
 
 export function AdminProductsPage() {
   const { showToast } = useToast();
-  const { products, addProduct, updateProduct, deleteProduct, updateProductColorImages, reorderProducts, apiError, refreshProducts } = useProducts();
+  const { products, addProduct, updateProduct, deleteProduct, updateProductColorImages, reorderProducts, apiError, refreshProducts, reconnectLocalhost } = useProducts();
   const { settings, updateSettings } = useStorefrontSettings();
   const [draggedProductId, setDraggedProductId] = useState<string | number | null>(null);
   const [dragOverProductId, setDragOverProductId] = useState<string | number | null>(null);
@@ -255,6 +255,27 @@ export function AdminProductsPage() {
         </aside>
 
         <section className="lg:col-span-8">
+          {import.meta.env.DEV && typeof window !== "undefined" && window.localStorage.getItem("madmad.local-backend-offline") === "true" && (
+            <div className="mb-6 rounded border border-amber-500/20 bg-amber-50/50 p-4 dark:border-amber-500/30 dark:bg-amber-950/10 text-amber-800 dark:text-amber-300">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div>
+                  <h3 className="text-xs font-black uppercase tracking-wider flex items-center gap-1.5">
+                    🔌 CHẾ ĐỘ FALLBACK: DÙNG LIVE PRODUCTION API
+                  </h3>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Phát hiện local backend (<code className="font-mono bg-amber-100/50 px-1 dark:bg-amber-900/20">localhost:5000</code>) đang offline. Hệ thống tự động chuyển sang Live Production API để tải sản phẩm thật.
+                  </p>
+                </div>
+                <button
+                  onClick={() => reconnectLocalhost()}
+                  className="shrink-0 rounded border border-amber-500 bg-amber-500 hover:bg-amber-600 text-white px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest transition-colors cursor-pointer"
+                >
+                  Kết nối lại Localhost
+                </button>
+              </div>
+            </div>
+          )}
+
           <div className="overflow-hidden rounded-lg border border-border bg-white">
             <div className="border-b border-border p-4">
               <h2 className="text-lg">Danh sách sản phẩm</h2>

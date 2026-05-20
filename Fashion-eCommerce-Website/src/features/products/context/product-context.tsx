@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
-import { API_URL } from "@/config/api";
+import { API_URL, markLocalBackendOffline } from "@/config/api";
 
 import { products as initialProducts } from "@/features/products/data/products";
 import type { Product } from "@/types/product";
@@ -15,6 +15,7 @@ interface ProductContextValue {
   deleteProduct: (id: string | number) => void;
   updateProductColorImages: (id: string | number, colorImages: Record<string, string>) => void;
   reorderProducts: (newOrderedList: Product[]) => void;
+  reconnectLocalhost: () => void;
 }
 
 const ProductContext = createContext<ProductContextValue | undefined>(undefined);
@@ -73,6 +74,17 @@ export function ProductProvider({ children }: { children: ReactNode }) {
       }
     } catch (error: any) {
       console.error("🔴 [MADMAD SDK] Lỗi kết nối API:", error);
+      
+      // Tự động chuyển hướng sang Production live nếu local bị kết nối lỗi (Offline)
+      if (API_URL.includes("localhost")) {
+        console.warn("⚠️ [MADMAD SDK] Phát hiện local backend offline. Đang tự động chuyển hướng kết nối sang Live Production!");
+        markLocalBackendOffline(true);
+        setTimeout(() => {
+          window.location.reload();
+        }, 150);
+        return;
+      }
+      
       setApiError(`Không thể kết nối đến API máy chủ: ${error.message || error}`);
     } finally {
       setIsLoading(false);
@@ -82,6 +94,7 @@ export function ProductProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     loadProducts();
   }, []);
+
 
   useEffect(() => {
     if (!isLoading) {
@@ -187,6 +200,10 @@ export function ProductProvider({ children }: { children: ReactNode }) {
       },
       reorderProducts: (newOrderedList) => {
         setProducts(newOrderedList);
+      },
+      reconnectLocalhost: () => {
+        markLocalBackendOffline(false);
+        window.location.reload();
       },
     }),
     [products, isLoading, apiError],
