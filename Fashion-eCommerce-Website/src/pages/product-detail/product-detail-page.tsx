@@ -318,19 +318,22 @@ export function ProductDetailPage() {
 
           {/* 2. Center Column (Giữ nguyên phần hình ảnh) - span 6 */}
           <div className="lg:col-span-6 flex flex-col items-center w-full order-1 lg:order-2">
-            <div className="relative w-full aspect-[3/4] overflow-hidden bg-transparent group">
-              <ImageWithFallback 
-                src={currentImage} 
-                alt={translate(product.name)} 
-                className="absolute inset-0 w-full h-full object-contain hover:scale-105 transition-transform duration-700" 
-              />
+            <div className="relative w-full aspect-[3/4] bg-transparent group">
+              {/* Inner wrapper to handle zoom clipping and rounded corners */}
+              <div className="absolute inset-0 w-full h-full overflow-hidden rounded-2xl">
+                <ImageWithFallback 
+                  src={currentImage} 
+                  alt={translate(product.name)} 
+                  className="w-full h-full object-contain hover:scale-105 transition-transform duration-700" 
+                />
+              </div>
               
               {/* Navigation Arrows */}
               {getAllUniqueImages().length > 1 && (
                 <>
                   <button
                     onClick={handlePrevImage}
-                    className="absolute left-4 top-1/2 -translate-y-1/2 z-10 flex h-10 w-10 items-center justify-center rounded-full border border-black/5 dark:border-white/5 bg-white/15 dark:bg-black/15 hover:bg-white/25 dark:hover:bg-black/25 backdrop-blur-sm text-foreground transition-all duration-300 opacity-90 hover:opacity-100 cursor-pointer active:scale-95 shadow-sm"
+                    className="absolute left-2 lg:-left-12 top-1/2 -translate-y-1/2 z-10 flex h-10 w-10 items-center justify-center rounded-full border border-black/5 dark:border-white/5 bg-white/15 dark:bg-black/15 hover:bg-white/25 dark:hover:bg-black/25 backdrop-blur-sm text-foreground transition-all duration-300 opacity-90 hover:opacity-100 cursor-pointer active:scale-95 shadow-sm"
                     title={t("Ảnh trước", "Previous image")}
                   >
                     <svg
@@ -347,7 +350,7 @@ export function ProductDetailPage() {
 
                   <button
                     onClick={handleNextImage}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 z-10 flex h-10 w-10 items-center justify-center rounded-full border border-black/5 dark:border-white/5 bg-white/15 dark:bg-black/15 hover:bg-white/25 dark:hover:bg-black/25 backdrop-blur-sm text-foreground transition-all duration-300 opacity-90 hover:opacity-100 cursor-pointer active:scale-95 shadow-sm"
+                    className="absolute right-2 lg:-right-12 top-1/2 -translate-y-1/2 z-10 flex h-10 w-10 items-center justify-center rounded-full border border-black/5 dark:border-white/5 bg-white/15 dark:bg-black/15 hover:bg-white/25 dark:hover:bg-black/25 backdrop-blur-sm text-foreground transition-all duration-300 opacity-90 hover:opacity-100 cursor-pointer active:scale-95 shadow-sm"
                     title={t("Ảnh sau", "Next image")}
                   >
                     <svg
@@ -365,12 +368,15 @@ export function ProductDetailPage() {
               )}
             </div>
             
-            {getFilteredImages().length > 1 && (
+            {getAllUniqueImages().length > 1 && (
               <div className="mt-6 flex items-center justify-center gap-3 overflow-x-auto w-full max-w-md px-4 hide-scrollbar">
-                {getFilteredImages().map((url, idx) => (
+                {getAllUniqueImages().map((url, idx) => (
                   <button
                     key={idx}
-                    onClick={() => setCurrentImage(url)}
+                    onClick={() => {
+                      setCurrentImage(url);
+                      updateColorForImage(url);
+                    }}
                     className={`shrink-0 w-16 h-20 overflow-hidden bg-transparent transition-all duration-300 ${
                       currentImage === url 
                         ? "border border-black dark:border-white opacity-100" 
