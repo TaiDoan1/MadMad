@@ -29,6 +29,15 @@ const parseProduct = (p: any) => ({
 async function processProductImages(productName: string, image: string, images: any, colorImages: any) {
   const t0 = Date.now();
   console.log(`🖼️  [IMG PROCESS] Bắt đầu xử lý ảnh sản phẩm: "${productName}"`);
+  
+  // Lưu log bắt đầu vào database
+  prisma.systemLog.create({
+    data: {
+      level: "info",
+      source: "backend",
+      message: `🖼️ [IMG PROCESS] Bắt đầu xử lý ảnh sản phẩm: "${productName}"`,
+    }
+  }).catch(() => {});
 
   // 1. Xử lý ảnh chính (image)
   const uploadedImage = image ? await uploadToCloudinary(image) : "";
@@ -84,6 +93,21 @@ async function processProductImages(productName: string, image: string, images: 
 
   const elapsed = Date.now() - t0;
   console.log(`✅ [IMG PROCESS] Hoàn tất xử lý ảnh "${productName}" trong ${elapsed}ms. Ảnh bộ sưu tập: ${resolvedImages.length}, Ảnh màu: ${Object.keys(resolvedColorImages).length}`);
+
+  // Lưu log hoàn tất vào database
+  prisma.systemLog.create({
+    data: {
+      level: "success",
+      source: "backend",
+      message: `✅ [IMG PROCESS] Hoàn tất xử lý ảnh "${productName}" trong ${elapsed}ms.`,
+      details: JSON.stringify({
+        imagesCount: resolvedImages.length,
+        colorImagesCount: Object.keys(resolvedColorImages).length,
+        duration: elapsed
+      }),
+      duration: elapsed
+    }
+  }).catch(() => {});
 
   return {
     image: uploadedImage,

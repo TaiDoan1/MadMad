@@ -1,4 +1,5 @@
 import { v2 as cloudinary } from "cloudinary";
+import { prisma } from "../config/prisma";
 
 // Cấu hình Cloudinary sử dụng biến môi trường
 cloudinary.config({
@@ -36,12 +37,34 @@ export async function uploadToCloudinary(imageStr: string): Promise<string> {
     const savedKB = originalKB - Math.round((result.bytes || 0) / 1024);
     console.log(`✅ [CLOUDINARY] Upload thành công! URL: ${result.secure_url.substring(0, 60)}...`);
     console.log(`   Dung lượng gốc: ~${originalKB} KB → Trên CDN: ${Math.round((result.bytes || 0) / 1024)} KB (tiết kiệm ~${savedKB} KB)`);
+    
+    // Lưu log vào database để xem trên xem-log.cjs
+    prisma.systemLog.create({
+      data: {
+        level: "success",
+        source: "backend",
+        message: `☁️ [CLOUDINARY] Upload thành công ảnh Base64 (~${originalKB} KB) -> CDN: ${Math.round((result.bytes || 0) / 1024)} KB (tiết kiệm ~${savedKB} KB)`,
+        details: JSON.stringify({ url: result.secure_url, bytes: result.bytes }),
+      }
+    }).catch(() => {});
+
     return result.secure_url;
   } catch (error: any) {
     console.error(`❌ [CLOUDINARY ERROR] Không thể tải ảnh lên: ${error.message || error}`);
     console.error(`   Nguyên nhân có thể: Sai credentials hoặc mất kết nối mạng.`);
-    // Trả về ảnh gốc thay vì crash để tránh gián đoạn tính năng
+    
+    // Lưu log lỗi vào database để xem trên xem-log.cjs
+    prisma.systemLog.create({
+      data: {
+        level: "error",
+        source: "backend",
+        message: `❌ [CLOUDINARY ERROR] Lỗi upload ảnh: ${error.message || error}`,
+        details: JSON.stringify({ error: error.message || String(error) }),
+      }
+    }).catch(() => {});
+
     return imageStr;
   }
 }
+
 
