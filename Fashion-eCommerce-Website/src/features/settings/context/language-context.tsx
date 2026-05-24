@@ -59,7 +59,10 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
       
       return `$${roundedUsd}`;
     }
-    return `${numPrice.toLocaleString("vi-VN")}₫`;
+    
+    // Tương thích 100% mọi trình duyệt (kể cả Safari siêu cũ), tránh lỗi RangeError: invalid language tag
+    const formatted = Math.round(numPrice).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+    return `${formatted}₫`;
   };
 
   const t = (vi: string, en: string) => {
