@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { ArrowLeft, ShoppingBag, Trash2, Plus, Minus, Copy, Check } from "lucide-react";
 import { Link } from "react-router";
+import { safeLocalStorage } from "@/utils/safe-storage";
 
 import { ImageWithFallback } from "@/components/common/image-with-fallback";
 import { brandLogo } from "@/assets/images";
@@ -173,13 +174,13 @@ export function CheckoutPage() {
 
   const [formData, setFormData] = useState(() => {
     let savedInfo: any = {};
-    try {
-      const stored = localStorage.getItem("madmad_last_delivery_info");
-      if (stored) {
+    const stored = safeLocalStorage.getItem("madmad_last_delivery_info");
+    if (stored) {
+      try {
         savedInfo = JSON.parse(stored);
+      } catch (e) {
+        console.error("Error parsing madmad_last_delivery_info", e);
       }
-    } catch (e) {
-      console.error("Error reading madmad_last_delivery_info", e);
     }
 
     return {
@@ -334,11 +335,7 @@ export function CheckoutPage() {
       districtCode: formData.districtCode,
       wardCode: formData.wardCode,
     };
-    try {
-      localStorage.setItem("madmad_last_delivery_info", JSON.stringify(lastDeliveryInfo));
-    } catch (e) {
-      console.error("Error saving last delivery info", e);
-    }
+    safeLocalStorage.setItem("madmad_last_delivery_info", JSON.stringify(lastDeliveryInfo));
 
     const orderItems: OrderItem[] = resolvedItems.map(({ item, product }) => ({
       product, quantity: item.quantity, size: item.size, color: item.color, price: item.priceAtAdd,

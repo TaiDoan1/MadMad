@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { Edit, Eye, Image as ImageIcon, Plus, Search, Settings2, Trash2, X } from "lucide-react";
+import { safeLocalStorage } from "@/utils/safe-storage";
 
 import { ImageUploadInput } from "@/components/common/image-upload-input";
 import { ImageWithFallback } from "@/components/common/image-with-fallback";
@@ -49,8 +50,7 @@ export function AdminProductsPage() {
   const [editingColorImages, setEditingColorImages] = useState<Record<string, string>>({});
   const [productImages, setProductImages] = useState<string[]>([""]);
   const [productOptions, setProductOptions] = useState<ProductOptions>(() => {
-    if (typeof window === "undefined") return DEFAULT_PRODUCT_OPTIONS;
-    const raw = window.localStorage.getItem(PRODUCT_OPTIONS_STORAGE_KEY);
+    const raw = safeLocalStorage.getItem(PRODUCT_OPTIONS_STORAGE_KEY);
     if (!raw) return DEFAULT_PRODUCT_OPTIONS;
     try {
       const parsed = JSON.parse(raw) as ProductOptions;
@@ -143,7 +143,7 @@ export function AdminProductsPage() {
   };
   const persistProductOptions = (nextProductOptions: ProductOptions) => {
     setProductOptions(nextProductOptions);
-    window.localStorage.setItem(PRODUCT_OPTIONS_STORAGE_KEY, JSON.stringify(nextProductOptions));
+    safeLocalStorage.setItem(PRODUCT_OPTIONS_STORAGE_KEY, JSON.stringify(nextProductOptions));
   };
 
   return (

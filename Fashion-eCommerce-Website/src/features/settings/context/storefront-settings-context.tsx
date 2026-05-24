@@ -3,6 +3,7 @@ import { createContext, useContext, useMemo, useState, useEffect, type ReactNode
 import { brandLogo } from "@/assets/images";
 import type { StorefrontSettings } from "@/types/storefront-settings";
 import { API_URL } from "@/config/api";
+import { safeLocalStorage } from "@/utils/safe-storage";
 
 const STOREFRONT_SETTINGS_STORAGE_KEY = "fashion-ecommerce.admin-settings-v2";
 
@@ -105,11 +106,7 @@ interface StorefrontSettingsContextValue {
 const StorefrontSettingsContext = createContext<StorefrontSettingsContextValue | undefined>(undefined);
 
 function readStoredSettings(): StorefrontSettings {
-  if (typeof window === "undefined") {
-    return DEFAULT_STOREFRONT_SETTINGS;
-  }
-
-  const raw = window.localStorage.getItem(STOREFRONT_SETTINGS_STORAGE_KEY);
+  const raw = safeLocalStorage.getItem(STOREFRONT_SETTINGS_STORAGE_KEY);
   if (!raw) {
     return DEFAULT_STOREFRONT_SETTINGS;
   }
@@ -280,7 +277,7 @@ export function StorefrontSettingsProvider({ children }: { children: ReactNode }
       updateSettings: (payload) => {
         setSettings((currentSettings) => {
           const nextSettings = { ...currentSettings, ...payload };
-          window.localStorage.setItem(STOREFRONT_SETTINGS_STORAGE_KEY, JSON.stringify(nextSettings));
+          safeLocalStorage.setItem(STOREFRONT_SETTINGS_STORAGE_KEY, JSON.stringify(nextSettings));
 
           // 📤 Tự động đồng bộ PUT lên Postgres DB
           fetch(`${API_URL}/settings`, {

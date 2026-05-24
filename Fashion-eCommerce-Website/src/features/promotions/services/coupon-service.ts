@@ -1,11 +1,11 @@
 import { AVAILABLE_COUPONS } from "@/features/promotions/data/coupons";
 import type { Coupon } from "@/types/coupon";
+import { safeLocalStorage } from "@/utils/safe-storage";
 
 export const COUPONS_STORAGE_KEY = "fashion-ecommerce.coupons";
 
 export function readStoredCoupons(): Coupon[] {
-  if (typeof window === "undefined") return AVAILABLE_COUPONS;
-  const raw = window.localStorage.getItem(COUPONS_STORAGE_KEY);
+  const raw = safeLocalStorage.getItem(COUPONS_STORAGE_KEY);
   if (!raw) return AVAILABLE_COUPONS;
   try {
     const parsed = JSON.parse(raw) as Coupon[];
@@ -31,8 +31,7 @@ export function readStoredCoupons(): Coupon[] {
 }
 
 export function saveCoupons(coupons: Coupon[]) {
-  if (typeof window === "undefined") return;
-  window.localStorage.setItem(COUPONS_STORAGE_KEY, JSON.stringify(coupons));
+  safeLocalStorage.setItem(COUPONS_STORAGE_KEY, JSON.stringify(coupons));
 }
 
 export function incrementCouponUsage(code: string) {

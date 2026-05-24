@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { API_URL } from "@/config/api";
+import { safeLocalStorage } from "@/utils/safe-storage";
 
 export interface Member {
   id: string;
@@ -46,17 +47,17 @@ const MembershipContext = createContext<MembershipContextType | undefined>(undef
 
 export function MembershipProvider({ children }: { children: ReactNode }) {
   const [members, setMembers] = useState<Member[]>(() => {
-    const local = localStorage.getItem("madmad_members");
+    const local = safeLocalStorage.getItem("madmad_members");
     return local ? JSON.parse(local) : [];
   });
 
   const [currentMember, setCurrentMember] = useState<Member | null>(() => {
-    const local = localStorage.getItem("madmad_current_member");
+    const local = safeLocalStorage.getItem("madmad_current_member");
     return local ? JSON.parse(local) : null;
   });
 
   const [tierConfigs, setTierConfigs] = useState<MembershipTierConfig[]>(() => {
-    const local = localStorage.getItem("madmad_membership_tiers");
+    const local = safeLocalStorage.getItem("madmad_membership_tiers");
     return local ? JSON.parse(local) : DEFAULT_TIER_CONFIGS;
   });
 
@@ -82,7 +83,7 @@ export function MembershipProvider({ children }: { children: ReactNode }) {
       }
     } catch (error) {
       console.warn("⚠️ Không lấy được danh sách hội viên từ API, dùng dữ liệu local:", error);
-      const localData = localStorage.getItem("madmad_members");
+      const localData = safeLocalStorage.getItem("madmad_members");
       if (localData) {
         setMembers(JSON.parse(localData));
       }
@@ -100,19 +101,19 @@ export function MembershipProvider({ children }: { children: ReactNode }) {
 
   // Đồng bộ hóa database local
   useEffect(() => {
-    localStorage.setItem("madmad_members", JSON.stringify(members));
+    safeLocalStorage.setItem("madmad_members", JSON.stringify(members));
   }, [members]);
 
   useEffect(() => {
     if (currentMember) {
-      localStorage.setItem("madmad_current_member", JSON.stringify(currentMember));
+      safeLocalStorage.setItem("madmad_current_member", JSON.stringify(currentMember));
     } else {
-      localStorage.removeItem("madmad_current_member");
+      safeLocalStorage.removeItem("madmad_current_member");
     }
   }, [currentMember]);
 
   useEffect(() => {
-    localStorage.setItem("madmad_membership_tiers", JSON.stringify(tierConfigs));
+    safeLocalStorage.setItem("madmad_membership_tiers", JSON.stringify(tierConfigs));
   }, [tierConfigs]);
 
   const updateTierConfigs = (nextConfigs: MembershipTierConfig[]) => {
@@ -221,7 +222,7 @@ export function MembershipProvider({ children }: { children: ReactNode }) {
         }
       });
 
-      localStorage.setItem("madmad_vip_session_token", data.sessionToken);
+      safeLocalStorage.setItem("madmad_vip_session_token", data.sessionToken);
       return { success: true };
     } catch (e) {
       return { success: false, error: "Không thể kết nối đến máy chủ" };
@@ -259,7 +260,7 @@ export function MembershipProvider({ children }: { children: ReactNode }) {
 
   const logoutMember = () => {
     setCurrentMember(null);
-    localStorage.removeItem("madmad_vip_session_token");
+    safeLocalStorage.removeItem("madmad_vip_session_token");
   };
 
   const addPointsToCurrentMember = (pointsToAdd: number) => {

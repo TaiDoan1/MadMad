@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { API_URL, markLocalBackendOffline } from "@/config/api";
+import { safeLocalStorage } from "@/utils/safe-storage";
 
 import { products as initialProducts } from "@/features/products/data/products";
 import type { Product } from "@/types/product";
@@ -26,11 +27,7 @@ export function ProductProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const [apiError, setApiError] = useState<string | null>(null);
   const [products, setProducts] = useState<Product[]>(() => {
-    if (typeof window === "undefined") {
-      return [];
-    }
-
-    const raw = window.localStorage.getItem(PRODUCTS_STORAGE_KEY);
+    const raw = safeLocalStorage.getItem(PRODUCTS_STORAGE_KEY);
     if (!raw) {
       return [];
     }
@@ -98,7 +95,7 @@ export function ProductProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!isLoading) {
-      window.localStorage.setItem(PRODUCTS_STORAGE_KEY, JSON.stringify(products));
+      safeLocalStorage.setItem(PRODUCTS_STORAGE_KEY, JSON.stringify(products));
     }
   }, [products, isLoading]);
 

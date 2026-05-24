@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { useStorefrontSettings } from "@/features/settings/context/storefront-settings-context";
+import { safeLocalStorage } from "@/utils/safe-storage";
 
 export type Language = "vi" | "en";
 export type Currency = "VND" | "USD";
@@ -22,8 +23,8 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
   const [currency, setCurrencyState] = useState<Currency>("VND");
 
   useEffect(() => {
-    const savedLang = localStorage.getItem("madmad_language") as Language;
-    const savedCurr = localStorage.getItem("madmad_currency") as Currency;
+    const savedLang = safeLocalStorage.getItem("madmad_language") as Language;
+    const savedCurr = safeLocalStorage.getItem("madmad_currency") as Currency;
     if (savedLang) setLanguageState(savedLang);
     if (savedCurr) setCurrencyState(savedCurr);
   }, []);
@@ -31,8 +32,8 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
   const setLanguageAndCurrency = (lang: Language, curr: Currency) => {
     setLanguageState(lang);
     setCurrencyState(curr);
-    localStorage.setItem("madmad_language", lang);
-    localStorage.setItem("madmad_currency", curr);
+    safeLocalStorage.setItem("madmad_language", lang);
+    safeLocalStorage.setItem("madmad_currency", curr);
   };
 
   // Determine active exchange rate based on settings

@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { safeLocalStorage } from "@/utils/safe-storage";
 import {
   Eye,
   Printer,
@@ -132,7 +133,7 @@ export function AdminOrdersPage() {
 
   // Internal Packing Note
   const [internalPackingNotes, setInternalPackingNotes] = useState<Record<string, string>>(() => {
-    const local = localStorage.getItem("madmad_internal_notes");
+    const local = safeLocalStorage.getItem("madmad_internal_notes");
     return local ? JSON.parse(local) : {};
   });
 
@@ -155,7 +156,7 @@ export function AdminOrdersPage() {
   const handleSaveInternalNote = (orderId: string, noteText: string) => {
     const nextNotes = { ...internalPackingNotes, [orderId]: noteText };
     setInternalPackingNotes(nextNotes);
-    localStorage.setItem("madmad_internal_notes", JSON.stringify(nextNotes));
+    safeLocalStorage.setItem("madmad_internal_notes", JSON.stringify(nextNotes));
   };
 
   // PHÂN LOẠI KHÁCH HÀNG TỰ ĐỘNG (Realtime Customer Category Calculator)
