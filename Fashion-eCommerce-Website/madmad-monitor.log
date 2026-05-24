@@ -1,0 +1,353 @@
+
+=================================================================
+MADMAD STUDIO - MONITOR BAT DAU: 23:13:16 24/5/2026
+=================================================================
+=================================================================
+   MADMAD STUDIO  |  LIVE LOG MONITOR v2
+=================================================================
+Server : https://madmad-backend.vercel.app
+Cap nhat moi: 8s  |  23:13:16 24/5/2026
+File log     : C:\Users\doana\Desktop\madmad\MadMad\Fashion-eCommerce-Website\madmad-monitor.log
+Nhan Ctrl+C de thoat.
+
+[1] TRANG THAI HE THONG
+-----------------------------------------------------------------
+  [OK]  Backend root     HTTP 200  |  594ms  (NHANH)
+  [OK]  Products API     HTTP 200  |  4187ms  (CHAM - nen kiem tra)
+  [OK]  Orders API       HTTP 200  |  1607ms  (BINH THUONG)
+  [OK]  Members API      HTTP 200  |  501ms  (NHANH)
+  [OK]  Logs API         HTTP 200  |  753ms  (BINH THUONG)
+
+[2] NHAT KY LOI THUC TE (tu khach hang & backend)
+-----------------------------------------------------------------
+  Tong hop 24 gio qua: Tong=0  |  CRITICAL:0  LOI:0  |  CANH BAO:0  |  INFO:0
+  Khong co loi nghiem trong trong 24 gio qua. He thong on dinh!
+
+  [OK] Chua co log nao duoc ghi nhan.
+
+[3] THONG KE DON HANG
+-----------------------------------------------------------------
+  Tong don hang  : 18
+  Don hom nay    : 2
+  Cho xac nhan   : 5
+  Dang xu ly     : 8
+  Dang giao hang : 1
+  Hoan thanh     : 3
+  Da huy         : 1
+  Chua thanh toan: 13  <-- Nen theo doi!
+  Doanh thu (HT) : 1.460.000d
+
+  Don can xu ly ngay:
+    - DH202605243520  |  Đoàn Anh tiến  |  736.200d  |  23:12:47 24/5/2026
+    - DH202605248469  |  Thuỳ Q8  |  690.000d  |  22:41:48 24/5/2026
+    - DH202605207831  |  Đoàn Anh tiến  |  373.000d  |  17:02:18 20/5/2026
+    - DH20260518705  |  thuỳ  |  700.000d  |  17:18:04 18/5/2026
+    - DH20260518963  |  Đoàn Anh Tiến  |  380.000d  |  13:19:43 18/5/2026
+
+=================================================================
+Dang theo doi... Cap nhat sau 8s.  [Ctrl+C de thoat]
+=================================================================
+   MADMAD STUDIO  |  LIVE LOG MONITOR v2
+=================================================================
+Server : https://madmad-backend.vercel.app
+Cap nhat moi: 8s  |  23:13:37 24/5/2026
+File log     : C:\Users\doana\Desktop\madmad\MadMad\Fashion-eCommerce-Website\madmad-monitor.log
+Nhan Ctrl+C de thoat.
+
+[1] TRANG THAI HE THONG
+-----------------------------------------------------------------
+  [OK]  Backend root     HTTP 200  |  320ms  (NHANH)
+  [OK]  Products API     HTTP 200  |  3925ms  (CHAM - nen kiem tra)
+  [OK]  Orders API       HTTP 200  |  1690ms  (BINH THUONG)
+  [OK]  Members API      HTTP 200  |  724ms  (BINH THUONG)
+  [OK]  Logs API         HTTP 200  |  721ms  (BINH THUONG)
+
+[2] NHAT KY LOI THUC TE (tu khach hang & backend)
+-----------------------------------------------------------------
+=================================================================
+   MADMAD STUDIO  |  LIVE LOG MONITOR v2
+=================================================================
+Server : https://madmad-backend.vercel.app
+Cap nhat moi: 8s  |  23:13:45 24/5/2026
+File log     : C:\Users\doana\Desktop\madmad\MadMad\Fashion-eCommerce-Website\madmad-monitor.log
+Nhan Ctrl+C de thoat.
+
+[1] TRANG THAI HE THONG
+-----------------------------------------------------------------
+  [OK]  Backend root     HTTP 200  |  300ms  (NHANH)
+  Tong hop 24 gio qua: Tong=0  |  CRITICAL:0  LOI:0  |  CANH BAO:0  |  INFO:0
+  Khong co loi nghiem trong trong 24 gio qua. He thong on dinh!
+
+  [OK] Chua co log nao duoc ghi nhan.
+
+[3] THONG KE DON HANG
+-----------------------------------------------------------------
+  [OK]  Products API     HTTP 200  |  3268ms  (CHAM - nen kiem tra)
+  Tong don hang  : 18
+  Don hom nay    : 2
+  Cho xac nhan   : 5
+  Dang xu ly     : 8
+  Dang giao hang : 1
+  Hoan thanh     : 3
+  Da huy         : 1
+  Chua thanh toan: 13  <-- Nen theo doi!
+  Doanh thu (HT) : 1.460.000d
+
+  Don can xu ly ngay:
+    - DH202605243520  |  Đoàn Anh tiến  |  736.200d  |  23:12:47 24/5/2026
+    - DH202605248469  |  Thuỳ Q8  |  690.000d  |  22:41:48 24/5/2026
+    - DH202605207831  |  Đoàn Anh tiến  |  373.000d  |  17:02:18 20/5/2026
+    - DH20260518705  |  thuỳ  |  700.000d  |  17:18:04 18/5/2026
+    - DH20260518963  |  Đoàn Anh Tiến  |  380.000d  |  13:19:43 18/5/2026
+
+=================================================================
+Dang theo doi... Cap nhat sau 8s.  [Ctrl+C de thoat]
+  [OK]  Orders API       HTTP 200  |  2287ms  (CHAM - nen kiem tra)
+  [OK]  Members API      HTTP 200  |  492ms  (NHANH)
+  [OK]  Logs API         HTTP 200  |  481ms  (NHANH)
+
+[2] NHAT KY LOI THUC TE (tu khach hang & backend)
+-----------------------------------------------------------------
+  Tong hop 24 gio qua: Tong=0  |  CRITICAL:0  LOI:0  |  CANH BAO:0  |  INFO:0
+  Khong co loi nghiem trong trong 24 gio qua. He thong on dinh!
+
+  [OK] Chua co log nao duoc ghi nhan.
+
+[3] THONG KE DON HANG
+-----------------------------------------------------------------
+=================================================================
+   MADMAD STUDIO  |  LIVE LOG MONITOR v2
+=================================================================
+Server : https://madmad-backend.vercel.app
+Cap nhat moi: 8s  |  23:13:53 24/5/2026
+File log     : C:\Users\doana\Desktop\madmad\MadMad\Fashion-eCommerce-Website\madmad-monitor.log
+Nhan Ctrl+C de thoat.
+
+[1] TRANG THAI HE THONG
+-----------------------------------------------------------------
+  [OK]  Backend root     HTTP 200  |  267ms  (NHANH)
+  Tong don hang  : 18
+  Don hom nay    : 2
+  Cho xac nhan   : 5
+  Dang xu ly     : 8
+  Dang giao hang : 1
+  Hoan thanh     : 3
+  Da huy         : 1
+  Chua thanh toan: 13  <-- Nen theo doi!
+  Doanh thu (HT) : 1.460.000d
+
+  Don can xu ly ngay:
+    - DH202605243520  |  Đoàn Anh tiến  |  736.200d  |  23:12:47 24/5/2026
+    - DH202605248469  |  Thuỳ Q8  |  690.000d  |  22:41:48 24/5/2026
+    - DH202605207831  |  Đoàn Anh tiến  |  373.000d  |  17:02:18 20/5/2026
+    - DH20260518705  |  thuỳ  |  700.000d  |  17:18:04 18/5/2026
+    - DH20260518963  |  Đoàn Anh Tiến  |  380.000d  |  13:19:43 18/5/2026
+
+=================================================================
+Dang theo doi... Cap nhat sau 8s.  [Ctrl+C de thoat]
+  [OK]  Products API     HTTP 200  |  3769ms  (CHAM - nen kiem tra)
+  [OK]  Orders API       HTTP 200  |  2639ms  (CHAM - nen kiem tra)
+  [OK]  Members API      HTTP 200  |  494ms  (NHANH)
+  [OK]  Logs API         HTTP 200  |  725ms  (BINH THUONG)
+
+[2] NHAT KY LOI THUC TE (tu khach hang & backend)
+-----------------------------------------------------------------
+=================================================================
+   MADMAD STUDIO  |  LIVE LOG MONITOR v2
+=================================================================
+Server : https://madmad-backend.vercel.app
+Cap nhat moi: 8s  |  23:14:01 24/5/2026
+File log     : C:\Users\doana\Desktop\madmad\MadMad\Fashion-eCommerce-Website\madmad-monitor.log
+Nhan Ctrl+C de thoat.
+
+[1] TRANG THAI HE THONG
+-----------------------------------------------------------------
+  [OK]  Backend root     HTTP 200  |  309ms  (NHANH)
+  Tong hop 24 gio qua: Tong=0  |  CRITICAL:0  LOI:0  |  CANH BAO:0  |  INFO:0
+  Khong co loi nghiem trong trong 24 gio qua. He thong on dinh!
+
+  [OK] Chua co log nao duoc ghi nhan.
+
+[3] THONG KE DON HANG
+-----------------------------------------------------------------
+  Tong don hang  : 18
+  Don hom nay    : 2
+  Cho xac nhan   : 5
+  Dang xu ly     : 8
+  Dang giao hang : 1
+  Hoan thanh     : 3
+  Da huy         : 1
+  Chua thanh toan: 13  <-- Nen theo doi!
+  Doanh thu (HT) : 1.460.000d
+
+  Don can xu ly ngay:
+    - DH202605243520  |  Đoàn Anh tiến  |  736.200d  |  23:12:47 24/5/2026
+    - DH202605248469  |  Thuỳ Q8  |  690.000d  |  22:41:48 24/5/2026
+    - DH202605207831  |  Đoàn Anh tiến  |  373.000d  |  17:02:18 20/5/2026
+    - DH20260518705  |  thuỳ  |  700.000d  |  17:18:04 18/5/2026
+    - DH20260518963  |  Đoàn Anh Tiến  |  380.000d  |  13:19:43 18/5/2026
+
+=================================================================
+Dang theo doi... Cap nhat sau 8s.  [Ctrl+C de thoat]
+  [OK]  Products API     HTTP 200  |  3948ms  (CHAM - nen kiem tra)
+  [OK]  Orders API       HTTP 200  |  1861ms  (BINH THUONG)
+  [OK]  Members API      HTTP 200  |  704ms  (BINH THUONG)
+  [OK]  Logs API         HTTP 200  |  487ms  (NHANH)
+
+[2] NHAT KY LOI THUC TE (tu khach hang & backend)
+-----------------------------------------------------------------
+=================================================================
+   MADMAD STUDIO  |  LIVE LOG MONITOR v2
+=================================================================
+Server : https://madmad-backend.vercel.app
+Cap nhat moi: 8s  |  23:14:09 24/5/2026
+File log     : C:\Users\doana\Desktop\madmad\MadMad\Fashion-eCommerce-Website\madmad-monitor.log
+Nhan Ctrl+C de thoat.
+
+[1] TRANG THAI HE THONG
+-----------------------------------------------------------------
+  [OK]  Backend root     HTTP 200  |  304ms  (NHANH)
+  Tong hop 24 gio qua: Tong=0  |  CRITICAL:0  LOI:0  |  CANH BAO:0  |  INFO:0
+  Khong co loi nghiem trong trong 24 gio qua. He thong on dinh!
+
+  [OK] Chua co log nao duoc ghi nhan.
+
+[3] THONG KE DON HANG
+-----------------------------------------------------------------
+  Tong don hang  : 18
+  Don hom nay    : 2
+  Cho xac nhan   : 5
+  Dang xu ly     : 8
+  Dang giao hang : 1
+  Hoan thanh     : 3
+  Da huy         : 1
+  Chua thanh toan: 13  <-- Nen theo doi!
+  Doanh thu (HT) : 1.460.000d
+
+  Don can xu ly ngay:
+    - DH202605243520  |  Đoàn Anh tiến  |  736.200d  |  23:12:47 24/5/2026
+    - DH202605248469  |  Thuỳ Q8  |  690.000d  |  22:41:48 24/5/2026
+    - DH202605207831  |  Đoàn Anh tiến  |  373.000d  |  17:02:18 20/5/2026
+    - DH20260518705  |  thuỳ  |  700.000d  |  17:18:04 18/5/2026
+    - DH20260518963  |  Đoàn Anh Tiến  |  380.000d  |  13:19:43 18/5/2026
+
+=================================================================
+Dang theo doi... Cap nhat sau 8s.  [Ctrl+C de thoat]
+  [OK]  Products API     HTTP 200  |  3893ms  (CHAM - nen kiem tra)
+  [OK]  Orders API       HTTP 200  |  1982ms  (BINH THUONG)
+  [OK]  Members API      HTTP 200  |  477ms  (NHANH)
+  [OK]  Logs API         HTTP 200  |  950ms  (BINH THUONG)
+
+[2] NHAT KY LOI THUC TE (tu khach hang & backend)
+-----------------------------------------------------------------
+=================================================================
+   MADMAD STUDIO  |  LIVE LOG MONITOR v2
+=================================================================
+Server : https://madmad-backend.vercel.app
+Cap nhat moi: 8s  |  23:14:17 24/5/2026
+File log     : C:\Users\doana\Desktop\madmad\MadMad\Fashion-eCommerce-Website\madmad-monitor.log
+Nhan Ctrl+C de thoat.
+
+[1] TRANG THAI HE THONG
+-----------------------------------------------------------------
+  [OK]  Backend root     HTTP 200  |  318ms  (NHANH)
+  Tong hop 24 gio qua: Tong=0  |  CRITICAL:0  LOI:0  |  CANH BAO:0  |  INFO:0
+  Khong co loi nghiem trong trong 24 gio qua. He thong on dinh!
+
+  [OK] Chua co log nao duoc ghi nhan.
+
+[3] THONG KE DON HANG
+-----------------------------------------------------------------
+  Tong don hang  : 18
+  Don hom nay    : 2
+  Cho xac nhan   : 5
+  Dang xu ly     : 8
+  Dang giao hang : 1
+  Hoan thanh     : 3
+  Da huy         : 1
+  Chua thanh toan: 13  <-- Nen theo doi!
+  Doanh thu (HT) : 1.460.000d
+
+  Don can xu ly ngay:
+    - DH202605243520  |  Đoàn Anh tiến  |  736.200d  |  23:12:47 24/5/2026
+    - DH202605248469  |  Thuỳ Q8  |  690.000d  |  22:41:48 24/5/2026
+    - DH202605207831  |  Đoàn Anh tiến  |  373.000d  |  17:02:18 20/5/2026
+    - DH20260518705  |  thuỳ  |  700.000d  |  17:18:04 18/5/2026
+    - DH20260518963  |  Đoàn Anh Tiến  |  380.000d  |  13:19:43 18/5/2026
+
+=================================================================
+Dang theo doi... Cap nhat sau 8s.  [Ctrl+C de thoat]
+  [OK]  Products API     HTTP 200  |  3778ms  (CHAM - nen kiem tra)
+  [OK]  Orders API       HTTP 200  |  2085ms  (CHAM - nen kiem tra)
+  [OK]  Members API      HTTP 200  |  507ms  (NHANH)
+  [OK]  Logs API         HTTP 200  |  493ms  (NHANH)
+
+[2] NHAT KY LOI THUC TE (tu khach hang & backend)
+-----------------------------------------------------------------
+  Tong hop 24 gio qua: Tong=0  |  CRITICAL:0  LOI:0  |  CANH BAO:0  |  INFO:0
+  Khong co loi nghiem trong trong 24 gio qua. He thong on dinh!
+
+  [OK] Chua co log nao duoc ghi nhan.
+
+[3] THONG KE DON HANG
+-----------------------------------------------------------------
+=================================================================
+   MADMAD STUDIO  |  LIVE LOG MONITOR v2
+=================================================================
+Server : https://madmad-backend.vercel.app
+Cap nhat moi: 8s  |  23:14:25 24/5/2026
+File log     : C:\Users\doana\Desktop\madmad\MadMad\Fashion-eCommerce-Website\madmad-monitor.log
+Nhan Ctrl+C de thoat.
+
+[1] TRANG THAI HE THONG
+-----------------------------------------------------------------
+  [OK]  Backend root     HTTP 200  |  257ms  (NHANH)
+
+=================================================================
+MADMAD STUDIO - MONITOR BAT DAU: 23:22:34 24/5/2026
+=================================================================
+=================================================================
+   MADMAD STUDIO  |  LIVE LOG MONITOR v2.1
+=================================================================
+Server  : https://madmad-backend.vercel.app
+Trangthai: DANG HOAT DONG (MONITORING...) | Cap nhat: 8s
+Bo loc  : Level=ALL | Source=ALL | Limit=15
+Phim tat: [Space/P] Pause/Resume | [R] Refresh | [L] Level | [S] Source | [+/-] Limit | [C] Clear Log File
+File log: C:\Users\doana\Desktop\madmad\MadMad\Fashion-eCommerce-Website\madmad-monitor.log
+
+[1] TRANG THAI HE THONG
+-----------------------------------------------------------------
+  [OK]  Backend root     HTTP 200  |  634ms  (BINH THUONG)
+  [OK]  Products API     HTTP 200  |  4231ms  (CHAM - can toi uu payload/base64)
+  [OK]  Orders API       HTTP 200  |  3855ms  (CHAM - can toi uu payload/base64)
+  [OK]  Members API      HTTP 200  |  689ms  (BINH THUONG)
+  [OK]  Logs API         HTTP 200  |  700ms  (BINH THUONG)
+
+[2] NHAT KY LOI HE THONG & KHACH HANG
+-----------------------------------------------------------------
+  Tong hop 24 gio qua: Tong=0  |  CRITICAL:0  LOI:0  |  CANH BAO:0  |  INFO:0
+  Khong co loi nghiem trong trong 24 gio qua. He thong on dinh!
+
+  [OK] Khong tim thay log nao phu hop bo loc.
+
+[3] THONG KE DON HANG
+-----------------------------------------------------------------
+  Tong don hang  : 18
+  Don hom nay    : 2
+  Cho xac nhan   : 5
+  Dang xu ly     : 8
+  Dang giao hang : 1
+  Hoan thanh     : 3
+  Da huy         : 1
+  Chua thanh toan: 13  <-- Nen theo doi!
+  Doanh thu (HT) : 1.460.000d
+
+  Don can xu ly ngay:
+    - DH202605243520  |  Đoàn Anh tiến  |  736.200d  |  23:12:47 24/5/2026
+    - DH202605248469  |  Thuỳ Q8  |  690.000d  |  22:41:48 24/5/2026
+    - DH202605207831  |  Đoàn Anh tiến  |  373.000d  |  17:02:18 20/5/2026
+    - DH20260518705  |  thuỳ  |  700.000d  |  17:18:04 18/5/2026
+    - DH20260518963  |  Đoàn Anh Tiến  |  380.000d  |  13:19:43 18/5/2026
+
+=================================================================
+Dang theo doi... Cap nhat sau 8s. [Q hoac Ctrl+C de thoat]
