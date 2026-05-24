@@ -8,7 +8,7 @@ interface LanguageContextType {
   language: Language;
   currency: Currency;
   setLanguageAndCurrency: (lang: Language, curr: Currency) => void;
-  formatPrice: (priceVND: number) => string;
+  formatPrice: (priceVND: number | string) => string;
   t: (vi: string, en: string) => string;
   exchangeRate: number;
   translate: (text: string) => string;
@@ -40,13 +40,15 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
     ? 26280 // standard auto exchange rate average today
     : (settings.exchangeRate || 25000);
 
-  const formatPrice = (priceVND: number): string => {
+  const formatPrice = (priceVND: number | string): string => {
+    const numPrice = Number(priceVND) || 0;
+    
     if (currency === "USD") {
       const markup = settings.intlMarkupPercent ?? 10;
       const fee = settings.intlConversionFeePercent ?? 3.5;
       
       // Converted price in USD
-      const rawUsd = priceVND / exchangeRate;
+      const rawUsd = numPrice / exchangeRate;
       
       // Inflate price by markup and gateway conversion fee
       const baseUsdWithMarkup = rawUsd * (1 + markup / 100);
@@ -57,7 +59,7 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
       
       return `$${roundedUsd}`;
     }
-    return `${priceVND.toLocaleString("vi-VN")}₫`;
+    return `${numPrice.toLocaleString("vi-VN")}₫`;
   };
 
   const t = (vi: string, en: string) => {
