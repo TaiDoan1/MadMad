@@ -1,4 +1,5 @@
 import { createContext, useContext, useMemo, useState, type ReactNode } from "react";
+import { safeLocalStorage } from "@/utils/safe-storage";
 
 interface AdminAuthContextValue {
   isAdminAuthenticated: boolean;
@@ -17,7 +18,7 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
     if (typeof window === "undefined") {
       return false;
     }
-    return window.localStorage.getItem(ADMIN_AUTH_STORAGE_KEY) === "true";
+    return safeLocalStorage.getItem(ADMIN_AUTH_STORAGE_KEY) === "true";
   });
 
   const value = useMemo<AdminAuthContextValue>(
@@ -27,13 +28,13 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
         const isValid = username.trim() === ADMIN_USERNAME && password === ADMIN_PASSWORD;
         if (isValid) {
           setIsAdminAuthenticated(true);
-          window.localStorage.setItem(ADMIN_AUTH_STORAGE_KEY, "true");
+          safeLocalStorage.setItem(ADMIN_AUTH_STORAGE_KEY, "true");
         }
         return isValid;
       },
       logoutAdmin: () => {
         setIsAdminAuthenticated(false);
-        window.localStorage.removeItem(ADMIN_AUTH_STORAGE_KEY);
+        safeLocalStorage.removeItem(ADMIN_AUTH_STORAGE_KEY);
       },
     }),
     [isAdminAuthenticated],

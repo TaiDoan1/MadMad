@@ -106,6 +106,10 @@ interface StorefrontSettingsContextValue {
 const StorefrontSettingsContext = createContext<StorefrontSettingsContextValue | undefined>(undefined);
 
 function readStoredSettings(): StorefrontSettings {
+  if (typeof window === "undefined") {
+    return DEFAULT_STOREFRONT_SETTINGS;
+  }
+
   const raw = safeLocalStorage.getItem(STOREFRONT_SETTINGS_STORAGE_KEY);
   if (!raw) {
     return DEFAULT_STOREFRONT_SETTINGS;

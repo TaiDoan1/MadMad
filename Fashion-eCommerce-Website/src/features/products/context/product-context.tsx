@@ -1,10 +1,10 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { API_URL, markLocalBackendOffline } from "@/config/api";
-import { safeLocalStorage } from "@/utils/safe-storage";
 
 import { products as initialProducts } from "@/features/products/data/products";
 import type { Product } from "@/types/product";
 import { useToast } from "@/components/common/toast";
+import { safeLocalStorage } from "@/utils/safe-storage";
 
 interface ProductContextValue {
   products: Product[];
@@ -27,6 +27,10 @@ export function ProductProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const [apiError, setApiError] = useState<string | null>(null);
   const [products, setProducts] = useState<Product[]>(() => {
+    if (typeof window === "undefined") {
+      return [];
+    }
+
     const raw = safeLocalStorage.getItem(PRODUCTS_STORAGE_KEY);
     if (!raw) {
       return [];

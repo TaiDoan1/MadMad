@@ -4,12 +4,12 @@
  * Bổ sung cơ chế thông minh tự động fallback sang Production live nếu local backend chưa chạy.
  */
 
-import { safeLocalStorage } from "../utils/safe-storage";
+import { safeLocalStorage } from "@/utils/safe-storage";
 
 let base = "https://madmad-backend.vercel.app";
 
 if (import.meta.env.DEV) {
-  const localOffline = safeLocalStorage.getItem("madmad.local-backend-offline") === "true";
+  const localOffline = typeof window !== "undefined" && safeLocalStorage.getItem("madmad.local-backend-offline") === "true";
   if (!localOffline) {
     base = "http://localhost:5000";
   }
@@ -20,12 +20,14 @@ export const API_URL = `${API_BASE_URL}/api`;
 
 // Hàm hỗ trợ chuyển đổi nhanh sang Production khi phát hiện kết nối local thất bại
 export function markLocalBackendOffline(offline: boolean) {
-  if (offline) {
-    safeLocalStorage.setItem("madmad.local-backend-offline", "true");
-    console.warn("⚠️ [MADMAD SDK] Đã đánh dấu Local Backend offline. Tự động chuyển hướng sang Production live!");
-  } else {
-    safeLocalStorage.removeItem("madmad.local-backend-offline");
-    console.log("🔌 [MADMAD SDK] Khôi phục kết nối tới Local Backend.");
+  if (typeof window !== "undefined") {
+    if (offline) {
+      safeLocalStorage.setItem("madmad.local-backend-offline", "true");
+      console.warn("⚠️ [MADMAD SDK] Đã đánh dấu Local Backend offline. Tự động chuyển hướng sang Production live!");
+    } else {
+      safeLocalStorage.removeItem("madmad.local-backend-offline");
+      console.log("🔌 [MADMAD SDK] Khôi phục kết nối tới Local Backend.");
+    }
   }
 }
 

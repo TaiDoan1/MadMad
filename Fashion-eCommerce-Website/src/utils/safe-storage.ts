@@ -1,5 +1,5 @@
-// Thư viện bảo vệ localStorage tránh crash trên mọi nền tảng (Safari ẩn danh, Webview di động, Chrome/Firefox ẩn danh).
-// Nếu trình duyệt không hỗ trợ hoặc chặn localStorage, dữ liệu sẽ tự động lưu vào RAM (in-memory) để ứng dụng chạy mượt mà mà không crash.
+// Thư viện bảo vệ localStorage tránh crash trên Safari ẩn danh (Private Mode) hoặc các trình duyệt di động bị chặn bộ nhớ.
+// Nếu trình duyệt không hỗ trợ hoặc chặn quyền truy cập localStorage, dữ liệu sẽ tự động lưu vào RAM (in-memory) để ứng dụng vẫn chạy mượt mà.
 
 const memoryStorage: Record<string, string> = {};
 
@@ -10,7 +10,7 @@ export const safeLocalStorage = {
         return window.localStorage.getItem(key);
       }
     } catch (e) {
-      console.warn(`[SafeStorage] getItem failed for key "${key}", using memory fallback:`, e);
+      console.warn(`[SafeStorage] getItem failed for key "${key}", using memory:`, e);
     }
     return memoryStorage[key] ?? null;
   },
@@ -22,7 +22,7 @@ export const safeLocalStorage = {
         return;
       }
     } catch (e) {
-      console.warn(`[SafeStorage] setItem failed for key "${key}", using memory fallback:`, e);
+      console.warn(`[SafeStorage] setItem failed for key "${key}", using memory:`, e);
     }
     memoryStorage[key] = String(value);
   },
@@ -34,7 +34,7 @@ export const safeLocalStorage = {
         return;
       }
     } catch (e) {
-      console.warn(`[SafeStorage] removeItem failed for key "${key}", using memory fallback:`, e);
+      console.warn(`[SafeStorage] removeItem failed for key "${key}", using memory:`, e);
     }
     delete memoryStorage[key];
   },
@@ -46,7 +46,7 @@ export const safeLocalStorage = {
         return;
       }
     } catch (e) {
-      console.warn("[SafeStorage] clear failed, using memory fallback:", e);
+      console.warn("[SafeStorage] clear failed, using memory:", e);
     }
     for (const key in memoryStorage) {
       delete memoryStorage[key];

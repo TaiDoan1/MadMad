@@ -1,10 +1,10 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 
 import { useProducts } from "@/features/products/context/product-context";
-import { safeLocalStorage } from "@/utils/safe-storage";
 import { readStoredCoupons } from "@/features/promotions/services/coupon-service";
 import type { Coupon } from "@/types/coupon";
 import type { CartItem } from "@/types/cart";
+import { safeLocalStorage } from "@/utils/safe-storage";
 
 const CART_STORAGE_KEY = "fashion-ecommerce.cart";
 const CART_COUPON_STORAGE_KEY = "fashion-ecommerce.cart-coupon";
@@ -35,6 +35,7 @@ interface CartContextValue {
 const CartContext = createContext<CartContextValue | undefined>(undefined);
 
 function readStoredCart(): CartItem[] {
+  if (typeof window === "undefined") return [];
   const raw = safeLocalStorage.getItem(CART_STORAGE_KEY);
   if (!raw) return [];
 
@@ -63,18 +64,23 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const { products } = useProducts();
   const [cartItems, setCartItems] = useState<CartItem[]>(readStoredCart);
   const [appliedCouponCode, setAppliedCouponCode] = useState<string | null>(() => {
+    if (typeof window === "undefined") return null;
     return safeLocalStorage.getItem(CART_COUPON_STORAGE_KEY);
   });
 
   const persist = (nextItems: CartItem[]) => {
     setCartItems(nextItems);
-    safeLocalStorage.setItem(CART_STORAGE_KEY, JSON.stringify(nextItems));
+    if (typeof window !== "undefined") {
+      safeLocalStorage.setItem(CART_STORAGE_KEY, JSON.stringify(nextItems));
+    }
   };
 
   const persistCouponCode = (code: string | null) => {
     setAppliedCouponCode(code);
-    if (!code) safeLocalStorage.removeItem(CART_COUPON_STORAGE_KEY);
-    else safeLocalStorage.setItem(CART_COUPON_STORAGE_KEY, code);
+    if (typeof window !== "undefined") {
+      if (!code) safeLocalStorage.removeItem(CART_COUPON_STORAGE_KEY);
+      else safeLocalStorage.setItem(CART_COUPON_STORAGE_KEY, code);
+    }
   };
 
   // Lọc bỏ các sản phẩm không còn tồn tại trong cơ sở dữ liệu.

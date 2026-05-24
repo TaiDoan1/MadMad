@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import { safeLocalStorage } from "@/utils/safe-storage";
 import {
   Eye,
   Printer,
@@ -45,6 +44,7 @@ import type { Order, OrderItem } from "@/types/order";
 import type { Product } from "@/types/product";
 
 import { useToast } from "@/components/common/toast";
+import { safeLocalStorage } from "@/utils/safe-storage";
 
 export function AdminOrdersPage() {
   const { showToast } = useToast();

@@ -5,6 +5,7 @@ import { safeLocalStorage } from "@/utils/safe-storage";
 export const COUPONS_STORAGE_KEY = "fashion-ecommerce.coupons";
 
 export function readStoredCoupons(): Coupon[] {
+  if (typeof window === "undefined") return AVAILABLE_COUPONS;
   const raw = safeLocalStorage.getItem(COUPONS_STORAGE_KEY);
   if (!raw) return AVAILABLE_COUPONS;
   try {
@@ -31,6 +32,7 @@ export function readStoredCoupons(): Coupon[] {
 }
 
 export function saveCoupons(coupons: Coupon[]) {
+  if (typeof window === "undefined") return;
   safeLocalStorage.setItem(COUPONS_STORAGE_KEY, JSON.stringify(coupons));
 }
 

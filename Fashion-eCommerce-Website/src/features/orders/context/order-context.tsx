@@ -1,8 +1,8 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
-import { safeLocalStorage } from "@/utils/safe-storage";
 import { mockOrders } from "@/features/orders/data/mock-orders";
 import type { Order } from "@/types/order";
 import { API_URL } from "@/config/api";
+import { safeLocalStorage } from "@/utils/safe-storage";
 
 interface OrderContextValue {
   orders: Order[];
