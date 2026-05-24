@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { prisma } from "../config/prisma";
+import { uploadToCloudinary } from "../utils/cloudinary";
 
 const router = Router();
 
@@ -23,6 +24,63 @@ const parseProduct = (p: any) => ({
   stock: p.stock !== null && p.stock !== undefined ? Number(p.stock) : 999,
   inStock: p.inStock !== null && p.inStock !== undefined ? !!p.inStock : true,
 });
+
+// Helper: Tiền xử lý tất cả các trường ảnh của sản phẩm (Tải lên Cloudinary nếu là Base64)
+async function processProductImages(image: string, images: any, colorImages: any) {
+  // 1. Xử lý ảnh chính (image)
+  const uploadedImage = image ? await uploadToCloudinary(image) : "";
+
+  // 2. Xử lý danh sách ảnh phụ (images)
+  let resolvedImages: string[] = [];
+  if (Array.isArray(images)) {
+    resolvedImages = await Promise.all(
+      images.map(img => (img ? uploadToCloudinary(img) : ""))
+    );
+  } else if (typeof images === "string" && images.trim()) {
+    try {
+      const parsed = JSON.parse(images);
+      if (Array.isArray(parsed)) {
+        resolvedImages = await Promise.all(
+          parsed.map(img => (img ? uploadToCloudinary(img) : ""))
+        );
+      }
+    } catch {
+      resolvedImages = [await uploadToCloudinary(images)];
+    }
+  }
+  resolvedImages = resolvedImages.filter(Boolean);
+
+  // 3. Xử lý ảnh theo màu sắc (colorImages)
+  let resolvedColorImages: Record<string, string> = {};
+  if (typeof colorImages === "object" && colorImages !== null) {
+    const keys = Object.keys(colorImages);
+    const values = await Promise.all(
+      keys.map(k => uploadToCloudinary(colorImages[k]))
+    );
+    keys.forEach((k, i) => {
+      resolvedColorImages[k] = values[i];
+    });
+  } else if (typeof colorImages === "string" && colorImages.trim()) {
+    try {
+      const parsed = JSON.parse(colorImages);
+      if (typeof parsed === "object" && parsed !== null) {
+        const keys = Object.keys(parsed);
+        const values = await Promise.all(
+          keys.map(k => uploadToCloudinary(parsed[k]))
+        );
+        keys.forEach((k, i) => {
+          resolvedColorImages[k] = values[i];
+        });
+      }
+    } catch {}
+  }
+
+  return {
+    image: uploadedImage,
+    images: resolvedImages,
+    colorImages: resolvedColorImages
+  };
+}
 
 // 1. GET /api/products - Lấy danh sách sản phẩm (có lọc theo category)
 router.get("/", async (req, res, next) => {
@@ -64,23 +122,24 @@ router.post("/", async (req, res, next) => {
       return res.status(400).json({ message: "Vui lòng nhập đầy đủ thông tin bắt buộc!" });
     }
 
+    // Tự động đẩy toàn bộ ảnh Base64 lên Cloudinary trước khi lưu
+    const cleanData = await processProductImages(image, images, colorImages);
+
     const sizesStr = Array.isArray(sizes) ? sizes.join(",") : String(sizes || "S,M,L");
     const colorsStr = Array.isArray(colors) ? colors.join(",") : String(colors || "Black");
-    const colorImagesStr = typeof colorImages === "object" && colorImages !== null ? JSON.stringify(colorImages) : String(colorImages || "{}");
-    const imagesStr = serializeImages(images);
 
     const newProduct = await prisma.product.create({
       data: {
         name,
         sku,
         price: Number(price),
-        image,
+        image: cleanData.image,
         category,
         description: description || "",
         sizes: sizesStr,
         colors: colorsStr,
-        colorImages: colorImagesStr,
-        images: imagesStr,
+        colorImages: JSON.stringify(cleanData.colorImages),
+        images: JSON.stringify(cleanData.images),
         isFeatured: !!isFeatured,
         stock: stock !== undefined && stock !== null ? Number(stock) : 999,
         variantStock: variantStock !== undefined && variantStock !== null ? (typeof variantStock === "object" ? JSON.stringify(variantStock) : String(variantStock)) : "{}",
@@ -103,10 +162,30 @@ router.put("/:id", async (req, res, next) => {
     const { id } = req.params;
     const { name, sku, price, image, category, description, sizes, colors, colorImages, images, isFeatured, stock, variantStock, inStock } = req.body;
 
+    // Chỉ thực hiện xử lý ảnh nếu trường đó được truyền lên
+    let finalImage = image;
+    let finalImages = images;
+    let finalColorImages = colorImages;
+
+    if (image !== undefined || images !== undefined || colorImages !== undefined) {
+      const cleanData = await processProductImages(
+        image || "",
+        images || [],
+        colorImages || {}
+      );
+      if (image !== undefined) finalImage = cleanData.image;
+      if (images !== undefined) finalImages = cleanData.images;
+      if (colorImages !== undefined) finalColorImages = cleanData.colorImages;
+    }
+
     const sizesStr = Array.isArray(sizes) ? sizes.join(",") : String(sizes || "");
     const colorsStr = Array.isArray(colors) ? colors.join(",") : String(colors || "");
-    const colorImagesStr = typeof colorImages === "object" && colorImages !== null ? JSON.stringify(colorImages) : String(colorImages || "{}");
-    const imagesStr = serializeImages(images);
+    const colorImagesStr = finalColorImages !== undefined
+      ? (typeof finalColorImages === "object" ? JSON.stringify(finalColorImages) : String(finalColorImages))
+      : undefined;
+    const imagesStr = finalImages !== undefined
+      ? (Array.isArray(finalImages) ? JSON.stringify(finalImages) : String(finalImages))
+      : undefined;
 
     const updatedProduct = await prisma.product.update({
       where: { id },
@@ -114,11 +193,11 @@ router.put("/:id", async (req, res, next) => {
         name,
         sku,
         price: price ? Number(price) : undefined,
-        image,
+        image: finalImage,
         category,
         description,
-        sizes: sizesStr,
-        colors: colorsStr,
+        sizes: sizesStr || undefined,
+        colors: colorsStr || undefined,
         colorImages: colorImagesStr,
         images: imagesStr,
         isFeatured: isFeatured !== undefined ? !!isFeatured : undefined,
