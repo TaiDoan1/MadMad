@@ -1,8 +1,16 @@
 /**
- * MADMAD STUDIO - LIVE LOG MONITOR v2
+ * MADMAD STUDIO - LIVE LOG MONITOR v2.1
  * Chay: node xem-log.cjs
  * Hien thi trang thai he thong, log loi chi tiet va thong ke don hang.
  * Ghi tat ca log vao file local: madmad-monitor.log
+ * 
+ * NANG CAP MOI:
+ * - Nhan [Space] hoac [P] de tam dung auto-refresh, thoai mai cuon terminal doc log cu.
+ * - Nhan [L] de loc theo muc do loi (ALL, CRITICAL, ERROR, WARNING, INFO, SUCCESS).
+ * - Nhan [S] de loc theo nguon (ALL, BACKEND, FRONTEND).
+ * - Nhan [R] de lam moi du lieu lap tuc.
+ * - Nhan [Up/Down] hoac [+/-] de tang/giam so luong log muon xem.
+ * - Nhan [C] de xoa sach noi dung file log local.
  */
 
 const https  = require("https");
@@ -10,10 +18,15 @@ const http   = require("http");
 const fs     = require("fs");
 const path   = require("path");
 
-// ─── CAU HINH ─────────────────────────────────────────────────────────────────
+// ─── CAU HINH & TRANG THAI MONITOR ────────────────────────────────────────────
 const BACKEND_URL      = "https://madmad-backend.vercel.app";
 const POLL_INTERVAL_MS = 8000;
 const LOG_FILE         = path.join(__dirname, "madmad-monitor.log");
+
+let isPaused = false;
+let logLimit = 15;
+let levelFilter = "all";
+let sourceFilter = "all";
 
 // ─── MAU SAC TERMINAL ─────────────────────────────────────────────────────────
 const C = {
@@ -59,12 +72,13 @@ function printHeader() {
   console.clear();
   const line = "=".repeat(65);
   log(`${C.bold}${C.cyan}${line}${C.reset}`);
-  log(`${C.bold}${C.cyan}   MADMAD STUDIO  |  LIVE LOG MONITOR v2${C.reset}`);
+  log(`${C.bold}${C.cyan}   MADMAD STUDIO  |  LIVE LOG MONITOR v2.1${C.reset}`);
   log(`${C.bold}${C.cyan}${line}${C.reset}`);
-  log(`${C.gray}Server : ${BACKEND_URL}${C.reset}`);
-  log(`${C.gray}Cap nhat moi: ${POLL_INTERVAL_MS / 1000}s  |  ${nowVN()}${C.reset}`);
-  log(`${C.gray}File log     : ${LOG_FILE}${C.reset}`);
-  log(`${C.gray}Nhan Ctrl+C de thoat.${C.reset}`);
+  log(`${C.gray}Server  : ${BACKEND_URL}${C.reset}`);
+  log(`${C.gray}Trangthai: ${isPaused ? C.yellow + C.bold + "TAM DUNG (PAUSED)" : C.green + "DANG HOAT DONG (MONITORING...)"}${C.reset}${C.gray} | Cap nhat: ${POLL_INTERVAL_MS / 1000}s${C.reset}`);
+  log(`${C.gray}Bo loc  : Level=${C.white}${levelFilter.toUpperCase()}${C.gray} | Source=${C.white}${sourceFilter.toUpperCase()}${C.gray} | Limit=${C.white}${logLimit}${C.reset}`);
+  log(`${C.gray}Phim tat: [Space/P] Pause/Resume | [R] Refresh | [L] Level | [S] Source | [+/-] Limit | [C] Clear Log File${C.reset}`);
+  log(`${C.gray}File log: ${LOG_FILE}${C.reset}`);
   log("");
 }
 
@@ -89,7 +103,7 @@ async function checkHealth() {
       const ok  = status >= 200 && status < 400;
       const sColor = ok ? C.green : C.red;
       const mColor = ms < 600 ? C.green : ms < 2000 ? C.yellow : C.red;
-      const grade  = ms < 600 ? "NHANH" : ms < 2000 ? "BINH THUONG" : "CHAM - nen kiem tra";
+      const grade  = ms < 600 ? "NHANH" : ms < 2000 ? "BINH THUONG" : "CHAM - can toi uu payload/base64";
       log(`  ${ok ? "[OK] " : "[LOI]"} ${C.white}${ep.name}${C.reset}  HTTP ${sColor}${status}${C.reset}  |  ${mColor}${ms}ms${C.reset}  (${grade})`);
     } catch (e) {
       const ms = Date.now() - t0;
@@ -102,14 +116,18 @@ async function checkHealth() {
 
 // ─── PHAN 2: LOG LOI TU KHACH HANG ───────────────────────────────────────────
 async function checkLogs() {
-  log(`${C.bold}[2] NHAT KY LOI THUC TE (tu khach hang & backend)${C.reset}`);
+  log(`${C.bold}[2] NHAT KY LOI HE THONG & KHACH HANG${C.reset}`);
   log(`${C.gray}${"-".repeat(65)}${C.reset}`);
 
   try {
+    let logsUrl = `${BACKEND_URL}/api/logs?limit=${logLimit}`;
+    if (levelFilter !== "all") logsUrl += `&level=${levelFilter}`;
+    if (sourceFilter !== "all") logsUrl += `&source=${sourceFilter}`;
+
     // Lay ca tom tat va chi tiet
     const [summaryRes, logsRes] = await Promise.all([
       fetchJson(`${BACKEND_URL}/api/logs/summary`),
-      fetchJson(`${BACKEND_URL}/api/logs?limit=15`),
+      fetchJson(logsUrl),
     ]);
 
     // Hien thi tom tat 24h
@@ -130,12 +148,12 @@ async function checkLogs() {
       const logs = logsRes.body;
 
       if (logs.length === 0) {
-        log(`  ${C.green}[OK] Chua co log nao duoc ghi nhan.${C.reset}`);
+        log(`  ${C.green}[OK] Khong tim thay log nao phu hop bo loc.${C.reset}`);
         log("");
         return;
       }
 
-      log(`  Hien thi ${logs.length} log gan nhat:`);
+      log(`  Hien thi ${logs.length} log gan nhat (Loc: level=${levelFilter}, source=${sourceFilter}):`);
       log(`  ${C.gray}${"-".repeat(62)}${C.reset}`);
 
       for (const entry of logs) {
@@ -255,17 +273,85 @@ async function run() {
   writeToFile(`MADMAD STUDIO - MONITOR BAT DAU: ${nowVN()}`);
   writeToFile("=".repeat(65));
 
-  async function tick() {
+  async function tick(forced = false) {
+    if (isPaused && !forced) return;
     printHeader();
     await checkHealth();
     await checkLogs();
     await checkStats();
     log(`${C.gray}${"=".repeat(65)}${C.reset}`);
-    log(`${C.gray}Dang theo doi... Cap nhat sau ${POLL_INTERVAL_MS / 1000}s.  [Ctrl+C de thoat]${C.reset}`);
+    if (isPaused) {
+      log(`${C.yellow}${C.bold}[TAM DUNG AUTO-REFRESH] Nhan Space/P de tiep tuc.${C.reset}`);
+    } else {
+      log(`${C.gray}Dang theo doi... Cap nhat sau ${POLL_INTERVAL_MS / 1000}s. [Q hoac Ctrl+C de thoat]${C.reset}`);
+    }
   }
 
+  // Dang ky phim bam
+  const readline = require("readline");
+  readline.emitKeypressEvents(process.stdin);
+  if (process.stdin.isTTY) {
+    process.stdin.setRawMode(true);
+  }
+
+  process.stdin.on("keypress", async (str, key) => {
+    if (key.ctrl && key.name === "c") {
+      process.exit();
+    }
+    const name = key.name || "";
+    if (name === "q") {
+      process.exit();
+    }
+
+    if (name === "space" || name === "p") {
+      isPaused = !isPaused;
+      if (isPaused) {
+        printHeader();
+        log(`\n  ${C.yellow}${C.bold}[TAM DUNG] Da tam dung auto-refresh. Nhan Space hoac P de tiep tuc.${C.reset}`);
+        log(`  ${C.gray}Ban co the thoai mai cuon terminal de xem log cu ma khong so bi tu dong day len.${C.reset}\n`);
+      } else {
+        log(`\n  ${C.green}Dang bat lai auto-refresh...${C.reset}\n`);
+        await tick(true);
+      }
+    } else if (name === "r") {
+      log(`\n  ${C.cyan}Dang lam moi du lieu lap tuc...${C.reset}\n`);
+      await tick(true);
+    } else if (name === "l") {
+      const levels = ["all", "critical", "error", "warning", "info", "success"];
+      const idx = levels.indexOf(levelFilter);
+      levelFilter = levels[(idx + 1) % levels.length];
+      log(`\n  ${C.cyan}Loc muc do log: ${levelFilter.toUpperCase()}${C.reset}\n`);
+      await tick(true);
+    } else if (name === "s") {
+      const sources = ["all", "backend", "frontend"];
+      const idx = sources.indexOf(sourceFilter);
+      sourceFilter = sources[(idx + 1) % sources.length];
+      log(`\n  ${C.cyan}Loc nguon log: ${sourceFilter.toUpperCase()}${C.reset}\n`);
+      await tick(true);
+    } else if (name === "up" || str === "+") {
+      logLimit = Math.min(100, logLimit + 5);
+      log(`\n  ${C.cyan}Tang gioi han log hien thi: ${logLimit}${C.reset}\n`);
+      await tick(true);
+    } else if (name === "down" || str === "-") {
+      logLimit = Math.max(5, logLimit - 5);
+      log(`\n  ${C.cyan}Giam gioi han log hien thi: ${logLimit}${C.reset}\n`);
+      await tick(true);
+    } else if (name === "c") {
+      try {
+        fs.writeFileSync(LOG_FILE, "", "utf8");
+        log(`\n  ${C.green}Da xoa sach noi dung file log local (madmad-monitor.log).${C.reset}\n`);
+      } catch (e) {
+        log(`\n  ${C.red}Loi khi xoa file log local: ${e.message}${C.reset}\n`);
+      }
+    }
+  });
+
   await tick();
-  setInterval(tick, POLL_INTERVAL_MS);
+  
+  // Set intervals
+  setInterval(async () => {
+    await tick();
+  }, POLL_INTERVAL_MS);
 }
 
 run().catch(err => {
