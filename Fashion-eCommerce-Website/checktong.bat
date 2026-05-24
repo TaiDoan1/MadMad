@@ -6,29 +6,29 @@ title MADMAD STUDIO - Trung Tam Control Panel
 cls
 echo.
 echo  =============================================================
-echo         MADMAD STUDIO - TRUNG TÂM ĐIỀU KHIỂN & GIÁM SÁT
+echo         MADMAD STUDIO - TRUNG TAM DIEU KHIEN & GIAM SAT
 echo  =============================================================
 echo.
-echo   [1]  Kiểm Tra Hệ Thống Toàn Diện
-echo         Kịch bản chẩn đoán DB, Backend, Frontend, Vite Build
+echo   [1]  Kiem Tra He Thong Toan Dien
+echo         Kich ban chan doan DB, Backend, Frontend, Vite Build
 echo.
-echo   [2]  Xem Nhật Ký Lỗi & Upload Ảnh Live (Realtime Monitor)
-echo         Theo dõi lỗi người dùng và trạng thái upload Cloudinary
+echo   [2]  Xem Nhat Ky Loi & Upload Anh Live (Realtime Monitor)
+echo         Theo doi loi nguoi dung va trang thai upload Cloudinary
 echo.
-echo   [3]  Di Chuyển Ảnh Cũ Sang Cloudinary (DB Migration)
-echo         Tìm ảnh Base64 cũ trong PostgreSQL và chuyển thành link CDN
+echo   [3]  Di Chuyen Anh Cu Sang Cloudinary (DB Migration)
+echo         Tim anh Base64 cu trong PostgreSQL va chuyen thanh link CDN
 echo.
-echo   [4]  Kiểm Tra Tốc Độ Tải API (Speed Test)
-echo         Đo tốc độ tải thực tế và dung lượng phản hồi của API
+echo   [4]  Kiem Tra Toc Do Tai API (Speed Test)
+echo         Do toc do tai thuc te va dung luong phan hoi cua API
 echo.
-echo   [5]  Triển Khai Phiên Bản Mới (Deploy GitHub/Vercel)
-echo         Đẩy toàn bộ thay đổi lên GitHub để Vercel tự động build
+echo   [5]  Trien Khai Phien Ban Moi (Deploy GitHub/Vercel)
+echo         Day toan bo thay doi len GitHub de Vercel tu dong build
 echo.
-echo   [0]  Thoát
+echo   [0]  Thoat
 echo.
 echo  =============================================================
 echo.
-set /p CHOICE=  Chọn chức năng (nhập số rồi nhấn Enter): 
+set /p CHOICE=  Chon chuc nang (nhap so roi nhan Enter): 
 
 if "%CHOICE%"=="1" goto KIEM_TRA
 if "%CHOICE%"=="2" goto XEM_LOG
@@ -38,26 +38,26 @@ if "%CHOICE%"=="5" goto DEPLOY
 if "%CHOICE%"=="0" goto THOAT
 
 echo.
-echo  Lựa chọn không hợp lệ. Vui lòng nhập số từ 0 đến 5.
+echo  Lua chon khong hop le. Vui long nhap so tu 0 den 5.
 pause
 goto MENU
 
 :KIEM_TRA
 cls
 echo.
-echo  [1] Đang chạy kiểm tra hệ thống toàn diện...
+echo  [1] Dang chay kiem tra he thong toan dien...
 echo.
 node check-system.cjs
 echo.
-echo  Xong! Nhấn phím bất kỳ để quay lại menu...
+echo  Xong! Nhan phim bat ky de quay lai menu...
 pause > nul
 goto MENU
 
 :XEM_LOG
 cls
 echo.
-echo  [2] Đang khởi động Live Log Monitor...
-echo  Nhấn Ctrl+C để dừng và quay lại menu.
+echo  [2] Dang khoi dong Live Log Monitor...
+echo  Nhan Ctrl+C de dung va quay lai menu.
 echo.
 node xem-log.cjs
 echo.
@@ -67,29 +67,29 @@ goto MENU
 :MIGRATION
 cls
 echo.
-echo  [3] Đang chạy di chuyển ảnh cũ sang Cloudinary...
+echo  [3] Dang chay di chuyen anh cu sang Cloudinary...
 echo.
 cd backend && node migrate-to-cloudinary.cjs && cd ..
 echo.
-echo  Hoàn tất di chuyển database! Nhấn phím bất kỳ để quay lại menu...
+echo  Hoan tat di chuyen database! Nhan phim bat ky de quay lai menu...
 pause > nul
 goto MENU
 
 :SPEED_TEST
 cls
 echo.
-echo  [4] Đang đo tốc độ phản hồi và dung lượng API...
+echo  [4] Dang do toc do phan hoi va dung luong API...
 echo.
 node scratch-check-api.cjs
 echo.
-echo  Xong! Nhấn phím bất kỳ để quay lại menu...
+echo  Xong! Nhan phim bat ky de quay lai menu...
 pause > nul
 goto MENU
 
 :DEPLOY
 cls
 echo.
-echo  [5] Đang tiến hành deploy mã nguồn mới...
+echo  [5] Dang tien hanh deploy ma nguon moi...
 echo.
 git add .
 echo.
@@ -97,16 +97,17 @@ git commit -m "Auto deploy update from Control Panel"
 echo.
 git push
 echo.
-echo  Hoàn tất! Mã nguồn đã được đẩy lên Server thành công.
-echo  Website sẽ tự động cập nhật trong 1-2 phút.
+echo  Hoan tat! Ma nguon da duoc day len Server thanh cong.
+echo  Website se tu dong cap nhat trong 1-2 phut.
 echo.
-echo  Nhấn phím bất kỳ để quay lại menu...
+echo  Nhan phim bat ky de quay lai menu...
 pause > nul
 goto MENU
 
 :THOAT
 echo.
-echo  Tạm biệt! Chúc bạn kinh doanh thuận lợi!
+echo  Tam biet! Chuc ban kinh doanh thuan loi!
 echo.
 timeout /t 2 > nul
 exit
+
