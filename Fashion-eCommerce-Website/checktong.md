@@ -38,8 +38,10 @@
 ╚══════════════════════════════════════════════════════════════╝
 
   [1]  🔍  Kiểm Tra Hệ Thống Toàn Diện
-  [2]  📺  Xem Log Lỗi Thực Tế (Live Monitor)
-  [3]  🚀  Triển Khai Phiên Bản Mới (Deploy)
+  [2]  📺  Xem Nhật Ký Lỗi & Upload Ảnh Live (Realtime Monitor)
+  [3]  📦  Di Chuyển Ảnh Cũ Sang Cloudinary (DB Migration)
+  [4]  ⚡  Kiểm Tra Tốc Độ Tải API (Speed Test)
+  [5]  🚀  Triển Khai Phiên Bản Mới (Deploy GitHub/Vercel)
   [0]  ❌  Thoát
 ```
 
@@ -112,39 +114,44 @@ Nhập số tương ứng rồi nhấn **Enter** để chọn chức năng.
 
 ---
 
-### 4️⃣ `deploy.bat` — Triển Khai Phiên Bản Mới Lên Server
+### 3️⃣ Di Chuyển Ảnh Cũ Sang Cloudinary (DB Migration)
 
-**Mục đích:** Sau khi sửa lỗi hoặc thêm tính năng mới, chạy file này để cập nhật website lên Server chỉ với 1 click.
+**Mục đích:** Chuyển đổi toàn bộ ảnh dạng chuỗi Base64 dài dòng trong database thành link Cloudinary CDN ngắn gọn để tăng tốc hệ thống.
 
-**Quy trình tự động:**
-1. `git add .` — Gom toàn bộ thay đổi mới
-2. `git commit` — Ghi nhận lịch sử thay đổi
-3. `git push` — Đẩy lên GitHub
-4. Vercel/Render tự động nhận diện và build bản mới (mất 1-2 phút)
+**Khi nào dùng:**
+- Khi bạn vừa cấu hình tài khoản Cloudinary lần đầu tiên.
+- Khi database có dữ liệu cũ chứa ảnh chưa tối ưu hóa.
 
-**Cách dùng:**
-- Click đúp vào `deploy.bat` hoặc chọn **[3]** trong `checktong.bat`.
-- Chờ Terminal hiện thông báo thành công.
-- Sau **1-2 phút**, website sẽ được cập nhật tự động.
+---
 
-**Kết quả thành công:**
-```
-To https://github.com/TaiDoan1/MadMad.git
-   7a33cef..e2b748a  main -> main
+### 4️⃣ Kiểm Tra Tốc Độ Tải API (Speed Test)
 
-Hoàn tất! Mã nguồn đã được đẩy lên Server thành công.
-```
+**Mục đích:** Đo tốc độ tải thực tế và kích thước phản hồi của API sản phẩm (`/api/products`).
+
+**Kết quả mong đợi:**
+- Dung lượng API giảm từ **~2.75 MB xuống 9.3 KB** (giảm 99.7%).
+- Tốc độ tải giảm từ **~3-5 giây xuống ~100-500ms** (nhanh hơn gấp nhiều lần).
+
+---
+
+### 5️⃣ Triển Khai Phiên Bản Mới (Deploy GitHub/Vercel)
+
+**Mục đích:** Đẩy các thay đổi mã nguồn mới nhất lên GitHub để Vercel tự động build lại website.
+
+**Cách dùng:** Chọn **[5]** trong `checktong.bat`. 
 
 ---
 
 ## ❓ CÁC TÌNH HUỐNG THƯỜNG GẶP
 
-| Tình Huống | Nên Dùng File Nào |
+| Tình Huống | Nên Dùng Chọn Số Mấy Trong `checktong.bat` |
 |---|---|
-| Muốn kiểm tra nhanh hệ thống có ổn không | `KiemTraHeThong.bat` (hoặc [1] trong checktong) |
-| Khách hàng báo lỗi, muốn biết lỗi gì | `XemLog.bat` (hoặc [2] trong checktong) |
-| Vừa sửa lỗi xong, muốn cập nhật website | `deploy.bat` (hoặc [3] trong checktong) |
-| Muốn làm tất cả mọi thứ từ 1 chỗ | `checktong.bat` ← **DÙNG CÁI NÀY** |
+| Muốn kiểm tra nhanh hệ thống có ổn không | **[1]** Kiểm Tra Hệ Thống Toàn Diện |
+| Khách hàng báo lỗi, muốn biết lỗi gì / Theo dõi upload ảnh | **[2]** Xem Nhật Ký Lỗi & Upload Ảnh Live |
+| Cấu hình Cloudinary xong, cần tối ưu ảnh cũ trong DB | **[3]** Di Chuyển Ảnh Cũ Sang Cloudinary |
+| Muốn đo xem API tải nhanh hơn bao nhiêu sau tối ưu | **[4]** Kiểm Tra Tốc Độ Tải API |
+| Vừa sửa lỗi hoặc thêm tính năng mới, muốn cập nhật web | **[5]** Triển Khai Phiên Bản Mới |
+| Muốn làm tất cả mọi thứ từ 1 chỗ | Chạy file `checktong.bat` ← **DÙNG CÁI NÀY** |
 
 ---
 
