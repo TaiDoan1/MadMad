@@ -26,13 +26,17 @@ const parseProduct = (p: any) => ({
 });
 
 // Helper: Tiền xử lý tất cả các trường ảnh của sản phẩm (Tải lên Cloudinary nếu là Base64)
-async function processProductImages(image: string, images: any, colorImages: any) {
+async function processProductImages(productName: string, image: string, images: any, colorImages: any) {
+  const t0 = Date.now();
+  console.log(`🖼️  [IMG PROCESS] Bắt đầu xử lý ảnh sản phẩm: "${productName}"`);
+
   // 1. Xử lý ảnh chính (image)
   const uploadedImage = image ? await uploadToCloudinary(image) : "";
 
   // 2. Xử lý danh sách ảnh phụ (images)
   let resolvedImages: string[] = [];
   if (Array.isArray(images)) {
+    console.log(`🖼️  [IMG PROCESS] Đang xử lý ${images.length} ảnh bộ sưu tập...`);
     resolvedImages = await Promise.all(
       images.map(img => (img ? uploadToCloudinary(img) : ""))
     );
@@ -40,6 +44,7 @@ async function processProductImages(image: string, images: any, colorImages: any
     try {
       const parsed = JSON.parse(images);
       if (Array.isArray(parsed)) {
+        console.log(`🖼️  [IMG PROCESS] Đang xử lý ${parsed.length} ảnh bộ sưu tập...`);
         resolvedImages = await Promise.all(
           parsed.map(img => (img ? uploadToCloudinary(img) : ""))
         );
@@ -54,6 +59,7 @@ async function processProductImages(image: string, images: any, colorImages: any
   let resolvedColorImages: Record<string, string> = {};
   if (typeof colorImages === "object" && colorImages !== null) {
     const keys = Object.keys(colorImages);
+    if (keys.length > 0) console.log(`🖼️  [IMG PROCESS] Đang xử lý ${keys.length} ảnh màu sắc...`);
     const values = await Promise.all(
       keys.map(k => uploadToCloudinary(colorImages[k]))
     );
@@ -65,6 +71,7 @@ async function processProductImages(image: string, images: any, colorImages: any
       const parsed = JSON.parse(colorImages);
       if (typeof parsed === "object" && parsed !== null) {
         const keys = Object.keys(parsed);
+        if (keys.length > 0) console.log(`🖼️  [IMG PROCESS] Đang xử lý ${keys.length} ảnh màu sắc...`);
         const values = await Promise.all(
           keys.map(k => uploadToCloudinary(parsed[k]))
         );
@@ -74,6 +81,9 @@ async function processProductImages(image: string, images: any, colorImages: any
       }
     } catch {}
   }
+
+  const elapsed = Date.now() - t0;
+  console.log(`✅ [IMG PROCESS] Hoàn tất xử lý ảnh "${productName}" trong ${elapsed}ms. Ảnh bộ sưu tập: ${resolvedImages.length}, Ảnh màu: ${Object.keys(resolvedColorImages).length}`);
 
   return {
     image: uploadedImage,
@@ -123,7 +133,8 @@ router.post("/", async (req, res, next) => {
     }
 
     // Tự động đẩy toàn bộ ảnh Base64 lên Cloudinary trước khi lưu
-    const cleanData = await processProductImages(image, images, colorImages);
+    console.log(`📥 [PRODUCT CREATE] Admin đang tạo sản phẩm mới: "${name}"`);
+    const cleanData = await processProductImages(name, image, images, colorImages);
 
     const sizesStr = Array.isArray(sizes) ? sizes.join(",") : String(sizes || "S,M,L");
     const colorsStr = Array.isArray(colors) ? colors.join(",") : String(colors || "Black");
@@ -168,7 +179,9 @@ router.put("/:id", async (req, res, next) => {
     let finalColorImages = colorImages;
 
     if (image !== undefined || images !== undefined || colorImages !== undefined) {
+      console.log(`✏️  [PRODUCT UPDATE] Admin đang cập nhật ảnh sản phẩm: "${name || id}"`);
       const cleanData = await processProductImages(
+        name || id,
         image || "",
         images || [],
         colorImages || {}

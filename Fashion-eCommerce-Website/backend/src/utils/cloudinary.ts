@@ -15,8 +15,9 @@ cloudinary.config({
 export async function uploadToCloudinary(imageStr: string): Promise<string> {
   if (!imageStr) return "";
 
-  // Nếu đã là URL, trả về nguyên trạng
+  // Nếu đã là URL Cloudinary, trả về nguyên trạng
   if (imageStr.startsWith("http://") || imageStr.startsWith("https://")) {
+    console.log(`☁️  [CLOUDINARY] Ảnh đã là URL CDN, giữ nguyên.`);
     return imageStr;
   }
 
@@ -25,14 +26,22 @@ export async function uploadToCloudinary(imageStr: string): Promise<string> {
     return imageStr;
   }
 
+  const originalKB = Math.round(imageStr.length / 1024);
+  console.log(`☁️  [CLOUDINARY] Phát hiện ảnh Base64 (~${originalKB} KB), đang upload lên CDN...`);
+
   try {
     const result = await cloudinary.uploader.upload(imageStr, {
       folder: "madmad-products",
     });
+    const savedKB = originalKB - Math.round((result.bytes || 0) / 1024);
+    console.log(`✅ [CLOUDINARY] Upload thành công! URL: ${result.secure_url.substring(0, 60)}...`);
+    console.log(`   Dung lượng gốc: ~${originalKB} KB → Trên CDN: ${Math.round((result.bytes || 0) / 1024)} KB (tiết kiệm ~${savedKB} KB)`);
     return result.secure_url;
   } catch (error: any) {
-    console.error("❌ [CLOUDINARY ERROR] Không thể tải ảnh lên:", error.message || error);
+    console.error(`❌ [CLOUDINARY ERROR] Không thể tải ảnh lên: ${error.message || error}`);
+    console.error(`   Nguyên nhân có thể: Sai credentials hoặc mất kết nối mạng.`);
     // Trả về ảnh gốc thay vì crash để tránh gián đoạn tính năng
     return imageStr;
   }
 }
+
