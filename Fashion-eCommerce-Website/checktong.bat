@@ -1,22 +1,21 @@
 @echo off
-chcp 65001 > nul
-title MADMAD STUDIO - Trung Tam Control Panel
+title MADMAD STUDIO - Control Panel
 
 :MENU
 cls
 echo.
 echo  =============================================================
-echo         MADMAD STUDIO - TRUNG TAM DIEU KHIEN & GIAM SAT
+echo         MADMAD STUDIO - TRUNG TAM DIEU KHIEN
 echo  =============================================================
 echo.
 echo   [1]  Kiem Tra He Thong Toan Dien
-echo         Kich ban chan doan DB, Backend, Frontend, Vite Build
+echo         Chan doan DB, Backend, Frontend, Vite Build
 echo.
-echo   [2]  Xem Nhat Ky Loi & Upload Anh Live (Realtime Monitor)
+echo   [2]  Xem Log Loi va Upload Anh Live (Realtime Monitor)
 echo         Theo doi loi nguoi dung va trang thai upload Cloudinary
 echo.
 echo   [3]  Di Chuyen Anh Cu Sang Cloudinary (DB Migration)
-echo         Tim anh Base64 cu trong PostgreSQL va chuyen thanh link CDN
+echo         Tim anh Base64 cu trong PostgreSQL va chuyen thanh CDN URL
 echo.
 echo   [4]  Kiem Tra Toc Do Tai API (Speed Test)
 echo         Do toc do tai thuc te va dung luong phan hoi cua API
@@ -69,7 +68,9 @@ cls
 echo.
 echo  [3] Dang chay di chuyen anh cu sang Cloudinary...
 echo.
-cd backend && node migrate-to-cloudinary.cjs && cd ..
+cd backend
+node migrate-to-cloudinary.cjs
+cd ..
 echo.
 echo  Hoan tat di chuyen database! Nhan phim bat ky de quay lai menu...
 pause > nul
@@ -110,4 +111,3 @@ echo  Tam biet! Chuc ban kinh doanh thuan loi!
 echo.
 timeout /t 2 > nul
 exit
-
