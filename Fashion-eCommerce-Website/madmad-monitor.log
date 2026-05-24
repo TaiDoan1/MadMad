@@ -2025,3 +2025,66 @@ File log: C:\Users\doana\Desktop\madmad\MadMad\Fashion-eCommerce-Website\madmad-
 
 =================================================================
 [TAM DUNG AUTO-REFRESH] Nhan Space/P de tiep tuc.
+
+=================================================================
+MADMAD STUDIO - MONITOR BAT DAU: 00:42:18 25/5/2026
+=================================================================
+=================================================================
+   MADMAD STUDIO  |  LIVE LOG MONITOR v2.1
+=================================================================
+Server  : https://madmad-backend.vercel.app
+Trangthai: DANG HOAT DONG (MONITORING...) | Cap nhat: 8s
+Bo loc  : Level=ALL | Source=ALL | Limit=15
+Phim tat: [Space/P] Pause/Resume | [R] Refresh | [L] Level | [S] Source | [+/-] Limit | [C] Clear Log File
+File log: C:\Users\doana\Desktop\madmad\MadMad\Fashion-eCommerce-Website\madmad-monitor.log
+
+[1] TRANG THAI HE THONG
+-----------------------------------------------------------------
+  [!!! KHONG PHAN HOI] Backend root     TIMEOUT 9024ms
+[CRITICAL] 00:42:27 25/5/2026 Backend root TIMEOUT 9024ms
+  [OK]  Products API     HTTP 200  |  2878ms  (CHAM - can toi uu payload/base64)
+  [OK]  Orders API       HTTP 200  |  959ms  (BINH THUONG)
+  [OK]  Members API      HTTP 200  |  483ms  (NHANH)
+  [OK]  Logs API         HTTP 200  |  941ms  (BINH THUONG)
+
+[2] NHAT KY LOI HE THONG & KHACH HANG
+-----------------------------------------------------------------
+  Tong hop 24 gio qua: Tong=0  |  CRITICAL:0  LOI:0  |  CANH BAO:0  |  INFO:0
+  Khong co loi nghiem trong trong 24 gio qua. He thong on dinh!
+
+  [OK] Khong tim thay log nao phu hop bo loc.
+
+[3] THONG KE DON HANG
+-----------------------------------------------------------------
+  Tong don hang  : 18
+  Don hom nay    : 0
+  Cho xac nhan   : 5
+  Dang xu ly     : 8
+  Dang giao hang : 1
+  Hoan thanh     : 3
+  Da huy         : 1
+  Chua thanh toan: 13  <-- Nen theo doi!
+  Doanh thu (HT) : 1.460.000d
+
+  Don can xu ly ngay:
+    - DH202605243520  |  Đoàn Anh tiến  |  736.200d  |  23:12:47 24/5/2026
+    - DH202605248469  |  Thuỳ Q8  |  690.000d  |  22:41:48 24/5/2026
+    - DH202605207831  |  Đoàn Anh tiến  |  373.000d  |  17:02:18 20/5/2026
+    - DH20260518705  |  thuỳ  |  700.000d  |  17:18:04 18/5/2026
+    - DH20260518963  |  Đoàn Anh Tiến  |  380.000d  |  13:19:43 18/5/2026
+
+=================================================================
+Dang theo doi... Cap nhat sau 8s. [Q hoac Ctrl+C de thoat]
+=================================================================
+   MADMAD STUDIO  |  LIVE LOG MONITOR v2.1
+=================================================================
+Server  : https://madmad-backend.vercel.app
+Trangthai: TAM DUNG (PAUSED) | Cap nhat: 8s
+Bo loc  : Level=ALL | Source=ALL | Limit=15
+Phim tat: [Space/P] Pause/Resume | [R] Refresh | [L] Level | [S] Source | [+/-] Limit | [C] Clear Log File
+File log: C:\Users\doana\Desktop\madmad\MadMad\Fashion-eCommerce-Website\madmad-monitor.log
+
+
+  [TAM DUNG] Da tam dung auto-refresh. Nhan Space hoac P de tiep tuc.
+  Ban co the thoai mai cuon terminal de xem log cu ma khong so bi tu dong day len.
+
