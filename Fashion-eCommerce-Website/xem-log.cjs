@@ -51,7 +51,8 @@ function log(text) {
   writeToFile(text);
 }
 
-function fetchJson(url, timeoutMs = 9000) {
+// Timeout mac dinh 20s de xu ly Vercel cold start (co the mat 5-15 giay)
+function fetchJson(url, timeoutMs = 20000) {
   return new Promise((resolve, reject) => {
     const mod = url.startsWith("https") ? https : http;
     const req = mod.get(url, { timeout: timeoutMs }, (res) => {
@@ -67,6 +68,16 @@ function fetchJson(url, timeoutMs = 9000) {
   });
 }
 
+// Fetch co retry: neu timeout lan 1 se thu lai lan 2 truoc khi bao loi
+async function fetchJsonWithRetry(url, timeoutMs = 20000) {
+  try {
+    return await fetchJson(url, timeoutMs);
+  } catch (e) {
+    // Thu lai lan 2 (Vercel co the van dang warm up)
+    return await fetchJson(url, timeoutMs);
+  }
+}
+
 // ─── HEADER ───────────────────────────────────────────────────────────────────
 function printHeader() {
   console.clear();
@@ -79,6 +90,7 @@ function printHeader() {
   log(`${C.gray}Bo loc  : Level=${C.white}${levelFilter.toUpperCase()}${C.gray} | Source=${C.white}${sourceFilter.toUpperCase()}${C.gray} | Limit=${C.white}${logLimit}${C.reset}`);
   log(`${C.gray}Phim tat: [Space/P] Pause/Resume | [R] Refresh | [L] Level | [S] Source | [+/-] Limit | [C] Clear Log File${C.reset}`);
   log(`${C.gray}File log: ${LOG_FILE}${C.reset}`);
+  log(`${C.yellow}LUU Y   : Backend tren Vercel co the mat 5-15s lan dau (cold start). Timeout duoc dat 20s.${C.reset}`);
   log("");
 }
 
@@ -98,17 +110,27 @@ async function checkHealth() {
   for (const ep of endpoints) {
     const t0 = Date.now();
     try {
-      const { status } = await fetchJson(ep.url);
+      const { status } = await fetchJsonWithRetry(ep.url, 20000);
       const ms  = Date.now() - t0;
       const ok  = status >= 200 && status < 400;
       const sColor = ok ? C.green : C.red;
-      const mColor = ms < 600 ? C.green : ms < 2000 ? C.yellow : C.red;
-      const grade  = ms < 600 ? "NHANH" : ms < 2000 ? "BINH THUONG" : "CHAM - can toi uu payload/base64";
+      // Thang diem toc do: phan biet warm vs cold start
+      const mColor = ms < 600 ? C.green : ms < 3000 ? C.yellow : ms < 10000 ? C.magenta : C.red;
+      const grade  = ms < 600   ? "NHANH (warm)"
+                   : ms < 3000  ? "BINH THUONG"
+                   : ms < 10000 ? "CHAM - co the do cold start Vercel"
+                   :              "RAT CHAM - can kiem tra lai";
       log(`  ${ok ? "[OK] " : "[LOI]"} ${C.white}${ep.name}${C.reset}  HTTP ${sColor}${status}${C.reset}  |  ${mColor}${ms}ms${C.reset}  (${grade})`);
     } catch (e) {
       const ms = Date.now() - t0;
-      log(`  ${C.red}[!!! KHONG PHAN HOI]${C.reset} ${ep.name}  ${C.red}TIMEOUT ${ms}ms${C.reset}`);
-      writeToFile(`[CRITICAL] ${nowVN()} ${ep.name.trim()} TIMEOUT ${ms}ms`);
+      // Phan biet cold start (timeout < 25s) vs server that su bi loi
+      if (ms < 25000) {
+        log(`  ${C.yellow}[COLD START?]${C.reset} ${ep.name}  ${C.yellow}Server dang "thuc giac" (${ms}ms). Nhan [R] de thu lai sau 10-15 giay.${C.reset}`);
+        writeToFile(`[WARNING] ${nowVN()} ${ep.name.trim()} COLD_START ${ms}ms - Server Vercel dang khoi dong lai`);
+      } else {
+        log(`  ${C.red}[!!! KHONG PHAN HOI]${C.reset} ${ep.name}  ${C.red}TIMEOUT ${ms}ms - Kiem tra lai backend/Vercel!${C.reset}`);
+        writeToFile(`[CRITICAL] ${nowVN()} ${ep.name.trim()} TIMEOUT ${ms}ms`);
+      }
     }
   }
   log("");
