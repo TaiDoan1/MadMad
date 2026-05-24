@@ -533,7 +533,7 @@ export function AdminProductsPage() {
                 <div className="space-y-5 animate-fadeIn">
                   <div className="space-y-1.5">
                     <label className="block text-[9px] font-extrabold tracking-widest uppercase text-black/50">
-                      Tên sản phẩm thời trang
+                      Tên sản phẩm thời trang <span className="text-red-500 font-bold">*</span>
                     </label>
                     <input
                       type="text"
@@ -548,7 +548,7 @@ export function AdminProductsPage() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-1.5">
                       <label className="block text-[9px] font-extrabold tracking-widest uppercase text-black/50">
-                        Danh mục
+                        Danh mục <span className="text-red-500 font-bold">*</span>
                       </label>
                       <select
                         value={formData.category}
@@ -610,7 +610,7 @@ export function AdminProductsPage() {
 
                     <div className="space-y-1.5">
                       <label className="block text-[9px] font-extrabold tracking-widest uppercase text-black/50">
-                        Giá bán thực tế
+                        Giá bán thực tế <span className="text-red-500 font-bold">*</span>
                       </label>
                       <input
                         type="number"
@@ -653,7 +653,7 @@ export function AdminProductsPage() {
                   {/* Sizes Select */}
                   <div className="space-y-2">
                     <label className="block text-[9px] font-extrabold tracking-widest uppercase text-black/50">
-                      Bảng Sizes khả dụng
+                      Bảng Sizes khả dụng <span className="text-red-500 font-bold">*</span>
                     </label>
                     <div className="flex flex-wrap gap-2.5 rounded-2xl border border-black/15 p-3.5 bg-stone-50/40">
                       {productOptions.sizes.map((size) => {
@@ -683,7 +683,7 @@ export function AdminProductsPage() {
                   {/* Colors Select */}
                   <div className="space-y-3">
                     <label className="block text-[9px] font-extrabold tracking-widest uppercase text-black/50">
-                      Màu sắc khả dụng
+                      Màu sắc khả dụng <span className="text-red-500 font-bold">*</span>
                     </label>
                     <div className="flex flex-wrap gap-2.5 rounded-2xl border border-black/15 p-3.5 bg-stone-50/40">
                       {productOptions.colors.map((color) => {
@@ -849,7 +849,7 @@ export function AdminProductsPage() {
                     <div className="flex items-center justify-between">
                       <div>
                         <label className="block text-[9px] font-extrabold tracking-widest uppercase text-black/50">
-                          Bộ sưu tập ảnh sản phẩm (Nhiều ảnh)
+                          Bộ sưu tập ảnh sản phẩm <span className="text-red-500 font-bold">*</span>
                         </label>
                         <p className="text-[9px] text-black/35 mt-0.5">Khuyến nghị: Tỉ lệ 1:1 vuông (1200x1200px) cho ảnh chi tiết.</p>
                       </div>
@@ -1049,6 +1049,44 @@ export function AdminProductsPage() {
               ) : (
                 <button
                   onClick={() => {
+                    // --- FRONTEND VALIDATION ---
+                    if (!formData.name.trim()) {
+                      showToast("Vui lòng nhập tên sản phẩm!", "error");
+                      setFormTab("info");
+                      return;
+                    }
+
+                    if (!formData.category.trim()) {
+                      showToast("Vui lòng chọn danh mục cho sản phẩm!", "error");
+                      setFormTab("info");
+                      return;
+                    }
+
+                    if (!formData.price || formData.price <= 0) {
+                      showToast("Giá bán thực tế phải lớn hơn 0!", "error");
+                      setFormTab("info");
+                      return;
+                    }
+
+                    if (selectedSizes.length === 0) {
+                      showToast("Vui lòng chọn ít nhất một kích cỡ (size)!", "error");
+                      setFormTab("attributes");
+                      return;
+                    }
+
+                    if (selectedColors.length === 0) {
+                      showToast("Vui lòng chọn ít nhất một màu sắc!", "error");
+                      setFormTab("attributes");
+                      return;
+                    }
+
+                    if (!mainImage.trim()) {
+                      showToast("Vui lòng thêm ít nhất một hình ảnh cho sản phẩm!", "error");
+                      setFormTab("media");
+                      return;
+                    }
+                    // --- END VALIDATION ---
+
                     const colorImages: Record<string, string> = {};
                     selectedColors.forEach((color) => {
                       const frontUrl = (colorImageDrafts[`${color}-front`] || colorImageDrafts[color] || "").trim();
