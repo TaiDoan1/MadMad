@@ -365,10 +365,18 @@ export function ProductDetailPage() {
 
             {/* Bulleted list features */}
             <ul className="text-[10px] sm:text-[11px] space-y-2 mt-4 uppercase tracking-widest text-neutral-500 dark:text-neutral-400 list-inside list-disc font-semibold">
-              {translate(product.description).split('. ').map((item, idx) => {
-                if (!item.trim()) return null;
-                return <li key={idx} className="marker:text-neutral-300 dark:marker:text-neutral-700">{item.trim().replace(/\.$/, '')}</li>;
-              })}
+              {(() => {
+                const desc = translate(product.description) || "";
+                // Ưu tiên tách theo ký tự xuống hàng (\n) mà admin nhập
+                const lines = desc.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+                // Nếu chỉ có 1 dòng (không có xuống hàng), tách theo ". " như cũ
+                const items = lines.length > 1 ? lines : desc.split('. ').map(l => l.trim()).filter(Boolean);
+                return items.map((item, idx) => (
+                  <li key={idx} className="marker:text-neutral-300 dark:marker:text-neutral-700">
+                    {item.replace(/\.$/, '')}
+                  </li>
+                ));
+              })()}
             </ul>
 
             {/* Spacing bullet text decoration */}
