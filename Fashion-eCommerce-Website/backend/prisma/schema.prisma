@@ -118,6 +118,38 @@ model StorefrontSetting {
   smtpUser                 String? @default("mmadmadstudio@gmail.com")
   smtpPass                 String? @default("yxmbctjhsxkyeznx")
   smtpSenderName           String? @default("MADMAD STUDIO")
+
+  // 💳 Cổng Thanh Toán & Vận Chuyển
+  bankId                   String? @default("MB")
+  bankAccount              String? @default("0999999999")
+  bankAccountName          String? @default("MADMAD STUDIO")
+  momoPhone                String? @default("0999999999")
+  momoAccountName          String? @default("MADMAD STUDIO")
+  enableCod                Boolean @default(true)
+  enableBank               Boolean @default(true)
+  enableMomo               Boolean @default(true)
+  enablePaypal             Boolean @default(false)
+  shippingFeeStandard      Int?    @default(30000)
+  shippingFeeExpress       Int?    @default(60000)
+  shippingFreeThreshold    Int?    @default(500000)
+  shippingExpressCities    String? @default("79,01")
+  orderAutoCancelHours     Int?    @default(24)
+
+  // 🌐 Cấu hình Tiền tệ Quốc tế
+  currencyMode             String? @default("auto")
+  exchangeRate             Int?    @default(25000)
+  intlConversionFeePercent Float?  @default(3.5)
+  intlShippingFee          Int?    @default(250000)
+  intlMarkupPercent        Float?  @default(10)
+
+  // 🖨️ Hóa đơn in thêm
+  printInvoiceSubheader    String? @default("Tối giản . Độc bản . Cao cấp")
+  printInvoiceBankId       String? @default("MB")
+  printInvoiceBankAccount  String? @default("0999999999")
+  printInvoiceAccountName  String? @default("MADMAD STUDIO")
+
+  // 🏪 Thông tin cửa hàng bổ sung
+  storeName                String? @default("MADMAD Studio")
 }
 
 // 🚨 Bảng Nhật ký Lỗi Hệ Thống (SystemLog)

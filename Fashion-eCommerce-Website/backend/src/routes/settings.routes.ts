@@ -85,7 +85,36 @@ router.put("/", async (req, res, next) => {
 
       // Nhận diện mẫu email động mới
       customerEmailSubject,
-      customerEmailTemplate
+      customerEmailTemplate,
+
+      // 💳 Cổng Thanh Toán & Vận Chuyển
+      bankId,
+      bankAccount,
+      bankAccountName,
+      momoPhone,
+      momoAccountName,
+      enableCod,
+      enableBank,
+      enableMomo,
+      enablePaypal,
+      shippingFeeStandard,
+      shippingFeeExpress,
+      shippingFreeThreshold,
+      shippingExpressCities,
+      orderAutoCancelHours,
+
+      // 🌐 Cấu hình Tiền tệ Quốc tế
+      currencyMode,
+      exchangeRate,
+      intlConversionFeePercent,
+      intlShippingFee,
+      intlMarkupPercent,
+
+      // 🖨️ Hóa đơn in thêm
+      printInvoiceSubheader,
+      printInvoiceBankId,
+      printInvoiceBankAccount,
+      printInvoiceAccountName
     } = req.body;
 
     const instagramImagesStr = Array.isArray(instagramImages) 
@@ -120,10 +149,39 @@ router.put("/", async (req, res, next) => {
 
         // Cập nhật SMTP động
         smtpHost,
-        smtpPort: smtpPort ? Number(smtpPort) : undefined,
+        smtpPort: smtpPort !== undefined ? Number(smtpPort) : undefined,
         smtpUser,
         smtpPass,
-        smtpSenderName
+        smtpSenderName,
+
+        // 💳 Cổng Thanh Toán & Vận Chuyển
+        bankId,
+        bankAccount,
+        bankAccountName,
+        momoPhone,
+        momoAccountName,
+        enableCod: enableCod !== undefined ? Boolean(enableCod) : undefined,
+        enableBank: enableBank !== undefined ? Boolean(enableBank) : undefined,
+        enableMomo: enableMomo !== undefined ? Boolean(enableMomo) : undefined,
+        enablePaypal: enablePaypal !== undefined ? Boolean(enablePaypal) : undefined,
+        shippingFeeStandard: shippingFeeStandard !== undefined ? Number(shippingFeeStandard) : undefined,
+        shippingFeeExpress: shippingFeeExpress !== undefined ? Number(shippingFeeExpress) : undefined,
+        shippingFreeThreshold: shippingFreeThreshold !== undefined ? Number(shippingFreeThreshold) : undefined,
+        shippingExpressCities,
+        orderAutoCancelHours: orderAutoCancelHours !== undefined ? Number(orderAutoCancelHours) : undefined,
+
+        // 🌐 Cấu hình Tiền tệ Quốc tế
+        currencyMode,
+        exchangeRate: exchangeRate !== undefined ? Number(exchangeRate) : undefined,
+        intlConversionFeePercent: intlConversionFeePercent !== undefined ? Number(intlConversionFeePercent) : undefined,
+        intlShippingFee: intlShippingFee !== undefined ? Number(intlShippingFee) : undefined,
+        intlMarkupPercent: intlMarkupPercent !== undefined ? Number(intlMarkupPercent) : undefined,
+
+        // 🖨️ Hóa đơn in thêm
+        printInvoiceSubheader,
+        printInvoiceBankId,
+        printInvoiceBankAccount,
+        printInvoiceAccountName
       },
       create: {
         id: 1,
@@ -152,10 +210,39 @@ router.put("/", async (req, res, next) => {
 
         // Khởi tạo SMTP động
         smtpHost: smtpHost || "smtp.gmail.com",
-        smtpPort: smtpPort ? Number(smtpPort) : 587,
+        smtpPort: smtpPort !== undefined ? Number(smtpPort) : 587,
         smtpUser: smtpUser || "mmadmadstudio@gmail.com",
         smtpPass: smtpPass || "yxmbctjhsxkyeznx",
-        smtpSenderName: smtpSenderName || "MADMAD STUDIO"
+        smtpSenderName: smtpSenderName || "MADMAD STUDIO",
+
+        // 💳 Cổng Thanh Toán & Vận Chuyển
+        bankId: bankId || "MB",
+        bankAccount: bankAccount || "0999999999",
+        bankAccountName: bankAccountName || "MADMAD STUDIO",
+        momoPhone: momoPhone || "0999999999",
+        momoAccountName: momoAccountName || "MADMAD STUDIO",
+        enableCod: enableCod !== undefined ? Boolean(enableCod) : true,
+        enableBank: enableBank !== undefined ? Boolean(enableBank) : true,
+        enableMomo: enableMomo !== undefined ? Boolean(enableMomo) : true,
+        enablePaypal: enablePaypal !== undefined ? Boolean(enablePaypal) : false,
+        shippingFeeStandard: shippingFeeStandard !== undefined ? Number(shippingFeeStandard) : 30000,
+        shippingFeeExpress: shippingFeeExpress !== undefined ? Number(shippingFeeExpress) : 60000,
+        shippingFreeThreshold: shippingFreeThreshold !== undefined ? Number(shippingFreeThreshold) : 500000,
+        shippingExpressCities: shippingExpressCities || "79,01",
+        orderAutoCancelHours: orderAutoCancelHours !== undefined ? Number(orderAutoCancelHours) : 24,
+
+        // 🌐 Cấu hình Tiền tệ Quốc tế
+        currencyMode: currencyMode || "auto",
+        exchangeRate: exchangeRate !== undefined ? Number(exchangeRate) : 25000,
+        intlConversionFeePercent: intlConversionFeePercent !== undefined ? Number(intlConversionFeePercent) : 3.5,
+        intlShippingFee: intlShippingFee !== undefined ? Number(intlShippingFee) : 250000,
+        intlMarkupPercent: intlMarkupPercent !== undefined ? Number(intlMarkupPercent) : 10,
+
+        // 🖨️ Hóa đơn in thêm
+        printInvoiceSubheader: printInvoiceSubheader || "Tối giản . Độc bản . Cao cấp",
+        printInvoiceBankId: printInvoiceBankId || "MB",
+        printInvoiceBankAccount: printInvoiceBankAccount || "0999999999",
+        printInvoiceAccountName: printInvoiceAccountName || "MADMAD STUDIO"
       }
     });
 
