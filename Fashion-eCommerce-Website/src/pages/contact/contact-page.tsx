@@ -2,10 +2,12 @@ import { useState, type FormEvent } from "react";
 import { Clock, Mail, MapPin, Phone, Send } from "lucide-react";
 import { useLanguage } from "@/features/settings/context/language-context";
 import { useToast } from "@/components/common/toast";
+import { useStorefrontSettings } from "@/features/settings/context/storefront-settings-context";
 
 export function ContactPage() {
   const { t } = useLanguage();
   const { showToast } = useToast();
+  const { settings } = useStorefrontSettings();
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -52,9 +54,9 @@ export function ContactPage() {
 
               <div className="space-y-4">
                 {[
-                  { icon: MapPin, title: t("Địa Chỉ Cửa Hàng", "Store Address"), body: t("123 Đường Nguyễn Huệ, Quận 1\nThành phố Hồ Chí Minh, Việt Nam", "123 Nguyen Hue Street, District 1\nHo Chi Minh City, Vietnam") },
-                  { icon: Phone, title: t("Số Điện Thoại", "Phone Number"), body: t("Hotline: +84 123 456 789\nZalo: +84 987 654 321", "Hotline: +84 123 456 789\nZalo: +84 987 654 321") },
-                  { icon: Mail, title: t("Email", "Email"), body: t("Hỗ trợ: support@madmad.studio\nHợp tác: contact@madmad.studio", "Support: support@madmad.studio\nPartnership: contact@madmad.studio") },
+                  { icon: MapPin, title: t("Địa Chỉ Cửa Hàng", "Store Address"), body: settings.storeAddress || t("123 Đường Nguyễn Huệ, Quận 1\nThành phố Hồ Chí Minh, Việt Nam", "123 Nguyen Hue Street, District 1\nHo Chi Minh City, Vietnam") },
+                  { icon: Phone, title: t("Số Điện Thoại", "Phone Number"), body: settings.storePhone ? `${t("Hotline", "Hotline")}: ${settings.storePhone}` : t("Hotline: +84 123 456 789\nZalo: +84 987 654 321", "Hotline: +84 123 456 789\nZalo: +84 987 654 321") },
+                  { icon: Mail, title: t("Email", "Email"), body: settings.storeEmail ? `${t("Hỗ trợ", "Support")}: ${settings.storeEmail}` : t("Hỗ trợ: support@madmad.studio\nHợp tác: contact@madmad.studio", "Support: support@madmad.studio\nPartnership: contact@madmad.studio") },
                   { icon: Clock, title: t("Giờ Mở Cửa", "Opening Hours"), body: t("Thứ 2 - Thứ 7: 9:00 - 21:00\nChủ nhật: 10:00 - 20:00", "Monday - Saturday: 9:00 AM - 9:00 PM\nSunday: 10:00 AM - 8:00 PM") },
                 ].map((item) => (
                   <div key={item.title} className="flex items-start gap-5 border border-black/10 p-6 bg-stone-50/50 hover:bg-stone-50 hover:border-black/25 transition-all duration-300">
