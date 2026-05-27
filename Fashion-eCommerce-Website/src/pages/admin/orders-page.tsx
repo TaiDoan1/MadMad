@@ -1851,6 +1851,21 @@ export function AdminOrdersPage() {
                 />
               </div>
 
+              {/* GHI CHÚ KHÁCH HÀNG (HIỂN THỊ CHO ADMIN) */}
+              {selectedOrder.notes && selectedOrder.notes.trim() && (
+                <div className="rounded-2xl border border-black/10 bg-stone-50 p-5 space-y-2">
+                  <div className="flex items-center gap-1.5">
+                    <FileText className="h-4.5 w-4.5 text-black/70" />
+                    <h4 className="text-[10px] font-extrabold tracking-widest text-black/60 uppercase">
+                      Ghi chú khách hàng
+                    </h4>
+                  </div>
+                  <p className="whitespace-pre-wrap text-xs font-semibold text-black/80 leading-relaxed">
+                    {selectedOrder.notes}
+                  </p>
+                </div>
+              )}
+
               {/* Thông tin khách hàng & Địa chỉ */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-xs text-black/80 font-medium">
                 <div className="border border-black/5 rounded-xl p-5 bg-white space-y-3">
