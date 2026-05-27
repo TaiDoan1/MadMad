@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from "react";
-import { Clock, Mail, MapPin, Phone, Send } from "lucide-react";
+import { Clock, Mail, MapPin, Phone, Send, Instagram, Facebook } from "lucide-react";
 import { useLanguage } from "@/features/settings/context/language-context";
 import { useToast } from "@/components/common/toast";
 import { useStorefrontSettings } from "@/features/settings/context/storefront-settings-context";
@@ -70,6 +70,67 @@ export function ContactPage() {
                   </div>
                 ))}
               </div>
+
+              {/* Social Media Links */}
+              {(settings.instagramUrl || settings.facebookUrl || settings.tiktokUrl || settings.shopeeUrl) && (
+                <div>
+                  <h2 className="text-xs font-bold uppercase tracking-widest text-red-700 mb-4">
+                    {t("THEO DÕI CHÚNG TÔI", "FOLLOW US")}
+                  </h2>
+                  <div className="flex flex-wrap gap-3">
+                    {settings.facebookUrl && (
+                      <a
+                        href={settings.facebookUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="group flex items-center gap-3 border border-black/10 px-5 py-3 bg-stone-50/50 hover:bg-black hover:border-black transition-all duration-300"
+                      >
+                        <Facebook className="h-4 w-4 text-black group-hover:text-white transition-colors" />
+                        <span className="text-[11px] font-black uppercase tracking-widest text-black group-hover:text-white transition-colors">Facebook</span>
+                      </a>
+                    )}
+                    {settings.instagramUrl && (
+                      <a
+                        href={settings.instagramUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="group flex items-center gap-3 border border-black/10 px-5 py-3 bg-stone-50/50 hover:bg-black hover:border-black transition-all duration-300"
+                      >
+                        <Instagram className="h-4 w-4 text-black group-hover:text-white transition-colors" />
+                        <span className="text-[11px] font-black uppercase tracking-widest text-black group-hover:text-white transition-colors">Instagram</span>
+                      </a>
+                    )}
+                    {settings.tiktokUrl && (
+                      <a
+                        href={settings.tiktokUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="group flex items-center gap-3 border border-black/10 px-5 py-3 bg-stone-50/50 hover:bg-black hover:border-black transition-all duration-300"
+                      >
+                        {/* TikTok SVG icon */}
+                        <svg className="h-4 w-4 text-black group-hover:text-white transition-colors fill-current" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                          <path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-2.88 2.5 2.89 2.89 0 01-2.89-2.89 2.89 2.89 0 012.89-2.89c.28 0 .54.04.79.1V9.01a6.33 6.33 0 00-.79-.05 6.34 6.34 0 00-6.34 6.34 6.34 6.34 0 006.34 6.34 6.34 6.34 0 006.33-6.34V8.69a8.18 8.18 0 004.78 1.52V6.76a4.85 4.85 0 01-1.01-.07z" />
+                        </svg>
+                        <span className="text-[11px] font-black uppercase tracking-widest text-black group-hover:text-white transition-colors">TikTok</span>
+                      </a>
+                    )}
+                    {settings.shopeeUrl && (
+                      <a
+                        href={settings.shopeeUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="group flex items-center gap-3 border border-black/10 px-5 py-3 bg-stone-50/50 hover:bg-[#EE4D2D] hover:border-[#EE4D2D] transition-all duration-300"
+                      >
+                        {/* Shopee SVG icon */}
+                        <svg className="h-4 w-4 text-black group-hover:text-white transition-colors fill-current" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                          <path d="M12 2C9.52 2 7.5 4.02 7.5 6.5h1.5c0-1.66 1.34-3 3-3s3 1.34 3 3H16.5C16.5 4.02 14.48 2 12 2zm7.5 5H4.5L3 22h18L19.5 7zm-7.5 9c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm0-4.5c-.83 0-1.5.67-1.5 1.5s.67 1.5 1.5 1.5 1.5-.67 1.5-1.5-.67-1.5-1.5-1.5z"/>
+                        </svg>
+                        <span className="text-[11px] font-black uppercase tracking-widest text-black group-hover:text-white transition-colors">Shopee</span>
+                      </a>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Right side: Form */}
