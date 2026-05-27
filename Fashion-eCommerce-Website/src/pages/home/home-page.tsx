@@ -219,7 +219,7 @@ export function HomePage() {
           </div>
 
           {/* 3-column product grid */}
-          <div className="grid grid-cols-1 gap-px sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid grid-cols-2 gap-px sm:grid-cols-3 lg:grid-cols-4">
             {isLoading && products.length === 0 ? (
               Array.from({ length: 3 }).map((_, index) => (
                 <div key={index} className={`animate-fadeInUp stagger-${index + 1}`}>

@@ -38,6 +38,7 @@ export function AdminSettingsPage() {
   const [intlConversionFeePercent, setIntlConversionFeePercent] = useState<string>(String(settings.intlConversionFeePercent ?? 3.5));
   const [intlShippingFee, setIntlShippingFee] = useState<string>(String(settings.intlShippingFee ?? 250000));
   const [intlMarkupPercent, setIntlMarkupPercent] = useState<string>(String(settings.intlMarkupPercent ?? 10));
+  const [customCalculatorPrice, setCustomCalculatorPrice] = useState<string>("290000");
 
   // Branding States
   const [currentLogo, setCurrentLogo] = useState(settings.logo || brandLogo);
@@ -998,9 +999,89 @@ export function AdminSettingsPage() {
                   <span className="text-[8px] bg-red-600 px-2 py-0.5 rounded tracking-wide text-white font-black">CHẠY TỰ ĐỘNG</span>
                 </h5>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-[10px] leading-relaxed">
-                  {/* Cột trái: Sản phẩm giá trung bình */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-[10px] leading-relaxed">
+                  {/* Cột 1: Sản phẩm tự nhập tính toán */}
                   <div className="space-y-2 border-r border-white/10 pr-0 md:pr-6 last:border-0 last:pr-0">
+                    <div className="flex justify-between font-extrabold text-xs pb-1 border-b border-white/10 text-stone-200 items-center">
+                      <span>Tự tính giá tùy chọn</span>
+                      <input
+                        type="number"
+                        step={10000}
+                        value={customCalculatorPrice}
+                        onChange={(e) => setCustomCalculatorPrice(e.target.value)}
+                        placeholder="290000"
+                        className="w-24 bg-white/15 border border-white/20 text-white rounded px-2 py-0.5 font-bold focus:outline-none focus:border-white/50 text-right text-[10px]"
+                      />
+                    </div>
+                    {(() => {
+                      const customPrice = Number(customCalculatorPrice) || 0;
+                      const rate = Number(exchangeRate) || 25000;
+                      const markup = Number(intlMarkupPercent) || 0;
+                      const fee = Number(intlConversionFeePercent) || 0;
+                      const ship = Number(intlShippingFee) || 0;
+
+                      // Calculate live pricing
+                      const rawUsd = customPrice / rate;
+                      const baseUsdWithMarkup = rawUsd * (1 + markup / 100);
+                      const finalUsd = baseUsdWithMarkup / (1 - fee / 100);
+                      const roundedUsd = Math.round(finalUsd);
+
+                      // Calculations
+                      const totalRevenueVnd = roundedUsd * rate * (1 - fee / 100);
+                      const netProfitVnd = totalRevenueVnd - ship;
+
+                      return (
+                        <div className="space-y-1.5 font-mono text-[9px] text-stone-300">
+                          <div className="flex justify-between">
+                            <span>Giá bán VN gốc:</span>
+                            <span className="font-bold text-white">{customPrice.toLocaleString()}₫</span>
+                          </div>
+                          <div className="flex justify-between text-stone-400">
+                            <span>Tỷ giá quy đổi:</span>
+                            <span>1 USD = {rate.toLocaleString()}₫</span>
+                          </div>
+                          <div className="flex justify-between text-stone-400">
+                            <span>Giá thực tế (Thế giới):</span>
+                            <span>${rawUsd.toFixed(2)}</span>
+                          </div>
+                          <div className="flex justify-between text-stone-400">
+                            <span>Giá sau phụ thu (+{markup}%):</span>
+                            <span>${baseUsdWithMarkup.toFixed(2)}</span>
+                          </div>
+                          <div className="flex justify-between text-stone-400">
+                            <span>Giá sau bù phí PayPal (-{fee}%):</span>
+                            <span>${finalUsd.toFixed(2)}</span>
+                          </div>
+                          <div className="flex justify-between border-t border-white/10 pt-1 text-white">
+                            <span className="font-extrabold text-[10px] text-stone-200">Giá hiển thị (Làm tròn):</span>
+                            <span className="font-black text-red-500 text-xs">${roundedUsd}.00</span>
+                          </div>
+                          <div className="flex justify-between border-t border-white/10 pt-1">
+                            <span>Doanh thu quy đổi thực nhận:</span>
+                            <span>{Math.round(totalRevenueVnd).toLocaleString()}₫</span>
+                          </div>
+                          <div className="flex justify-between text-stone-400">
+                            <span>Trừ phí ship nước ngoài dự phòng:</span>
+                            <span>-{ship.toLocaleString()}₫</span>
+                          </div>
+                          <div className="flex justify-between border-t border-white/15 pt-1.5 text-xs">
+                            <span className="font-extrabold text-stone-200">Lợi nhuận thực thu:</span>
+                            <span className={`font-black ${netProfitVnd >= 0 ? "text-green-400" : "text-red-400"}`}>
+                              {Math.round(netProfitVnd).toLocaleString()}₫
+                            </span>
+                          </div>
+                          <div className="text-[8px] text-stone-400 leading-normal mt-1 font-semibold">
+                            {netProfitVnd >= 0 
+                              ? `✓ Lợi nhuận gộp quốc tế cao hơn trong nước khi chưa tính ship: +${Math.round(totalRevenueVnd - customPrice).toLocaleString()}₫ (+${customPrice > 0 ? ((totalRevenueVnd / customPrice - 1) * 100).toFixed(1) : 0}%)`
+                              : `⚠️ Phí ship nước ngoài cao hơn doanh số thực nhận sau chuyển đổi.`}
+                          </div>
+                        </div>
+                      );
+                    })()}
+                  </div>
+
+                  {/* Cột 2: Sản phẩm giá trung bình */}
+                  <div className="space-y-2 border-r border-white/10 pr-0 md:pr-6 last:border-0 last:pr-0 pl-0 md:pl-4">
                     <div className="flex justify-between font-extrabold text-xs pb-1 border-b border-white/10 text-stone-200">
                       <span>Mẫu áo thun thường (350.000₫)</span>
                       <span className="text-red-500 font-extrabold">Giá mẫu</span>
@@ -1049,7 +1130,7 @@ export function AdminSettingsPage() {
                           </div>
                           <div className="flex justify-between border-t border-white/10 pt-1">
                             <span>Doanh thu quy đổi thực nhận:</span>
-                            <span className="font-bold text-white">{Math.round(totalRevenueVnd).toLocaleString()}₫</span>
+                            <span>{Math.round(totalRevenueVnd).toLocaleString()}₫</span>
                           </div>
                           <div className="flex justify-between text-stone-400">
                             <span>Trừ phí ship nước ngoài dự phòng:</span>
@@ -1071,8 +1152,8 @@ export function AdminSettingsPage() {
                     })()}
                   </div>
 
-                  {/* Cột phải: Sản phẩm cao cấp 1M */}
-                  <div className="space-y-2 pl-0 md:pl-6 border-t md:border-t-0 pt-4 md:pt-0">
+                  {/* Cột 3: Sản phẩm cao cấp 1M */}
+                  <div className="space-y-2 border-r border-white/10 pr-0 md:pr-6 last:border-0 last:pr-0 pl-0 md:pl-4">
                     <div className="flex justify-between font-extrabold text-xs pb-1 border-b border-white/10 text-stone-200">
                       <span>Mẫu áo Hoodie cao cấp (1.000.000₫)</span>
                       <span className="text-red-500 font-extrabold">Giá mẫu</span>
@@ -1121,7 +1202,7 @@ export function AdminSettingsPage() {
                           </div>
                           <div className="flex justify-between border-t border-white/10 pt-1">
                             <span>Doanh thu quy đổi thực nhận:</span>
-                            <span className="font-bold text-white">{Math.round(totalRevenueVnd).toLocaleString()}₫</span>
+                            <span>{Math.round(totalRevenueVnd).toLocaleString()}₫</span>
                           </div>
                           <div className="flex justify-between text-stone-400">
                             <span>Trừ phí ship nước ngoài dự phòng:</span>
