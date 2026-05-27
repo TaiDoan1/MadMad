@@ -116,8 +116,14 @@ export function ProductProvider({ children }: { children: ReactNode }) {
       });
       if (response.ok) {
         const savedProduct = await response.json();
+        const mergedProduct: Product = {
+          ...updatedProduct,
+          ...savedProduct,
+          isPreOrder: savedProduct?.isPreOrder ?? updatedProduct.isPreOrder,
+          preOrderDays: savedProduct?.preOrderDays ?? updatedProduct.preOrderDays,
+        };
         setProducts((currentProducts) =>
-          currentProducts.map((product) => (product.id === id ? savedProduct : product))
+          currentProducts.map((product) => (product.id === id ? mergedProduct : product))
         );
         showToast("Cập nhật sản phẩm thành công!", "success");
       } else {
@@ -156,8 +162,14 @@ export function ProductProvider({ children }: { children: ReactNode }) {
           });
           if (response.ok) {
             const savedProduct = await response.json();
+            const mergedProduct: Product = {
+              ...newProduct,
+              ...savedProduct,
+              isPreOrder: savedProduct?.isPreOrder ?? newProduct.isPreOrder,
+              preOrderDays: savedProduct?.preOrderDays ?? newProduct.preOrderDays,
+            };
             setProducts((currentProducts) =>
-              currentProducts.map((p) => (p.id === tempId ? savedProduct : p))
+              currentProducts.map((p) => (p.id === tempId ? mergedProduct : p))
             );
             showToast("Thêm sản phẩm thành công!", "success");
           } else {
