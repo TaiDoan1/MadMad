@@ -103,6 +103,24 @@ export function CartProvider({ children }: { children: ReactNode }) {
     }
   }, [products, cartItems]);
 
+  // Tự động hủy coupon nếu giỏ hàng phát sinh sản phẩm giảm giá và coupon đó cấu hình KHÔNG áp dụng cho sale items
+  useEffect(() => {
+    if (!appliedCouponCode || products.length === 0) return;
+    const coupons = readStoredCoupons();
+    const activeCoupon = coupons.find((c) => c.code === appliedCouponCode);
+    if (!activeCoupon) return;
+
+    if (activeCoupon.applyToSaleItems === false) {
+      const hasSaleItems = activeCartItems.some((item) => {
+        const prod = products.find((p) => String(p.id) === String(item.productId));
+        return prod && (prod.discountPercent ?? 0) > 0;
+      });
+      if (hasSaleItems) {
+        persistCouponCode(null);
+      }
+    }
+  }, [appliedCouponCode, activeCartItems, products]);
+
 
 
   const value = useMemo<CartContextValue>(
@@ -118,6 +136,17 @@ export function CartProvider({ children }: { children: ReactNode }) {
         const subtotal = activeCartItems.reduce((sum, item) => sum + item.priceAtAdd * item.quantity, 0);
         const coupon = availableCoupons.find((item) => item.code === appliedCouponCode);
         if (!coupon) return 0;
+        
+        // Kiểm tra sale items trong giỏ hàng
+        const hasSaleItemsInCart = activeCartItems.some((item) => {
+          const prod = products.find((p) => String(p.id) === String(item.productId));
+          return prod && (prod.discountPercent ?? 0) > 0;
+        });
+
+        if (coupon.applyToSaleItems === false && hasSaleItemsInCart) {
+          return 0; // Hủy chiết khấu
+        }
+
         return Math.min(coupon.discountAmount, subtotal);
       })(),
       addToCart: ({ productId, size, color, quantity, priceAtAdd }) => {
@@ -164,6 +193,19 @@ export function CartProvider({ children }: { children: ReactNode }) {
         
         if (coupon.usageLimit !== undefined && (coupon.usageCount ?? 0) >= coupon.usageLimit) {
           return { success: false, message: "Rất tiếc, mã giảm giá này đã hết lượt sử dụng." };
+        }
+
+        // Kiểm tra xem giỏ hàng có chứa sản phẩm giảm giá không
+        const hasSaleItemsInCart = activeCartItems.some((item) => {
+          const prod = products.find((p) => String(p.id) === String(item.productId));
+          return prod && (prod.discountPercent ?? 0) > 0;
+        });
+
+        if (coupon.applyToSaleItems === false && hasSaleItemsInCart) {
+          return {
+            success: false,
+            message: `Mã ${coupon.code} không thể áp dụng cho đơn hàng có chứa sản phẩm đang giảm giá.`,
+          };
         }
         
         persistCouponCode(coupon.code);

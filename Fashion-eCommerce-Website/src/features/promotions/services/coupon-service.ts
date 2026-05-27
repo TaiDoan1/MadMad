@@ -5,12 +5,12 @@ import { safeLocalStorage } from "@/utils/safe-storage";
 export const COUPONS_STORAGE_KEY = "fashion-ecommerce.coupons";
 
 export function readStoredCoupons(): Coupon[] {
-  if (typeof window === "undefined") return AVAILABLE_COUPONS;
+  if (typeof window === "undefined") return [];
   const raw = safeLocalStorage.getItem(COUPONS_STORAGE_KEY);
-  if (!raw) return AVAILABLE_COUPONS;
+  if (!raw) return [];
   try {
     const parsed = JSON.parse(raw) as Coupon[];
-    if (!Array.isArray(parsed) || parsed.length === 0) return AVAILABLE_COUPONS;
+    if (!Array.isArray(parsed) || parsed.length === 0) return [];
     const normalized = parsed
       .map((coupon) => ({
         ...coupon,
@@ -23,11 +23,12 @@ export function readStoredCoupons(): Coupon[] {
               : (coupon as unknown as { value?: number }).value,
           ),
         ),
+        applyToSaleItems: coupon.applyToSaleItems ?? true, // Default to true
       }))
       .filter((coupon) => coupon.code && coupon.discountAmount > 0);
-    return normalized.length > 0 ? normalized : AVAILABLE_COUPONS;
+    return normalized;
   } catch {
-    return AVAILABLE_COUPONS;
+    return [];
   }
 }
 

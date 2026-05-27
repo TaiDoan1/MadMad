@@ -7,6 +7,7 @@ import { useCart } from "@/features/cart/context/cart-context";
 import { useProducts } from "@/features/products/context/product-context";
 import { useLanguage } from "@/features/settings/context/language-context";
 import { useToast } from "@/components/common/toast";
+import { useStorefrontSettings } from "@/features/settings/context/storefront-settings-context";
 
 export function CartPage() {
   const { products } = useProducts();
@@ -24,6 +25,7 @@ export function CartPage() {
     clearCoupon,
   } = useCart();
 
+  const { settings } = useStorefrontSettings();
   const resolvedItems = cartItems
     .map((item) => ({
       item,
@@ -34,14 +36,14 @@ export function CartPage() {
         Boolean(e.product),
     );
 
+  const freeThreshold = settings.shippingFreeThreshold ?? 500000;
+  const feeStandard = settings.shippingFeeStandard ?? 30000;
   const shippingBase = subtotal - discountAmount;
-  const shipping = shippingBase > 500000 ? 0 : 30000;
+  const shipping = shippingBase >= freeThreshold ? 0 : feeStandard;
   const total = Math.max(0, subtotal - discountAmount) + shipping;
   const hasDiscountedProducts = resolvedItems.some(({ product }) => (product.discountPercent ?? 0) > 0);
 
-  useEffect(() => {
-    if (hasDiscountedProducts && appliedCoupon) clearCoupon();
-  }, [appliedCoupon, clearCoupon, hasDiscountedProducts]);
+  // Coupon no longer auto-cleared when discounted products exist in the cart
 
   return (
     <div className="min-h-screen bg-[#f5f5f5] py-12">
@@ -154,11 +156,11 @@ export function CartPage() {
                 </p>
 
                 {/* Shipping notice */}
-                {shippingBase < 500000 && shipping > 0 && (
+                {shippingBase < freeThreshold && shipping > 0 && (
                   <p className="mb-4 text-xs text-black/60">
                     {t("Thêm", "Add")}{" "}
                     <span className="font-bold">
-                      {formatPrice(500000 - shippingBase)}
+                      {formatPrice(freeThreshold - shippingBase)}
                     </span>{" "}
                     {t("để được miễn phí vận chuyển.", "more for free shipping.")}
                   </p>

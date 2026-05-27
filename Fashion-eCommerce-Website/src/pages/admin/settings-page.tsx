@@ -87,6 +87,7 @@ export function AdminSettingsPage() {
   const [newDiscountAmount, setNewDiscountAmount] = useState("");
   const [newCouponExclusive, setNewCouponExclusive] = useState(false);
   const [newUsageLimit, setNewUsageLimit] = useState("");
+  const [newApplyToSaleItems, setNewApplyToSaleItems] = useState(true);
   const [couponError, setCouponError] = useState("");
 
   useEffect(() => {
@@ -296,7 +297,8 @@ export function AdminSettingsPage() {
       discountAmount: amount, 
       isExclusive: newCouponExclusive,
       usageLimit: limit > 0 ? limit : undefined,
-      usageCount: 0
+      usageCount: 0,
+      applyToSaleItems: newApplyToSaleItems
     };
     const updatedCoupons = [...coupons, newCoupon];
     
@@ -308,6 +310,7 @@ export function AdminSettingsPage() {
     setNewDiscountAmount("");
     setNewUsageLimit("");
     setNewCouponExclusive(false);
+    setNewApplyToSaleItems(true);
     showToast(`Đã kích hoạt mã giảm giá ${code} thành công!`, "success");
   };
 
@@ -645,6 +648,21 @@ export function AdminSettingsPage() {
                 </p>
               </div>
 
+              <div className="pt-2 border-t border-black/5">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={newApplyToSaleItems}
+                    onChange={(e) => setNewApplyToSaleItems(e.target.checked)}
+                    className="accent-black h-4 w-4"
+                  />
+                  <span className="text-[10px] font-extrabold tracking-wider uppercase text-black">ÁP DỤNG CHO SẢN PHẨM GIẢM GIÁ (SALE)</span>
+                </label>
+                <p className="text-[9px] text-black/40 mt-1 pl-6 normal-case">
+                  Nếu tắt, mã này sẽ hoàn toàn bị chặn và không hoạt động nếu đơn hàng của khách chứa sản phẩm đang sale.
+                </p>
+              </div>
+
               <button
                 type="submit"
                 className="w-full bg-black text-white hover:bg-red-700 h-11 text-xs font-bold tracking-widest uppercase transition-all rounded-xl flex items-center justify-center gap-1.5 shadow-md shadow-black/10"
@@ -701,6 +719,13 @@ export function AdminSettingsPage() {
                               Đã dùng: {coupon.usageCount || 0} / {coupon.usageLimit}
                             </span>
                           )}
+                          <span className={`inline-block px-1.5 py-0.5 rounded text-[8px] font-bold uppercase tracking-wider ${
+                            coupon.applyToSaleItems !== false 
+                              ? "bg-green-100 text-green-800" 
+                              : "bg-red-100 text-red-800"
+                          }`}>
+                            {coupon.applyToSaleItems !== false ? "Áp dụng cả hàng Sale" : "Chặn hàng Sale"}
+                          </span>
                         </div>
                       </div>
                     </div>

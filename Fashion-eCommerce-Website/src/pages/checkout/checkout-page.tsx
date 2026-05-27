@@ -217,9 +217,7 @@ export function CheckoutPage() {
     .filter((e): e is { item: (typeof cartItems)[number]; product: NonNullable<(typeof products)[number]> } => Boolean(e.product));
   const hasDiscountedProducts = resolvedItems.some(({ product }) => (product.discountPercent ?? 0) > 0);
 
-  useEffect(() => {
-    if (hasDiscountedProducts && appliedCoupon) clearCoupon();
-  }, [appliedCoupon, clearCoupon, hasDiscountedProducts]);
+  // Coupon no longer auto-cleared when discounted products exist in the cart
 
   const memberConfig = currentMember ? tierConfigs.find((c) => c.tier === currentMember.tier) : null;
   const memberDiscountPercent = memberConfig ? memberConfig.discountPercent : 0;
