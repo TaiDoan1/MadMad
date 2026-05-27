@@ -128,6 +128,7 @@ router.post("/", async (req, res, next) => {
       isPaid,
       notes,
       couponCode,
+      containsPreOrder,
       items
     } = req.body;
 
@@ -137,6 +138,12 @@ router.post("/", async (req, res, next) => {
 
     // Tự sinh mã đơn hàng nếu chưa có
     const finalOrderNumber = orderNumber || `DH${Date.now()}`;
+
+    const normalizedItems = Array.isArray(items) ? items : [];
+    const computedContainsPreOrder =
+      typeof containsPreOrder === "boolean"
+        ? containsPreOrder
+        : normalizedItems.some((item: any) => !!item?.isPreOrder);
 
     const newOrder = await prisma.order.create({
       data: {
@@ -156,13 +163,16 @@ router.post("/", async (req, res, next) => {
         shippingMethod: shippingMethod || "standard",
         status: status || "pending",
         isPaid: !!isPaid,
+        containsPreOrder: computedContainsPreOrder,
         notes: notes || "",
         couponCode: couponCode || "",
         items: {
-          create: items.map((item: any) => ({
-            productId: String(item.product.id),
-            productName: item.product.name,
-            productImage: item.product.image,
+          create: normalizedItems.map((item: any) => ({
+            productId: String(item.productId || item.product?.id || ""),
+            productName: String(item.productName || item.product?.name || ""),
+            productImage: String(item.productImage || item.product?.image || ""),
+            isPreOrder: !!item.isPreOrder,
+            preOrderDays: item.preOrderDays !== undefined && item.preOrderDays !== null ? Number(item.preOrderDays) : null,
             quantity: Number(item.quantity),
             size: item.size,
             color: item.color,

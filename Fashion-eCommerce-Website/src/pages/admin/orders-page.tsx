@@ -222,6 +222,17 @@ export function AdminOrdersPage() {
     return { containsPreOrder: true, maxPreOrderDays: maxPreOrderDays || 7 };
   };
 
+  const getProductImageForColor = (product: Product, color: string) => {
+    const cleanColor = color.trim();
+    const colorImages = product.colorImages ?? {};
+    return (
+      colorImages[`${cleanColor}-front`] ||
+      colorImages[cleanColor] ||
+      product.images?.[0] ||
+      product.image
+    );
+  };
+
   // TÌM KIẾM & BỘ LỌC DOANH THU & KÊNH & PHÂN LOẠI KHÁCH
   const filteredOrders = orders.filter((order) => {
     const matchesSearch =
@@ -397,12 +408,13 @@ export function AdminOrdersPage() {
        ? selectedProductToAdd.colors
        : Array.from(new Set(Object.keys(selectedProductToAdd.colorImages || {}).map(c => c.replace(/-front$|-back$/, ""))));
     const finalColor = selectedColorToAdd || (colors.length > 0 ? colors[0] : "Default");
+    const finalImage = getProductImageForColor(selectedProductToAdd, finalColor);
 
     const newItem: OrderItem = {
       product: selectedProductToAdd,
       productId: selectedProductToAdd.id,
       productName: selectedProductToAdd.name,
-      productImage: selectedProductToAdd.image,
+      productImage: finalImage,
       quantity: quantityToAdd,
       size: selectedSizeToAdd,
       color: finalColor,
@@ -421,6 +433,8 @@ export function AdminOrdersPage() {
     if (existingIndex > -1) {
       const updated = [...manualItems];
       updated[existingIndex].quantity += newItem.quantity;
+      // Ensure image matches the chosen color
+      updated[existingIndex].productImage = newItem.productImage;
       setManualItems(updated);
     } else {
       setManualItems([...manualItems, newItem]);

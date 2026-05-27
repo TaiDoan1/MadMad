@@ -53,6 +53,7 @@ model Order {
   shippingMethod String
   status         String      @default("pending") // pending, processing, shipping, completed, cancelled
   isPaid         Boolean     @default(false)
+  containsPreOrder Boolean   @default(false)
   notes          String?
   couponCode     String?
   createdAt      DateTime    @default(now())
@@ -68,6 +69,8 @@ model OrderItem {
   productId    String
   productName  String
   productImage String
+  isPreOrder   Boolean  @default(false)
+  preOrderDays Int?
   quantity     Int
   size         String
   color        String
