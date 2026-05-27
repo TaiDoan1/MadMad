@@ -23,6 +23,8 @@ export function ProductCard({ product, variant = "shop" }: ProductCardProps) {
 
   const primaryTag = (product.tags ?? [])[0];
   const isOnSale = Boolean(product.originalPrice && product.originalPrice > product.price);
+  const isPreOrder = Boolean(product.isPreOrder || (product.tags ?? []).some((tag) => tag.toLowerCase().includes("pre-order")));
+  const canBuy = isPreOrder || (product.inStock && (product.stock === undefined || product.stock > 0));
 
   const handleQuickAdd = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -70,14 +72,18 @@ export function ProductCard({ product, variant = "shop" }: ProductCardProps) {
         )}
 
         {/* Tag badge — top-left */}
-        {primaryTag && !isOnSale && (
+        {isPreOrder ? (
+          <span className="absolute left-3 top-3 z-10 bg-black px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wide text-white">
+            Pre-order
+          </span>
+        ) : primaryTag && !isOnSale ? (
           <span className="absolute left-3 top-3 z-10 bg-black px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wide text-white">
             {primaryTag}
           </span>
-        )}
+        ) : null}
 
         {/* Quick-add button — appears on hover */}
-        {(!product.inStock || product.stock === 0) ? (
+        {!canBuy ? (
           <span className="absolute bottom-3 right-3 z-10 bg-stone-100 border border-stone-300 px-3 py-2 text-[11px] font-bold uppercase tracking-wide text-stone-400 select-none">
             Sold out
           </span>
@@ -119,7 +125,13 @@ export function ProductCard({ product, variant = "shop" }: ProductCardProps) {
           )}
         </div>
 
-        {(!product.inStock || product.stock === 0) && (
+        {isPreOrder && (
+          <span className="mt-1 block text-[10px] font-black uppercase tracking-wider text-amber-700">
+            Có hàng sau {product.preOrderDays ?? 7} ngày
+          </span>
+        )}
+
+        {!canBuy && (
           <span className="text-[11px] font-black text-black uppercase tracking-wider mt-1 block">
             Sold out
           </span>

@@ -279,6 +279,8 @@ export function ProductDetailPage() {
   };
 
   const availableStock = getAvailableStock();
+  const isPreOrder = Boolean(product?.isPreOrder || (product?.tags ?? []).some((tag) => tag.toLowerCase().includes("pre-order")));
+  const canPlaceOrder = isPreOrder || availableStock > 0;
 
   useEffect(() => {
     if (availableStock > 0 && quantity > availableStock) {
@@ -495,7 +497,7 @@ export function ProductDetailPage() {
                 const totalStock = product.variantStock && Object.keys(product.variantStock).length > 0
                   ? Object.values(product.variantStock).reduce((sum, v) => sum + v, 0)
                   : (product.stock !== undefined ? product.stock : 999);
-                if (totalStock <= 0 || !product.inStock) {
+                if ((totalStock <= 0 || !product.inStock) && !isPreOrder) {
                   return (
                     <span className="inline-block text-xs font-bold uppercase tracking-widest text-black dark:text-white mt-3">
                       Sold out
@@ -603,7 +605,7 @@ export function ProductDetailPage() {
                   </button>
                   <div className="w-10 text-center text-xs font-bold tracking-wide text-foreground">{quantity}</div>
                   <button 
-                    disabled={quantity >= availableStock}
+                    disabled={!isPreOrder && quantity >= availableStock}
                     onClick={() => setQuantity(quantity + 1)} 
                     className="w-8 h-8 rounded-full flex items-center justify-center bg-white dark:bg-neutral-800 shadow-sm border border-black/5 dark:border-white/5 text-sm stroke-2 font-semibold transition-colors hover:bg-neutral-50 cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed text-foreground"
                   >
@@ -616,7 +618,7 @@ export function ProductDetailPage() {
               {(() => {
                 if (!product) return null;
                 if (selectedColor && selectedSize) {
-                  if (availableStock <= 0) {
+                  if (availableStock <= 0 && !isPreOrder) {
                     return (
                       <div className="text-xs font-bold uppercase tracking-widest text-black dark:text-white">
                         {t("Hết hàng", "Sold out")}
@@ -632,10 +634,16 @@ export function ProductDetailPage() {
                 return null;
               })()}
 
+                {isPreOrder && (
+                  <div className="text-xs font-bold uppercase tracking-widest text-amber-700">
+                    {t(`Pre-order · Có hàng sau ${product.preOrderDays ?? 7} ngày`, `Pre-order · Available in ${product.preOrderDays ?? 7} days`)}
+                  </div>
+                )}
+
               {/* Main Actions Stack */}
               <div className="w-full pt-4">
                 <button
-                  disabled={availableStock <= 0}
+                  disabled={!canPlaceOrder}
                   onClick={() => {
                     if (!selectedSize || !selectedColor) {
                       showToast(t("Vui lòng chọn size và màu sắc!", "Please select size and color!"), "warning");
@@ -657,7 +665,7 @@ export function ProductDetailPage() {
                   className="w-full py-4 rounded-[14px] bg-black dark:bg-white text-white dark:text-black text-xs font-bold uppercase tracking-widest flex items-center justify-center gap-2.5 shadow-md transition-all duration-300 hover:bg-neutral-900 dark:hover:bg-neutral-100 active:scale-[0.98] cursor-pointer disabled:bg-neutral-200 dark:disabled:bg-neutral-800 disabled:text-neutral-400 dark:disabled:text-neutral-600 disabled:cursor-not-allowed"
                 >
                   <ShoppingCart className="h-4 w-4 shrink-0" />
-                  <span>{availableStock <= 0 ? t("HẾT HÀNG", "OUT OF STOCK") : t("THÊM VÀO GIỎ HÀNG", "ADD TO CART")}</span>
+                  <span>{canPlaceOrder ? t("THÊM VÀO GIỎ HÀNG", "ADD TO CART") : t("HẾT HÀNG", "OUT OF STOCK")}</span>
                 </button>
               </div>
 

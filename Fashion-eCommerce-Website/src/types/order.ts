@@ -5,6 +5,8 @@ export interface OrderItem {
   productId?: string;
   productName?: string;
   productImage?: string;
+  isPreOrder?: boolean;
+  preOrderDays?: number;
   quantity: number;
   size: string;
   color: string;
@@ -35,4 +37,5 @@ export interface Order {
   createdAt: string;
   notes?: string;
   isPaid?: boolean;
+  containsPreOrder?: boolean;
 }

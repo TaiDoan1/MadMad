@@ -271,6 +271,11 @@ export function CheckoutPage() {
       const freshProducts = await response.json();
       
       for (const { item, product } of resolvedItems) {
+        const itemIsPreOrder = Boolean(product.isPreOrder || (product.tags ?? []).some((tag) => tag.toLowerCase().includes("pre-order")));
+        if (itemIsPreOrder) {
+          continue;
+        }
+
         const freshProd = freshProducts.find((p: any) => String(p.id) === String(product.id));
         if (!freshProd) {
           showToast(t(`Sản phẩm "${product.name}" không còn tồn tại trên hệ thống!`, `Product "${product.name}" no longer exists!`), "error");
@@ -339,9 +344,18 @@ export function CheckoutPage() {
       console.error("Error saving last delivery info", e);
     }
 
-    const orderItems: OrderItem[] = resolvedItems.map(({ item, product }) => ({
-      product, quantity: item.quantity, size: item.size, color: item.color, price: item.priceAtAdd,
-    }));
+    const orderItems: OrderItem[] = resolvedItems.map(({ item, product }) => {
+      const itemIsPreOrder = Boolean(product.isPreOrder || (product.tags ?? []).some((tag) => tag.toLowerCase().includes("pre-order")));
+      return {
+        product,
+        quantity: item.quantity,
+        size: item.size,
+        color: item.color,
+        price: item.priceAtAdd,
+        isPreOrder: itemIsPreOrder,
+        preOrderDays: itemIsPreOrder ? product.preOrderDays ?? 7 : undefined,
+      };
+    });
     const now = new Date();
     const paymentMethodText = formData.paymentMethod;
 
@@ -353,6 +367,7 @@ export function CheckoutPage() {
         ? `${appliedCoupon.code} + VIP ${currentMember?.tier || ""}`
         : (currentMember ? `VIP ${currentMember.tier}` : undefined),
       shipping, total, paymentMethod: paymentMethodText, shippingMethod: formData.shippingMethod, status: "pending",
+      containsPreOrder: orderItems.some((item) => item.isPreOrder),
       createdAt: now.toISOString(), notes: formData.notes,
     };
 
@@ -375,6 +390,9 @@ export function CheckoutPage() {
 
         // Tự động trừ tồn kho (Checkout Auto-Deduction)
         resolvedItems.forEach(({ item, product }) => {
+          const itemIsPreOrder = Boolean(product.isPreOrder || (product.tags ?? []).some((tag) => tag.toLowerCase().includes("pre-order")));
+          if (itemIsPreOrder) return;
+
           const qty = item.quantity;
           const key = `${item.color}-${item.size}`;
           const nextProduct = { ...product };

@@ -25,7 +25,7 @@ const DEFAULT_PRODUCT_OPTIONS: ProductOptions = {
   categories: ["Váy", "Áo Thun", "Áo Khoác", "Áo Sơ Mi"],
   sizes: ["XS", "S", "M", "L", "XL", "XXL"],
   colors: ["Trắng", "Đen", "Xám", "Đỏ", "Navy", "Be"],
-  tags: ["new", "hot", "best-seller"],
+  tags: ["new", "hot", "best-seller", "pre-order"],
 };
 
 export function AdminProductsPage() {
@@ -87,6 +87,8 @@ export function AdminProductsPage() {
     description: "",
     sizes: "",
     inStock: true,
+    isPreOrder: false,
+    preOrderDays: 7,
     rating: 5,
     reviews: 0,
   });
@@ -98,7 +100,23 @@ export function AdminProductsPage() {
   const [formTab, setFormTab] = useState<"info" | "attributes" | "media" | "inventory">("info");
 
   const resetForm = () => {
-    setFormData({ name: "", price: 0, originalPrice: 0, discountPercent: 0, showDiscountPercent: false, category: productOptions.categories[0] ?? "", image: "", sizeChartImage: "", description: "", sizes: "", inStock: true, rating: 5, reviews: 0 });
+    setFormData({
+      name: "",
+      price: 0,
+      originalPrice: 0,
+      discountPercent: 0,
+      showDiscountPercent: false,
+      category: productOptions.categories[0] ?? "",
+      image: "",
+      sizeChartImage: "",
+      description: "",
+      sizes: "",
+      inStock: true,
+      isPreOrder: false,
+      preOrderDays: 7,
+      rating: 5,
+      reviews: 0,
+    });
     setSelectedSizes([]);
     setSelectedColors([]);
     setSelectedTags([]);
@@ -207,6 +225,8 @@ export function AdminProductsPage() {
       description: product.description,
       sizes: product.sizes.join(", "),
       inStock: product.inStock,
+      isPreOrder: Boolean(product.isPreOrder),
+      preOrderDays: product.preOrderDays ?? 7,
       rating: product.rating,
       reviews: product.reviews,
     });
@@ -413,6 +433,11 @@ export function AdminProductsPage() {
                   <p className="font-semibold leading-snug">{product.name}</p>
                   <p className="mt-0.5 text-xs text-muted-foreground">ID: #{formatProductId(product.id)}</p>
                   <p className="mt-1 text-xs text-muted-foreground">{product.category}</p>
+                  {product.isPreOrder && (
+                    <p className="mt-1 text-[10px] font-black uppercase tracking-wider text-amber-700">
+                      Pre-order · Có hàng sau {product.preOrderDays ?? 7} ngày
+                    </p>
+                  )}
                   <div className="mt-2 flex flex-wrap items-center gap-2">
                     <div className="text-sm font-semibold">
                       {product.price.toLocaleString("vi-VN")}₫
@@ -483,6 +508,11 @@ export function AdminProductsPage() {
                       <p className="truncate text-xs text-muted-foreground" title={String(product.id)}>
                         ID: #{formatProductId(product.id)}
                       </p>
+                      {product.isPreOrder && (
+                        <p className="mt-1 text-[10px] font-black uppercase tracking-wider text-amber-700">
+                          Pre-order · {product.preOrderDays ?? 7} ngày
+                        </p>
+                      )}
                     </div>
                   </div>
                 </td>
@@ -731,6 +761,52 @@ export function AdminProductsPage() {
                     <label htmlFor="showDiscountPercent" className="text-[10px] font-extrabold tracking-widest uppercase text-black/60 cursor-pointer select-none">
                       Hiện % giảm giá ngoài cửa hàng (Nếu không tick sẽ chỉ hiện "Sale")
                     </label>
+                  </div>
+
+                  <div className="rounded-2xl border border-black/10 bg-stone-50/40 p-4 space-y-3">
+                    <label className="flex items-center gap-2.5">
+                      <input
+                        type="checkbox"
+                        checked={formData.isPreOrder}
+                        onChange={(event) =>
+                          setFormData((current) => ({
+                            ...current,
+                            isPreOrder: event.target.checked,
+                            preOrderDays: current.preOrderDays > 0 ? current.preOrderDays : 7,
+                          }))
+                        }
+                        className="h-4 w-4 rounded border-black/10 text-black focus:ring-black cursor-pointer"
+                      />
+                      <span className="text-[10px] font-extrabold tracking-widest uppercase text-black/70">
+                        Bật chế độ Pre-order cho sản phẩm này
+                      </span>
+                    </label>
+
+                    {formData.isPreOrder && (
+                      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                        <div className="space-y-1.5">
+                          <label className="block text-[9px] font-extrabold tracking-widest uppercase text-black/50">
+                            Dự kiến có hàng sau (ngày)
+                          </label>
+                          <input
+                            type="number"
+                            min={1}
+                            value={formData.preOrderDays}
+                            onChange={(event) =>
+                              setFormData((current) => ({
+                                ...current,
+                                preOrderDays: Math.max(1, Number(event.target.value) || 1),
+                              }))
+                            }
+                            className="w-full rounded-xl border border-black/10 bg-white px-4 py-3 text-xs focus:border-black/60 focus:outline-none transition-all font-mono font-bold"
+                          />
+                        </div>
+                        <div className="rounded-xl border border-black/10 bg-white px-3 py-2.5 text-[10px] text-black/60 leading-relaxed">
+                          Ngoài cửa hàng sẽ hiển thị nhãn <span className="font-bold">Pre-order</span> và dòng
+                          <span className="font-bold"> Có hàng sau {formData.preOrderDays} ngày</span>.
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   {calculatedPriceFromPercent !== null && (
@@ -1254,6 +1330,8 @@ export function AdminProductsPage() {
                       inStock: autoInStock,
                       stock: finalStock,
                       variantStock: finalVariantStock,
+                      isPreOrder: formData.isPreOrder,
+                      preOrderDays: formData.isPreOrder ? Math.max(1, formData.preOrderDays || 1) : undefined,
                       rating: formData.rating,
                       reviews: formData.reviews,
                     };

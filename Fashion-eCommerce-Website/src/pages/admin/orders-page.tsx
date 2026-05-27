@@ -203,6 +203,25 @@ export function AdminOrdersPage() {
     };
   };
 
+  const isPreOrderItem = (item: OrderItem) =>
+    Boolean(
+      item.isPreOrder ||
+      item.product?.isPreOrder ||
+      (item.product?.tags ?? []).some((tag) => tag.toLowerCase().includes("pre-order")),
+    );
+
+  const getOrderPreOrderInfo = (order: Order) => {
+    const preOrderItems = order.items.filter(isPreOrderItem);
+    if (preOrderItems.length === 0 && !order.containsPreOrder) {
+      return { containsPreOrder: false, maxPreOrderDays: 0 };
+    }
+    const maxPreOrderDays = preOrderItems.reduce(
+      (max, item) => Math.max(max, item.preOrderDays ?? item.product?.preOrderDays ?? 7),
+      0,
+    );
+    return { containsPreOrder: true, maxPreOrderDays: maxPreOrderDays || 7 };
+  };
+
   // TÌM KIẾM & BỘ LỌC DOANH THU & KÊNH & PHÂN LOẠI KHÁCH
   const filteredOrders = orders.filter((order) => {
     const matchesSearch =
@@ -388,6 +407,8 @@ export function AdminOrdersPage() {
       size: selectedSizeToAdd,
       color: finalColor,
       price: selectedProductToAdd.price,
+      isPreOrder: Boolean(selectedProductToAdd.isPreOrder || (selectedProductToAdd.tags ?? []).some((tag) => tag.toLowerCase().includes("pre-order"))),
+      preOrderDays: selectedProductToAdd.isPreOrder ? selectedProductToAdd.preOrderDays ?? 7 : undefined,
     };
 
     const existingIndex = manualItems.findIndex(
@@ -451,6 +472,7 @@ export function AdminOrdersPage() {
 
     if (newStatus === "cancelled" && order.status !== "cancelled") {
       order.items.forEach((item) => {
+        if (isPreOrderItem(item)) return;
         const product = products.find((p) => String(p.id) === String(item.productId));
         if (product) {
           const nextProduct = { ...product };
@@ -476,6 +498,7 @@ export function AdminOrdersPage() {
 
     if (newStatus !== "cancelled" && order.status === "cancelled") {
       order.items.forEach((item) => {
+        if (isPreOrderItem(item)) return;
         const product = products.find((p) => String(p.id) === String(item.productId));
         if (product) {
           const nextProduct = { ...product };
@@ -546,6 +569,7 @@ export function AdminOrdersPage() {
       paymentMethod: manualPaymentMethod,
       shippingMethod: manualSource === "pos" ? undefined : manualShippingMethod,
       status: manualSource === "pos" ? "completed" : "pending",
+      containsPreOrder: manualItems.some(isPreOrderItem),
       createdAt: new Date().toISOString(),
       notes: manualNotes.trim() || `Đơn hàng tạo thủ công qua kênh ${manualSource.toUpperCase()}${checkedMember ? ` (Thành viên VIP: ${checkedMember.memberCardId})` : ""}`,
     };
@@ -554,6 +578,7 @@ export function AdminOrdersPage() {
 
     // Tự động trừ tồn kho khi tạo đơn hàng thủ công (đồng bộ bãi kho)
     manualItems.forEach((item) => {
+      if (isPreOrderItem(item)) return;
       const product = products.find((p) => String(p.id) === String(item.productId));
       if (product) {
         const nextProduct = { ...product };
@@ -870,6 +895,7 @@ export function AdminOrdersPage() {
                   paginatedOrders.map((order) => {
                     const source = getOrderSourceDetails(order.orderNumber);
                     const SourceIcon = source.icon;
+                    const preOrderInfo = getOrderPreOrderInfo(order);
                     
                     // Tính toán Phân loại khách hàng realtime
                     const customerType = getCustomerCategory(order.customerPhone, order.customerEmail);
@@ -910,6 +936,11 @@ export function AdminOrdersPage() {
                                   </span>
                                 )}
                               </div>
+                            )}
+                            {preOrderInfo.containsPreOrder && (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[8px] font-black bg-amber-100 text-amber-800 border border-amber-200 uppercase tracking-widest w-max">
+                                PRE-ORDER · {preOrderInfo.maxPreOrderDays} NGÀY
+                              </span>
                             )}
                           </div>
                         </td>
@@ -1878,6 +1909,11 @@ export function AdminOrdersPage() {
                         <p className="text-[10px] text-black/45 mt-1 uppercase">
                           Size: {item.size} | Màu: {item.color} | Số lượng: {item.quantity}
                         </p>
+                        {isPreOrderItem(item) && (
+                          <p className="mt-1 text-[10px] font-black uppercase tracking-wider text-amber-700">
+                            Pre-order · Có hàng sau {item.preOrderDays ?? item.product?.preOrderDays ?? 7} ngày
+                          </p>
+                        )}
                       </div>
                       <div className="text-right font-mono">
                         <p className="font-extrabold text-black text-xs">
