@@ -43,6 +43,13 @@ router.get("/", async (req, res, next) => {
       });
     }
 
+    console.log("⚙️ [GET /settings] Loaded setting status from database:");
+    console.log(`- enableCod: ${setting.enableCod}`);
+    console.log(`- enableBank: ${setting.enableBank}`);
+    console.log(`- enableMomo: ${setting.enableMomo}`);
+    console.log(`- enablePaypal: ${setting.enablePaypal}`);
+    console.log(`- bankAccount: ${setting.bankAccount}`);
+
     // Parse mảng ảnh Instagram dạng JSON String trước khi trả về
     res.json({
       ...setting,
@@ -116,6 +123,13 @@ router.put("/", async (req, res, next) => {
       printInvoiceBankAccount,
       printInvoiceAccountName
     } = req.body;
+
+    console.log("📥 [PUT /settings] Received request to update settings:");
+    console.log("- enableCod:", enableCod);
+    console.log("- enableBank:", enableBank);
+    console.log("- enableMomo:", enableMomo);
+    console.log("- enablePaypal:", enablePaypal);
+    console.log("- bankAccount:", bankAccount);
 
     const instagramImagesStr = Array.isArray(instagramImages) 
       ? JSON.stringify(instagramImages) 

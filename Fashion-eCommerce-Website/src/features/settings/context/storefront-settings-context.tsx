@@ -266,6 +266,12 @@ export function StorefrontSettingsProvider({ children }: { children: ReactNode }
         const response = await fetch(`${API_URL}/settings`);
         if (response.ok) {
           const cloudSettings = await response.json();
+          console.log("⚙️ [Frontend Context] Synced settings from Cloud:", {
+            enableCod: cloudSettings.enableCod,
+            enableBank: cloudSettings.enableBank,
+            enableMomo: cloudSettings.enableMomo,
+            enablePaypal: cloudSettings.enablePaypal,
+          });
           setSettings((current) => ({
             ...current,
             ...cloudSettings
@@ -282,6 +288,7 @@ export function StorefrontSettingsProvider({ children }: { children: ReactNode }
     () => ({
       settings,
       updateSettings: (payload) => {
+        console.log("📤 [Frontend Context] Updating settings locally & syncing to Cloud:", payload);
         setSettings((currentSettings) => {
           const nextSettings = { ...currentSettings, ...payload };
           safeLocalStorage.setItem(STOREFRONT_SETTINGS_STORAGE_KEY, JSON.stringify(nextSettings));
