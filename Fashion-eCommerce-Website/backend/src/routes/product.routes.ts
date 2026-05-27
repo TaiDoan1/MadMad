@@ -26,6 +26,8 @@ const parseProduct = (p: any) => ({
   originalPrice: p.originalPrice !== null && p.originalPrice !== undefined ? Number(p.originalPrice) : null,
   discountPercent: p.discountPercent !== null && p.discountPercent !== undefined ? Number(p.discountPercent) : null,
   showDiscountPercent: !!p.showDiscountPercent,
+  isPreOrder: !!p.isPreOrder,
+  preOrderDays: p.preOrderDays !== null && p.preOrderDays !== undefined ? Number(p.preOrderDays) : null,
 });
 
 // Helper: Tiền xử lý tất cả các trường ảnh của sản phẩm (Tải lên Cloudinary nếu là Base64)
@@ -153,7 +155,7 @@ router.get("/:id", async (req, res, next) => {
 // 3. POST /api/products - Tạo sản phẩm mới (Admin)
 router.post("/", async (req, res, next) => {
   try {
-    const { name, sku, price, image, category, description, sizes, colors, colorImages, images, isFeatured, stock, variantStock, inStock, originalPrice, discountPercent, showDiscountPercent } = req.body;
+    const { name, sku, price, image, category, description, sizes, colors, colorImages, images, isFeatured, stock, variantStock, inStock, originalPrice, discountPercent, showDiscountPercent, isPreOrder, preOrderDays } = req.body;
 
     if (!name || !sku || !price || !image || !category) {
       return res.status(400).json({ message: "Vui lòng nhập đầy đủ thông tin bắt buộc!" });
@@ -184,7 +186,9 @@ router.post("/", async (req, res, next) => {
         inStock: inStock !== undefined ? !!inStock : true,
         originalPrice: originalPrice !== undefined && originalPrice !== null ? Number(originalPrice) : null,
         discountPercent: discountPercent !== undefined && discountPercent !== null ? Number(discountPercent) : null,
-        showDiscountPercent: showDiscountPercent !== undefined ? !!showDiscountPercent : false
+        showDiscountPercent: showDiscountPercent !== undefined ? !!showDiscountPercent : false,
+        isPreOrder: isPreOrder !== undefined ? !!isPreOrder : false,
+        preOrderDays: isPreOrder ? (preOrderDays !== undefined && preOrderDays !== null ? Number(preOrderDays) : 7) : null,
       }
     });
 
@@ -201,7 +205,7 @@ router.post("/", async (req, res, next) => {
 router.put("/:id", async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { name, sku, price, image, category, description, sizes, colors, colorImages, images, isFeatured, stock, variantStock, inStock, originalPrice, discountPercent, showDiscountPercent } = req.body;
+    const { name, sku, price, image, category, description, sizes, colors, colorImages, images, isFeatured, stock, variantStock, inStock, originalPrice, discountPercent, showDiscountPercent, isPreOrder, preOrderDays } = req.body;
 
     // Chỉ thực hiện xử lý ảnh nếu trường đó được truyền lên
     let finalImage = image;
@@ -249,7 +253,12 @@ router.put("/:id", async (req, res, next) => {
         inStock: inStock !== undefined ? !!inStock : undefined,
         originalPrice: originalPrice !== undefined ? (originalPrice !== null ? Number(originalPrice) : null) : undefined,
         discountPercent: discountPercent !== undefined ? (discountPercent !== null ? Number(discountPercent) : null) : undefined,
-        showDiscountPercent: showDiscountPercent !== undefined ? !!showDiscountPercent : undefined
+        showDiscountPercent: showDiscountPercent !== undefined ? !!showDiscountPercent : undefined,
+        isPreOrder: isPreOrder !== undefined ? !!isPreOrder : undefined,
+        preOrderDays:
+          isPreOrder !== undefined
+            ? (isPreOrder ? (preOrderDays !== undefined && preOrderDays !== null ? Number(preOrderDays) : 7) : null)
+            : (preOrderDays !== undefined ? (preOrderDays !== null ? Number(preOrderDays) : null) : undefined),
       }
     });
 

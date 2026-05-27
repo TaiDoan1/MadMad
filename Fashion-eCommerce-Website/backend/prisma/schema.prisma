@@ -23,6 +23,8 @@ model Product {
   originalPrice       Int?
   discountPercent     Int?
   showDiscountPercent Boolean  @default(false)
+  isPreOrder   Boolean  @default(false)
+  preOrderDays Int?
   isFeatured   Boolean  @default(false)
   orderIndex   Int      @default(0) // Lưu thứ tự sắp xếp sản phẩm kéo thả
   stock        Int?     @default(999)
