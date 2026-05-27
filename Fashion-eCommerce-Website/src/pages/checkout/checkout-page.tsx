@@ -1029,9 +1029,9 @@ export function CheckoutPage() {
                   <span className="text-black/60">{t("Vận chuyển", "Shipping")}</span>
                   <span>{shipping === 0 ? <span className="text-green-700">{t("Miễn phí", "Free")}</span> : `${formatPrice(shipping)}`}</span>
                 </div>
-                {shippingBase < 500000 && shipping > 0 && (
+                {shippingBase < freeThreshold && shipping > 0 && (
                   <p className="text-xs text-black/50">
-                    {t("Thêm", "Add")} {formatPrice(500000 - shippingBase)} {t("để miễn phí vận chuyển", "more for free shipping")}
+                    {t("Thêm", "Add")} {formatPrice(freeThreshold - shippingBase)} {t("để miễn phí vận chuyển", "more for free shipping")}
                   </p>
                 )}
                 {isDiscountCapped && (
