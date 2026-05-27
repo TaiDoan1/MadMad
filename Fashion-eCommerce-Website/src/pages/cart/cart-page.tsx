@@ -26,6 +26,18 @@ export function CartPage() {
   } = useCart();
 
   const { settings } = useStorefrontSettings();
+
+  const getProductImageForColor = (product: (typeof products)[number], color: string) => {
+    const cleanColor = (color || "").trim();
+    const colorImages = product.colorImages ?? {};
+    return (
+      colorImages[`${cleanColor}-front`] ||
+      colorImages[cleanColor] ||
+      product.images?.[0] ||
+      product.image
+    );
+  };
+
   const resolvedItems = cartItems
     .map((item) => ({
       item,
@@ -84,7 +96,7 @@ export function CartPage() {
                     {/* Image */}
                     <Link to={`/product/${product.id}`} className="h-24 w-24 flex-shrink-0 overflow-hidden bg-[#f0f0f0]">
                       <ImageWithFallback
-                        src={product.image}
+                        src={getProductImageForColor(product, item.color)}
                         alt={translate(product.name)}
                         className="h-full w-full object-cover"
                       />

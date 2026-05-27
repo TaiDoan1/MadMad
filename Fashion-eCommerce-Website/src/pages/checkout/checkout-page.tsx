@@ -217,6 +217,17 @@ export function CheckoutPage() {
     .filter((e): e is { item: (typeof cartItems)[number]; product: NonNullable<(typeof products)[number]> } => Boolean(e.product));
   const hasDiscountedProducts = resolvedItems.some(({ product }) => (product.discountPercent ?? 0) > 0);
 
+  const getProductImageForColor = (product: (typeof products)[number], color: string) => {
+    const cleanColor = (color || "").trim();
+    const colorImages = product.colorImages ?? {};
+    return (
+      colorImages[`${cleanColor}-front`] ||
+      colorImages[cleanColor] ||
+      product.images?.[0] ||
+      product.image
+    );
+  };
+
   // Coupon no longer auto-cleared when discounted products exist in the cart
 
   const memberConfig = currentMember ? tierConfigs.find((c) => c.tier === currentMember.tier) : null;
@@ -491,7 +502,7 @@ export function CheckoutPage() {
                     {resolvedItems.map(({ item, product }) => (
                       <div key={item.id} className="flex items-center gap-3 bg-stone-50 border border-black/5 rounded-xl p-2.5">
                         <div className="h-12 w-12 flex-shrink-0 overflow-hidden bg-white border border-black/10 rounded-lg">
-                          <ImageWithFallback src={product.image} alt={translate(product.name)} className="h-full w-full object-cover" />
+                          <ImageWithFallback src={getProductImageForColor(product, item.color)} alt={translate(product.name)} className="h-full w-full object-cover" />
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className="truncate text-[11px] font-extrabold uppercase tracking-wide text-black">{translate(product.name)}</p>
@@ -961,7 +972,7 @@ export function CheckoutPage() {
                   <div key={item.id} className="flex items-center gap-3 bg-white border border-black/5 rounded-xl p-3 shadow-sm hover:shadow-md transition-shadow">
                     {/* Image */}
                     <div className="h-16 w-16 flex-shrink-0 overflow-hidden bg-white border border-black/10 rounded-lg">
-                      <ImageWithFallback src={product.image} alt={translate(product.name)}
+                      <ImageWithFallback src={getProductImageForColor(product, item.color)} alt={translate(product.name)}
                         className="h-full w-full object-cover" />
                     </div>
                     <div className="flex-1 min-w-0">

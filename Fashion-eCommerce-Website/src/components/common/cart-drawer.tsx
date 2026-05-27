@@ -16,6 +16,17 @@ export function CartDrawer({ open, onClose }: CartDrawerProps) {
   const { cartItems, subtotal, updateItemQuantity, removeFromCart } = useCart();
   const { formatPrice, t, translate } = useLanguage();
 
+  const getProductImageForColor = (product: (typeof products)[number], color: string) => {
+    const cleanColor = (color || "").trim();
+    const colorImages = product.colorImages ?? {};
+    return (
+      colorImages[`${cleanColor}-front`] ||
+      colorImages[cleanColor] ||
+      product.images?.[0] ||
+      product.image
+    );
+  };
+
   const resolvedItems = cartItems
     .map((item) => ({
       item,
@@ -90,7 +101,7 @@ export function CartDrawer({ open, onClose }: CartDrawerProps) {
                   {/* Image */}
                   <Link to={`/product/${product.id}`} onClick={onClose} className="h-[72px] w-[72px] flex-shrink-0 overflow-hidden bg-[#f5f5f5]">
                     <ImageWithFallback
-                      src={product.image}
+                      src={getProductImageForColor(product, item.color)}
                       alt={translate(product.name)}
                       className="h-full w-full object-cover"
                     />
