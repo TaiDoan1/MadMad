@@ -80,6 +80,7 @@ export function AdminProductsPage() {
     price: 0,
     originalPrice: 0,
     discountPercent: 0,
+    showDiscountPercent: false,
     category: "",
     image: "",
     sizeChartImage: "",
@@ -97,7 +98,7 @@ export function AdminProductsPage() {
   const [formTab, setFormTab] = useState<"info" | "attributes" | "media" | "inventory">("info");
 
   const resetForm = () => {
-    setFormData({ name: "", price: 0, originalPrice: 0, discountPercent: 0, category: productOptions.categories[0] ?? "", image: "", sizeChartImage: "", description: "", sizes: "", inStock: true, rating: 5, reviews: 0 });
+    setFormData({ name: "", price: 0, originalPrice: 0, discountPercent: 0, showDiscountPercent: false, category: productOptions.categories[0] ?? "", image: "", sizeChartImage: "", description: "", sizes: "", inStock: true, rating: 5, reviews: 0 });
     setSelectedSizes([]);
     setSelectedColors([]);
     setSelectedTags([]);
@@ -387,6 +388,7 @@ export function AdminProductsPage() {
                                 price: product.price,
                                 originalPrice: product.originalPrice || 0,
                                 discountPercent: product.discountPercent || 0,
+                                showDiscountPercent: product.showDiscountPercent || false,
                                 category: product.category,
                                 image: product.image,
                                 sizeChartImage: product.sizeChartImage || "",
@@ -587,7 +589,14 @@ export function AdminProductsPage() {
                         type="number"
                         min={0}
                         value={formData.originalPrice}
-                        onChange={(event) => setFormData({ ...formData, originalPrice: Number(event.target.value) })}
+                        onChange={(event) => {
+                          const originalVal = Number(event.target.value);
+                          const nextFormData = { ...formData, originalPrice: originalVal };
+                          if (originalVal > 0 && formData.price > 0 && originalVal > formData.price) {
+                            nextFormData.discountPercent = Math.max(0, Math.min(99, Math.round(((originalVal - formData.price) / originalVal) * 100)));
+                          }
+                          setFormData(nextFormData);
+                        }}
                         className="w-full rounded-xl border border-black/10 bg-stone-50 px-4 py-3 text-xs focus:bg-white focus:border-black/60 focus:outline-none transition-all font-mono font-bold"
                         placeholder="Giá gốc..."
                       />
@@ -602,7 +611,14 @@ export function AdminProductsPage() {
                         min={0}
                         max={99}
                         value={formData.discountPercent}
-                        onChange={(event) => setFormData({ ...formData, discountPercent: Number(event.target.value) })}
+                        onChange={(event) => {
+                          const pctVal = Number(event.target.value);
+                          const nextFormData = { ...formData, discountPercent: pctVal };
+                          if (formData.originalPrice > 0 && pctVal > 0) {
+                            nextFormData.price = Math.max(0, Math.round(formData.originalPrice * (1 - pctVal / 100)));
+                          }
+                          setFormData(nextFormData);
+                        }}
                         className="w-full rounded-xl border border-black/10 bg-stone-50 px-4 py-3 text-xs focus:bg-white focus:border-black/60 focus:outline-none transition-all font-mono font-bold"
                         placeholder="0"
                       />
@@ -617,11 +633,31 @@ export function AdminProductsPage() {
                         min={0}
                         required
                         value={formData.price}
-                        onChange={(event) => setFormData({ ...formData, price: Number(event.target.value) })}
+                        onChange={(event) => {
+                          const priceVal = Number(event.target.value);
+                          const nextFormData = { ...formData, price: priceVal };
+                          if (formData.originalPrice > 0 && priceVal > 0 && formData.originalPrice > priceVal) {
+                            nextFormData.discountPercent = Math.max(0, Math.min(99, Math.round(((formData.originalPrice - priceVal) / formData.originalPrice) * 100)));
+                          }
+                          setFormData(nextFormData);
+                        }}
                         className="w-full rounded-xl border border-black/10 bg-stone-50 px-4 py-3 text-xs focus:bg-white focus:border-black/60 focus:outline-none transition-all font-mono font-bold text-black"
                         placeholder="Giá bán..."
                       />
                     </div>
+                  </div>
+
+                  <div className="flex items-center gap-2.5 pt-1.5">
+                    <input
+                      type="checkbox"
+                      id="showDiscountPercent"
+                      checked={formData.showDiscountPercent}
+                      onChange={(event) => setFormData({ ...formData, showDiscountPercent: event.target.checked })}
+                      className="h-4 w-4 rounded border-black/10 text-black focus:ring-black cursor-pointer"
+                    />
+                    <label htmlFor="showDiscountPercent" className="text-[10px] font-extrabold tracking-widest uppercase text-black/60 cursor-pointer select-none">
+                      Hiện % giảm giá ngoài cửa hàng (Nếu không tick sẽ chỉ hiện "Sale")
+                    </label>
                   </div>
 
                   {calculatedPriceFromPercent !== null && (
@@ -1132,6 +1168,7 @@ export function AdminProductsPage() {
                       price: formData.price,
                       originalPrice: formData.originalPrice || undefined,
                       discountPercent: formData.discountPercent > 0 ? formData.discountPercent : undefined,
+                      showDiscountPercent: formData.showDiscountPercent,
                       tags: selectedTags,
                       category: formData.category,
                       image: mainImage,

@@ -468,8 +468,20 @@ export function ProductDetailPage() {
           <div className="lg:col-span-3 flex flex-col justify-start items-start w-full space-y-6 lg:space-y-8 order-3 lg:order-3 pt-6 lg:pt-0">
             {/* Price */}
             <div className="w-full">
-              <div className="text-2xl lg:text-3xl font-black tracking-wide text-foreground">
-                {formatPrice(product.price)}
+              <div className="flex items-baseline gap-3 flex-wrap">
+                <span className="text-2xl lg:text-3xl font-black tracking-wide text-foreground">
+                  {formatPrice(product.price)}
+                </span>
+                {product.originalPrice && product.originalPrice > product.price && (
+                  <span className="text-sm font-semibold text-neutral-400 dark:text-neutral-500 line-through">
+                    {formatPrice(product.originalPrice)}
+                  </span>
+                )}
+                {product.showDiscountPercent && product.discountPercent && (
+                  <span className="text-xs font-bold uppercase tracking-wide px-2 py-0.5 rounded bg-primary text-white">
+                    -{product.discountPercent}%
+                  </span>
+                )}
               </div>
               {(() => {
                 const totalStock = product.variantStock && Object.keys(product.variantStock).length > 0

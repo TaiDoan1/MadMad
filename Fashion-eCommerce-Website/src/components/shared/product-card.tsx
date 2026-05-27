@@ -65,7 +65,7 @@ export function ProductCard({ product, variant = "shop" }: ProductCardProps) {
         {/* Sale badge — bottom-left, Protect.LDN style */}
         {isOnSale && (
           <span className="absolute bottom-3 left-3 z-10 bg-primary px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wide text-white">
-            Sale
+            {product.showDiscountPercent && product.discountPercent ? `-${product.discountPercent}%` : "Sale"}
           </span>
         )}
 

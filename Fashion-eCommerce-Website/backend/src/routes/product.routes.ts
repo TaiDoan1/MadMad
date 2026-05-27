@@ -23,6 +23,9 @@ const parseProduct = (p: any) => ({
   variantStock: p.variantStock ? JSON.parse(p.variantStock) : {},
   stock: p.stock !== null && p.stock !== undefined ? Number(p.stock) : 999,
   inStock: p.inStock !== null && p.inStock !== undefined ? !!p.inStock : true,
+  originalPrice: p.originalPrice !== null && p.originalPrice !== undefined ? Number(p.originalPrice) : null,
+  discountPercent: p.discountPercent !== null && p.discountPercent !== undefined ? Number(p.discountPercent) : null,
+  showDiscountPercent: !!p.showDiscountPercent,
 });
 
 // Helper: Tiền xử lý tất cả các trường ảnh của sản phẩm (Tải lên Cloudinary nếu là Base64)
@@ -150,7 +153,7 @@ router.get("/:id", async (req, res, next) => {
 // 3. POST /api/products - Tạo sản phẩm mới (Admin)
 router.post("/", async (req, res, next) => {
   try {
-    const { name, sku, price, image, category, description, sizes, colors, colorImages, images, isFeatured, stock, variantStock, inStock } = req.body;
+    const { name, sku, price, image, category, description, sizes, colors, colorImages, images, isFeatured, stock, variantStock, inStock, originalPrice, discountPercent, showDiscountPercent } = req.body;
 
     if (!name || !sku || !price || !image || !category) {
       return res.status(400).json({ message: "Vui lòng nhập đầy đủ thông tin bắt buộc!" });
@@ -178,7 +181,10 @@ router.post("/", async (req, res, next) => {
         isFeatured: !!isFeatured,
         stock: stock !== undefined && stock !== null ? Number(stock) : 999,
         variantStock: variantStock !== undefined && variantStock !== null ? (typeof variantStock === "object" ? JSON.stringify(variantStock) : String(variantStock)) : "{}",
-        inStock: inStock !== undefined ? !!inStock : true
+        inStock: inStock !== undefined ? !!inStock : true,
+        originalPrice: originalPrice !== undefined && originalPrice !== null ? Number(originalPrice) : null,
+        discountPercent: discountPercent !== undefined && discountPercent !== null ? Number(discountPercent) : null,
+        showDiscountPercent: showDiscountPercent !== undefined ? !!showDiscountPercent : false
       }
     });
 
@@ -195,7 +201,7 @@ router.post("/", async (req, res, next) => {
 router.put("/:id", async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { name, sku, price, image, category, description, sizes, colors, colorImages, images, isFeatured, stock, variantStock, inStock } = req.body;
+    const { name, sku, price, image, category, description, sizes, colors, colorImages, images, isFeatured, stock, variantStock, inStock, originalPrice, discountPercent, showDiscountPercent } = req.body;
 
     // Chỉ thực hiện xử lý ảnh nếu trường đó được truyền lên
     let finalImage = image;
@@ -240,7 +246,10 @@ router.put("/:id", async (req, res, next) => {
         isFeatured: isFeatured !== undefined ? !!isFeatured : undefined,
         stock: stock !== undefined && stock !== null ? Number(stock) : undefined,
         variantStock: variantStock !== undefined && variantStock !== null ? (typeof variantStock === "object" ? JSON.stringify(variantStock) : String(variantStock)) : undefined,
-        inStock: inStock !== undefined ? !!inStock : undefined
+        inStock: inStock !== undefined ? !!inStock : undefined,
+        originalPrice: originalPrice !== undefined ? (originalPrice !== null ? Number(originalPrice) : null) : undefined,
+        discountPercent: discountPercent !== undefined ? (discountPercent !== null ? Number(discountPercent) : null) : undefined,
+        showDiscountPercent: showDiscountPercent !== undefined ? !!showDiscountPercent : undefined
       }
     });
 

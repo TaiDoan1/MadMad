@@ -5,6 +5,7 @@ export interface Product {
   price: number;
   originalPrice?: number;
   discountPercent?: number;
+  showDiscountPercent?: boolean;
   tags?: string[];
   category: string;
   image: string;
