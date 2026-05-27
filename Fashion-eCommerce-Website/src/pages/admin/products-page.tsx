@@ -280,6 +280,11 @@ export function AdminProductsPage() {
     },
   });
 
+  const formatProductId = (id: string | number) => {
+    const value = String(id);
+    return value.length > 16 ? `${value.slice(0, 12)}…` : value;
+  };
+
   const dragStateClass = (product: Product) =>
     `${String(draggedProductId) === String(product.id) ? "opacity-50 bg-stone-50" : ""} ${
       String(dragOverProductId) === String(product.id) ? "ring-2 ring-inset ring-black/20 bg-stone-100" : ""
@@ -390,97 +395,136 @@ export function AdminProductsPage() {
         </div>
       </div>
 
-      <div className="overflow-hidden rounded-lg border border-border bg-white">
+      <div className="rounded-lg border border-border bg-white">
         <div className="flex flex-col gap-1 border-b border-border p-4 sm:flex-row sm:items-center sm:justify-between">
           <h2 className="text-lg">Danh sách sản phẩm</h2>
           <p className="text-sm text-muted-foreground">{selectedCount} sản phẩm</p>
         </div>
 
-        <div className="divide-y divide-border">
+        {/* Mobile: card list */}
+        <div className="divide-y divide-border md:hidden">
           {filteredProducts.map((product) => (
-            <div
-              key={product.id}
-              {...getDragProps(product)}
-              className={`transition-colors hover:bg-muted/30 ${dragStateClass(product)}`}
-            >
-              <div className="p-4 md:hidden">
-                <div className="flex gap-3">
-                  <div className="h-20 w-16 shrink-0 overflow-hidden rounded bg-muted">
-                    <ImageWithFallback src={product.image} alt={product.name} className="h-full w-full object-cover" />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="font-semibold leading-snug">{product.name}</p>
-                    <p className="mt-0.5 text-xs text-muted-foreground">ID: #{product.id}</p>
-                    <p className="mt-1 text-xs text-muted-foreground">{product.category}</p>
-                    <div className="mt-2 flex flex-wrap items-center gap-2">
-                      <div className="text-sm font-semibold">
-                        {product.price.toLocaleString("vi-VN")}₫
-                        {product.originalPrice ? (
-                          <span className="ml-2 text-xs font-normal text-muted-foreground line-through">
-                            {product.originalPrice.toLocaleString("vi-VN")}₫
-                          </span>
-                        ) : null}
-                      </div>
-                      {renderStockBadge(product, true)}
-                    </div>
-                  </div>
-                </div>
-                <div className="mt-3 grid grid-cols-2 gap-2">
-                  <button type="button" className="flex items-center justify-center gap-2 rounded border border-border bg-white px-3 py-2 text-xs font-semibold hover:bg-muted" onClick={() => openProductPreview(product)}>
-                    <Eye className="h-4 w-4" /> Xem nhanh
-                  </button>
-                  <button type="button" className="flex items-center justify-center gap-2 rounded border border-border bg-white px-3 py-2 text-xs font-semibold hover:bg-muted" onClick={() => openProductEdit(product)}>
-                    <Edit className="h-4 w-4" /> Chỉnh sửa
-                  </button>
-                  <button type="button" className="flex items-center justify-center gap-2 rounded border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-semibold text-blue-700 hover:bg-blue-100" onClick={() => openProductColorImages(product)}>
-                    <ImageIcon className="h-4 w-4" /> Ảnh theo màu
-                  </button>
-                  <button type="button" className="flex items-center justify-center gap-2 rounded border border-red-200 bg-red-50 px-3 py-2 text-xs font-semibold text-red-700 hover:bg-red-100" onClick={() => handleDeleteProduct(product)}>
-                    <Trash2 className="h-4 w-4" /> Xóa
-                  </button>
-                </div>
-              </div>
-
-              <div className="hidden md:flex md:items-center md:gap-4 md:p-4 lg:gap-5 lg:p-5">
-                {canReorderProducts ? dragHandle : <div className="w-[15px] shrink-0" />}
-                <div className="h-20 w-16 shrink-0 overflow-hidden rounded bg-muted lg:h-24 lg:w-[72px]">
+            <div key={product.id} className="p-4">
+              <div className="flex gap-3">
+                <div className="h-20 w-16 shrink-0 overflow-hidden rounded bg-muted">
                   <ImageWithFallback src={product.image} alt={product.name} className="h-full w-full object-cover" />
                 </div>
                 <div className="min-w-0 flex-1">
                   <p className="font-semibold leading-snug">{product.name}</p>
-                  <p className="mt-1 text-sm text-muted-foreground">ID #{product.id} · {product.category}</p>
+                  <p className="mt-0.5 text-xs text-muted-foreground">ID: #{formatProductId(product.id)}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">{product.category}</p>
+                  <div className="mt-2 flex flex-wrap items-center gap-2">
+                    <div className="text-sm font-semibold">
+                      {product.price.toLocaleString("vi-VN")}₫
+                      {product.originalPrice ? (
+                        <span className="ml-2 text-xs font-normal text-muted-foreground line-through">
+                          {product.originalPrice.toLocaleString("vi-VN")}₫
+                        </span>
+                      ) : null}
+                    </div>
+                    {renderStockBadge(product, true)}
+                  </div>
                 </div>
-                <div className="w-28 shrink-0 text-right lg:w-32">
-                  <p className="font-semibold">{product.price.toLocaleString("vi-VN")}₫</p>
-                  {product.originalPrice ? (
-                    <p className="text-xs text-muted-foreground line-through">{product.originalPrice.toLocaleString("vi-VN")}₫</p>
-                  ) : null}
-                </div>
-                <div className="shrink-0">{renderStockBadge(product)}</div>
-                <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
-                  <button type="button" className="flex items-center gap-1.5 rounded border border-border bg-white px-3 py-2 text-xs font-semibold hover:bg-muted" onClick={() => openProductPreview(product)}>
-                    <Eye className="h-4 w-4" /> Xem
-                  </button>
-                  <button type="button" className="flex items-center gap-1.5 rounded border border-border bg-white px-3 py-2 text-xs font-semibold hover:bg-muted" onClick={() => openProductEdit(product)}>
-                    <Edit className="h-4 w-4" /> Sửa
-                  </button>
-                  <button type="button" className="flex items-center gap-1.5 rounded border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-semibold text-blue-700 hover:bg-blue-100" onClick={() => openProductColorImages(product)}>
-                    <ImageIcon className="h-4 w-4" /> Ảnh màu
-                  </button>
-                  <button type="button" className="flex items-center gap-1.5 rounded border border-red-200 bg-red-50 px-3 py-2 text-xs font-semibold text-red-700 hover:bg-red-100" onClick={() => handleDeleteProduct(product)}>
-                    <Trash2 className="h-4 w-4" /> Xóa
-                  </button>
-                </div>
+              </div>
+              <div className="mt-3 grid grid-cols-2 gap-2">
+                <button type="button" className="flex items-center justify-center gap-2 rounded border border-border bg-white px-3 py-2 text-xs font-semibold hover:bg-muted" onClick={() => openProductPreview(product)}>
+                  <Eye className="h-4 w-4" /> Xem nhanh
+                </button>
+                <button type="button" className="flex items-center justify-center gap-2 rounded border border-border bg-white px-3 py-2 text-xs font-semibold hover:bg-muted" onClick={() => openProductEdit(product)}>
+                  <Edit className="h-4 w-4" /> Chỉnh sửa
+                </button>
+                <button type="button" className="flex items-center justify-center gap-2 rounded border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-semibold text-blue-700 hover:bg-blue-100" onClick={() => openProductColorImages(product)}>
+                  <ImageIcon className="h-4 w-4" /> Ảnh theo màu
+                </button>
+                <button type="button" className="flex items-center justify-center gap-2 rounded border border-red-200 bg-red-50 px-3 py-2 text-xs font-semibold text-red-700 hover:bg-red-100" onClick={() => handleDeleteProduct(product)}>
+                  <Trash2 className="h-4 w-4" /> Xóa
+                </button>
               </div>
             </div>
           ))}
-
           {filteredProducts.length === 0 && (
-            <div className="px-6 py-12 text-center text-muted-foreground">
-              Không có sản phẩm nào phù hợp bộ lọc.
-            </div>
+            <div className="px-6 py-12 text-center text-muted-foreground">Không có sản phẩm nào phù hợp bộ lọc.</div>
           )}
         </div>
+
+        {/* Desktop: full-width table — all columns visible */}
+        <table className="hidden w-full table-fixed md:table">
+          <colgroup>
+            <col className="w-[36%]" />
+            <col className="w-[11%]" />
+            <col className="w-[13%]" />
+            <col className="w-[14%]" />
+            <col className="w-[26%]" />
+          </colgroup>
+          <thead className="bg-muted">
+            <tr>
+              <th className="px-4 py-3 text-left text-xs uppercase tracking-wider lg:px-5">Sản phẩm</th>
+              <th className="px-3 py-3 text-left text-xs uppercase tracking-wider">Danh mục</th>
+              <th className="px-3 py-3 text-left text-xs uppercase tracking-wider">Giá</th>
+              <th className="px-3 py-3 text-left text-xs uppercase tracking-wider">Kho</th>
+              <th className="px-4 py-3 text-right text-xs uppercase tracking-wider lg:px-5">Thao tác</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-border">
+            {filteredProducts.map((product) => (
+              <tr
+                key={product.id}
+                {...getDragProps(product)}
+                className={`transition-colors hover:bg-muted/30 ${dragStateClass(product)}`}
+              >
+                <td className="px-4 py-4 lg:px-5">
+                  <div className="flex min-w-0 items-center gap-3">
+                    {canReorderProducts ? dragHandle : null}
+                    <div className="h-16 w-12 shrink-0 overflow-hidden rounded bg-muted">
+                      <ImageWithFallback src={product.image} alt={product.name} className="h-full w-full object-cover" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="truncate font-semibold" title={product.name}>{product.name}</p>
+                      <p className="truncate text-xs text-muted-foreground" title={String(product.id)}>
+                        ID: #{formatProductId(product.id)}
+                      </p>
+                    </div>
+                  </div>
+                </td>
+                <td className="px-3 py-4 text-sm">{product.category}</td>
+                <td className="px-3 py-4">
+                  <p className="font-semibold whitespace-nowrap">{product.price.toLocaleString("vi-VN")}₫</p>
+                  {product.originalPrice ? (
+                    <p className="text-xs text-muted-foreground line-through whitespace-nowrap">
+                      {product.originalPrice.toLocaleString("vi-VN")}₫
+                    </p>
+                  ) : null}
+                </td>
+                <td className="px-3 py-4">
+                  <div className="whitespace-nowrap">{renderStockBadge(product)}</div>
+                </td>
+                <td className="px-4 py-4 lg:px-5">
+                  <div className="flex items-center justify-end gap-1">
+                    <button type="button" className="rounded p-2 transition-colors hover:bg-muted" title="Xem nhanh" onClick={() => openProductPreview(product)}>
+                      <Eye className="h-4 w-4" />
+                    </button>
+                    <button type="button" className="rounded p-2 transition-colors hover:bg-muted" title="Chỉnh sửa" onClick={() => openProductEdit(product)}>
+                      <Edit className="h-4 w-4" />
+                    </button>
+                    <button type="button" className="rounded p-2 text-blue-600 transition-colors hover:bg-blue-100" title="Ảnh theo màu" onClick={() => openProductColorImages(product)}>
+                      <ImageIcon className="h-4 w-4" />
+                    </button>
+                    <button type="button" className="rounded p-2 text-red-600 transition-colors hover:bg-red-100" title="Xóa" onClick={() => handleDeleteProduct(product)}>
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+            {filteredProducts.length === 0 && (
+              <tr>
+                <td colSpan={5} className="px-6 py-12 text-center text-muted-foreground">
+                  Không có sản phẩm nào phù hợp bộ lọc.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
       </div>
 
       {showAddModal || showEditModal ? createPortal(

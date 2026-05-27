@@ -139,7 +139,7 @@ export function AdminLayout() {
 
         <main className="min-w-0 flex-1">
           <header className="sticky top-0 z-30 border-b border-border bg-white p-3 md:p-4">
-            <div className="mx-auto flex max-w-7xl items-center gap-3">
+            <div className="flex w-full items-center gap-3">
               <button
                 type="button"
                 className="rounded-lg p-1.5 transition-colors hover:bg-muted md:hidden"
