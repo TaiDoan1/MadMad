@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, type DragEvent } from "react";
 import { createPortal } from "react-dom";
 import { Edit, Eye, Image as ImageIcon, Plus, Search, Settings2, Trash2, X } from "lucide-react";
 
@@ -148,8 +148,145 @@ export function AdminProductsPage() {
     safeLocalStorage.setItem(PRODUCT_OPTIONS_STORAGE_KEY, JSON.stringify(nextProductOptions));
   };
 
+  const canReorderProducts = !searchTerm && selectedCategory === "all";
+
+  const renderStockBadge = (product: Product, compact = false) => {
+    const stockInfo = getProductStockInfo(product);
+    const sizeClass = compact ? "px-2.5 py-1 text-[11px]" : "px-3 py-1 text-xs";
+
+    if (stockInfo.total === null) {
+      return (
+        <span
+          className={`rounded-full font-semibold ${sizeClass} ${
+            product.inStock ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
+          }`}
+        >
+          {product.inStock ? "Còn hàng" : "Hết hàng"}
+        </span>
+      );
+    }
+    if (stockInfo.total <= 0) {
+      return <span className={`rounded-full bg-red-100 font-bold text-red-800 ${sizeClass}`}>Hết hàng (0)</span>;
+    }
+    if (stockInfo.total <= 5) {
+      return (
+        <span
+          className={`rounded-full bg-amber-105 font-bold text-amber-800 ${sizeClass}`}
+          title={stockInfo.isVariant ? "Tồn kho theo biến thể" : "Tồn kho tổng"}
+        >
+          Sắp hết ({stockInfo.total})
+        </span>
+      );
+    }
+    return (
+      <span
+        className={`rounded-full bg-green-100 font-semibold text-green-800 ${sizeClass}`}
+        title={stockInfo.isVariant ? "Tồn kho theo biến thể" : "Tồn kho tổng"}
+      >
+        Còn {stockInfo.total} chiếc
+      </span>
+    );
+  };
+
+  const openProductPreview = (product: Product) => {
+    setPreviewProduct(product);
+    setShowPreviewModal(true);
+  };
+
+  const openProductEdit = (product: Product) => {
+    setSelectedProduct(product);
+    setFormData({
+      name: product.name,
+      price: product.price,
+      originalPrice: product.originalPrice || 0,
+      discountPercent: product.discountPercent || 0,
+      showDiscountPercent: product.showDiscountPercent || false,
+      category: product.category,
+      image: product.image,
+      sizeChartImage: product.sizeChartImage || "",
+      description: product.description,
+      sizes: product.sizes.join(", "),
+      inStock: product.inStock,
+      rating: product.rating,
+      reviews: product.reviews,
+    });
+    setProductImages((product.images && product.images.length > 0 ? product.images : [product.image]).concat(""));
+    setSelectedSizes(product.sizes);
+    setSelectedColors(product.colors);
+    setSelectedTags(product.tags ?? []);
+    setColorImageDrafts(product.colorImages || {});
+    setStockInput(product.stock !== undefined ? product.stock : 999);
+    setVariantStockDraft(product.variantStock || {});
+    setStockType(product.variantStock && Object.keys(product.variantStock).length > 0 ? "variant" : "simple");
+    setFormTab("info");
+    setShowEditModal(true);
+  };
+
+  const openProductColorImages = (product: Product) => {
+    setSelectedProduct(product);
+    setEditingColorImages(product.colorImages || {});
+    setShowColorImagesModal(true);
+  };
+
+  const handleDeleteProduct = (product: Product) => {
+    if (window.confirm(`Bạn có chắc chắn muốn xóa "${product.name}"?`)) {
+      deleteProduct(product.id);
+    }
+  };
+
+  const handleProductReorder = (targetProduct: Product) => {
+    if (!draggedProductId || String(draggedProductId) === String(targetProduct.id)) return;
+    const dragIndex = products.findIndex((p) => String(p.id) === String(draggedProductId));
+    const dropIndex = products.findIndex((p) => String(p.id) === String(targetProduct.id));
+    if (dragIndex === -1 || dropIndex === -1) return;
+    const newOrder = [...products];
+    const [draggedItem] = newOrder.splice(dragIndex, 1);
+    newOrder.splice(dropIndex, 0, draggedItem);
+    reorderProducts(newOrder);
+  };
+
+  const dragHandle = (
+    <div className="cursor-grab text-black/20 hover:text-black" title="Kéo để sắp xếp">
+      <svg width="15" height="15" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path
+          d="M4.5 3C4.5 3.82843 3.82843 4.5 3 4.5C2.17157 4.5 1.5 3.82843 1.5 3C1.5 2.17157 2.17157 1.5 3 1.5C3.82843 1.5 4.5 2.17157 4.5 3ZM4.5 7.5C4.5 8.32843 3.82843 9 3 9C2.17157 9 1.5 8.32843 1.5 7.5C1.5 6.67157 2.17157 6 3 6C3.82843 6 4.5 6.67157 4.5 7.5ZM3 13.5C3.82843 13.5 4.5 12.8284 4.5 12C4.5 11.1716 3.82843 10.5 3 10.5C2.17157 10.5 1.5 11.1716 1.5 12C1.5 12.8284 2.17157 13.5 3 13.5ZM10.5 3C10.5 3.82843 9.82843 4.5 9 4.5C8.17157 4.5 7.5 3.82843 7.5 3C7.5 2.17157 8.17157 1.5 9 1.5C9.82843 1.5 10.5 2.17157 10.5 3ZM9 9C9.82843 9 10.5 8.32843 10.5 7.5C10.5 6.67157 9.82843 6 9 6C8.17157 6 7.5 6.67157 7.5 7.5C7.5 8.32843 8.17157 9 9 9ZM10.5 12C10.5 12.8284 9.82843 13.5 9 13.5C8.17157 13.5 7.5 12.8284 7.5 12C7.5 11.1716 8.17157 10.5 9 10.5C9.82843 10.5 10.5 11.1716 10.5 12ZM13.5 4.5C14.3284 4.5 15 3.82843 15 3C15 2.17157 14.3284 1.5 13.5 1.5C12.6716 1.5 12 2.17157 12 3C12 3.82843 12.6716 4.5 13.5 4.5ZM15 7.5C15 8.32843 14.3284 9 13.5 9C12.6716 9 12 8.32843 12 7.5C12 6.67157 12.6716 6 13.5 6C14.3284 6 15 6.67157 15 7.5ZM13.5 13.5C14.3284 13.5 15 12.8284 15 12C15 11.1716 14.3284 10.5 13.5 10.5C12.6716 10.5 12 11.1716 12 12C12 12.8284 12.6716 13.5 13.5 13.5Z"
+          fill="currentColor"
+          fillRule="evenodd"
+          clipRule="evenodd"
+        />
+      </svg>
+    </div>
+  );
+
+  const getDragProps = (product: Product) => ({
+    draggable: canReorderProducts,
+    onDragStart: (e: DragEvent) => {
+      setDraggedProductId(product.id);
+      e.dataTransfer.effectAllowed = "move";
+    },
+    onDragOver: (e: DragEvent) => {
+      e.preventDefault();
+      setDragOverProductId(product.id);
+    },
+    onDrop: (e: DragEvent) => {
+      e.preventDefault();
+      handleProductReorder(product);
+      setDraggedProductId(null);
+      setDragOverProductId(null);
+    },
+    onDragEnd: () => {
+      setDraggedProductId(null);
+      setDragOverProductId(null);
+    },
+  });
+
+  const dragStateClass = (product: Product) =>
+    `${String(draggedProductId) === String(product.id) ? "opacity-50 bg-stone-50" : ""} ${
+      String(dragOverProductId) === String(product.id) ? "ring-2 ring-inset ring-black/20 bg-stone-100" : ""
+    }`;
+
   return (
-    <div className="mx-auto max-w-7xl space-y-6">
+    <div className="w-full space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <h1 className="mb-2 text-2xl sm:text-3xl">Quản Lý Sản Phẩm</h1>
@@ -206,409 +343,144 @@ export function AdminProductsPage() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
-        <aside className="lg:col-span-4">
-          <div className="space-y-5 rounded-lg border border-border bg-white p-6">
-            <div>
-              <p className="mb-2 text-sm text-muted-foreground">Tìm kiếm</p>
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
-                <input
-                  value={searchTerm}
-                  onChange={(event) => setSearchTerm(event.target.value)}
-                  className="w-full rounded border border-border py-3 pl-10 pr-4 focus:outline-none focus:ring-2 focus:ring-primary"
-                  placeholder="Tên sản phẩm, danh mục..."
-                />
-              </div>
+      <div className="rounded-lg border border-border bg-white p-4 md:p-5">
+        <div className="flex flex-col gap-4 xl:flex-row xl:items-end">
+          <div className="flex-1">
+            <p className="mb-2 text-sm text-muted-foreground">Tìm kiếm</p>
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
+              <input
+                value={searchTerm}
+                onChange={(event) => setSearchTerm(event.target.value)}
+                className="w-full rounded border border-border py-3 pl-10 pr-4 focus:outline-none focus:ring-2 focus:ring-primary"
+                placeholder="Tên sản phẩm, danh mục..."
+              />
             </div>
-
-            <div>
-              <p className="mb-2 text-sm text-muted-foreground">Danh mục</p>
-              <select
-                value={selectedCategory}
-                onChange={(event) => setSelectedCategory(event.target.value)}
-                className="w-full rounded border border-border bg-white px-4 py-3 focus:outline-none focus:ring-2 focus:ring-primary"
-              >
-                <option value="all">Tất cả</option>
-                {categories.map((cat) => (
-                  <option key={cat} value={cat}>
-                    {cat}
-                  </option>
-                ))}
-              </select>
+          </div>
+          <div className="md:w-56">
+            <p className="mb-2 text-sm text-muted-foreground">Danh mục</p>
+            <select
+              value={selectedCategory}
+              onChange={(event) => setSelectedCategory(event.target.value)}
+              className="w-full rounded border border-border bg-white px-4 py-3 focus:outline-none focus:ring-2 focus:ring-primary"
+            >
+              <option value="all">Tất cả</option>
+              {categories.map((cat) => (
+                <option key={cat} value={cat}>
+                  {cat}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="min-w-[100px] rounded-lg bg-muted/30 px-4 py-3 text-center">
+              <p className="text-xs text-muted-foreground">Kết quả</p>
+              <p className="text-xl font-semibold">{selectedCount}</p>
             </div>
-
-            <div className="rounded-lg bg-muted/30 p-4">
-              <p className="text-sm text-muted-foreground">Kết quả</p>
-              <p className="text-2xl">{selectedCount}</p>
-              <p className="text-xs text-muted-foreground">sản phẩm</p>
-            </div>
-
             <button
               onClick={() => {
                 setSearchTerm("");
                 setSelectedCategory("all");
               }}
-              className="w-full rounded border border-border px-4 py-3 transition-colors hover:bg-muted"
+              className="rounded border border-border px-4 py-3 transition-colors hover:bg-muted"
             >
               Xoá bộ lọc
             </button>
           </div>
-        </aside>
+        </div>
+      </div>
 
-        <section className="lg:col-span-8">
-          <div className="overflow-hidden rounded-lg border border-border bg-white">
-            <div className="border-b border-border p-4">
-              <h2 className="text-lg">Danh sách sản phẩm</h2>
-            </div>
+      <div className="overflow-hidden rounded-lg border border-border bg-white">
+        <div className="flex flex-col gap-1 border-b border-border p-4 sm:flex-row sm:items-center sm:justify-between">
+          <h2 className="text-lg">Danh sách sản phẩm</h2>
+          <p className="text-sm text-muted-foreground">{selectedCount} sản phẩm</p>
+        </div>
 
-            {/* Mobile: card list (no horizontal scroll) */}
-            <div className="divide-y divide-border md:hidden">
-              {filteredProducts.map((product) => (
-                <div key={product.id} className="p-4">
-                  <div className="flex gap-3">
-                    <div className="h-20 w-16 shrink-0 overflow-hidden rounded bg-muted">
-                      <ImageWithFallback src={product.image} alt={product.name} className="h-full w-full object-cover" />
-                    </div>
-
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate font-semibold">{product.name}</p>
-                      <p className="mt-0.5 text-xs text-muted-foreground">ID: #{product.id}</p>
-                      <p className="mt-1 text-xs text-muted-foreground">{product.category}</p>
-
-                      <div className="mt-2 flex flex-wrap items-center gap-2">
-                        <div className="text-sm font-semibold">
-                          {product.price.toLocaleString("vi-VN")}₫
-                          {product.originalPrice ? (
-                            <span className="ml-2 text-xs font-normal text-muted-foreground line-through">
-                              {product.originalPrice.toLocaleString("vi-VN")}₫
-                            </span>
-                          ) : null}
-                        </div>
-
-                        {(() => {
-                          const stockInfo = getProductStockInfo(product);
-                          if (stockInfo.total === null) {
-                            return (
-                              <span
-                                className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${
-                                  product.inStock ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
-                                }`}
-                              >
-                                {product.inStock ? "Còn hàng" : "Hết hàng"}
-                              </span>
-                            );
-                          }
-
-                          if (stockInfo.total <= 0) {
-                            return (
-                              <span className="rounded-full bg-red-100 px-2.5 py-1 text-[11px] font-bold text-red-800">
-                                Hết hàng (0)
-                              </span>
-                            );
-                          }
-
-                          if (stockInfo.total <= 5) {
-                            return (
-                              <span
-                                className="rounded-full bg-amber-105 px-2.5 py-1 text-[11px] font-bold text-amber-800"
-                                title={stockInfo.isVariant ? "Tồn kho theo biến thể" : "Tồn kho tổng"}
-                              >
-                                Sắp hết ({stockInfo.total})
-                              </span>
-                            );
-                          }
-
-                          return (
-                            <span
-                              className="rounded-full bg-green-100 px-2.5 py-1 text-[11px] font-semibold text-green-800"
-                              title={stockInfo.isVariant ? "Tồn kho theo biến thể" : "Tồn kho tổng"}
-                            >
-                              Còn {stockInfo.total} chiếc
-                            </span>
-                          );
-                        })()}
-                      </div>
-                    </div>
+        <div className="divide-y divide-border">
+          {filteredProducts.map((product) => (
+            <div
+              key={product.id}
+              {...getDragProps(product)}
+              className={`transition-colors hover:bg-muted/30 ${dragStateClass(product)}`}
+            >
+              <div className="p-4 md:hidden">
+                <div className="flex gap-3">
+                  <div className="h-20 w-16 shrink-0 overflow-hidden rounded bg-muted">
+                    <ImageWithFallback src={product.image} alt={product.name} className="h-full w-full object-cover" />
                   </div>
-
-                  <div className="mt-3 grid grid-cols-2 gap-2">
-                    <button
-                      type="button"
-                      className="flex items-center justify-center gap-2 rounded border border-border bg-white px-3 py-2 text-xs font-semibold transition-colors hover:bg-muted"
-                      onClick={() => {
-                        setPreviewProduct(product);
-                        setShowPreviewModal(true);
-                      }}
-                    >
-                      <Eye className="h-4 w-4" />
-                      Xem nhanh
-                    </button>
-                    <button
-                      type="button"
-                      className="flex items-center justify-center gap-2 rounded border border-border bg-white px-3 py-2 text-xs font-semibold transition-colors hover:bg-muted"
-                      onClick={() => {
-                        setSelectedProduct(product);
-                        setFormData({
-                          name: product.name,
-                          price: product.price,
-                          originalPrice: product.originalPrice || 0,
-                          discountPercent: product.discountPercent || 0,
-                          showDiscountPercent: product.showDiscountPercent || false,
-                          category: product.category,
-                          image: product.image,
-                          sizeChartImage: product.sizeChartImage || "",
-                          description: product.description,
-                          sizes: product.sizes.join(", "),
-                          inStock: product.inStock,
-                          rating: product.rating,
-                          reviews: product.reviews,
-                        });
-                        setProductImages(
-                          (product.images && product.images.length > 0 ? product.images : [product.image]).concat(""),
-                        );
-                        setSelectedSizes(product.sizes);
-                        setSelectedColors(product.colors);
-                        setSelectedTags(product.tags ?? []);
-                        setColorImageDrafts(product.colorImages || {});
-                        setStockInput(product.stock !== undefined ? product.stock : 999);
-                        setVariantStockDraft(product.variantStock || {});
-                        setStockType(
-                          product.variantStock && Object.keys(product.variantStock).length > 0 ? "variant" : "simple",
-                        );
-                        setFormTab("info");
-                        setShowEditModal(true);
-                      }}
-                    >
-                      <Edit className="h-4 w-4" />
-                      Chỉnh sửa
-                    </button>
-                    <button
-                      type="button"
-                      className="flex items-center justify-center gap-2 rounded border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-semibold text-blue-700 transition-colors hover:bg-blue-100"
-                      onClick={() => {
-                        setSelectedProduct(product);
-                        setEditingColorImages(product.colorImages || {});
-                        setShowColorImagesModal(true);
-                      }}
-                    >
-                      <ImageIcon className="h-4 w-4" />
-                      Ảnh theo màu
-                    </button>
-                    <button
-                      type="button"
-                      className="flex items-center justify-center gap-2 rounded border border-red-200 bg-red-50 px-3 py-2 text-xs font-semibold text-red-700 transition-colors hover:bg-red-100"
-                      onClick={() => {
-                        if (window.confirm(`Bạn có chắc chắn muốn xóa "${product.name}"?`)) {
-                          deleteProduct(product.id);
-                        }
-                      }}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                      Xóa
-                    </button>
-                  </div>
-                </div>
-              ))}
-
-              {filteredProducts.length === 0 && (
-                <div className="px-6 py-12 text-center text-muted-foreground">
-                  Không có sản phẩm nào phù hợp bộ lọc.
-                </div>
-              )}
-            </div>
-
-            {/* Desktop: table */}
-            <div className="hidden md:block">
-              <table className="w-full">
-                <thead className="bg-muted">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs uppercase tracking-wider">Sản phẩm</th>
-                    <th className="px-6 py-3 text-left text-xs uppercase tracking-wider">Danh mục</th>
-                    <th className="px-6 py-3 text-left text-xs uppercase tracking-wider">Giá</th>
-                    <th className="px-6 py-3 text-left text-xs uppercase tracking-wider">Kho</th>
-                    <th className="px-6 py-3 text-right text-xs uppercase tracking-wider">Thao tác</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border">
-                  {filteredProducts.map((product) => (
-                    <tr 
-                      key={product.id} 
-                      draggable={!searchTerm && selectedCategory === "all"}
-                      onDragStart={(e) => {
-                        setDraggedProductId(product.id);
-                        e.dataTransfer.effectAllowed = "move";
-                      }}
-                      onDragOver={(e) => {
-                        e.preventDefault();
-                        setDragOverProductId(product.id);
-                      }}
-                      onDrop={(e) => {
-                        e.preventDefault();
-                        if (draggedProductId && String(draggedProductId) !== String(product.id)) {
-                          const dragIndex = products.findIndex((p) => String(p.id) === String(draggedProductId));
-                          const dropIndex = products.findIndex((p) => String(p.id) === String(product.id));
-                          if (dragIndex !== -1 && dropIndex !== -1) {
-                            const newOrder = [...products];
-                            const [draggedItem] = newOrder.splice(dragIndex, 1);
-                            newOrder.splice(dropIndex, 0, draggedItem);
-                            reorderProducts(newOrder);
-                          }
-                        }
-                        setDraggedProductId(null);
-                        setDragOverProductId(null);
-                      }}
-                      onDragEnd={() => {
-                        setDraggedProductId(null);
-                        setDragOverProductId(null);
-                      }}
-                      className={`transition-colors hover:bg-muted/50 ${String(draggedProductId) === String(product.id) ? "opacity-50 bg-stone-50" : ""} ${String(dragOverProductId) === String(product.id) ? "border-t-2 border-black bg-stone-100" : ""}`}
-                    >
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-3">
-                          {(!searchTerm && selectedCategory === "all") && (
-                            <div className="cursor-grab text-black/20 hover:text-black">
-                              <svg width="15" height="15" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4.5 3C4.5 3.82843 3.82843 4.5 3 4.5C2.17157 4.5 1.5 3.82843 1.5 3C1.5 2.17157 2.17157 1.5 3 1.5C3.82843 1.5 4.5 2.17157 4.5 3ZM4.5 7.5C4.5 8.32843 3.82843 9 3 9C2.17157 9 1.5 8.32843 1.5 7.5C1.5 6.67157 2.17157 6 3 6C3.82843 6 4.5 6.67157 4.5 7.5ZM3 13.5C3.82843 13.5 4.5 12.8284 4.5 12C4.5 11.1716 3.82843 10.5 3 10.5C2.17157 10.5 1.5 11.1716 1.5 12C1.5 12.8284 2.17157 13.5 3 13.5ZM10.5 3C10.5 3.82843 9.82843 4.5 9 4.5C8.17157 4.5 7.5 3.82843 7.5 3C7.5 2.17157 8.17157 1.5 9 1.5C9.82843 1.5 10.5 2.17157 10.5 3ZM9 9C9.82843 9 10.5 8.32843 10.5 7.5C10.5 6.67157 9.82843 6 9 6C8.17157 6 7.5 6.67157 7.5 7.5C7.5 8.32843 8.17157 9 9 9ZM10.5 12C10.5 12.8284 9.82843 13.5 9 13.5C8.17157 13.5 7.5 12.8284 7.5 12C7.5 11.1716 8.17157 10.5 9 10.5C9.82843 10.5 10.5 11.1716 10.5 12ZM13.5 4.5C14.3284 4.5 15 3.82843 15 3C15 2.17157 14.3284 1.5 13.5 1.5C12.6716 1.5 12 2.17157 12 3C12 3.82843 12.6716 4.5 13.5 4.5ZM15 7.5C15 8.32843 14.3284 9 13.5 9C12.6716 9 12 8.32843 12 7.5C12 6.67157 12.6716 6 13.5 6C14.3284 6 15 6.67157 15 7.5ZM13.5 13.5C14.3284 13.5 15 12.8284 15 12C15 11.1716 14.3284 10.5 13.5 10.5C12.6716 10.5 12 11.1716 12 12C12 12.8284 12.6716 13.5 13.5 13.5Z" fill="currentColor" fillRule="evenodd" clipRule="evenodd"></path></svg>
-                            </div>
-                          )}
-                          <div className="h-16 w-12 shrink-0 overflow-hidden rounded bg-muted">
-                            <ImageWithFallback src={product.image} alt={product.name} className="h-full w-full object-cover" />
-                          </div>
-                          <div className="min-w-0">
-                            <div className="truncate">{product.name}</div>
-                            <div className="text-sm text-muted-foreground">ID: #{product.id}</div>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">{product.category}</td>
-                      <td className="px-6 py-4">
-                        <div>{product.price.toLocaleString("vi-VN")}₫</div>
+                  <div className="min-w-0 flex-1">
+                    <p className="font-semibold leading-snug">{product.name}</p>
+                    <p className="mt-0.5 text-xs text-muted-foreground">ID: #{product.id}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">{product.category}</p>
+                    <div className="mt-2 flex flex-wrap items-center gap-2">
+                      <div className="text-sm font-semibold">
+                        {product.price.toLocaleString("vi-VN")}₫
                         {product.originalPrice ? (
-                          <div className="text-xs text-muted-foreground line-through">{product.originalPrice.toLocaleString("vi-VN")}₫</div>
+                          <span className="ml-2 text-xs font-normal text-muted-foreground line-through">
+                            {product.originalPrice.toLocaleString("vi-VN")}₫
+                          </span>
                         ) : null}
-                      </td>
-                      <td className="px-6 py-4">
-                        {(() => {
-                          const stockInfo = getProductStockInfo(product);
-                          if (stockInfo.total === null) {
-                            return (
-                              <span className={`rounded-full px-3 py-1 text-xs font-semibold ${product.inStock ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}`}>
-                                {product.inStock ? "Còn hàng" : "Hết hàng"}
-                              </span>
-                            );
-                          }
-                          
-                          if (stockInfo.total <= 0) {
-                            return (
-                              <span className="rounded-full bg-red-100 px-3 py-1 text-xs font-bold text-red-800">
-                                Hết hàng (0)
-                              </span>
-                            );
-                          }
-                          
-                          if (stockInfo.total <= 5) {
-                            return (
-                              <span className="rounded-full bg-amber-105 px-3 py-1 text-xs font-bold text-amber-800" title={stockInfo.isVariant ? "Tồn kho theo biến thể" : "Tồn kho tổng"}>
-                                Sắp hết ({stockInfo.total})
-                              </span>
-                            );
-                          }
-                          
-                          return (
-                            <span className="rounded-full bg-green-100 px-3 py-1 text-xs font-semibold text-green-800" title={stockInfo.isVariant ? "Tồn kho theo biến thể" : "Tồn kho tổng"}>
-                              Còn {stockInfo.total} chiếc
-                            </span>
-                          );
-                        })()}
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center justify-end gap-2">
-                          <button
-                            type="button"
-                            className="rounded p-2 transition-colors hover:bg-muted"
-                            title="Xem nhanh"
-                            onClick={() => {
-                              setPreviewProduct(product);
-                              setShowPreviewModal(true);
-                            }}
-                          >
-                            <Eye className="h-4 w-4" />
-                          </button>
-                          <button
-                            type="button"
-                            className="rounded p-2 transition-colors hover:bg-muted"
-                            title="Chỉnh sửa"
-                            onClick={() => {
-                              setSelectedProduct(product);
-                              setFormData({
-                                name: product.name,
-                                price: product.price,
-                                originalPrice: product.originalPrice || 0,
-                                discountPercent: product.discountPercent || 0,
-                                showDiscountPercent: product.showDiscountPercent || false,
-                                category: product.category,
-                                image: product.image,
-                                sizeChartImage: product.sizeChartImage || "",
-                                description: product.description,
-                                sizes: product.sizes.join(", "),
-                                inStock: product.inStock,
-                                rating: product.rating,
-                                reviews: product.reviews,
-                              });
-                              setProductImages((product.images && product.images.length > 0 ? product.images : [product.image]).concat(""));
-                              setSelectedSizes(product.sizes);
-                              setSelectedColors(product.colors);
-                              setSelectedTags(product.tags ?? []);
-                              setColorImageDrafts(product.colorImages || {});
-                              setStockInput(product.stock !== undefined ? product.stock : 999);
-                              setVariantStockDraft(product.variantStock || {});
-                              setStockType(product.variantStock && Object.keys(product.variantStock).length > 0 ? "variant" : "simple");
-                              setFormTab("info");
-                              setShowEditModal(true);
-                            }}
-                          >
-                            <Edit className="h-4 w-4" />
-                          </button>
-                          <button
-                            type="button"
-                            className="rounded p-2 text-blue-600 transition-colors hover:bg-blue-100"
-                            title="Ảnh theo màu"
-                            onClick={() => {
-                              setSelectedProduct(product);
-                              setEditingColorImages(product.colorImages || {});
-                              setShowColorImagesModal(true);
-                            }}
-                          >
-                            <ImageIcon className="h-4 w-4" />
-                          </button>
-                          <button
-                            type="button"
-                            className="rounded p-2 text-red-600 transition-colors hover:bg-red-100"
-                            title="Xóa"
-                            onClick={() => {
-                              if (window.confirm(`Bạn có chắc chắn muốn xóa "${product.name}"?`)) {
-                                deleteProduct(product.id);
-                              }
-                            }}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                  {filteredProducts.length === 0 && (
-                    <tr>
-                      <td colSpan={5} className="px-6 py-12 text-center text-muted-foreground">
-                        Không có sản phẩm nào phù hợp bộ lọc.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
+                      </div>
+                      {renderStockBadge(product, true)}
+                    </div>
+                  </div>
+                </div>
+                <div className="mt-3 grid grid-cols-2 gap-2">
+                  <button type="button" className="flex items-center justify-center gap-2 rounded border border-border bg-white px-3 py-2 text-xs font-semibold hover:bg-muted" onClick={() => openProductPreview(product)}>
+                    <Eye className="h-4 w-4" /> Xem nhanh
+                  </button>
+                  <button type="button" className="flex items-center justify-center gap-2 rounded border border-border bg-white px-3 py-2 text-xs font-semibold hover:bg-muted" onClick={() => openProductEdit(product)}>
+                    <Edit className="h-4 w-4" /> Chỉnh sửa
+                  </button>
+                  <button type="button" className="flex items-center justify-center gap-2 rounded border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-semibold text-blue-700 hover:bg-blue-100" onClick={() => openProductColorImages(product)}>
+                    <ImageIcon className="h-4 w-4" /> Ảnh theo màu
+                  </button>
+                  <button type="button" className="flex items-center justify-center gap-2 rounded border border-red-200 bg-red-50 px-3 py-2 text-xs font-semibold text-red-700 hover:bg-red-100" onClick={() => handleDeleteProduct(product)}>
+                    <Trash2 className="h-4 w-4" /> Xóa
+                  </button>
+                </div>
+              </div>
+
+              <div className="hidden md:flex md:items-center md:gap-4 md:p-4 lg:gap-5 lg:p-5">
+                {canReorderProducts ? dragHandle : <div className="w-[15px] shrink-0" />}
+                <div className="h-20 w-16 shrink-0 overflow-hidden rounded bg-muted lg:h-24 lg:w-[72px]">
+                  <ImageWithFallback src={product.image} alt={product.name} className="h-full w-full object-cover" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="font-semibold leading-snug">{product.name}</p>
+                  <p className="mt-1 text-sm text-muted-foreground">ID #{product.id} · {product.category}</p>
+                </div>
+                <div className="w-28 shrink-0 text-right lg:w-32">
+                  <p className="font-semibold">{product.price.toLocaleString("vi-VN")}₫</p>
+                  {product.originalPrice ? (
+                    <p className="text-xs text-muted-foreground line-through">{product.originalPrice.toLocaleString("vi-VN")}₫</p>
+                  ) : null}
+                </div>
+                <div className="shrink-0">{renderStockBadge(product)}</div>
+                <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+                  <button type="button" className="flex items-center gap-1.5 rounded border border-border bg-white px-3 py-2 text-xs font-semibold hover:bg-muted" onClick={() => openProductPreview(product)}>
+                    <Eye className="h-4 w-4" /> Xem
+                  </button>
+                  <button type="button" className="flex items-center gap-1.5 rounded border border-border bg-white px-3 py-2 text-xs font-semibold hover:bg-muted" onClick={() => openProductEdit(product)}>
+                    <Edit className="h-4 w-4" /> Sửa
+                  </button>
+                  <button type="button" className="flex items-center gap-1.5 rounded border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-semibold text-blue-700 hover:bg-blue-100" onClick={() => openProductColorImages(product)}>
+                    <ImageIcon className="h-4 w-4" /> Ảnh màu
+                  </button>
+                  <button type="button" className="flex items-center gap-1.5 rounded border border-red-200 bg-red-50 px-3 py-2 text-xs font-semibold text-red-700 hover:bg-red-100" onClick={() => handleDeleteProduct(product)}>
+                    <Trash2 className="h-4 w-4" /> Xóa
+                  </button>
+                </div>
+              </div>
             </div>
-          </div>
-        </section>
+          ))}
+
+          {filteredProducts.length === 0 && (
+            <div className="px-6 py-12 text-center text-muted-foreground">
+              Không có sản phẩm nào phù hợp bộ lọc.
+            </div>
+          )}
+        </div>
       </div>
 
       {showAddModal || showEditModal ? createPortal(
