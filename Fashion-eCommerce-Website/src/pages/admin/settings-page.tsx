@@ -25,6 +25,7 @@ export function AdminSettingsPage() {
   const [shippingFeeStandard, setShippingFeeStandard] = useState(String(settings.shippingFeeStandard ?? 30000));
   const [shippingFeeExpress, setShippingFeeExpress] = useState(String(settings.shippingFeeExpress ?? 60000));
   const [shippingFreeThreshold, setShippingFreeThreshold] = useState(String(settings.shippingFreeThreshold ?? 500000));
+  const [shippingExpressCities, setShippingExpressCities] = useState(settings.shippingExpressCities || "79,01");
   const [enableCod, setEnableCod] = useState(settings.enableCod ?? true);
   const [enableBank, setEnableBank] = useState(settings.enableBank ?? true);
   const [enableMomo, setEnableMomo] = useState(settings.enableMomo ?? true);
@@ -125,6 +126,7 @@ export function AdminSettingsPage() {
     setShippingFeeStandard(String(settings.shippingFeeStandard ?? 30000));
     setShippingFeeExpress(String(settings.shippingFeeExpress ?? 60000));
     setShippingFreeThreshold(String(settings.shippingFreeThreshold ?? 500000));
+    setShippingExpressCities(settings.shippingExpressCities || "79,01");
     setEnableCod(settings.enableCod ?? true);
     setEnableBank(settings.enableBank ?? true);
     setEnableMomo(settings.enableMomo ?? true);
@@ -195,6 +197,7 @@ export function AdminSettingsPage() {
       shippingFeeStandard: Number(shippingFeeStandard) || 0,
       shippingFeeExpress: Number(shippingFeeExpress) || 0,
       shippingFreeThreshold: Number(shippingFreeThreshold) || 0,
+      shippingExpressCities,
       enableCod,
       enableBank,
       enableMomo,
@@ -830,6 +833,19 @@ export function AdminSettingsPage() {
                     className="w-full rounded-xl border border-black/10 bg-white px-3 py-2 text-xs font-bold focus:border-black/60 focus:outline-none"
                   />
                   <p className="text-[8px] text-black/35 mt-1">Đơn hàng đạt giá trị tối thiểu này sẽ được miễn phí giao hàng thường.</p>
+                </div>
+                <div>
+                  <label className="block text-[9px] font-extrabold tracking-wider uppercase text-black/50 mb-1">Mã Tỉnh/Thành hỗ trợ Hỏa Tốc (cách nhau bằng dấu phẩy)</label>
+                  <input
+                    type="text"
+                    value={shippingExpressCities}
+                    onChange={(e) => setShippingExpressCities(e.target.value)}
+                    placeholder="Ví dụ: 79,01 (79: TP.HCM, 01: Hà Nội)"
+                    className="w-full rounded-xl border border-black/10 bg-white px-3 py-2 text-xs font-mono font-bold focus:border-black/60 focus:outline-none"
+                  />
+                  <p className="text-[8px] text-black/35 mt-1 leading-relaxed">
+                    Khách hàng chọn đúng các Tỉnh/Thành này tại trang Thanh Toán mới hiện tùy chọn Ship Hỏa Tốc (Ví dụ: 79 là TP.HCM, 01 là Hà Nội, 48 là Đà Nẵng).
+                  </p>
                 </div>
 
                 <div className="rounded-xl border border-black/5 bg-white p-3.5 text-[9px] text-black/55 leading-normal space-y-1.5 mt-4">

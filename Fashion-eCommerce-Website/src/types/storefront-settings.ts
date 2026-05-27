@@ -53,6 +53,7 @@ export interface StorefrontSettings {
   shippingFeeStandard?: number;
   shippingFeeExpress?: number;
   shippingFreeThreshold?: number;
+  shippingExpressCities?: string; // Ví dụ: "79,01" (danh sách mã tỉnh/thành phố hỗ trợ giao hỏa tốc)
   
   // ⚙️ Tùy chọn Thanh Toán (Bật/Tắt)
   enableCod?: boolean;

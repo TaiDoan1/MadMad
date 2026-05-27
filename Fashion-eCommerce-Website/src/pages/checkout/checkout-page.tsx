@@ -572,42 +572,70 @@ export function CheckoutPage() {
               </section>
 
               {/* Shipping Method Selection */}
-              <section>
-                <h2 className="mb-4 text-sm font-bold uppercase tracking-widest">{t("Phương thức vận chuyển", "Shipping Method")}</h2>
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  <button
-                    type="button"
-                    onClick={() => setFormData({ ...formData, shippingMethod: "standard" })}
-                    className={`flex flex-col text-left rounded-xl border-2 p-4 transition-all ${
-                      formData.shippingMethod === "standard"
-                        ? "border-black bg-black/5"
-                        : "border-black/15 hover:border-black"
-                    }`}
-                  >
-                    <span className="text-xs font-bold uppercase tracking-wider">{t("Ship Tiêu Chuẩn (Thường)", "Standard Shipping")}</span>
-                    <span className="text-[10px] text-black/50 mt-1">
-                      {t("Giá:", "Price:")} {shippingBase >= freeThreshold ? t("Miễn phí", "Free") : `${formatPrice(feeStandard)}`} (2-4 {t("ngày", "days")})
-                    </span>
-                  </button>
+              {(() => {
+                const expressCities = (settings.shippingExpressCities || "79,01")
+                  .split(",")
+                  .map((c) => c.trim())
+                  .filter(Boolean);
+                const isExpressEligible = formData.provinceCode && expressCities.includes(formData.provinceCode);
 
-                  <button
-                    type="button"
-                    onClick={() => setFormData({ ...formData, shippingMethod: "express" })}
-                    className={`flex flex-col text-left rounded-xl border-2 p-4 transition-all ${
-                      formData.shippingMethod === "express"
-                        ? "border-black bg-black/5"
-                        : "border-black/15 hover:border-black"
-                    }`}
-                  >
-                    <span className="text-xs font-bold uppercase tracking-wider text-red-700 flex items-center gap-1">
-                      {t("Giao Hỏa Tốc (2h)", "Express Delivery (2h)")}
-                    </span>
-                    <span className="text-[10px] text-black/50 mt-1">
-                      {t("Giá:", "Price:")} {formatPrice(feeExpress)} ({t("Giao siêu tốc nội thành", "Intracity express delivery")})
-                    </span>
-                  </button>
-                </div>
-              </section>
+                // Nếu đang chọn express nhưng tỉnh thành không được hỗ trợ, tự động chuyển về standard
+                if (!isExpressEligible && formData.shippingMethod === "express") {
+                  setTimeout(() => {
+                    setFormData((prev) => ({ ...prev, shippingMethod: "standard" }));
+                  }, 0);
+                }
+
+                return (
+                  <section>
+                    <h2 className="mb-4 text-sm font-bold uppercase tracking-widest">{t("Phương thức vận chuyển", "Shipping Method")}</h2>
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                      <button
+                        type="button"
+                        onClick={() => setFormData({ ...formData, shippingMethod: "standard" })}
+                        className={`flex flex-col text-left rounded-xl border-2 p-4 transition-all ${
+                          formData.shippingMethod === "standard"
+                            ? "border-black bg-black/5"
+                            : "border-black/15 hover:border-black"
+                        }`}
+                      >
+                        <span className="text-xs font-bold uppercase tracking-wider">{t("Ship Tiêu Chuẩn (Thường)", "Standard Shipping")}</span>
+                        <span className="text-[10px] text-black/50 mt-1">
+                          {t("Giá:", "Price:")} {shippingBase >= freeThreshold ? t("Miễn phí", "Free") : `${formatPrice(feeStandard)}`} (2-4 {t("ngày", "days")})
+                        </span>
+                      </button>
+
+                      {isExpressEligible ? (
+                        <button
+                          type="button"
+                          onClick={() => setFormData({ ...formData, shippingMethod: "express" })}
+                          className={`flex flex-col text-left rounded-xl border-2 p-4 transition-all ${
+                            formData.shippingMethod === "express"
+                              ? "border-black bg-black/5"
+                              : "border-black/15 hover:border-black"
+                          }`}
+                        >
+                          <span className="text-xs font-bold uppercase tracking-wider text-red-700 flex items-center gap-1">
+                            {t("Giao Hỏa Tốc (2h)", "Express Delivery (2h)")}
+                          </span>
+                          <span className="text-[10px] text-black/50 mt-1">
+                            {t("Giá:", "Price:")} {formatPrice(feeExpress)} ({t("Giao siêu tốc nội thành", "Intracity express delivery")})
+                          </span>
+                        </button>
+                      ) : (
+                        <div className="flex flex-col text-left rounded-xl border-2 border-dashed border-black/10 bg-stone-50 p-4 opacity-60">
+                          <span className="text-xs font-bold uppercase tracking-wider text-black/40">
+                            {t("Giao Hỏa Tốc (2h)", "Express Delivery (2h)")}
+                          </span>
+                          <span className="text-[9px] text-red-700 font-bold mt-1 leading-tight">
+                            {t("Không hỗ trợ tại Tỉnh/Thành này", "Not supported in this Province/City")}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  </section>
+                );
+              })()}
 
               {/* Payment method */}
               <section>

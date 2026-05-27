@@ -84,6 +84,7 @@ export const DEFAULT_STOREFRONT_SETTINGS: StorefrontSettings = {
   shippingFeeStandard: 30000,
   shippingFeeExpress: 60000,
   shippingFreeThreshold: 500000,
+  shippingExpressCities: "79,01", // Mặc định hỗ trợ TP.HCM (79) và Hà Nội (01)
   enableCod: true,
   enableBank: true,
   enableMomo: true,
@@ -227,6 +228,8 @@ function readStoredSettings(): StorefrontSettings {
         typeof parsed.shippingFeeExpress === "number" ? parsed.shippingFeeExpress : DEFAULT_STOREFRONT_SETTINGS.shippingFeeExpress,
       shippingFreeThreshold:
         typeof parsed.shippingFreeThreshold === "number" ? parsed.shippingFreeThreshold : DEFAULT_STOREFRONT_SETTINGS.shippingFreeThreshold,
+      shippingExpressCities:
+        typeof parsed.shippingExpressCities === "string" ? parsed.shippingExpressCities : DEFAULT_STOREFRONT_SETTINGS.shippingExpressCities,
       enableCod:
         typeof parsed.enableCod === "boolean" ? parsed.enableCod : DEFAULT_STOREFRONT_SETTINGS.enableCod,
       enableBank:
