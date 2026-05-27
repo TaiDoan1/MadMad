@@ -262,7 +262,164 @@ export function AdminProductsPage() {
               <h2 className="text-lg">Danh sách sản phẩm</h2>
             </div>
 
-            <div className="overflow-x-auto">
+            {/* Mobile: card list (no horizontal scroll) */}
+            <div className="divide-y divide-border md:hidden">
+              {filteredProducts.map((product) => (
+                <div key={product.id} className="p-4">
+                  <div className="flex gap-3">
+                    <div className="h-20 w-16 shrink-0 overflow-hidden rounded bg-muted">
+                      <ImageWithFallback src={product.image} alt={product.name} className="h-full w-full object-cover" />
+                    </div>
+
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate font-semibold">{product.name}</p>
+                      <p className="mt-0.5 text-xs text-muted-foreground">ID: #{product.id}</p>
+                      <p className="mt-1 text-xs text-muted-foreground">{product.category}</p>
+
+                      <div className="mt-2 flex flex-wrap items-center gap-2">
+                        <div className="text-sm font-semibold">
+                          {product.price.toLocaleString("vi-VN")}₫
+                          {product.originalPrice ? (
+                            <span className="ml-2 text-xs font-normal text-muted-foreground line-through">
+                              {product.originalPrice.toLocaleString("vi-VN")}₫
+                            </span>
+                          ) : null}
+                        </div>
+
+                        {(() => {
+                          const stockInfo = getProductStockInfo(product);
+                          if (stockInfo.total === null) {
+                            return (
+                              <span
+                                className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${
+                                  product.inStock ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
+                                }`}
+                              >
+                                {product.inStock ? "Còn hàng" : "Hết hàng"}
+                              </span>
+                            );
+                          }
+
+                          if (stockInfo.total <= 0) {
+                            return (
+                              <span className="rounded-full bg-red-100 px-2.5 py-1 text-[11px] font-bold text-red-800">
+                                Hết hàng (0)
+                              </span>
+                            );
+                          }
+
+                          if (stockInfo.total <= 5) {
+                            return (
+                              <span
+                                className="rounded-full bg-amber-105 px-2.5 py-1 text-[11px] font-bold text-amber-800"
+                                title={stockInfo.isVariant ? "Tồn kho theo biến thể" : "Tồn kho tổng"}
+                              >
+                                Sắp hết ({stockInfo.total})
+                              </span>
+                            );
+                          }
+
+                          return (
+                            <span
+                              className="rounded-full bg-green-100 px-2.5 py-1 text-[11px] font-semibold text-green-800"
+                              title={stockInfo.isVariant ? "Tồn kho theo biến thể" : "Tồn kho tổng"}
+                            >
+                              Còn {stockInfo.total} chiếc
+                            </span>
+                          );
+                        })()}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="mt-3 grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      className="flex items-center justify-center gap-2 rounded border border-border bg-white px-3 py-2 text-xs font-semibold transition-colors hover:bg-muted"
+                      onClick={() => {
+                        setPreviewProduct(product);
+                        setShowPreviewModal(true);
+                      }}
+                    >
+                      <Eye className="h-4 w-4" />
+                      Xem nhanh
+                    </button>
+                    <button
+                      type="button"
+                      className="flex items-center justify-center gap-2 rounded border border-border bg-white px-3 py-2 text-xs font-semibold transition-colors hover:bg-muted"
+                      onClick={() => {
+                        setSelectedProduct(product);
+                        setFormData({
+                          name: product.name,
+                          price: product.price,
+                          originalPrice: product.originalPrice || 0,
+                          discountPercent: product.discountPercent || 0,
+                          showDiscountPercent: product.showDiscountPercent || false,
+                          category: product.category,
+                          image: product.image,
+                          sizeChartImage: product.sizeChartImage || "",
+                          description: product.description,
+                          sizes: product.sizes.join(", "),
+                          inStock: product.inStock,
+                          rating: product.rating,
+                          reviews: product.reviews,
+                        });
+                        setProductImages(
+                          (product.images && product.images.length > 0 ? product.images : [product.image]).concat(""),
+                        );
+                        setSelectedSizes(product.sizes);
+                        setSelectedColors(product.colors);
+                        setSelectedTags(product.tags ?? []);
+                        setColorImageDrafts(product.colorImages || {});
+                        setStockInput(product.stock !== undefined ? product.stock : 999);
+                        setVariantStockDraft(product.variantStock || {});
+                        setStockType(
+                          product.variantStock && Object.keys(product.variantStock).length > 0 ? "variant" : "simple",
+                        );
+                        setFormTab("info");
+                        setShowEditModal(true);
+                      }}
+                    >
+                      <Edit className="h-4 w-4" />
+                      Chỉnh sửa
+                    </button>
+                    <button
+                      type="button"
+                      className="flex items-center justify-center gap-2 rounded border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-semibold text-blue-700 transition-colors hover:bg-blue-100"
+                      onClick={() => {
+                        setSelectedProduct(product);
+                        setEditingColorImages(product.colorImages || {});
+                        setShowColorImagesModal(true);
+                      }}
+                    >
+                      <ImageIcon className="h-4 w-4" />
+                      Ảnh theo màu
+                    </button>
+                    <button
+                      type="button"
+                      className="flex items-center justify-center gap-2 rounded border border-red-200 bg-red-50 px-3 py-2 text-xs font-semibold text-red-700 transition-colors hover:bg-red-100"
+                      onClick={() => {
+                        if (window.confirm(`Bạn có chắc chắn muốn xóa "${product.name}"?`)) {
+                          deleteProduct(product.id);
+                        }
+                      }}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                      Xóa
+                    </button>
+                  </div>
+                </div>
+              ))}
+
+              {filteredProducts.length === 0 && (
+                <div className="px-6 py-12 text-center text-muted-foreground">
+                  Không có sản phẩm nào phù hợp bộ lọc.
+                </div>
+              )}
+            </div>
+
+            {/* Desktop: table */}
+            <div className="hidden md:block">
               <table className="w-full">
                 <thead className="bg-muted">
                   <tr>
