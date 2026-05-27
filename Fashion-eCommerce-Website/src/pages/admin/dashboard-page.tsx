@@ -179,7 +179,7 @@ export function AdminDashboardPage() {
       {/* HEADER SECTION */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-border pb-5">
         <div>
-          <h1 className="text-2xl font-black uppercase tracking-tight text-black flex items-center gap-2">
+          <h1 className="text-xl font-black uppercase tracking-tight text-black flex items-center gap-2 sm:text-2xl">
             <Activity className="h-6 w-6 text-black" />
             MADMAD Operational Dashboard
           </h1>

@@ -149,30 +149,31 @@ export function AdminStorefrontPage() {
 
   return (
     <div className="mx-auto max-w-7xl space-y-5">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Storefront Settings</h1>
+          <h1 className="text-xl font-bold sm:text-2xl">Storefront Settings</h1>
           <p className="text-sm text-muted-foreground">Cấu hình giao diện trang chủ gọn gàng và trực quan</p>
         </div>
-        <div className="flex items-center gap-2">
-          <Link to="/" className="rounded border border-border px-4 py-2 text-sm hover:bg-muted transition-colors">
+        <div className="flex flex-wrap items-center gap-2">
+          <Link to="/" className="rounded border border-border px-3 py-2 text-sm hover:bg-muted transition-colors sm:px-4">
             Xem trang chủ →
           </Link>
           <button 
             onClick={() => showToast("Cài đặt Storefront đã được lưu thành công!", "success")} 
-            className="flex items-center gap-2 rounded bg-black px-4 py-2 text-sm text-white font-medium hover:bg-black/85 transition-colors"
+            className="flex items-center gap-2 rounded bg-black px-3 py-2 text-sm text-white font-medium hover:bg-black/85 transition-colors sm:px-4"
           >
             <Save className="h-4 w-4" /> Lưu cấu hình
           </button>
         </div>
       </div>
 
-      <div className="flex gap-1 border-b border-border">
+      <div className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
+        <div className="flex min-w-max gap-1 border-b border-border">
         {(["hero", "bestsellers", "gallery", "instagram"] as const).map((tab) => (
           <button 
             key={tab} 
             onClick={() => setActiveTab(tab)} 
-            className={`px-4 py-2.5 text-sm capitalize transition-all duration-200 border-b-2 ${
+            className={`shrink-0 px-3 py-2.5 text-sm capitalize transition-all duration-200 border-b-2 sm:px-4 ${
               activeTab === tab 
                 ? "border-black font-bold text-black" 
                 : "border-transparent text-muted-foreground hover:text-foreground"
@@ -181,11 +182,12 @@ export function AdminStorefrontPage() {
             {tab === "hero" ? "🖼 Banner" : tab === "bestsellers" ? "⭐ Nổi bật" : tab === "gallery" ? "🗂 Gallery" : "📷 Instagram"}
           </button>
         ))}
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 md:gap-6">
         {/* LEFT CONFIGURATION PANELS */}
-        <div className="lg:col-span-3 rounded-xl border border-border bg-white p-5 space-y-4 shadow-sm">
+        <div className="lg:col-span-3 rounded-xl border border-border bg-white p-4 md:p-5 space-y-4 shadow-sm">
           
           {/* HERO BANNER SETTINGS */}
           {activeTab === "hero" && (

@@ -665,29 +665,29 @@ export function AdminOrdersPage() {
   return (
     <div className="mx-auto max-w-7xl space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+      <div className="flex flex-col gap-4 sm:flex-row sm:justify-between sm:items-center">
         <div>
-          <h1 className="text-2xl font-black tracking-tight text-black uppercase">HỆ THỐNG VẬN HÀNH ĐƠN HÀNG</h1>
+          <h1 className="text-xl font-black tracking-tight text-black uppercase sm:text-2xl">HỆ THỐNG VẬN HÀNH ĐƠN HÀNG</h1>
           <p className="text-xs text-black/50">
             Trung tâm kiểm soát đơn hàng Realtime & Quản lý Loyalty thăng hạng VIP.
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {selectedOrderIds.length > 0 && (
             <button
               onClick={handleBatchPrint}
               disabled={isBatchPrinting}
-              className="flex items-center justify-center gap-2 rounded-xl bg-red-600 hover:bg-red-700 text-white px-5 py-3 text-xs font-bold tracking-widest uppercase transition-all shadow-md shadow-red-600/20 disabled:opacity-50"
+              className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-red-600 hover:bg-red-700 text-white px-4 py-3 text-xs font-bold tracking-widest uppercase transition-all shadow-md shadow-red-600/20 disabled:opacity-50 sm:flex-none sm:px-5"
             >
-              <Printer className="h-4 w-4 animate-bounce" />
-              {isBatchPrinting ? "Đang Xử Lý..." : `In ${selectedOrderIds.length} Đơn (Chuyển Đang Chuẩn Bị)`}
+              <Printer className="h-4 w-4 shrink-0 animate-bounce" />
+              {isBatchPrinting ? "Đang Xử Lý..." : `In ${selectedOrderIds.length} Đơn`}
             </button>
           )}
           <button
             onClick={() => setShowCreateModal(true)}
-            className="flex items-center justify-center gap-2 rounded-xl bg-black hover:bg-red-700 text-white px-5 py-3 text-xs font-bold tracking-widest uppercase transition-all shadow-md shadow-black/10"
+            className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-black hover:bg-red-700 text-white px-4 py-3 text-xs font-bold tracking-widest uppercase transition-all shadow-md shadow-black/10 sm:flex-none sm:px-5"
           >
-            <Plus className="h-4 w-4" />
+            <Plus className="h-4 w-4 shrink-0" />
             Tạo Đơn Offline
           </button>
         </div>
@@ -772,12 +772,12 @@ export function AdminOrdersPage() {
             />
           </div>
 
-          <div className="flex flex-wrap gap-3">
+          <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
             {/* 👑 BỘ LỌC PHÂN LOẠI LOYALTY KHÁCH HÀNG */}
             <select
               value={filterCustomerType}
               onChange={(event) => setFilterCustomerType(event.target.value)}
-              className="rounded-xl border border-black/10 bg-stone-50 px-4 py-3 text-xs font-bold text-black/70 focus:border-black/60 focus:bg-white focus:outline-none focus:ring-0 transition-all"
+              className="w-full rounded-xl border border-black/10 bg-stone-50 px-4 py-3 text-xs font-bold text-black/70 focus:border-black/60 focus:bg-white focus:outline-none focus:ring-0 transition-all sm:w-auto"
             >
               <option value="all">TẤT CẢ PHÂN LOẠI KHÁCH</option>
               <option value="vip">THÀNH VIÊN VIP</option>
@@ -789,7 +789,7 @@ export function AdminOrdersPage() {
             <select
               value={filterShippingMethod}
               onChange={(event) => setFilterShippingMethod(event.target.value)}
-              className="rounded-xl border border-black/10 bg-stone-50 px-4 py-3 text-xs font-bold text-black/70 focus:border-black/60 focus:bg-white focus:outline-none focus:ring-0 transition-all"
+              className="w-full rounded-xl border border-black/10 bg-stone-50 px-4 py-3 text-xs font-bold text-black/70 focus:border-black/60 focus:bg-white focus:outline-none focus:ring-0 transition-all sm:w-auto"
             >
               <option value="all">TẤT CẢ P.THỨC SHIP</option>
               <option value="standard">SHIP TIÊU CHUẨN (THƯỜNG)</option>
@@ -799,7 +799,7 @@ export function AdminOrdersPage() {
             <select
               value={filterSource}
               onChange={(event) => setFilterSource(event.target.value)}
-              className="rounded-xl border border-black/10 bg-stone-50 px-4 py-3 text-xs font-bold text-black/70 focus:border-black/60 focus:bg-white focus:outline-none focus:ring-0 transition-all"
+              className="w-full rounded-xl border border-black/10 bg-stone-50 px-4 py-3 text-xs font-bold text-black/70 focus:border-black/60 focus:bg-white focus:outline-none focus:ring-0 transition-all sm:w-auto"
             >
               <option value="all">TẤT CẢ NGUỒN ĐƠN</option>
               <option value="website">WEBSITE</option>
@@ -812,7 +812,7 @@ export function AdminOrdersPage() {
             <select
               value={filterStatus}
               onChange={(event) => setFilterStatus(event.target.value)}
-              className="rounded-xl border border-black/10 bg-stone-50 px-4 py-3 text-xs font-bold text-black/70 focus:border-black/60 focus:bg-white focus:outline-none focus:ring-0 transition-all"
+              className="w-full rounded-xl border border-black/10 bg-stone-50 px-4 py-3 text-xs font-bold text-black/70 focus:border-black/60 focus:bg-white focus:outline-none focus:ring-0 transition-all sm:w-auto"
             >
               <option value="all">TẤT CẢ TRẠNG THÁI</option>
               <option value="pending">CHỜ XÁC NHẬN</option>

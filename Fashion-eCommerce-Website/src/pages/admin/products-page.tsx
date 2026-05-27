@@ -152,7 +152,7 @@ export function AdminProductsPage() {
     <div className="mx-auto max-w-7xl space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h1 className="mb-2 text-3xl">Quản Lý Sản Phẩm</h1>
+          <h1 className="mb-2 text-2xl sm:text-3xl">Quản Lý Sản Phẩm</h1>
           <p className="text-muted-foreground">Tìm kiếm, lọc, xem nhanh và chỉnh sửa sản phẩm.</p>
         </div>
         <div className="flex items-center gap-3">

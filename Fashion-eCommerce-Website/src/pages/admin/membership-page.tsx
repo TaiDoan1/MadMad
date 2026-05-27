@@ -244,7 +244,7 @@ export function AdminMembershipPage() {
       {/* 👑 PAGE HEADER */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-black/10 pb-5">
         <div>
-          <h1 className="text-2xl font-black tracking-tight text-black uppercase">QUẢN LÝ HỆ THỐNG VIP CLUB</h1>
+          <h1 className="text-xl font-black tracking-tight text-black uppercase sm:text-2xl">QUẢN LÝ HỆ THỐNG VIP CLUB</h1>
           <p className="text-xs text-black/50">Cấu hình các hạng thẻ thành viên, phần trăm chiết khấu tự động và quản lý tệp khách hàng VIP.</p>
         </div>
         <button

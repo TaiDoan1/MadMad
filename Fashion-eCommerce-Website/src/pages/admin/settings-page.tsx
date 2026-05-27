@@ -382,7 +382,7 @@ export function AdminSettingsPage() {
       {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-black tracking-tight text-black uppercase">CÀI ĐẶT HỆ THỐNG</h1>
+          <h1 className="text-xl font-black tracking-tight text-black uppercase sm:text-2xl">CÀI ĐẶT HỆ THỐNG</h1>
           <p className="text-xs text-black/50">Quản lý nhận diện thương hiệu MADMAD và các chương trình khuyến mãi VIP</p>
         </div>
         <div className="flex items-center gap-3">
@@ -393,10 +393,11 @@ export function AdminSettingsPage() {
       </div>
 
       {/* Tabs Sleek Navigation */}
-      <div className="flex border-b border-black/10">
+      <div className="-mx-4 overflow-x-auto px-4 md:mx-0 md:px-0">
+        <div className="flex min-w-max border-b border-black/10">
         <button
           onClick={() => setActiveTab("branding")}
-          className={`px-6 py-3 text-xs font-extrabold tracking-widest uppercase border-b-2 transition-all ${
+          className={`shrink-0 px-4 py-3 text-xs font-extrabold tracking-widest uppercase border-b-2 transition-all md:px-6 ${
             activeTab === "branding"
               ? "border-black text-black"
               : "border-transparent text-black/40 hover:text-black"
@@ -406,7 +407,7 @@ export function AdminSettingsPage() {
         </button>
         <button
           onClick={() => setActiveTab("coupons")}
-          className={`px-6 py-3 text-xs font-extrabold tracking-widest uppercase border-b-2 transition-all ${
+          className={`shrink-0 px-4 py-3 text-xs font-extrabold tracking-widest uppercase border-b-2 transition-all md:px-6 ${
             activeTab === "coupons"
               ? "border-black text-black"
               : "border-transparent text-black/40 hover:text-black"
@@ -416,7 +417,7 @@ export function AdminSettingsPage() {
         </button>
         <button
           onClick={() => setActiveTab("gateways")}
-          className={`px-6 py-3 text-xs font-extrabold tracking-widest uppercase border-b-2 transition-all ${
+          className={`shrink-0 px-4 py-3 text-xs font-extrabold tracking-widest uppercase border-b-2 transition-all md:px-6 ${
             activeTab === "gateways"
               ? "border-black text-black"
               : "border-transparent text-black/40 hover:text-black"
@@ -426,7 +427,7 @@ export function AdminSettingsPage() {
         </button>
         <button
           onClick={() => setActiveTab("invoice")}
-          className={`px-6 py-3 text-xs font-extrabold tracking-widest uppercase border-b-2 transition-all ${
+          className={`shrink-0 px-4 py-3 text-xs font-extrabold tracking-widest uppercase border-b-2 transition-all md:px-6 ${
             activeTab === "invoice"
               ? "border-black text-black"
               : "border-transparent text-black/40 hover:text-black"
@@ -436,7 +437,7 @@ export function AdminSettingsPage() {
         </button>
         <button
           onClick={() => setActiveTab("smtp")}
-          className={`px-6 py-3 text-xs font-extrabold tracking-widest uppercase border-b-2 transition-all ${
+          className={`shrink-0 px-4 py-3 text-xs font-extrabold tracking-widest uppercase border-b-2 transition-all md:px-6 ${
             activeTab === "smtp"
               ? "border-black text-black"
               : "border-transparent text-black/40 hover:text-black"
@@ -446,7 +447,7 @@ export function AdminSettingsPage() {
         </button>
         <button
           onClick={() => setActiveTab("backup")}
-          className={`px-6 py-3 text-xs font-extrabold tracking-widest uppercase border-b-2 transition-all ${
+          className={`shrink-0 px-4 py-3 text-xs font-extrabold tracking-widest uppercase border-b-2 transition-all md:px-6 ${
             activeTab === "backup"
               ? "border-red-600 text-red-600"
               : "border-transparent text-black/40 hover:text-black"
@@ -454,6 +455,7 @@ export function AdminSettingsPage() {
         >
           Sao Lưu Dữ Liệu
         </button>
+        </div>
       </div>
 
       {/* TAB 1: NHẬN DIỆN THƯƠNG HIỆU (BRANDING) */}
