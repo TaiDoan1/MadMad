@@ -5,6 +5,7 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -26,7 +27,6 @@ export interface SizeRecommendationPanelProps {
   guideRows?: SizeGuideRow[];
   categoryLabel?: string;
   t: TranslateFn;
-  onApplied?: () => void;
 }
 
 function readSavedProfile() {
@@ -52,7 +52,6 @@ export function SizeRecommendationPanel({
   guideRows,
   categoryLabel,
   t,
-  onApplied,
 }: SizeRecommendationPanelProps) {
   const saved = useMemo(() => readSavedProfile(), []);
   const [heightCm, setHeightCm] = useState(saved.height);
@@ -94,7 +93,6 @@ export function SizeRecommendationPanel({
 
     if (next.recommendedSize) {
       onSelectSize(next.recommendedSize);
-      onApplied?.();
     }
   };
 
@@ -234,7 +232,16 @@ export function SizeRecommendationModal(props: SizeRecommendationPanelProps) {
               )}
             </DialogDescription>
           </DialogHeader>
-          <SizeRecommendationPanel {...props} onApplied={() => setOpen(false)} />
+          <SizeRecommendationPanel {...props} />
+          <DialogFooter className="sm:justify-center pt-2">
+            <button
+              type="button"
+              onClick={() => setOpen(false)}
+              className="w-full sm:w-auto px-6 py-2.5 rounded-lg border border-black/10 dark:border-white/10 text-[10px] font-bold uppercase tracking-[0.15em] hover:bg-neutral-50 dark:hover:bg-neutral-900 transition-colors"
+            >
+              {t("Đóng", "Close")}
+            </button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </>
