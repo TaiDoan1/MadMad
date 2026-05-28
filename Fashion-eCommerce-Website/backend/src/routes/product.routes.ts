@@ -28,6 +28,7 @@ const parseProduct = (p: any) => ({
   showDiscountPercent: !!p.showDiscountPercent,
   isPreOrder: !!p.isPreOrder,
   preOrderDays: p.preOrderDays !== null && p.preOrderDays !== undefined ? Number(p.preOrderDays) : null,
+  sizeGuideProfile: p.sizeGuideProfile ? String(p.sizeGuideProfile) : undefined,
 });
 
 // Helper: Tiền xử lý tất cả các trường ảnh của sản phẩm (Tải lên Cloudinary nếu là Base64)
@@ -155,7 +156,7 @@ router.get("/:id", async (req, res, next) => {
 // 3. POST /api/products - Tạo sản phẩm mới (Admin)
 router.post("/", async (req, res, next) => {
   try {
-    const { name, sku, price, image, category, description, sizes, colors, colorImages, images, isFeatured, stock, variantStock, inStock, originalPrice, discountPercent, showDiscountPercent, isPreOrder, preOrderDays } = req.body;
+    const { name, sku, price, image, category, sizeGuideProfile, description, sizes, colors, colorImages, images, isFeatured, stock, variantStock, inStock, originalPrice, discountPercent, showDiscountPercent, isPreOrder, preOrderDays } = req.body;
 
     if (!name || !sku || !price || !image || !category) {
       return res.status(400).json({ message: "Vui lòng nhập đầy đủ thông tin bắt buộc!" });
@@ -175,6 +176,7 @@ router.post("/", async (req, res, next) => {
         price: Number(price),
         image: cleanData.image,
         category,
+        sizeGuideProfile: sizeGuideProfile ? String(sizeGuideProfile).trim() || null : null,
         description: description || "",
         sizes: sizesStr,
         colors: colorsStr,
@@ -205,7 +207,7 @@ router.post("/", async (req, res, next) => {
 router.put("/:id", async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { name, sku, price, image, category, description, sizes, colors, colorImages, images, isFeatured, stock, variantStock, inStock, originalPrice, discountPercent, showDiscountPercent, isPreOrder, preOrderDays } = req.body;
+    const { name, sku, price, image, category, sizeGuideProfile, description, sizes, colors, colorImages, images, isFeatured, stock, variantStock, inStock, originalPrice, discountPercent, showDiscountPercent, isPreOrder, preOrderDays } = req.body;
 
     // Chỉ thực hiện xử lý ảnh nếu trường đó được truyền lên
     let finalImage = image;
@@ -242,6 +244,10 @@ router.put("/:id", async (req, res, next) => {
         price: price ? Number(price) : undefined,
         image: finalImage,
         category,
+        sizeGuideProfile:
+          sizeGuideProfile !== undefined
+            ? (sizeGuideProfile ? String(sizeGuideProfile).trim() || null : null)
+            : undefined,
         description,
         sizes: sizesStr || undefined,
         colors: colorsStr || undefined,

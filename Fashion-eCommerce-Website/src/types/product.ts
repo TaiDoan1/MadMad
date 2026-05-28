@@ -8,6 +8,8 @@ export interface Product {
   showDiscountPercent?: boolean;
   tags?: string[];
   category: string;
+  /** Khóa bảng gợi ý size riêng (Cài đặt → Gợi ý Size → Kiểu/Form). Để trống = theo danh mục. */
+  sizeGuideProfile?: string;
   image: string;
   images?: string[];
   sizeChartImage?: string;

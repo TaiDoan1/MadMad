@@ -17,6 +17,7 @@ export const DEFAULT_SIZE_GUIDE: SizeGuideRow[] = [
 export const DEFAULT_SIZE_GUIDE_CONFIG: SizeGuideConfig = {
   defaultRows: DEFAULT_SIZE_GUIDE,
   byCategory: {},
+  byProfile: {},
 };
 
 function normalizeRow(row: unknown): SizeGuideRow | null {
@@ -33,33 +34,84 @@ function normalizeRow(row: unknown): SizeGuideRow | null {
   };
 }
 
+function normalizeRowMap(input: unknown): Record<string, SizeGuideRow[]> {
+  const map: Record<string, SizeGuideRow[]> = {};
+  if (!input || typeof input !== "object") return map;
+  for (const [key, value] of Object.entries(input as Record<string, unknown>)) {
+    if (!Array.isArray(value)) continue;
+    const rows = value.map(normalizeRow).filter((r): r is SizeGuideRow => Boolean(r));
+    if (rows.length > 0) map[key.trim()] = rows;
+  }
+  return map;
+}
+
 export function normalizeSizeGuideConfig(input: unknown): SizeGuideConfig {
-  if (!input || typeof input !== "object") return { ...DEFAULT_SIZE_GUIDE_CONFIG, defaultRows: [...DEFAULT_SIZE_GUIDE] };
-  const raw = input as { defaultRows?: unknown; byCategory?: unknown };
+  if (!input || typeof input !== "object") {
+    return {
+      defaultRows: [...DEFAULT_SIZE_GUIDE],
+      byCategory: {},
+      byProfile: {},
+    };
+  }
+  const raw = input as {
+    defaultRows?: unknown;
+    byCategory?: unknown;
+    byProfile?: unknown;
+    profiles?: unknown;
+  };
   const defaultRows = Array.isArray(raw.defaultRows)
     ? raw.defaultRows.map(normalizeRow).filter((r): r is SizeGuideRow => Boolean(r))
     : [];
-  const byCategory: Record<string, SizeGuideRow[]> = {};
-  if (raw.byCategory && typeof raw.byCategory === "object") {
-    for (const [key, value] of Object.entries(raw.byCategory as Record<string, unknown>)) {
-      if (!Array.isArray(value)) continue;
-      const rows = value.map(normalizeRow).filter((r): r is SizeGuideRow => Boolean(r));
-      if (rows.length > 0) byCategory[key] = rows;
-    }
-  }
+  const byCategory = normalizeRowMap(raw.byCategory);
+  const byProfile = normalizeRowMap(raw.byProfile ?? raw.profiles);
+
   return {
     defaultRows: defaultRows.length > 0 ? defaultRows : [...DEFAULT_SIZE_GUIDE],
     byCategory,
+    byProfile,
   };
+}
+
+function findKeyMatch<T>(key: string, map: Record<string, T>): T | undefined {
+  const trimmed = key.trim();
+  if (!trimmed) return undefined;
+  if (map[trimmed]) return map[trimmed];
+  const lower = trimmed.toLowerCase();
+  for (const [k, v] of Object.entries(map)) {
+    if (k.toLowerCase() === lower) return v;
+  }
+  return undefined;
+}
+
+export function listSizeGuideProfileKeys(config?: SizeGuideConfig | null): string[] {
+  const normalized = config ? normalizeSizeGuideConfig(config) : DEFAULT_SIZE_GUIDE_CONFIG;
+  return Object.keys(normalized.byProfile).sort((a, b) => a.localeCompare(b, "vi"));
 }
 
 export function getSizeGuideRowsForCategory(category: string, config?: SizeGuideConfig | null): SizeGuideRow[] {
   const normalized = config ? normalizeSizeGuideConfig(config) : DEFAULT_SIZE_GUIDE_CONFIG;
   const cat = (category || "").trim();
-  if (cat && normalized.byCategory[cat]?.length) {
-    return normalized.byCategory[cat];
+  const categoryRows = cat ? findKeyMatch(cat, normalized.byCategory) : undefined;
+  if (categoryRows?.length) {
+    return categoryRows;
   }
   return normalized.defaultRows;
+}
+
+/** Ưu tiên: bảng kiểu/form sản phẩm → danh mục → mặc định */
+export function getSizeGuideRowsForProduct(
+  product: { category: string; sizeGuideProfile?: string | null },
+  config?: SizeGuideConfig | null,
+): SizeGuideRow[] {
+  const normalized = config ? normalizeSizeGuideConfig(config) : DEFAULT_SIZE_GUIDE_CONFIG;
+  const profileKey = (product.sizeGuideProfile || "").trim();
+  if (profileKey) {
+    const profileRows = findKeyMatch(profileKey, normalized.byProfile);
+    if (profileRows?.length) {
+      return profileRows;
+    }
+  }
+  return getSizeGuideRowsForCategory(product.category, normalized);
 }
 
 function normalizeSizeLabel(size: string) {
@@ -92,7 +144,6 @@ function scoreRow(heightCm: number, weightKg: number, row: SizeGuideRow, gender:
   if (heightInRange) score += 10;
   if (weightInRange) score += 10;
 
-  // Streetwear oversize: nam thường lên 1 size nếu sát ngưỡng trên
   if (gender === "male" && (heightCm >= row.heightMax - 2 || weightKg >= row.weightMax - 2)) {
     score -= 3;
   }
@@ -100,7 +151,6 @@ function scoreRow(heightCm: number, weightKg: number, row: SizeGuideRow, gender:
     score -= 2;
   }
 
-  // Ưu tiên gần trung tâm khoảng
   score -= Math.abs(heightCm - heightMid) * 0.15;
   score -= Math.abs(weightKg - weightMid) * 0.2;
 

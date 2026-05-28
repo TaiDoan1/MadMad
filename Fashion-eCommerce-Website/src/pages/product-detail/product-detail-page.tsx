@@ -4,7 +4,7 @@ import { Search, ShoppingCart, User, Share2, ArrowLeft } from "lucide-react";
 
 import { ImageWithFallback } from "@/components/common/image-with-fallback";
 import { SizeRecommendationModal } from "@/components/product/size-recommendation-panel";
-import { getSizeGuideRowsForCategory } from "@/utils/size-recommendation";
+import { getSizeGuideRowsForProduct } from "@/utils/size-recommendation";
 import { useTransitionTo } from "@/components/common/page-transition";
 import { useCart } from "@/features/cart/context/cart-context";
 import { useProducts } from "@/features/products/context/product-context";
@@ -597,8 +597,15 @@ export function ProductDetailPage() {
                   availableSizes={product.sizes}
                   selectedSize={selectedSize}
                   onSelectSize={setSelectedSize}
-                  guideRows={getSizeGuideRowsForCategory(product.category, settings.sizeGuide)}
-                  categoryLabel={translate(product.category)}
+                  guideRows={getSizeGuideRowsForProduct(
+                    { category: product.category, sizeGuideProfile: product.sizeGuideProfile },
+                    settings.sizeGuide,
+                  )}
+                  categoryLabel={
+                    product.sizeGuideProfile
+                      ? product.sizeGuideProfile
+                      : translate(product.category)
+                  }
                   t={t}
                 />
               </div>

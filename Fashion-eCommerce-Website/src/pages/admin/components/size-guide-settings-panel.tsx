@@ -14,13 +14,26 @@ const EMPTY_ROW: SizeGuideRow = {
   weightMax: 0,
 };
 
+const PROFILE_PREFIX = "profile:";
+
 function cloneConfig(config: SizeGuideConfig): SizeGuideConfig {
   return {
     defaultRows: config.defaultRows.map((r) => ({ ...r })),
     byCategory: Object.fromEntries(
       Object.entries(config.byCategory).map(([k, rows]) => [k, rows.map((r) => ({ ...r }))]),
     ),
+    byProfile: Object.fromEntries(
+      Object.entries(config.byProfile).map(([k, rows]) => [k, rows.map((r) => ({ ...r }))]),
+    ),
   };
+}
+
+function isProfileTarget(target: string) {
+  return target.startsWith(PROFILE_PREFIX);
+}
+
+function profileNameFromTarget(target: string) {
+  return target.slice(PROFILE_PREFIX.length);
 }
 
 export function SizeGuideSettingsPanel() {
@@ -31,8 +44,9 @@ export function SizeGuideSettingsPanel() {
   const [draft, setDraft] = useState<SizeGuideConfig>(() =>
     cloneConfig(normalizeSizeGuideConfig(settings.sizeGuide)),
   );
-  const [editTarget, setEditTarget] = useState<"default" | string>("default");
+  const [editTarget, setEditTarget] = useState<string>("default");
   const [newCategory, setNewCategory] = useState("");
+  const [newProfile, setNewProfile] = useState("");
 
   useEffect(() => {
     setDraft(cloneConfig(normalizeSizeGuideConfig(settings.sizeGuide)));
@@ -40,12 +54,29 @@ export function SizeGuideSettingsPanel() {
 
   const activeRows = useMemo(() => {
     if (editTarget === "default") return draft.defaultRows;
+    if (isProfileTarget(editTarget)) {
+      return draft.byProfile[profileNameFromTarget(editTarget)] ?? [];
+    }
     return draft.byCategory[editTarget] ?? [];
   }, [draft, editTarget]);
+
+  const editLabel = useMemo(() => {
+    if (editTarget === "default") return "Bảng mặc định";
+    if (isProfileTarget(editTarget)) return `Kiểu/Form: ${profileNameFromTarget(editTarget)}`;
+    return `Danh mục: ${editTarget}`;
+  }, [editTarget]);
 
   const setActiveRows = (rows: SizeGuideRow[]) => {
     if (editTarget === "default") {
       setDraft((c) => ({ ...c, defaultRows: rows }));
+      return;
+    }
+    if (isProfileTarget(editTarget)) {
+      const name = profileNameFromTarget(editTarget);
+      setDraft((c) => ({
+        ...c,
+        byProfile: { ...c.byProfile, [name]: rows },
+      }));
       return;
     }
     setDraft((c) => ({
@@ -94,24 +125,58 @@ export function SizeGuideSettingsPanel() {
     setNewCategory("");
   };
 
-  const handleCopyFromDefault = () => {
-    if (editTarget === "default") return;
+  const handleAddProfile = () => {
+    const name = newProfile.trim();
+    if (!name) return;
+    if (draft.byProfile[name]) {
+      showToast("Kiểu/form này đã có bảng riêng.", "warning");
+      setEditTarget(`${PROFILE_PREFIX}${name}`);
+      return;
+    }
     setDraft((c) => ({
       ...c,
-      byCategory: {
-        ...c.byCategory,
-        [editTarget]: c.defaultRows.map((r) => ({ ...r })),
+      byProfile: {
+        ...c.byProfile,
+        [name]: draft.defaultRows.map((r) => ({ ...r })),
       },
     }));
-    showToast(`Đã sao chép bảng mặc định sang "${editTarget}".`, "success");
+    setEditTarget(`${PROFILE_PREFIX}${name}`);
+    setNewProfile("");
+    showToast(`Đã tạo bảng "${name}". Gán kiểu này trong form sản phẩm.`, "success");
   };
 
-  const handleDeleteCategoryOverride = () => {
+  const handleCopyFromDefault = () => {
     if (editTarget === "default") return;
-    if (!window.confirm(`Xóa bảng riêng cho danh mục "${editTarget}"?`)) return;
-    const next = { ...draft.byCategory };
-    delete next[editTarget];
-    setDraft((c) => ({ ...c, byCategory: next }));
+    const rows = draft.defaultRows.map((r) => ({ ...r }));
+    if (isProfileTarget(editTarget)) {
+      const name = profileNameFromTarget(editTarget);
+      setDraft((c) => ({
+        ...c,
+        byProfile: { ...c.byProfile, [name]: rows },
+      }));
+    } else {
+      setDraft((c) => ({
+        ...c,
+        byCategory: { ...c.byCategory, [editTarget]: rows },
+      }));
+    }
+    showToast(`Đã sao chép bảng mặc định sang "${editLabel}".`, "success");
+  };
+
+  const handleDeleteOverride = () => {
+    if (editTarget === "default") return;
+    if (!window.confirm(`Xóa bảng riêng "${editLabel}"?`)) return;
+
+    if (isProfileTarget(editTarget)) {
+      const name = profileNameFromTarget(editTarget);
+      const next = { ...draft.byProfile };
+      delete next[name];
+      setDraft((c) => ({ ...c, byProfile: next }));
+    } else {
+      const next = { ...draft.byCategory };
+      delete next[editTarget];
+      setDraft((c) => ({ ...c, byCategory: next }));
+    }
     setEditTarget("default");
   };
 
@@ -120,7 +185,9 @@ export function SizeGuideSettingsPanel() {
       <div>
         <h3 className="text-xs font-extrabold tracking-widest text-black/75 uppercase">Bảng gợi ý size (chiều cao & cân nặng)</h3>
         <p className="text-[10px] text-black/45 mt-1 leading-relaxed">
-          Khách nhập số đo trên trang sản phẩm → hệ thống gợi size theo bảng này. Có thể set bảng riêng cho từng danh mục (Áo Thun, Áo Khoác…).
+          <strong>Danh mục:</strong> áp dụng cho mọi SP cùng danh mục (Áo Thun, Áo Khoác…).{" "}
+          <strong>Kiểu/Form:</strong> mỗi kiểu áo size khác nhau — tạo bảng riêng rồi chọn trong form sản phẩm.
+          Thứ tự ưu tiên trên shop: <em>Kiểu/Form SP → Danh mục → Mặc định</em>.
         </p>
       </div>
 
@@ -130,14 +197,27 @@ export function SizeGuideSettingsPanel() {
           <select
             value={editTarget}
             onChange={(e) => setEditTarget(e.target.value)}
-            className="rounded-xl border border-black/10 bg-stone-50 px-3 py-2 text-xs font-bold min-w-[200px]"
+            className="rounded-xl border border-black/10 bg-stone-50 px-3 py-2 text-xs font-bold min-w-[240px]"
           >
-            <option value="default">Bảng mặc định (tất cả danh mục)</option>
-            {Object.keys(draft.byCategory).map((cat) => (
-              <option key={cat} value={cat}>
-                Riêng: {cat}
-              </option>
-            ))}
+            <option value="default">Bảng mặc định (fallback)</option>
+            {Object.keys(draft.byCategory).length > 0 && (
+              <optgroup label="Theo danh mục">
+                {Object.keys(draft.byCategory).map((cat) => (
+                  <option key={cat} value={cat}>
+                    {cat}
+                  </option>
+                ))}
+              </optgroup>
+            )}
+            {Object.keys(draft.byProfile).length > 0 && (
+              <optgroup label="Theo kiểu / form (gán từng SP)">
+                {Object.keys(draft.byProfile).map((name) => (
+                  <option key={name} value={`${PROFILE_PREFIX}${name}`}>
+                    {name}
+                  </option>
+                ))}
+              </optgroup>
+            )}
           </select>
         </div>
         {editTarget !== "default" && (
@@ -151,7 +231,7 @@ export function SizeGuideSettingsPanel() {
             </button>
             <button
               type="button"
-              onClick={handleDeleteCategoryOverride}
+              onClick={handleDeleteOverride}
               className="rounded-xl border border-red-200 text-red-700 px-3 py-2 text-[10px] font-bold uppercase tracking-wider hover:bg-red-50"
             >
               Xóa bảng riêng
@@ -160,33 +240,62 @@ export function SizeGuideSettingsPanel() {
         )}
       </div>
 
-      <div className="flex flex-wrap gap-2 items-end border-t border-black/5 pt-4">
-        <div className="flex-1 min-w-[180px]">
-          <label className="block text-[9px] font-extrabold uppercase tracking-wider text-black/50 mb-1">
-            Thêm bảng riêng cho danh mục
-          </label>
-          <select
-            value={newCategory}
-            onChange={(e) => setNewCategory(e.target.value)}
-            className="w-full rounded-xl border border-black/10 bg-stone-50 px-3 py-2 text-xs font-bold"
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-t border-black/5 pt-4">
+        <div className="flex flex-wrap gap-2 items-end">
+          <div className="flex-1 min-w-[160px]">
+            <label className="block text-[9px] font-extrabold uppercase tracking-wider text-black/50 mb-1">
+              Thêm bảng theo danh mục
+            </label>
+            <select
+              value={newCategory}
+              onChange={(e) => setNewCategory(e.target.value)}
+              className="w-full rounded-xl border border-black/10 bg-stone-50 px-3 py-2 text-xs font-bold"
+            >
+              <option value="">-- Chọn danh mục --</option>
+              {categories.map((cat) => (
+                <option key={cat} value={cat}>
+                  {cat}
+                </option>
+              ))}
+            </select>
+          </div>
+          <button
+            type="button"
+            onClick={handleAddCategoryOverride}
+            className="flex items-center gap-1.5 rounded-xl bg-black text-white px-4 py-2 text-[10px] font-bold uppercase tracking-wider hover:bg-red-700"
           >
-            <option value="">-- Chọn danh mục --</option>
-            {categories.map((cat) => (
-              <option key={cat} value={cat}>
-                {cat}
-              </option>
-            ))}
-          </select>
+            <Plus className="h-3.5 w-3.5" />
+            Thêm DM
+          </button>
         </div>
-        <button
-          type="button"
-          onClick={handleAddCategoryOverride}
-          className="flex items-center gap-1.5 rounded-xl bg-black text-white px-4 py-2 text-[10px] font-bold uppercase tracking-wider hover:bg-red-700"
-        >
-          <Plus className="h-3.5 w-3.5" />
-          Thêm
-        </button>
+
+        <div className="flex flex-wrap gap-2 items-end">
+          <div className="flex-1 min-w-[160px]">
+            <label className="block text-[9px] font-extrabold uppercase tracking-wider text-black/50 mb-1">
+              Thêm kiểu / form riêng
+            </label>
+            <input
+              type="text"
+              value={newProfile}
+              onChange={(e) => setNewProfile(e.target.value)}
+              placeholder="VD: Áo thun oversize, Áo khoác boxy"
+              className="w-full rounded-xl border border-black/10 bg-stone-50 px-3 py-2 text-xs font-bold"
+            />
+          </div>
+          <button
+            type="button"
+            onClick={handleAddProfile}
+            className="flex items-center gap-1.5 rounded-xl bg-black text-white px-4 py-2 text-[10px] font-bold uppercase tracking-wider hover:bg-red-700"
+          >
+            <Plus className="h-3.5 w-3.5" />
+            Thêm kiểu
+          </button>
+        </div>
       </div>
+
+      <p className="text-[10px] font-semibold text-black/50">
+        Đang sửa: <span className="text-black">{editLabel}</span>
+      </p>
 
       <div className="overflow-x-auto rounded-xl border border-black/10">
         <table className="w-full text-xs">

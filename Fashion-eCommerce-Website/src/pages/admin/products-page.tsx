@@ -6,6 +6,7 @@ import { ImageUploadInput } from "@/components/common/image-upload-input";
 import { ImageWithFallback } from "@/components/common/image-with-fallback";
 import { useProducts } from "@/features/products/context/product-context";
 import { useStorefrontSettings } from "@/features/settings/context/storefront-settings-context";
+import { listSizeGuideProfileKeys } from "@/utils/size-recommendation";
 import type { Product } from "@/types/product";
 import { useToast } from "@/components/common/toast";
 
@@ -102,6 +103,7 @@ export function AdminProductsPage() {
     discountPercent: 0,
     showDiscountPercent: false,
     category: "",
+    sizeGuideProfile: "",
     image: "",
     sizeChartImage: "",
     description: "",
@@ -127,6 +129,7 @@ export function AdminProductsPage() {
       discountPercent: 0,
       showDiscountPercent: false,
       category: productOptions.categories[0] ?? "",
+      sizeGuideProfile: "",
       image: "",
       sizeChartImage: "",
       description: "",
@@ -165,6 +168,10 @@ export function AdminProductsPage() {
       : null;
 
   const categories = useMemo(() => productOptions.categories, [productOptions.categories]);
+  const sizeGuideProfiles = useMemo(
+    () => listSizeGuideProfileKeys(settings.sizeGuide),
+    [settings.sizeGuide],
+  );
 
   const filteredProducts = useMemo(() => {
     const q = searchTerm.trim().toLowerCase();
@@ -240,6 +247,7 @@ export function AdminProductsPage() {
       discountPercent: product.discountPercent || 0,
       showDiscountPercent: product.showDiscountPercent || false,
       category: product.category,
+      sizeGuideProfile: product.sizeGuideProfile || "",
       image: product.image,
       sizeChartImage: product.sizeChartImage || "",
       description: product.description,
@@ -681,6 +689,34 @@ export function AdminProductsPage() {
                           </option>
                         ))}
                       </select>
+                    </div>
+
+                    <div className="space-y-1.5 md:col-span-2">
+                      <label className="block text-[9px] font-extrabold tracking-widest uppercase text-black/50">
+                        Bảng gợi ý size (kiểu / form)
+                      </label>
+                      <select
+                        value={formData.sizeGuideProfile}
+                        onChange={(event) =>
+                          setFormData({ ...formData, sizeGuideProfile: event.target.value })
+                        }
+                        className="w-full rounded-xl border border-black/10 bg-stone-50 px-4 py-3 text-xs focus:bg-white focus:border-black/60 focus:outline-none transition-all font-bold"
+                      >
+                        <option value="">
+                          Theo danh mục ({formData.category || "mặc định"})
+                        </option>
+                        {sizeGuideProfiles.map((profile) => (
+                          <option key={profile} value={profile}>
+                            {profile}
+                          </option>
+                        ))}
+                      </select>
+                      <p className="text-[9px] text-black/40 leading-relaxed">
+                        Tạo kiểu mới tại Cài đặt hệ thống → Gợi Ý Size → Thêm kiểu / form riêng.
+                        {sizeGuideProfiles.length === 0
+                          ? " Chưa có kiểu riêng — đang dùng bảng theo danh mục hoặc mặc định."
+                          : null}
+                      </p>
                     </div>
 
                     <div className="space-y-1.5">
@@ -1335,6 +1371,7 @@ export function AdminProductsPage() {
                       showDiscountPercent: formData.showDiscountPercent,
                       tags: selectedTags,
                       category: formData.category,
+                      sizeGuideProfile: formData.sizeGuideProfile.trim() || undefined,
                       image: mainImage,
                       images: normalizedImages.length > 0 ? normalizedImages : mainImage ? [mainImage] : [],
                       sizeChartImage: formData.sizeChartImage.trim() || undefined,
