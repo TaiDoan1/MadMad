@@ -1,4 +1,3 @@
-import { AVAILABLE_COUPONS } from "@/features/promotions/data/coupons";
 import type { Coupon } from "@/types/coupon";
 import { safeLocalStorage } from "@/utils/safe-storage";
 import { API_URL } from "@/config/api";
@@ -77,8 +76,7 @@ export async function fetchCouponsFromServer(): Promise<Coupon[]> {
 }
 
 export function getAllCouponsSnapshot(): Coupon[] {
-  const stored = readStoredCoupons();
-  const merged = [...AVAILABLE_COUPONS, ...stored];
+  const merged = readStoredCoupons();
   const byCode = new Map<string, Coupon>();
   for (const c of merged) {
     if (!c?.code) continue;
