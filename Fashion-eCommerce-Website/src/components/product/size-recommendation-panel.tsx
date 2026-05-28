@@ -1,6 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { Ruler, Sparkles } from "lucide-react";
 
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import type { SizeGuideRow } from "@/types/size-guide";
 import {
   recommendSizeFromBodyMetrics,
@@ -12,13 +19,14 @@ import { safeLocalStorage } from "@/utils/safe-storage";
 
 type TranslateFn = (vi: string, en: string) => string;
 
-interface SizeRecommendationPanelProps {
+export interface SizeRecommendationPanelProps {
   availableSizes: string[];
   selectedSize: string;
   onSelectSize: (size: string) => void;
   guideRows?: SizeGuideRow[];
   categoryLabel?: string;
   t: TranslateFn;
+  onApplied?: () => void;
 }
 
 function readSavedProfile() {
@@ -44,6 +52,7 @@ export function SizeRecommendationPanel({
   guideRows,
   categoryLabel,
   t,
+  onApplied,
 }: SizeRecommendationPanelProps) {
   const saved = useMemo(() => readSavedProfile(), []);
   const [heightCm, setHeightCm] = useState(saved.height);
@@ -85,6 +94,7 @@ export function SizeRecommendationPanel({
 
     if (next.recommendedSize) {
       onSelectSize(next.recommendedSize);
+      onApplied?.();
     }
   };
 
@@ -96,18 +106,12 @@ export function SizeRecommendationPanel({
         : t("Tham khảo thêm size chart", "Check size chart too");
 
   return (
-    <div className="w-full rounded-xl border border-black/10 dark:border-white/10 bg-neutral-50/80 dark:bg-neutral-900/40 p-4 space-y-3">
-      <div className="flex items-center gap-2">
-        <Ruler className="h-4 w-4 text-primary" />
-        <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-neutral-500">
-          {t("Gợi ý size theo số đo", "Size suggestion by body metrics")}
-          {categoryLabel ? (
-            <span className="block normal-case font-semibold text-neutral-400 mt-0.5">
-              {t(`Danh mục: ${categoryLabel}`, `Category: ${categoryLabel}`)}
-            </span>
-          ) : null}
+    <div className="space-y-3">
+      {categoryLabel ? (
+        <p className="text-[10px] font-semibold text-neutral-500">
+          {t(`Danh mục: ${categoryLabel}`, `Category: ${categoryLabel}`)}
         </p>
-      </div>
+      ) : null}
 
       <div className="grid grid-cols-2 gap-2">
         <div>
@@ -199,5 +203,40 @@ export function SizeRecommendationPanel({
         </div>
       )}
     </div>
+  );
+}
+
+export function SizeRecommendationModal(props: SizeRecommendationPanelProps) {
+  const { t } = props;
+  const [open, setOpen] = useState(false);
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="mt-2 inline-flex items-center gap-1.5 text-[11px] font-semibold text-neutral-600 dark:text-neutral-400 underline underline-offset-2 decoration-neutral-400/60 hover:text-black dark:hover:text-white transition-colors cursor-pointer"
+      >
+        <Ruler className="h-3.5 w-3.5 shrink-0" />
+        {t("Nhấn để xem gợi ý size", "Tap to get a size suggestion")}
+      </button>
+
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-sm font-black uppercase tracking-widest">
+              {t("Gợi ý size theo số đo", "Size suggestion by body metrics")}
+            </DialogTitle>
+            <DialogDescription className="text-xs text-muted-foreground">
+              {t(
+                "Nhập chiều cao và cân nặng để hệ thống gợi size phù hợp với sản phẩm này.",
+                "Enter your height and weight to get a size suggestion for this product.",
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          <SizeRecommendationPanel {...props} onApplied={() => setOpen(false)} />
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }

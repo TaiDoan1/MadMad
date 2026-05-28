@@ -3,7 +3,7 @@ import { Link, useParams, useNavigate } from "react-router";
 import { Search, ShoppingCart, User, Share2, ArrowLeft } from "lucide-react";
 
 import { ImageWithFallback } from "@/components/common/image-with-fallback";
-import { SizeRecommendationPanel } from "@/components/product/size-recommendation-panel";
+import { SizeRecommendationModal } from "@/components/product/size-recommendation-panel";
 import { getSizeGuideRowsForCategory } from "@/utils/size-recommendation";
 import { useTransitionTo } from "@/components/common/page-transition";
 import { useCart } from "@/features/cart/context/cart-context";
@@ -563,15 +563,6 @@ export function ProductDetailPage() {
                 </div>
               </div>
 
-              <SizeRecommendationPanel
-                availableSizes={product.sizes}
-                selectedSize={selectedSize}
-                onSelectSize={setSelectedSize}
-                guideRows={getSizeGuideRowsForCategory(product.category, settings.sizeGuide)}
-                categoryLabel={translate(product.category)}
-                t={t}
-              />
-
               {/* Size Selector */}
               <div className="w-full">
                 <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-neutral-400 mb-3">{t("Kích Cỡ (Size)", "Sizes")}</h3>
@@ -602,6 +593,14 @@ export function ProductDetailPage() {
                     );
                   })}
                 </div>
+                <SizeRecommendationModal
+                  availableSizes={product.sizes}
+                  selectedSize={selectedSize}
+                  onSelectSize={setSelectedSize}
+                  guideRows={getSizeGuideRowsForCategory(product.category, settings.sizeGuide)}
+                  categoryLabel={translate(product.category)}
+                  t={t}
+                />
               </div>
 
               {/* Quantity Selector */}
