@@ -41,6 +41,8 @@ router.get("/", async (req, res, next) => {
           smtpSenderName: "MADMAD STUDIO",
 
           couponsJson: "[]",
+          productOptionsJson: "{}",
+          membershipTiersJson: "[]",
         }
       });
     }
@@ -57,6 +59,8 @@ router.get("/", async (req, res, next) => {
       ...setting,
       instagramImages: setting.instagramImages ? JSON.parse(setting.instagramImages) : [],
       coupons: setting.couponsJson ? JSON.parse(setting.couponsJson) : [],
+      productOptions: setting.productOptionsJson ? JSON.parse(setting.productOptionsJson) : {},
+      membershipTiers: setting.membershipTiersJson ? JSON.parse(setting.membershipTiersJson) : [],
     });
   } catch (error) {
     next(error);
@@ -128,6 +132,12 @@ router.put("/", async (req, res, next) => {
 
       // 🎟️ Coupons
       coupons,
+
+      // 📦 Product options
+      productOptions,
+
+      // 👑 Membership tiers
+      membershipTiers,
     } = req.body;
 
     console.log("📥 [PUT /settings] Received request to update settings:");
@@ -143,6 +153,12 @@ router.put("/", async (req, res, next) => {
 
     const couponsJson =
       coupons !== undefined ? JSON.stringify(Array.isArray(coupons) ? coupons : []) : undefined;
+
+    const productOptionsJson =
+      productOptions !== undefined ? JSON.stringify(typeof productOptions === "object" && productOptions ? productOptions : {}) : undefined;
+
+    const membershipTiersJson =
+      membershipTiers !== undefined ? JSON.stringify(Array.isArray(membershipTiers) ? membershipTiers : []) : undefined;
 
     const updatedSetting = await prisma.storefrontSetting.upsert({
       where: { id: 1 },
@@ -208,6 +224,12 @@ router.put("/", async (req, res, next) => {
 
         // 🎟️ Coupons
         couponsJson,
+
+        // 📦 Product options
+        productOptionsJson,
+
+        // 👑 Membership tiers
+        membershipTiersJson,
       },
       create: {
         id: 1,
@@ -272,6 +294,12 @@ router.put("/", async (req, res, next) => {
 
         // 🎟️ Coupons
         couponsJson: couponsJson ?? "[]",
+
+        // 📦 Product options
+        productOptionsJson: productOptionsJson ?? "{}",
+
+        // 👑 Membership tiers
+        membershipTiersJson: membershipTiersJson ?? "[]",
       }
     });
 
@@ -279,6 +307,8 @@ router.put("/", async (req, res, next) => {
       ...updatedSetting,
       instagramImages: updatedSetting.instagramImages ? JSON.parse(updatedSetting.instagramImages) : [],
       coupons: updatedSetting.couponsJson ? JSON.parse(updatedSetting.couponsJson) : [],
+      productOptions: updatedSetting.productOptionsJson ? JSON.parse(updatedSetting.productOptionsJson) : {},
+      membershipTiers: updatedSetting.membershipTiersJson ? JSON.parse(updatedSetting.membershipTiersJson) : [],
     });
   } catch (error) {
     next(error);

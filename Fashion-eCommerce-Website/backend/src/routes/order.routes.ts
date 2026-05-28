@@ -246,4 +246,21 @@ router.put("/:id/payment", async (req, res, next) => {
   }
 });
 
+// 6. PUT /api/orders/:id/internal-note - Ghi chú nội bộ (đóng gói/vận hành)
+router.put("/:id/internal-note", async (req, res, next) => {
+  try {
+    const orderId = Number(req.params.id);
+    const { internalNote } = req.body;
+
+    const updatedOrder = await prisma.order.update({
+      where: { id: orderId },
+      data: { internalNote: typeof internalNote === "string" ? internalNote : null },
+    });
+
+    res.json(updatedOrder);
+  } catch (error) {
+    next(error);
+  }
+});
+
 export default router;

@@ -22,6 +22,18 @@ export interface StorefrontSettings {
   bestSellerProductIds: (string | number)[];
   bestSellerImageOverrides: Record<string | number, string>;
   colorHexMap: Record<string, string>;
+  productOptions?: {
+    categories?: string[];
+    sizes?: string[];
+    colors?: string[];
+    tags?: string[];
+  };
+  membershipTiers?: Array<{
+    tier: "BRONZE" | "SILVER" | "GOLD" | "PLATINUM";
+    minPoints: number;
+    discountPercent: number;
+    gifts: string;
+  }>;
   instagramImages: string[];
   instagramUrl: string;
   facebookUrl: string;

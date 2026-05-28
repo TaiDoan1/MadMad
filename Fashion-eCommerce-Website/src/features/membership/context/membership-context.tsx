@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { API_URL } from "@/config/api";
 import { safeLocalStorage } from "@/utils/safe-storage";
+import { useStorefrontSettings } from "@/features/settings/context/storefront-settings-context";
 
 export interface Member {
   id: string;
@@ -46,6 +47,7 @@ interface MembershipContextType {
 const MembershipContext = createContext<MembershipContextType | undefined>(undefined);
 
 export function MembershipProvider({ children }: { children: ReactNode }) {
+  const { settings, updateSettings } = useStorefrontSettings();
   const [members, setMembers] = useState<Member[]>(() => {
     const local = safeLocalStorage.getItem("madmad_members");
     return local ? JSON.parse(local) : [];
@@ -57,9 +59,29 @@ export function MembershipProvider({ children }: { children: ReactNode }) {
   });
 
   const [tierConfigs, setTierConfigs] = useState<MembershipTierConfig[]>(() => {
+    const fromSettings = settings.membershipTiers;
+    if (Array.isArray(fromSettings) && fromSettings.length > 0) return fromSettings as MembershipTierConfig[];
     const local = safeLocalStorage.getItem("madmad_membership_tiers");
     return local ? JSON.parse(local) : DEFAULT_TIER_CONFIGS;
   });
+
+  useEffect(() => {
+    const fromSettings = settings.membershipTiers;
+    if (Array.isArray(fromSettings) && fromSettings.length > 0) {
+      setTierConfigs(fromSettings as MembershipTierConfig[]);
+      return;
+    }
+    const local = safeLocalStorage.getItem("madmad_membership_tiers");
+    if (local) {
+      try {
+        setTierConfigs(JSON.parse(local));
+      } catch {
+        setTierConfigs(DEFAULT_TIER_CONFIGS);
+      }
+    } else {
+      setTierConfigs(DEFAULT_TIER_CONFIGS);
+    }
+  }, [settings.membershipTiers]);
 
   // 📥 Tải danh sách hội viên VIP từ máy chủ (Database Neon Postgres) để đồng bộ cho Admin
   const loadMembers = async () => {
@@ -112,12 +134,9 @@ export function MembershipProvider({ children }: { children: ReactNode }) {
     }
   }, [currentMember]);
 
-  useEffect(() => {
-    safeLocalStorage.setItem("madmad_membership_tiers", JSON.stringify(tierConfigs));
-  }, [tierConfigs]);
-
   const updateTierConfigs = (nextConfigs: MembershipTierConfig[]) => {
     setTierConfigs(nextConfigs);
+    updateSettings({ membershipTiers: nextConfigs });
   };
 
   const calculateTier = (points: number): "BRONZE" | "SILVER" | "GOLD" | "PLATINUM" => {

@@ -1,4 +1,4 @@
-import { useMemo, useState, type DragEvent } from "react";
+import { useEffect, useMemo, useState, type DragEvent } from "react";
 import { createPortal } from "react-dom";
 import { Edit, Eye, Image as ImageIcon, Plus, Search, Settings2, Trash2, X } from "lucide-react";
 
@@ -8,9 +8,6 @@ import { useProducts } from "@/features/products/context/product-context";
 import { useStorefrontSettings } from "@/features/settings/context/storefront-settings-context";
 import type { Product } from "@/types/product";
 import { useToast } from "@/components/common/toast";
-import { safeLocalStorage } from "@/utils/safe-storage";
-
-const PRODUCT_OPTIONS_STORAGE_KEY = "fashion-ecommerce.product-options";
 
 type ProductOptions = {
   categories: string[];
@@ -48,21 +45,47 @@ export function AdminProductsPage() {
   const [editingColorImages, setEditingColorImages] = useState<Record<string, string>>({});
   const [productImages, setProductImages] = useState<string[]>([""]);
   const [productOptions, setProductOptions] = useState<ProductOptions>(() => {
-    if (typeof window === "undefined") return DEFAULT_PRODUCT_OPTIONS;
-    const raw = safeLocalStorage.getItem(PRODUCT_OPTIONS_STORAGE_KEY);
-    if (!raw) return DEFAULT_PRODUCT_OPTIONS;
-    try {
-      const parsed = JSON.parse(raw) as ProductOptions;
-      return {
-        categories: Array.isArray(parsed.categories) && parsed.categories.length > 0 ? parsed.categories : DEFAULT_PRODUCT_OPTIONS.categories,
-        sizes: Array.isArray(parsed.sizes) && parsed.sizes.length > 0 ? parsed.sizes : DEFAULT_PRODUCT_OPTIONS.sizes,
-        colors: Array.isArray(parsed.colors) && parsed.colors.length > 0 ? parsed.colors : DEFAULT_PRODUCT_OPTIONS.colors,
-        tags: Array.isArray(parsed.tags) && parsed.tags.length > 0 ? parsed.tags : DEFAULT_PRODUCT_OPTIONS.tags,
-      };
-    } catch {
-      return DEFAULT_PRODUCT_OPTIONS;
-    }
+    const fromSettings = settings.productOptions;
+    return {
+      categories:
+        Array.isArray(fromSettings?.categories) && fromSettings.categories.length > 0
+          ? fromSettings.categories
+          : DEFAULT_PRODUCT_OPTIONS.categories,
+      sizes:
+        Array.isArray(fromSettings?.sizes) && fromSettings.sizes.length > 0
+          ? fromSettings.sizes
+          : DEFAULT_PRODUCT_OPTIONS.sizes,
+      colors:
+        Array.isArray(fromSettings?.colors) && fromSettings.colors.length > 0
+          ? fromSettings.colors
+          : DEFAULT_PRODUCT_OPTIONS.colors,
+      tags:
+        Array.isArray(fromSettings?.tags) && fromSettings.tags.length > 0 ? fromSettings.tags : DEFAULT_PRODUCT_OPTIONS.tags,
+    };
   });
+
+  // Đồng bộ product options từ settings (DB) về UI
+  // (tránh tình trạng một máy admin đổi option nhưng máy khác không thấy)
+  useEffect(() => {
+    const fromSettings = settings.productOptions;
+    if (!fromSettings) return;
+    const next: ProductOptions = {
+      categories:
+        Array.isArray(fromSettings.categories) && fromSettings.categories.length > 0
+          ? fromSettings.categories
+          : DEFAULT_PRODUCT_OPTIONS.categories,
+      sizes:
+        Array.isArray(fromSettings.sizes) && fromSettings.sizes.length > 0
+          ? fromSettings.sizes
+          : DEFAULT_PRODUCT_OPTIONS.sizes,
+      colors:
+        Array.isArray(fromSettings.colors) && fromSettings.colors.length > 0
+          ? fromSettings.colors
+          : DEFAULT_PRODUCT_OPTIONS.colors,
+      tags: Array.isArray(fromSettings.tags) && fromSettings.tags.length > 0 ? fromSettings.tags : DEFAULT_PRODUCT_OPTIONS.tags,
+    };
+    setProductOptions(next);
+  }, [settings.productOptions]);
   const [colorHexDrafts, setColorHexDrafts] = useState<Record<string, string>>(
     settings.colorHexMap ?? {},
   );
@@ -160,7 +183,7 @@ export function AdminProductsPage() {
   };
   const persistProductOptions = (nextProductOptions: ProductOptions) => {
     setProductOptions(nextProductOptions);
-    safeLocalStorage.setItem(PRODUCT_OPTIONS_STORAGE_KEY, JSON.stringify(nextProductOptions));
+    updateSettings({ productOptions: nextProductOptions });
   };
 
   const canReorderProducts = !searchTerm && selectedCategory === "all";

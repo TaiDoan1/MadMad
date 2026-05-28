@@ -44,12 +44,11 @@ import type { Order, OrderItem } from "@/types/order";
 import type { Product } from "@/types/product";
 
 import { useToast } from "@/components/common/toast";
-import { safeLocalStorage } from "@/utils/safe-storage";
 
 export function AdminOrdersPage() {
   const { showToast } = useToast();
   const { settings } = useStorefrontSettings();
-  const { orders, updateOrderStatus, updateOrderPaymentStatus, addOrder } = useOrders();
+  const { orders, updateOrderStatus, updateOrderPaymentStatus, updateOrderInternalNote, addOrder } = useOrders();
   const { products, updateProduct } = useProducts();
   const { members, tierConfigs, setMembers } = useMembership(); // Đọc danh sách tất cả thành viên VIP
 
@@ -132,10 +131,7 @@ export function AdminOrdersPage() {
   const [manualProvince, setManualProvince] = useState("");
 
   // Internal Packing Note
-  const [internalPackingNotes, setInternalPackingNotes] = useState<Record<string, string>>(() => {
-    const local = safeLocalStorage.getItem("madmad_internal_notes");
-    return local ? JSON.parse(local) : {};
-  });
+  const [internalPackingNotes, setInternalPackingNotes] = useState<Record<string, string>>({});
 
   // Visual Product Selector States
   const [productSearchQuery, setProductSearchQuery] = useState("");
@@ -152,11 +148,22 @@ export function AdminOrdersPage() {
   const [checkedMember, setCheckedMember] = useState<any | null>(null);
   const [vipCheckMessage, setVipCheckMessage] = useState("");
 
-  // Lưu Internal Notes
+  // Đồng bộ ghi chú nội bộ theo đơn hàng (lưu DB)
+  useEffect(() => {
+    const next: Record<string, string> = {};
+    orders.forEach((o) => {
+      if (o?.orderNumber) next[o.orderNumber] = (o as any).internalNote || "";
+    });
+    setInternalPackingNotes(next);
+  }, [orders]);
+
   const handleSaveInternalNote = (orderId: string, noteText: string) => {
     const nextNotes = { ...internalPackingNotes, [orderId]: noteText };
     setInternalPackingNotes(nextNotes);
-    safeLocalStorage.setItem("madmad_internal_notes", JSON.stringify(nextNotes));
+    const target = orders.find((o) => o.orderNumber === orderId);
+    if (target) {
+      updateOrderInternalNote(target.id, noteText);
+    }
   };
 
   // PHÂN LOẠI KHÁCH HÀNG TỰ ĐỘNG (Realtime Customer Category Calculator)

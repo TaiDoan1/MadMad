@@ -10,6 +10,7 @@ interface OrderContextValue {
   addOrder: (order: Omit<Order, "id">) => Promise<any>;
   updateOrderStatus: (id: number, status: Order["status"]) => Promise<void>;
   updateOrderPaymentStatus: (id: number, isPaid: boolean) => Promise<void>;
+  updateOrderInternalNote: (id: number, internalNote: string) => Promise<void>;
   getOrderById: (id: number) => Order | undefined;
 }
 
@@ -195,6 +196,26 @@ const LOCAL_ORDERS_KEY = "madmad_orders_fallback";
           // Fallback cập nhật state local để UI phản hồi ngay lập tức
           setOrders((current) =>
             current.map((order) => (order.id === id ? { ...order, isPaid } : order)),
+          );
+        }
+      },
+
+      updateOrderInternalNote: async (id, internalNote) => {
+        try {
+          const response = await fetch(`${API_URL}/orders/${id}/internal-note`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ internalNote }),
+          });
+          if (response.ok) {
+            await loadOrders(true);
+          } else {
+            throw new Error("Không thể cập nhật ghi chú nội bộ trên server");
+          }
+        } catch (error) {
+          console.error("Lỗi gọi API updateOrderInternalNote, cập nhật local:", error);
+          setOrders((current) =>
+            current.map((order) => (order.id === id ? { ...order, internalNote } : order)),
           );
         }
       },

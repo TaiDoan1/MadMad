@@ -36,6 +36,7 @@ export interface Order {
   status: "pending" | "confirmed" | "shipping" | "delivered" | "cancelled";
   createdAt: string;
   notes?: string;
+  internalNote?: string;
   isPaid?: boolean;
   containsPreOrder?: boolean;
 }

@@ -33,6 +33,13 @@ export const DEFAULT_STOREFRONT_SETTINGS: StorefrontSettings = {
   ],
   bestSellerProductIds: [1, 2, 3, 4],
   bestSellerImageOverrides: {},
+  productOptions: {
+    categories: ["Váy", "Áo Thun", "Áo Khoác", "Áo Sơ Mi"],
+    sizes: ["XS", "S", "M", "L", "XL", "XXL"],
+    colors: ["Trắng", "Đen", "Xám", "Đỏ", "Navy", "Be"],
+    tags: ["new", "hot", "best-seller", "pre-order"],
+  },
+  membershipTiers: [],
   instagramImages: [
     "/assets/categories/anh-pho-bien.jpg",
     "/assets/products/ao-thun-m-den.jpg",
@@ -250,6 +257,13 @@ function readStoredSettings(): StorefrontSettings {
         typeof parsed.intlShippingFee === "number" ? parsed.intlShippingFee : DEFAULT_STOREFRONT_SETTINGS.intlShippingFee,
       intlMarkupPercent:
         typeof parsed.intlMarkupPercent === "number" ? parsed.intlMarkupPercent : DEFAULT_STOREFRONT_SETTINGS.intlMarkupPercent,
+
+      productOptions:
+        typeof parsed.productOptions === "object" && parsed.productOptions
+          ? parsed.productOptions
+          : DEFAULT_STOREFRONT_SETTINGS.productOptions,
+      membershipTiers:
+        Array.isArray(parsed.membershipTiers) ? parsed.membershipTiers : DEFAULT_STOREFRONT_SETTINGS.membershipTiers,
     };
   } catch {
     return DEFAULT_STOREFRONT_SETTINGS;

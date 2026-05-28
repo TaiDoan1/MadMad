@@ -55,6 +55,7 @@ model Order {
   isPaid         Boolean     @default(false)
   containsPreOrder Boolean   @default(false)
   notes          String?
+  internalNote   String?
   couponCode     String?
   createdAt      DateTime    @default(now())
   updatedAt      DateTime    @updatedAt
@@ -110,6 +111,12 @@ model StorefrontSetting {
 
   // Coupons/vouchers lưu dạng JSON String (để storefront sync)
   couponsJson              String? @default("[]")
+
+  // Product options (categories, sizes, colors, tags) cho admin quản lý sản phẩm
+  productOptionsJson       String? @default("{}")
+
+  // Membership tier configs (quy tắc thăng hạng/ưu đãi) lưu JSON
+  membershipTiersJson      String? @default("[]")
   
   // Các trường cấu hình email, SĐT, địa chỉ cửa hàng đồng bộ Cloud
   storeEmail               String? @default("mmadmadstudio@gmail.com")
