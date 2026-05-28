@@ -2,6 +2,7 @@ import { createContext, useContext, useMemo, useState, useEffect, type ReactNode
 
 import { brandLogo } from "@/assets/images";
 import type { StorefrontSettings } from "@/types/storefront-settings";
+import { DEFAULT_SIZE_GUIDE_CONFIG, normalizeSizeGuideConfig } from "@/utils/size-recommendation";
 import { API_URL } from "@/config/api";
 import { safeLocalStorage } from "@/utils/safe-storage";
 import { enqueue, peekQueue, removeFromQueue } from "@/utils/offline-queue";
@@ -42,6 +43,7 @@ export const DEFAULT_STOREFRONT_SETTINGS: StorefrontSettings = {
     tags: ["new", "hot", "best-seller", "pre-order"],
   },
   membershipTiers: [],
+  sizeGuide: DEFAULT_SIZE_GUIDE_CONFIG,
   instagramImages: [
     "/assets/categories/anh-pho-bien.jpg",
     "/assets/products/ao-thun-m-den.jpg",
@@ -296,6 +298,7 @@ function readStoredSettings(): StorefrontSettings {
           : DEFAULT_STOREFRONT_SETTINGS.productOptions,
       membershipTiers:
         Array.isArray(parsed.membershipTiers) ? parsed.membershipTiers : DEFAULT_STOREFRONT_SETTINGS.membershipTiers,
+      sizeGuide: normalizeSizeGuideConfig(parsed.sizeGuide ?? DEFAULT_STOREFRONT_SETTINGS.sizeGuide),
     };
   } catch {
     return DEFAULT_STOREFRONT_SETTINGS;
@@ -341,6 +344,7 @@ export function StorefrontSettingsProvider({ children }: { children: ReactNode }
           setSettings((current) => ({
             ...current,
             ...mapCloudToLocal(cloudSettings),
+            sizeGuide: normalizeSizeGuideConfig(cloudSettings.sizeGuide ?? current.sizeGuide),
           }));
 
           // If we have offline changes queued, try to flush now

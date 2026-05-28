@@ -43,6 +43,7 @@ router.get("/", async (req, res, next) => {
           couponsJson: "[]",
           productOptionsJson: "{}",
           membershipTiersJson: "[]",
+          sizeGuideJson: "{}",
         }
       });
     }
@@ -61,6 +62,7 @@ router.get("/", async (req, res, next) => {
       coupons: setting.couponsJson ? JSON.parse(setting.couponsJson) : [],
       productOptions: setting.productOptionsJson ? JSON.parse(setting.productOptionsJson) : {},
       membershipTiers: setting.membershipTiersJson ? JSON.parse(setting.membershipTiersJson) : [],
+      sizeGuide: setting.sizeGuideJson ? JSON.parse(setting.sizeGuideJson) : {},
     });
   } catch (error) {
     next(error);
@@ -139,6 +141,9 @@ router.put("/", async (req, res, next) => {
 
       // 👑 Membership tiers
       membershipTiers,
+
+      // 📏 Size guide (gợi ý size)
+      sizeGuide,
     } = req.body;
 
     console.log("📥 [PUT /settings] Received request to update settings:");
@@ -160,6 +165,9 @@ router.put("/", async (req, res, next) => {
 
     const membershipTiersJson =
       membershipTiers !== undefined ? JSON.stringify(Array.isArray(membershipTiers) ? membershipTiers : []) : undefined;
+
+    const sizeGuideJson =
+      sizeGuide !== undefined ? JSON.stringify(typeof sizeGuide === "object" && sizeGuide ? sizeGuide : {}) : undefined;
 
     const updatedSetting = await prisma.storefrontSetting.upsert({
       where: { id: 1 },
@@ -232,6 +240,9 @@ router.put("/", async (req, res, next) => {
 
         // 👑 Membership tiers
         membershipTiersJson,
+
+        // 📏 Size guide
+        sizeGuideJson,
       },
       create: {
         id: 1,
@@ -303,6 +314,9 @@ router.put("/", async (req, res, next) => {
 
         // 👑 Membership tiers
         membershipTiersJson: membershipTiersJson ?? "[]",
+
+        // 📏 Size guide
+        sizeGuideJson: sizeGuideJson ?? "{}",
       }
     });
 
@@ -312,6 +326,7 @@ router.put("/", async (req, res, next) => {
       coupons: updatedSetting.couponsJson ? JSON.parse(updatedSetting.couponsJson) : [],
       productOptions: updatedSetting.productOptionsJson ? JSON.parse(updatedSetting.productOptionsJson) : {},
       membershipTiers: updatedSetting.membershipTiersJson ? JSON.parse(updatedSetting.membershipTiersJson) : [],
+      sizeGuide: updatedSetting.sizeGuideJson ? JSON.parse(updatedSetting.sizeGuideJson) : {},
     });
   } catch (error) {
     next(error);

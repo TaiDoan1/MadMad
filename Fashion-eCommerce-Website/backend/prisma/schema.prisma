@@ -117,6 +117,9 @@ model StorefrontSetting {
 
   // Membership tier configs (quy tắc thăng hạng/ưu đãi) lưu JSON
   membershipTiersJson      String? @default("[]")
+
+  // Bảng gợi ý size theo chiều cao/cân nặng (mặc định + theo danh mục)
+  sizeGuideJson            String? @default("{}")
   
   // Các trường cấu hình email, SĐT, địa chỉ cửa hàng đồng bộ Cloud
   storeEmail               String? @default("mmadmadstudio@gmail.com")

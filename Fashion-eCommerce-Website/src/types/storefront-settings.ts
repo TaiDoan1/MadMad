@@ -1,3 +1,5 @@
+import type { SizeGuideConfig } from "@/types/size-guide";
+
 export interface StorefrontSettings {
   logo: string;
   storeName: string;
@@ -34,6 +36,7 @@ export interface StorefrontSettings {
     discountPercent: number;
     gifts: string;
   }>;
+  sizeGuide?: SizeGuideConfig;
   instagramImages: string[];
   instagramUrl: string;
   facebookUrl: string;

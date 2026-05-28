@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { Save, Upload, Plus, Trash2, Tag, ShieldCheck, Settings, Percent, Mail, Key, Send, DownloadCloud, QrCode } from "lucide-react";
+import { Save, Upload, Plus, Trash2, Tag, ShieldCheck, Settings, Percent, Mail, Key, Send, DownloadCloud, QrCode, Ruler } from "lucide-react";
+import { SizeGuideSettingsPanel } from "@/pages/admin/components/size-guide-settings-panel";
 import { Link } from "react-router";
 
 import { brandLogo } from "@/assets/images";
@@ -14,7 +15,9 @@ export function AdminSettingsPage() {
   const { settings, updateSettings } = useStorefrontSettings();
   
   // Tab State
-  const [activeTab, setActiveTab] = useState<"branding" | "coupons" | "gateways" | "invoice" | "smtp" | "backup">("branding");
+  const [activeTab, setActiveTab] = useState<
+    "branding" | "coupons" | "sizeguide" | "gateways" | "invoice" | "smtp" | "backup"
+  >("branding");
 
   // Gateways & Shipping States
   const [bankId, setBankId] = useState(settings.bankId || "MB");
@@ -445,6 +448,19 @@ export function AdminSettingsPage() {
           Khuyến Mãi & Coupons ({coupons.length})
         </button>
         <button
+          onClick={() => setActiveTab("sizeguide")}
+          className={`shrink-0 px-4 py-3 text-xs font-extrabold tracking-widest uppercase border-b-2 transition-all md:px-6 ${
+            activeTab === "sizeguide"
+              ? "border-black text-black"
+              : "border-transparent text-black/40 hover:text-black"
+          }`}
+        >
+          <span className="inline-flex items-center gap-1.5">
+            <Ruler className="h-3.5 w-3.5" />
+            Gợi Ý Size
+          </span>
+        </button>
+        <button
           onClick={() => setActiveTab("gateways")}
           className={`shrink-0 px-4 py-3 text-xs font-extrabold tracking-widest uppercase border-b-2 transition-all md:px-6 ${
             activeTab === "gateways"
@@ -779,6 +795,8 @@ export function AdminSettingsPage() {
           </div>
         </div>
       )}
+
+      {activeTab === "sizeguide" && <SizeGuideSettingsPanel />}
 
       {/* TAB: CỔNG THANH TOÁN & VẬN CHUYỂN */}
       {activeTab === "gateways" && (

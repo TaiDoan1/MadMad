@@ -3,6 +3,8 @@ import { Link, useParams, useNavigate } from "react-router";
 import { Search, ShoppingCart, User, Share2, ArrowLeft } from "lucide-react";
 
 import { ImageWithFallback } from "@/components/common/image-with-fallback";
+import { SizeRecommendationPanel } from "@/components/product/size-recommendation-panel";
+import { getSizeGuideRowsForCategory } from "@/utils/size-recommendation";
 import { useTransitionTo } from "@/components/common/page-transition";
 import { useCart } from "@/features/cart/context/cart-context";
 import { useProducts } from "@/features/products/context/product-context";
@@ -561,6 +563,15 @@ export function ProductDetailPage() {
                 </div>
               </div>
 
+              <SizeRecommendationPanel
+                availableSizes={product.sizes}
+                selectedSize={selectedSize}
+                onSelectSize={setSelectedSize}
+                guideRows={getSizeGuideRowsForCategory(product.category, settings.sizeGuide)}
+                categoryLabel={translate(product.category)}
+                t={t}
+              />
+
               {/* Size Selector */}
               <div className="w-full">
                 <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-neutral-400 mb-3">{t("Kích Cỡ (Size)", "Sizes")}</h3>
@@ -682,8 +693,17 @@ export function ProductDetailPage() {
                 >
                   <span className="text-xs font-bold uppercase tracking-[0.15em]">{t("Hướng Dẫn Chọn Size →", "Size Guide →")}</span>
                 </button>
-                <div className={`overflow-hidden transition-all duration-300 ${expandedAccordion === "sizeguide" ? "max-h-[500px] pb-4 opacity-100" : "max-h-0 opacity-0"}`}>
+                <div className={`overflow-hidden transition-all duration-300 ${expandedAccordion === "sizeguide" ? "max-h-[800px] pb-4 opacity-100" : "max-h-0 opacity-0"}`}>
                   <div className="text-xs text-muted-foreground space-y-4 pt-2">
+                    {product.sizeChartImage && (
+                      <div className="rounded-xl border border-black/10 dark:border-white/10 overflow-hidden bg-white dark:bg-neutral-950">
+                        <ImageWithFallback
+                          src={product.sizeChartImage}
+                          alt={t("Bảng size sản phẩm", "Product size chart")}
+                          className="w-full h-auto object-contain"
+                        />
+                      </div>
+                    )}
                     <p className="font-bold uppercase tracking-wider text-[10px] text-neutral-400">{t("THÔNG TIN SỐ ĐO MẪU:", "MODEL MEASUREMENTS:")}</p>
                     <ul className="list-disc list-inside space-y-1 uppercase tracking-wider text-[9px] font-semibold text-neutral-500">
                       <li>{t("Mẫu nam cao 1m85 mặc size LARGE (L)", "Male model is 1m85 wearing size LARGE (L)")}</li>
