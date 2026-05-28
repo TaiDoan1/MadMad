@@ -598,13 +598,19 @@ export function ProductDetailPage() {
                   selectedSize={selectedSize}
                   onSelectSize={setSelectedSize}
                   guideRows={getSizeGuideRowsForProduct(
-                    { category: product.category, sizeGuideProfile: product.sizeGuideProfile },
+                    {
+                      category: product.category,
+                      sizeGuideProfile: product.sizeGuideProfile,
+                      sizeGuideOverride: product.sizeGuideOverride,
+                    },
                     settings.sizeGuide,
                   )}
                   categoryLabel={
-                    product.sizeGuideProfile
-                      ? product.sizeGuideProfile
-                      : translate(product.category)
+                    product.sizeGuideOverride?.length
+                      ? t("Bảng riêng SP", "Product-specific chart")
+                      : product.sizeGuideProfile
+                        ? product.sizeGuideProfile
+                        : translate(product.category)
                   }
                   t={t}
                 />

@@ -1,3 +1,5 @@
+import type { SizeGuideRow } from "@/types/size-guide";
+
 export interface Product {
   id: string | number;
   sku?: string;
@@ -8,8 +10,10 @@ export interface Product {
   showDiscountPercent?: boolean;
   tags?: string[];
   category: string;
-  /** Khóa bảng gợi ý size riêng (Cài đặt → Gợi ý Size → Kiểu/Form). Để trống = theo danh mục. */
+  /** Khóa bảng gợi ý size dùng chung (Cài đặt → Gợi ý Size → Kiểu/Form). */
   sizeGuideProfile?: string;
+  /** Bảng gợi ý size chỉ cho SP này (ưu tiên cao nhất). */
+  sizeGuideOverride?: SizeGuideRow[];
   image: string;
   images?: string[];
   sizeChartImage?: string;

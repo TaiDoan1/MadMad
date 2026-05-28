@@ -29,6 +29,15 @@ const parseProduct = (p: any) => ({
   isPreOrder: !!p.isPreOrder,
   preOrderDays: p.preOrderDays !== null && p.preOrderDays !== undefined ? Number(p.preOrderDays) : null,
   sizeGuideProfile: p.sizeGuideProfile ? String(p.sizeGuideProfile) : undefined,
+  sizeGuideOverride: (() => {
+    if (!p.sizeGuideOverrideJson) return undefined;
+    try {
+      const parsed = JSON.parse(p.sizeGuideOverrideJson);
+      return Array.isArray(parsed) ? parsed : undefined;
+    } catch {
+      return undefined;
+    }
+  })(),
 });
 
 // Helper: Tiền xử lý tất cả các trường ảnh của sản phẩm (Tải lên Cloudinary nếu là Base64)
@@ -156,11 +165,16 @@ router.get("/:id", async (req, res, next) => {
 // 3. POST /api/products - Tạo sản phẩm mới (Admin)
 router.post("/", async (req, res, next) => {
   try {
-    const { name, sku, price, image, category, sizeGuideProfile, description, sizes, colors, colorImages, images, isFeatured, stock, variantStock, inStock, originalPrice, discountPercent, showDiscountPercent, isPreOrder, preOrderDays } = req.body;
+    const { name, sku, price, image, category, sizeGuideProfile, sizeGuideOverride, description, sizes, colors, colorImages, images, isFeatured, stock, variantStock, inStock, originalPrice, discountPercent, showDiscountPercent, isPreOrder, preOrderDays } = req.body;
 
     if (!name || !sku || !price || !image || !category) {
       return res.status(400).json({ message: "Vui lòng nhập đầy đủ thông tin bắt buộc!" });
     }
+
+    const sizeGuideOverrideJson =
+      Array.isArray(sizeGuideOverride) && sizeGuideOverride.length > 0
+        ? JSON.stringify(sizeGuideOverride)
+        : null;
 
     // Tự động đẩy toàn bộ ảnh Base64 lên Cloudinary trước khi lưu
     console.log(`📥 [PRODUCT CREATE] Admin đang tạo sản phẩm mới: "${name}"`);
@@ -176,7 +190,9 @@ router.post("/", async (req, res, next) => {
         price: Number(price),
         image: cleanData.image,
         category,
-        sizeGuideProfile: sizeGuideProfile ? String(sizeGuideProfile).trim() || null : null,
+        sizeGuideProfile:
+          sizeGuideOverrideJson ? null : sizeGuideProfile ? String(sizeGuideProfile).trim() || null : null,
+        sizeGuideOverrideJson,
         description: description || "",
         sizes: sizesStr,
         colors: colorsStr,
@@ -207,7 +223,14 @@ router.post("/", async (req, res, next) => {
 router.put("/:id", async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { name, sku, price, image, category, sizeGuideProfile, description, sizes, colors, colorImages, images, isFeatured, stock, variantStock, inStock, originalPrice, discountPercent, showDiscountPercent, isPreOrder, preOrderDays } = req.body;
+    const { name, sku, price, image, category, sizeGuideProfile, sizeGuideOverride, description, sizes, colors, colorImages, images, isFeatured, stock, variantStock, inStock, originalPrice, discountPercent, showDiscountPercent, isPreOrder, preOrderDays } = req.body;
+
+    const sizeGuideOverrideJson =
+      sizeGuideOverride !== undefined
+        ? Array.isArray(sizeGuideOverride) && sizeGuideOverride.length > 0
+          ? JSON.stringify(sizeGuideOverride)
+          : null
+        : undefined;
 
     // Chỉ thực hiện xử lý ảnh nếu trường đó được truyền lên
     let finalImage = image;
@@ -245,9 +268,20 @@ router.put("/:id", async (req, res, next) => {
         image: finalImage,
         category,
         sizeGuideProfile:
-          sizeGuideProfile !== undefined
-            ? (sizeGuideProfile ? String(sizeGuideProfile).trim() || null : null)
-            : undefined,
+          sizeGuideOverrideJson !== undefined
+            ? sizeGuideOverrideJson
+              ? null
+              : sizeGuideProfile !== undefined
+                ? sizeGuideProfile
+                  ? String(sizeGuideProfile).trim() || null
+                  : null
+                : undefined
+            : sizeGuideProfile !== undefined
+              ? sizeGuideProfile
+                ? String(sizeGuideProfile).trim() || null
+                : null
+              : undefined,
+        sizeGuideOverrideJson,
         description,
         sizes: sizesStr || undefined,
         colors: colorsStr || undefined,

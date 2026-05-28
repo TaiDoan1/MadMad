@@ -122,6 +122,7 @@ export function ProductProvider({ children }: { children: ReactNode }) {
           isPreOrder: savedProduct?.isPreOrder ?? updatedProduct.isPreOrder,
           preOrderDays: savedProduct?.preOrderDays ?? updatedProduct.preOrderDays,
           sizeGuideProfile: savedProduct?.sizeGuideProfile ?? updatedProduct.sizeGuideProfile,
+          sizeGuideOverride: savedProduct?.sizeGuideOverride ?? updatedProduct.sizeGuideOverride,
         };
         setProducts((currentProducts) =>
           currentProducts.map((product) => (product.id === id ? mergedProduct : product))
@@ -169,6 +170,7 @@ export function ProductProvider({ children }: { children: ReactNode }) {
               isPreOrder: savedProduct?.isPreOrder ?? newProduct.isPreOrder,
               preOrderDays: savedProduct?.preOrderDays ?? newProduct.preOrderDays,
               sizeGuideProfile: savedProduct?.sizeGuideProfile ?? newProduct.sizeGuideProfile,
+              sizeGuideOverride: savedProduct?.sizeGuideOverride ?? newProduct.sizeGuideOverride,
             };
             setProducts((currentProducts) =>
               currentProducts.map((p) => (p.id === tempId ? mergedProduct : p))

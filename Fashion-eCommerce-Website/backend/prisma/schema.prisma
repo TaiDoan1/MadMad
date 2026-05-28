@@ -16,6 +16,7 @@ model Product {
   image        String
   category     String
   sizeGuideProfile String?  // Khóa bảng gợi ý size (kiểu/form) — tham chiếu StorefrontSetting.sizeGuideJson.byProfile
+  sizeGuideOverrideJson String?  // Bảng gợi ý size riêng cho từng SP (JSON)
   description  String?
   sizes        String   // Lưu danh sách size ngăn cách bởi dấu phẩy, ví dụ: "S,M,L,XL"
   colors       String   // Lưu danh sách màu ngăn cách bởi dấu phẩy, ví dụ: "Black,White,Grey"

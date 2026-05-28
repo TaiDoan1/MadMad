@@ -6,7 +6,13 @@ import { ImageUploadInput } from "@/components/common/image-upload-input";
 import { ImageWithFallback } from "@/components/common/image-with-fallback";
 import { useProducts } from "@/features/products/context/product-context";
 import { useStorefrontSettings } from "@/features/settings/context/storefront-settings-context";
+import {
+  ProductSizeGuideSelector,
+  resolveProductSizeGuideMode,
+  type ProductSizeGuideMode,
+} from "@/components/admin/product-size-guide-selector";
 import { listSizeGuideProfileKeys } from "@/utils/size-recommendation";
+import type { SizeGuideRow } from "@/types/size-guide";
 import type { Product } from "@/types/product";
 import { useToast } from "@/components/common/toast";
 
@@ -103,7 +109,6 @@ export function AdminProductsPage() {
     discountPercent: 0,
     showDiscountPercent: false,
     category: "",
-    sizeGuideProfile: "",
     image: "",
     sizeChartImage: "",
     description: "",
@@ -120,6 +125,9 @@ export function AdminProductsPage() {
   const [variantStockDraft, setVariantStockDraft] = useState<Record<string, number>>({});
 
   const [formTab, setFormTab] = useState<"info" | "attributes" | "media" | "inventory">("info");
+  const [sizeGuideMode, setSizeGuideMode] = useState<ProductSizeGuideMode>("category");
+  const [sizeGuideProfileKey, setSizeGuideProfileKey] = useState("");
+  const [sizeGuideCustomRows, setSizeGuideCustomRows] = useState<SizeGuideRow[]>([]);
 
   const resetForm = () => {
     setFormData({
@@ -150,6 +158,9 @@ export function AdminProductsPage() {
     setStockInput(999);
     setVariantStockDraft({});
     setFormTab("info");
+    setSizeGuideMode("category");
+    setSizeGuideProfileKey("");
+    setSizeGuideCustomRows([]);
   };
 
   const getProductStockInfo = (prod: Product) => {
@@ -247,7 +258,6 @@ export function AdminProductsPage() {
       discountPercent: product.discountPercent || 0,
       showDiscountPercent: product.showDiscountPercent || false,
       category: product.category,
-      sizeGuideProfile: product.sizeGuideProfile || "",
       image: product.image,
       sizeChartImage: product.sizeChartImage || "",
       description: product.description,
@@ -265,6 +275,14 @@ export function AdminProductsPage() {
     setColorImageDrafts(product.colorImages || {});
     setStockInput(product.stock !== undefined ? product.stock : 999);
     setVariantStockDraft(product.variantStock || {});
+    const mode = resolveProductSizeGuideMode(product);
+    setSizeGuideMode(mode);
+    setSizeGuideProfileKey(product.sizeGuideProfile || "");
+    setSizeGuideCustomRows(
+      product.sizeGuideOverride?.length
+        ? product.sizeGuideOverride.map((r) => ({ ...r }))
+        : [],
+    );
     setStockType(product.variantStock && Object.keys(product.variantStock).length > 0 ? "variant" : "simple");
     setFormTab("info");
     setShowEditModal(true);
@@ -691,33 +709,19 @@ export function AdminProductsPage() {
                       </select>
                     </div>
 
-                    <div className="space-y-1.5 md:col-span-2">
-                      <label className="block text-[9px] font-extrabold tracking-widest uppercase text-black/50">
-                        Bảng gợi ý size (kiểu / form)
-                      </label>
-                      <select
-                        value={formData.sizeGuideProfile}
-                        onChange={(event) =>
-                          setFormData({ ...formData, sizeGuideProfile: event.target.value })
-                        }
-                        className="w-full rounded-xl border border-black/10 bg-stone-50 px-4 py-3 text-xs focus:bg-white focus:border-black/60 focus:outline-none transition-all font-bold"
-                      >
-                        <option value="">
-                          Theo danh mục ({formData.category || "mặc định"})
-                        </option>
-                        {sizeGuideProfiles.map((profile) => (
-                          <option key={profile} value={profile}>
-                            {profile}
-                          </option>
-                        ))}
-                      </select>
-                      <p className="text-[9px] text-black/40 leading-relaxed">
-                        Tạo kiểu mới tại Cài đặt hệ thống → Gợi Ý Size → Thêm kiểu / form riêng.
-                        {sizeGuideProfiles.length === 0
-                          ? " Chưa có kiểu riêng — đang dùng bảng theo danh mục hoặc mặc định."
-                          : null}
-                      </p>
-                    </div>
+                    <ProductSizeGuideSelector
+                      mode={sizeGuideMode}
+                      profileKey={sizeGuideProfileKey}
+                      customRows={sizeGuideCustomRows}
+                      category={formData.category}
+                      profileKeys={sizeGuideProfiles}
+                      sizeGuideConfig={settings.sizeGuide}
+                      onChange={({ mode, profileKey, customRows }) => {
+                        setSizeGuideMode(mode);
+                        setSizeGuideProfileKey(profileKey);
+                        setSizeGuideCustomRows(customRows);
+                      }}
+                    />
 
                     <div className="space-y-1.5">
                       <label className="block text-[9px] font-extrabold tracking-widest uppercase text-black/50">
@@ -1298,6 +1302,18 @@ export function AdminProductsPage() {
                       return;
                     }
 
+                    if (sizeGuideMode === "profile" && !sizeGuideProfileKey.trim()) {
+                      showToast("Vui lòng chọn kiểu/form cho bảng gợi ý size!", "error");
+                      setFormTab("info");
+                      return;
+                    }
+
+                    if (sizeGuideMode === "custom" && sizeGuideCustomRows.length === 0) {
+                      showToast("Vui lòng thêm ít nhất một dòng size trong bảng riêng!", "error");
+                      setFormTab("info");
+                      return;
+                    }
+
                     if (!formData.price || formData.price <= 0) {
                       showToast("Giá bán thực tế phải lớn hơn 0!", "error");
                       setFormTab("info");
@@ -1371,7 +1387,14 @@ export function AdminProductsPage() {
                       showDiscountPercent: formData.showDiscountPercent,
                       tags: selectedTags,
                       category: formData.category,
-                      sizeGuideProfile: formData.sizeGuideProfile.trim() || undefined,
+                      sizeGuideProfile:
+                        sizeGuideMode === "profile" && sizeGuideProfileKey.trim()
+                          ? sizeGuideProfileKey.trim()
+                          : undefined,
+                      sizeGuideOverride:
+                        sizeGuideMode === "custom" && sizeGuideCustomRows.length > 0
+                          ? sizeGuideCustomRows
+                          : undefined,
                       image: mainImage,
                       images: normalizedImages.length > 0 ? normalizedImages : mainImage ? [mainImage] : [],
                       sizeChartImage: formData.sizeChartImage.trim() || undefined,

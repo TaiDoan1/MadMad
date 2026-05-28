@@ -98,11 +98,25 @@ export function getSizeGuideRowsForCategory(category: string, config?: SizeGuide
   return normalized.defaultRows;
 }
 
-/** Ưu tiên: bảng kiểu/form sản phẩm → danh mục → mặc định */
+function normalizeOverrideRows(rows: unknown): SizeGuideRow[] {
+  if (!Array.isArray(rows)) return [];
+  return rows.map(normalizeRow).filter((r): r is SizeGuideRow => Boolean(r));
+}
+
+/** Ưu tiên: bảng riêng SP → kiểu/form → danh mục → mặc định */
 export function getSizeGuideRowsForProduct(
-  product: { category: string; sizeGuideProfile?: string | null },
+  product: {
+    category: string;
+    sizeGuideProfile?: string | null;
+    sizeGuideOverride?: SizeGuideRow[] | null;
+  },
   config?: SizeGuideConfig | null,
 ): SizeGuideRow[] {
+  const overrideRows = normalizeOverrideRows(product.sizeGuideOverride);
+  if (overrideRows.length > 0) {
+    return overrideRows;
+  }
+
   const normalized = config ? normalizeSizeGuideConfig(config) : DEFAULT_SIZE_GUIDE_CONFIG;
   const profileKey = (product.sizeGuideProfile || "").trim();
   if (profileKey) {
