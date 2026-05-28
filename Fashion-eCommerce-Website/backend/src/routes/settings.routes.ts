@@ -38,7 +38,9 @@ router.get("/", async (req, res, next) => {
           smtpPort: 587,
           smtpUser: "mmadmadstudio@gmail.com",
           smtpPass: "yxmbctjhsxkyeznx",
-          smtpSenderName: "MADMAD STUDIO"
+          smtpSenderName: "MADMAD STUDIO",
+
+          couponsJson: "[]",
         }
       });
     }
@@ -53,7 +55,8 @@ router.get("/", async (req, res, next) => {
     // Parse mảng ảnh Instagram dạng JSON String trước khi trả về
     res.json({
       ...setting,
-      instagramImages: setting.instagramImages ? JSON.parse(setting.instagramImages) : []
+      instagramImages: setting.instagramImages ? JSON.parse(setting.instagramImages) : [],
+      coupons: setting.couponsJson ? JSON.parse(setting.couponsJson) : [],
     });
   } catch (error) {
     next(error);
@@ -121,7 +124,10 @@ router.put("/", async (req, res, next) => {
       printInvoiceSubheader,
       printInvoiceBankId,
       printInvoiceBankAccount,
-      printInvoiceAccountName
+      printInvoiceAccountName,
+
+      // 🎟️ Coupons
+      coupons,
     } = req.body;
 
     console.log("📥 [PUT /settings] Received request to update settings:");
@@ -134,6 +140,9 @@ router.put("/", async (req, res, next) => {
     const instagramImagesStr = Array.isArray(instagramImages) 
       ? JSON.stringify(instagramImages) 
       : (typeof instagramImages === "string" ? instagramImages : undefined);
+
+    const couponsJson =
+      coupons !== undefined ? JSON.stringify(Array.isArray(coupons) ? coupons : []) : undefined;
 
     const updatedSetting = await prisma.storefrontSetting.upsert({
       where: { id: 1 },
@@ -195,7 +204,10 @@ router.put("/", async (req, res, next) => {
         printInvoiceSubheader,
         printInvoiceBankId,
         printInvoiceBankAccount,
-        printInvoiceAccountName
+        printInvoiceAccountName,
+
+        // 🎟️ Coupons
+        couponsJson,
       },
       create: {
         id: 1,
@@ -256,13 +268,17 @@ router.put("/", async (req, res, next) => {
         printInvoiceSubheader: printInvoiceSubheader || "Tối giản . Độc bản . Cao cấp",
         printInvoiceBankId: printInvoiceBankId || "MB",
         printInvoiceBankAccount: printInvoiceBankAccount || "0999999999",
-        printInvoiceAccountName: printInvoiceAccountName || "MADMAD STUDIO"
+        printInvoiceAccountName: printInvoiceAccountName || "MADMAD STUDIO",
+
+        // 🎟️ Coupons
+        couponsJson: couponsJson ?? "[]",
       }
     });
 
     res.json({
       ...updatedSetting,
-      instagramImages: updatedSetting.instagramImages ? JSON.parse(updatedSetting.instagramImages) : []
+      instagramImages: updatedSetting.instagramImages ? JSON.parse(updatedSetting.instagramImages) : [],
+      coupons: updatedSetting.couponsJson ? JSON.parse(updatedSetting.couponsJson) : [],
     });
   } catch (error) {
     next(error);

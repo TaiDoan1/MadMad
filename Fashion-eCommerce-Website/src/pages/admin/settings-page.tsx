@@ -143,7 +143,34 @@ export function AdminSettingsPage() {
     // Đọc danh sách coupon từ service
     const storedCoupons = readStoredCoupons();
     setCoupons(storedCoupons);
+
+    // Đồng bộ từ server về (nếu có) để admin/khách cùng thấy 1 danh sách
+    (async () => {
+      try {
+        const res = await fetch(`${API_URL}/settings`);
+        if (!res.ok) return;
+        const data = await res.json();
+        if (Array.isArray(data?.coupons)) {
+          saveCoupons(data.coupons);
+          setCoupons(readStoredCoupons());
+        }
+      } catch {
+        // ignore
+      }
+    })();
   }, [settings]);
+
+  const syncCouponsToServer = async (nextCoupons: Coupon[]) => {
+    try {
+      await fetch(`${API_URL}/settings`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ coupons: nextCoupons }),
+      });
+    } catch {
+      // ignore
+    }
+  };
 
   const handleLogoChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -304,6 +331,7 @@ export function AdminSettingsPage() {
     
     setCoupons(updatedCoupons);
     saveCoupons(updatedCoupons); // Lưu đồng bộ xuống localStorage
+    syncCouponsToServer(updatedCoupons);
 
     // Reset Form
     setNewCouponCode("");
@@ -320,6 +348,7 @@ export function AdminSettingsPage() {
       const updatedCoupons = coupons.filter((c) => c.code !== code);
       setCoupons(updatedCoupons);
       saveCoupons(updatedCoupons); // Lưu đồng bộ xuống localStorage
+      syncCouponsToServer(updatedCoupons);
     }
   };
 

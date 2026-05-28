@@ -1,7 +1,12 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 
 import { useProducts } from "@/features/products/context/product-context";
-import { readStoredCoupons } from "@/features/promotions/services/coupon-service";
+import {
+  fetchCouponsFromServer,
+  getAllCouponsSnapshot,
+  readStoredCoupons,
+  saveCoupons,
+} from "@/features/promotions/services/coupon-service";
 import type { Coupon } from "@/types/coupon";
 import type { CartItem } from "@/types/cart";
 import { safeLocalStorage } from "@/utils/safe-storage";
@@ -67,6 +72,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
     if (typeof window === "undefined") return null;
     return safeLocalStorage.getItem(CART_COUPON_STORAGE_KEY);
   });
+  const [availableCoupons, setAvailableCoupons] = useState<Coupon[]>(() => getAllCouponsSnapshot());
 
   const persist = (nextItems: CartItem[]) => {
     setCartItems(nextItems);
@@ -121,11 +127,27 @@ export function CartProvider({ children }: { children: ReactNode }) {
     }
   }, [appliedCouponCode, activeCartItems, products]);
 
+  // Sync coupons từ server để khách hàng dùng được (khác thiết bị/trình duyệt vẫn có).
+  useEffect(() => {
+    setAvailableCoupons(getAllCouponsSnapshot());
+    let cancelled = false;
+    (async () => {
+      const serverCoupons = await fetchCouponsFromServer();
+      if (cancelled) return;
+      if (serverCoupons.length > 0) {
+        saveCoupons(serverCoupons);
+      }
+      setAvailableCoupons(getAllCouponsSnapshot());
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
 
 
   const value = useMemo<CartContextValue>(
     () => {
-      const availableCoupons: Coupon[] = readStoredCoupons();
       return {
       cartItems: activeCartItems,
       itemCount: activeCartItems.reduce((sum, item) => sum + item.quantity, 0),
@@ -223,7 +245,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       },
       };
     },
-    [appliedCouponCode, activeCartItems, cartItems],
+    [appliedCouponCode, activeCartItems, cartItems, availableCoupons, products],
   );
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;

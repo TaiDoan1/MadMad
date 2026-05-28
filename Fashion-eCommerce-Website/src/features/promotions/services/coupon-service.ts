@@ -1,6 +1,7 @@
 import { AVAILABLE_COUPONS } from "@/features/promotions/data/coupons";
 import type { Coupon } from "@/types/coupon";
 import { safeLocalStorage } from "@/utils/safe-storage";
+import { API_URL } from "@/config/api";
 
 export const COUPONS_STORAGE_KEY = "fashion-ecommerce.coupons";
 
@@ -46,5 +47,43 @@ export function incrementCouponUsage(code: string) {
       : c
   );
   saveCoupons(updated);
+}
+
+function normalizeCoupons(input: unknown): Coupon[] {
+  if (!Array.isArray(input)) return [];
+  return (input as Coupon[])
+    .map((coupon) => ({
+      ...coupon,
+      code: (coupon?.code || "").toUpperCase(),
+      discountAmount: Math.max(0, Number((coupon as any)?.discountAmount ?? (coupon as any)?.value ?? 0)),
+      usageLimit: (coupon as any)?.usageLimit !== undefined ? Number((coupon as any).usageLimit) : undefined,
+      usageCount: (coupon as any)?.usageCount !== undefined ? Number((coupon as any).usageCount) : undefined,
+      isExclusive: Boolean((coupon as any)?.isExclusive),
+      applyToSaleItems: (coupon as any)?.applyToSaleItems ?? true,
+    }))
+    .filter((c) => c.code && c.discountAmount > 0);
+}
+
+export async function fetchCouponsFromServer(): Promise<Coupon[]> {
+  if (typeof window === "undefined") return [];
+  try {
+    const res = await fetch(`${API_URL}/settings`);
+    if (!res.ok) return [];
+    const data = (await res.json()) as { coupons?: unknown };
+    return normalizeCoupons(data?.coupons);
+  } catch {
+    return [];
+  }
+}
+
+export function getAllCouponsSnapshot(): Coupon[] {
+  const stored = readStoredCoupons();
+  const merged = [...AVAILABLE_COUPONS, ...stored];
+  const byCode = new Map<string, Coupon>();
+  for (const c of merged) {
+    if (!c?.code) continue;
+    byCode.set(c.code.toUpperCase(), { ...c, code: c.code.toUpperCase() });
+  }
+  return Array.from(byCode.values());
 }
 
