@@ -21,6 +21,7 @@ export interface ProductSizeGuideSelectorProps {
   category: string;
   profileKeys: string[];
   sizeGuideConfig?: SizeGuideConfig | null;
+  settingsHint?: string;
   onChange: (next: {
     mode: ProductSizeGuideMode;
     profileKey: string;
@@ -44,6 +45,7 @@ export function ProductSizeGuideSelector({
   category,
   profileKeys,
   sizeGuideConfig,
+  settingsHint,
   onChange,
 }: ProductSizeGuideSelectorProps) {
   const setMode = (nextMode: ProductSizeGuideMode) => {
@@ -73,7 +75,7 @@ export function ProductSizeGuideSelector({
   };
 
   return (
-    <div className="space-y-3 md:col-span-2">
+    <div className="space-y-3 w-full rounded-xl border border-black/10 bg-stone-50/50 p-4">
       <label className="block text-[9px] font-extrabold tracking-widest uppercase text-black/50">
         Gợi ý size cho sản phẩm này
       </label>
@@ -88,20 +90,27 @@ export function ProductSizeGuideSelector({
       </select>
 
       {mode === "profile" && (
-        <select
-          value={profileKey}
-          onChange={(e) =>
-            onChange({ mode: "profile", profileKey: e.target.value, customRows: [] })
-          }
-          className="w-full rounded-xl border border-black/10 bg-stone-50 px-4 py-2.5 text-xs font-bold"
-        >
-          <option value="">-- Chọn kiểu/form --</option>
-          {profileKeys.map((key) => (
-            <option key={key} value={key}>
-              {key}
-            </option>
-          ))}
-        </select>
+        <>
+          <select
+            value={profileKey}
+            onChange={(e) =>
+              onChange({ mode: "profile", profileKey: e.target.value, customRows: [] })
+            }
+            className="w-full rounded-xl border border-black/10 bg-white px-4 py-2.5 text-xs font-bold"
+          >
+            <option value="">-- Chọn bảng size dùng chung --</option>
+            {profileKeys.map((key) => (
+              <option key={key} value={key}>
+                {key}
+              </option>
+            ))}
+          </select>
+          {profileKeys.length === 0 && (
+            <p className="text-[9px] text-amber-700 font-semibold leading-relaxed">
+              Chưa có bảng chung. {settingsHint ?? "Tạo trong Cài đặt → Gợi Ý Size → Thêm kiểu / form riêng."}
+            </p>
+          )}
+        </>
       )}
 
       {mode === "custom" && (
@@ -191,7 +200,7 @@ export function ProductSizeGuideSelector({
         {mode === "category" &&
           "Mọi SP cùng danh mục dùng chung bảng (chỉnh tại Cài đặt → Gợi Ý Size)."}
         {mode === "profile" &&
-          "Nhiều áo cùng form (vd. oversize) — tạo kiểu một lần, gán cho nhiều SP."}
+          "Nhiều áo cùng form — chọn bảng chung đã tạo (hoặc gán hàng loạt trong Cài đặt → Gợi Ý Size)."}
         {mode === "custom" &&
           "Áo này size khác áo kia: chỉnh bảng ngay tại đây, không ảnh hưởng SP khác."}
       </p>

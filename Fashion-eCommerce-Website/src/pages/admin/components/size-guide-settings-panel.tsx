@@ -4,6 +4,7 @@ import { Plus, RotateCcw, Save, Trash2 } from "lucide-react";
 import { useStorefrontSettings } from "@/features/settings/context/storefront-settings-context";
 import type { SizeGuideConfig, SizeGuideRow } from "@/types/size-guide";
 import { DEFAULT_SIZE_GUIDE, normalizeSizeGuideConfig } from "@/utils/size-recommendation";
+import { SizeGuideProductAssignments } from "@/pages/admin/components/size-guide-product-assignments";
 import { useToast } from "@/components/common/toast";
 
 const EMPTY_ROW: SizeGuideRow = {
@@ -344,6 +345,8 @@ export function SizeGuideSettingsPanel() {
           </tbody>
         </table>
       </div>
+
+      <SizeGuideProductAssignments sizeGuide={draft} />
 
       <div className="flex flex-wrap gap-3">
         <button

@@ -137,7 +137,6 @@ export function AdminProductsPage() {
       discountPercent: 0,
       showDiscountPercent: false,
       category: productOptions.categories[0] ?? "",
-      sizeGuideProfile: "",
       image: "",
       sizeChartImage: "",
       description: "",
@@ -709,20 +708,6 @@ export function AdminProductsPage() {
                       </select>
                     </div>
 
-                    <ProductSizeGuideSelector
-                      mode={sizeGuideMode}
-                      profileKey={sizeGuideProfileKey}
-                      customRows={sizeGuideCustomRows}
-                      category={formData.category}
-                      profileKeys={sizeGuideProfiles}
-                      sizeGuideConfig={settings.sizeGuide}
-                      onChange={({ mode, profileKey, customRows }) => {
-                        setSizeGuideMode(mode);
-                        setSizeGuideProfileKey(profileKey);
-                        setSizeGuideCustomRows(customRows);
-                      }}
-                    />
-
                     <div className="space-y-1.5">
                       <label className="block text-[9px] font-extrabold tracking-widest uppercase text-black/50">
                         Trạng thái Tồn kho
@@ -737,6 +722,21 @@ export function AdminProductsPage() {
                       </select>
                     </div>
                   </div>
+
+                  <ProductSizeGuideSelector
+                    mode={sizeGuideMode}
+                    profileKey={sizeGuideProfileKey}
+                    customRows={sizeGuideCustomRows}
+                    category={formData.category}
+                    profileKeys={sizeGuideProfiles}
+                    sizeGuideConfig={settings.sizeGuide}
+                    settingsHint="Tạo bảng chung & gán nhiều SP tại Cài đặt hệ thống → Gợi Ý Size."
+                    onChange={({ mode, profileKey, customRows }) => {
+                      setSizeGuideMode(mode);
+                      setSizeGuideProfileKey(profileKey);
+                      setSizeGuideCustomRows(customRows);
+                    }}
+                  />
 
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div className="space-y-1.5">
