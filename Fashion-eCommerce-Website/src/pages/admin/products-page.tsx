@@ -5,9 +5,7 @@ import { Edit, Eye, Image as ImageIcon, Plus, Search, Settings2, Trash2, X } fro
 import { ImageUploadInput } from "@/components/common/image-upload-input";
 import { ImageWithFallback } from "@/components/common/image-with-fallback";
 import { useProducts } from "@/features/products/context/product-context";
-import { readStoredCoupons, saveCoupons } from "@/features/promotions/services/coupon-service";
 import { useStorefrontSettings } from "@/features/settings/context/storefront-settings-context";
-import type { Coupon } from "@/types/coupon";
 import type { Product } from "@/types/product";
 import { useToast } from "@/components/common/toast";
 import { safeLocalStorage } from "@/utils/safe-storage";
@@ -68,7 +66,6 @@ export function AdminProductsPage() {
   const [colorHexDrafts, setColorHexDrafts] = useState<Record<string, string>>(
     settings.colorHexMap ?? {},
   );
-  const [couponDraft, setCouponDraft] = useState("");
   const [categoryDraft, setCategoryDraft] = useState("");
   const [sizeDraft, setSizeDraft] = useState("");
   const [colorDraft, setColorDraft] = useState("");
@@ -325,11 +322,6 @@ export function AdminProductsPage() {
               setSizeDraft(productOptions.sizes.join(", "));
               setColorDraft(productOptions.colors.join(", "));
               setTagDraft(productOptions.tags.join(", "));
-              setCouponDraft(
-                readStoredCoupons()
-                  .map((coupon) => `${coupon.code}|${coupon.discountAmount}`)
-                  .join("\n"),
-              );
               setShowOptionsModal(true);
             }}
             className="flex items-center justify-center gap-2 rounded border border-border bg-white px-4 py-3 transition-colors hover:bg-muted"
@@ -1681,16 +1673,11 @@ export function AdminProductsPage() {
                   })}
                 </div>
               </div>
-              <div>
-                <p className="mb-2 text-sm text-muted-foreground">Mã giảm giá (mỗi dòng: CODE|Số tiền giảm)</p>
-                <textarea
-                  value={couponDraft}
-                  onChange={(event) => setCouponDraft(event.target.value)}
-                  rows={6}
-                  className="w-full rounded border border-border px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-                  placeholder={"WELCOME30|30000\nVIP100|100000"}
-                />
-                <p className="mt-1 text-xs text-muted-foreground">Ví dụ: `WELCOME30|30000` nghĩa là giảm thẳng 30,000đ.</p>
+              <div className="rounded border border-border bg-muted/30 p-4">
+                <p className="text-sm font-semibold">Mã giảm giá (Voucher)</p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Phần mã giảm giá đã được chuyển sang <span className="font-semibold">Cài đặt hệ thống → Khuyến mãi &amp; Coupons</span>.
+                </p>
               </div>
             </div>
             <div className="shrink-0 flex justify-end gap-3 border-t border-border p-6 bg-white rounded-b-lg">
@@ -1729,22 +1716,6 @@ export function AdminProductsPage() {
                     const raw = (colorHexDrafts[colorName] || "").trim();
                     nextColorMap[colorName] = normalizeHex(raw || "#D1D5DB");
                   });
-                  const parsedCoupons = couponDraft
-                    .split("\n")
-                    .map((line) => line.trim())
-                    .filter(Boolean)
-                    .map((line) => {
-                      const [codeRaw, discountRaw] = line.split("|").map((part) => part.trim());
-                      const code = (codeRaw || "").toUpperCase();
-                      const discountAmount = Number(discountRaw || 0);
-                      return {
-                        code,
-                        discountAmount: Math.max(0, discountAmount),
-                      } satisfies Coupon;
-                    })
-                    .filter((coupon) => coupon.code && coupon.discountAmount > 0);
-
-                  saveCoupons(parsedCoupons);
                   updateSettings({ colorHexMap: { ...settings.colorHexMap, ...nextColorMap } });
                   if (!nextProductOptions.categories.includes(formData.category)) {
                     setFormData((current) => ({ ...current, category: nextProductOptions.categories[0] ?? "" }));
