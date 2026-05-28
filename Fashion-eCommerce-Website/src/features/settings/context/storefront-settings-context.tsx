@@ -4,8 +4,10 @@ import { brandLogo } from "@/assets/images";
 import type { StorefrontSettings } from "@/types/storefront-settings";
 import { API_URL } from "@/config/api";
 import { safeLocalStorage } from "@/utils/safe-storage";
+import { enqueue, peekQueue, removeFromQueue } from "@/utils/offline-queue";
 
 const STOREFRONT_SETTINGS_STORAGE_KEY = "fashion-ecommerce.admin-settings-v2";
+const SETTINGS_OFFLINE_QUEUE_KEY = "madmad.offline.queue.settings";
 
 export const DEFAULT_STOREFRONT_SETTINGS: StorefrontSettings = {
   logo: brandLogo,
@@ -112,6 +114,36 @@ interface StorefrontSettingsContextValue {
 }
 
 const StorefrontSettingsContext = createContext<StorefrontSettingsContextValue | undefined>(undefined);
+
+type CloudSettings = Record<string, any>;
+
+function mapCloudToLocal(cloud: CloudSettings): Partial<StorefrontSettings> {
+  if (!cloud || typeof cloud !== "object") return {};
+  const storeName = typeof cloud.storeName === "string" && cloud.storeName.trim()
+    ? cloud.storeName
+    : (typeof cloud.brandName === "string" ? cloud.brandName : undefined);
+  const logo = typeof cloud.logoUrl === "string" && cloud.logoUrl.trim() ? cloud.logoUrl : undefined;
+
+  return {
+    ...cloud,
+    ...(storeName ? { storeName } : {}),
+    ...(logo ? { logo } : {}),
+  };
+}
+
+function mapLocalPayloadToCloud(payload: Partial<StorefrontSettings>): Record<string, any> {
+  const cloud: Record<string, any> = { ...payload };
+  if ("logo" in payload) {
+    cloud.logoUrl = payload.logo;
+    delete cloud.logo;
+  }
+  if ("storeName" in payload) {
+    // Giữ đồng bộ cả 2 field (brandName và storeName) để template email dùng {{brandName}} luôn đúng.
+    cloud.storeName = payload.storeName;
+    cloud.brandName = payload.storeName;
+  }
+  return cloud;
+}
 
 function readStoredSettings(): StorefrontSettings {
   if (typeof window === "undefined") {
@@ -273,13 +305,33 @@ function readStoredSettings(): StorefrontSettings {
 export function StorefrontSettingsProvider({ children }: { children: ReactNode }) {
   const [settings, setSettings] = useState<StorefrontSettings>(readStoredSettings);
 
+  const flushSettingsQueue = async () => {
+    const items = peekQueue<Partial<StorefrontSettings>>(SETTINGS_OFFLINE_QUEUE_KEY);
+    if (items.length === 0) return;
+    // Merge payloads in order; last-write-wins
+    const merged = items.reduce((acc, it) => ({ ...acc, ...it.payload }), {} as Partial<StorefrontSettings>);
+    const cloudPayload = mapLocalPayloadToCloud(merged);
+    try {
+      const res = await fetch(`${API_URL}/settings`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(cloudPayload),
+      });
+      if (res.ok) {
+        removeFromQueue(SETTINGS_OFFLINE_QUEUE_KEY, items.map((i) => i.id));
+      }
+    } catch {
+      // keep queue
+    }
+  };
+
   // 📥 Tải đồng bộ cấu hình từ Postgres Cloud khi load app
   useEffect(() => {
     const fetchSettings = async () => {
       try {
         const response = await fetch(`${API_URL}/settings`);
         if (response.ok) {
-          const cloudSettings = await response.json();
+          const cloudSettings = (await response.json()) as CloudSettings;
           console.log("⚙️ [Frontend Context] Synced settings from Cloud:", {
             enableCod: cloudSettings.enableCod,
             enableBank: cloudSettings.enableBank,
@@ -288,14 +340,25 @@ export function StorefrontSettingsProvider({ children }: { children: ReactNode }
           });
           setSettings((current) => ({
             ...current,
-            ...cloudSettings
+            ...mapCloudToLocal(cloudSettings),
           }));
+
+          // If we have offline changes queued, try to flush now
+          flushSettingsQueue();
         }
       } catch (err) {
         console.warn("⚠️ Không đồng bộ được cấu hình từ Postgres Cloud:", err);
       }
     };
     fetchSettings();
+  }, []);
+
+  useEffect(() => {
+    const onOnline = () => {
+      flushSettingsQueue();
+    };
+    window.addEventListener("online", onOnline);
+    return () => window.removeEventListener("online", onOnline);
   }, []);
 
   const value = useMemo<StorefrontSettingsContextValue>(
@@ -308,11 +371,23 @@ export function StorefrontSettingsProvider({ children }: { children: ReactNode }
           safeLocalStorage.setItem(STOREFRONT_SETTINGS_STORAGE_KEY, JSON.stringify(nextSettings));
 
           // 📤 Tự động đồng bộ PUT lên Postgres DB
+          const cloudPayload = mapLocalPayloadToCloud(payload);
           fetch(`${API_URL}/settings`, {
             method: "PUT",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(payload)
-          }).catch((err) => console.warn("⚠️ Lỗi đồng bộ cài đặt lên Postgres:", err));
+            body: JSON.stringify(cloudPayload),
+          })
+            .then((res) => {
+              if (res.ok) {
+                flushSettingsQueue();
+                return;
+              }
+              enqueue(SETTINGS_OFFLINE_QUEUE_KEY, payload);
+            })
+            .catch((err) => {
+              console.warn("⚠️ Lỗi đồng bộ cài đặt lên Postgres:", err);
+              enqueue(SETTINGS_OFFLINE_QUEUE_KEY, payload);
+            });
 
           return nextSettings;
         });

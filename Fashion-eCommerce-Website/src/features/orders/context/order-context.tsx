@@ -3,6 +3,7 @@ import { mockOrders } from "@/features/orders/data/mock-orders";
 import type { Order } from "@/types/order";
 import { API_URL } from "@/config/api";
 import { safeLocalStorage } from "@/utils/safe-storage";
+import { enqueue, peekQueue, removeFromQueue } from "@/utils/offline-queue";
 
 interface OrderContextValue {
   orders: Order[];
@@ -15,6 +16,8 @@ interface OrderContextValue {
 }
 
 const OrderContext = createContext<OrderContextValue | undefined>(undefined);
+const ORDERS_OFFLINE_QUEUE_KEY = "madmad.offline.queue.orders";
+const ORDER_INTERNAL_NOTE_QUEUE_KEY = "madmad.offline.queue.order-internal-notes";
 
 export function OrderProvider({ children }: { children: ReactNode }) {
   const [orders, setOrdersState] = useState<Order[]>([]);
@@ -47,6 +50,59 @@ export function OrderProvider({ children }: { children: ReactNode }) {
 
 const LOCAL_ORDERS_KEY = "madmad_orders_fallback";
 
+  const flushOrdersQueue = async () => {
+    const queued = peekQueue<any>(ORDERS_OFFLINE_QUEUE_KEY);
+    if (queued.length === 0) return;
+    const succeeded: string[] = [];
+    for (const q of queued) {
+      try {
+        const res = await fetch(`${API_URL}/orders`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(q.payload),
+        });
+        if (res.ok) {
+          succeeded.push(q.id);
+          continue;
+        }
+        // If already exists (unique orderNumber), treat as synced
+        const text = await res.text().catch(() => "");
+        if (res.status === 409 || (res.status === 400 && /unique|orderNumber/i.test(text))) {
+          succeeded.push(q.id);
+        }
+      } catch {
+        // stop early if still offline
+        break;
+      }
+    }
+    if (succeeded.length > 0) {
+      removeFromQueue(ORDERS_OFFLINE_QUEUE_KEY, succeeded);
+      await loadOrders(true);
+    }
+  };
+
+  const flushInternalNoteQueue = async () => {
+    const queued = peekQueue<{ orderId: number; internalNote: string }>(ORDER_INTERNAL_NOTE_QUEUE_KEY);
+    if (queued.length === 0) return;
+    const succeeded: string[] = [];
+    for (const q of queued) {
+      try {
+        const res = await fetch(`${API_URL}/orders/${q.payload.orderId}/internal-note`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ internalNote: q.payload.internalNote }),
+        });
+        if (res.ok) succeeded.push(q.id);
+      } catch {
+        break;
+      }
+    }
+    if (succeeded.length > 0) {
+      removeFromQueue(ORDER_INTERNAL_NOTE_QUEUE_KEY, succeeded);
+      await loadOrders(true);
+    }
+  };
+
   // 📥 Tải danh sách đơn hàng từ database Neon Postgres (Dành cho Admin Dashboard)
   const loadOrders = async (silent = false) => {
     try {
@@ -59,6 +115,9 @@ const LOCAL_ORDERS_KEY = "madmad_orders_fallback";
           (a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
         );
         setOrders(sortedOrders);
+        // once online, try flushing any offline queues
+        flushOrdersQueue();
+        flushInternalNoteQueue();
       } else {
         throw new Error("API response not ok");
       }
@@ -82,6 +141,15 @@ const LOCAL_ORDERS_KEY = "madmad_orders_fallback";
       loadOrders(true);
     }, 3000);
     return () => clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    const onOnline = () => {
+      flushOrdersQueue();
+      flushInternalNoteQueue();
+    };
+    window.addEventListener("online", onOnline);
+    return () => window.removeEventListener("online", onOnline);
   }, []);
 
   // 🛡️ Tự động đồng bộ Orders state vào LocalStorage dự phòng
@@ -132,6 +200,8 @@ const LOCAL_ORDERS_KEY = "madmad_orders_fallback";
         } catch (error) {
           console.error("%c❌ [CONNECTION ERROR] Không kết nối được tới server API:", "color: #ff0000; font-weight: bold;", error);
           console.warn("%c⚠️ [FALLBACK OFFLINE] Đã kích hoạt cơ chế lưu trữ cục bộ tạm thời (Local Backup) để tránh gián đoạn trải nghiệm của Khách hàng!", "color: #ffaa00;");
+          // Queue for later sync
+          enqueue(ORDERS_OFFLINE_QUEUE_KEY, payload, payload.orderNumber);
           
           // Dự phòng local để luồng checkout của khách không bao giờ bị đứt quãng
           const backupOrder = {
@@ -214,6 +284,7 @@ const LOCAL_ORDERS_KEY = "madmad_orders_fallback";
           }
         } catch (error) {
           console.error("Lỗi gọi API updateOrderInternalNote, cập nhật local:", error);
+          enqueue(ORDER_INTERNAL_NOTE_QUEUE_KEY, { orderId: id, internalNote }, `${id}`);
           setOrders((current) =>
             current.map((order) => (order.id === id ? { ...order, internalNote } : order)),
           );

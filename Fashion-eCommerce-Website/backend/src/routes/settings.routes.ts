@@ -74,6 +74,7 @@ router.put("/", async (req, res, next) => {
       brandName,
       logoUrl,
       manifestoSlogan,
+      storeName,
       facebookUrl,
       instagramUrl,
       tiktokUrl,
@@ -164,6 +165,7 @@ router.put("/", async (req, res, next) => {
       where: { id: 1 },
       update: {
         brandName,
+        storeName,
         logoUrl,
         manifestoSlogan,
         facebookUrl,
@@ -234,6 +236,7 @@ router.put("/", async (req, res, next) => {
       create: {
         id: 1,
         brandName: brandName || "MADMAD STUDIO",
+        storeName: storeName || brandName || "MADMAD Studio",
         logoUrl,
         manifestoSlogan,
         facebookUrl,
