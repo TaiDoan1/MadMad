@@ -88,3 +88,12 @@ export function getForceSoldOutFromProduct(product: Product): boolean {
   const totalStock = getProductTotalStock(product);
   return product.inStock === false && (totalStock === null || totalStock > 0);
 }
+
+export function getVariantAvailableStock(product: Product, color: string, size: string): number {
+  const variantStock = getVariantStock(product);
+  const key = `${color}-${size}`;
+  if (usesVariantStock(product)) {
+    return Number(variantStock[key] ?? 0);
+  }
+  return Number(product.stock ?? 0);
+}

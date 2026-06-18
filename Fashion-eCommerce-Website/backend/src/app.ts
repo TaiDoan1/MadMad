@@ -8,6 +8,7 @@ import memberRoutes  from "./routes/member.routes";
 import settingsRoutes from "./routes/settings.routes";
 import authRoutes    from "./routes/auth.routes";
 import logsRoutes    from "./routes/logs.routes";
+import marketingRoutes from "./routes/marketing.routes";
 
 dotenv.config();
 
@@ -46,6 +47,7 @@ app.use("/api/members", memberRoutes);
 app.use("/api/settings", settingsRoutes);
 app.use("/api/auth",    authRoutes);
 app.use("/api/logs",    logsRoutes);
+app.use("/api/marketing", marketingRoutes);
 
 // Global Error Handler Middleware — tự động ghi lối backend vào Database
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {

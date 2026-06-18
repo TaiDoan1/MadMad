@@ -172,6 +172,38 @@ model StorefrontSetting {
   storeName                String? @default("MADMAD Studio")
 }
 
+// 🎁 Bảng Tặng KOL/KOC (Marketing Gift)
+model MarketingGift {
+  id           String              @id @default(uuid())
+  giftNumber   String              @unique
+  kolName      String
+  kolHandle    String?
+  platform     String?
+  contactInfo  String?
+  cashAmount   Int                 @default(0)
+  productValue Int                 @default(0)
+  totalCost    Int                 @default(0)
+  notes        String?
+  status       String              @default("completed")
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
+  items        MarketingGiftItem[]
+}
+
+model MarketingGiftItem {
+  id           String        @id @default(uuid())
+  giftId       String
+  gift         MarketingGift @relation(fields: [giftId], references: [id], onDelete: Cascade)
+  productId    String
+  productName  String
+  productImage String?
+  color        String
+  size         String
+  quantity     Int
+  unitPrice    Int
+  lineTotal    Int
+}
+
 // 🚨 Bảng Nhật ký Lỗi Hệ Thống (SystemLog)
 model SystemLog {
   id        Int      @id @default(autoincrement())
