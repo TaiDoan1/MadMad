@@ -37,3 +37,30 @@ export function isProductSoldOut(product: Product): boolean {
 
   return false;
 }
+
+export function syncProductStock<T extends Product>(product: T): T {
+  const totalStock = getProductTotalStock(product);
+  if (totalStock !== null && totalStock <= 0) {
+    return { ...product, inStock: false };
+  }
+  return product;
+}
+
+export function resolveSoldOutState({
+  forceSoldOut,
+  totalStock,
+}: {
+  forceSoldOut: boolean;
+  totalStock: number;
+}): { soldOut: boolean; inStock: boolean } {
+  const soldOut = forceSoldOut || totalStock <= 0;
+  return {
+    soldOut,
+    inStock: !soldOut && totalStock > 0,
+  };
+}
+
+export function getForceSoldOutFromProduct(product: Product): boolean {
+  const totalStock = getProductTotalStock(product);
+  return product.inStock === false && (totalStock === null || totalStock > 0);
+}

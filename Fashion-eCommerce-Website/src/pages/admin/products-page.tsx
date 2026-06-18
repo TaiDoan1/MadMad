@@ -14,7 +14,7 @@ import {
 import { listSizeGuideProfileKeys } from "@/utils/size-recommendation";
 import type { SizeGuideRow } from "@/types/size-guide";
 import type { Product } from "@/types/product";
-import { isProductSoldOut } from "@/utils/product-stock";
+import { getForceSoldOutFromProduct, isProductSoldOut, resolveSoldOutState, syncProductStock } from "@/utils/product-stock";
 import { useToast } from "@/components/common/toast";
 
 type ProductOptions = {
@@ -124,6 +124,7 @@ export function AdminProductsPage() {
   const [stockType, setStockType] = useState<"simple" | "variant">("simple");
   const [stockInput, setStockInput] = useState<number>(999);
   const [variantStockDraft, setVariantStockDraft] = useState<Record<string, number>>({});
+  const [forceSoldOut, setForceSoldOut] = useState(false);
 
   const [formTab, setFormTab] = useState<"info" | "attributes" | "media" | "inventory">("info");
   const [sizeGuideMode, setSizeGuideMode] = useState<ProductSizeGuideMode>("category");
@@ -157,6 +158,7 @@ export function AdminProductsPage() {
     setStockType("simple");
     setStockInput(999);
     setVariantStockDraft({});
+    setForceSoldOut(false);
     setFormTab("info");
     setSizeGuideMode("category");
     setSizeGuideProfileKey("");
@@ -183,6 +185,37 @@ export function AdminProductsPage() {
     () => listSizeGuideProfileKeys(settings.sizeGuide),
     [settings.sizeGuide],
   );
+
+  const draftTotalStock = useMemo(() => {
+    if (stockType === "variant") {
+      if (selectedColors.length === 0 || selectedSizes.length === 0) return 0;
+      return selectedColors.reduce((colorSum, color) => {
+        return (
+          colorSum +
+          selectedSizes.reduce((sizeSum, size) => {
+            const key = `${color}-${size}`;
+            const qty = variantStockDraft[key] !== undefined ? variantStockDraft[key] : 10;
+            return sizeSum + qty;
+          }, 0)
+        );
+      }, 0);
+    }
+    return stockInput;
+  }, [stockType, stockInput, variantStockDraft, selectedColors, selectedSizes]);
+
+  const soldOutChecked = forceSoldOut || draftTotalStock <= 0;
+
+  useEffect(() => {
+    if (!showAddModal && !showEditModal) return;
+    if (draftTotalStock <= 0) {
+      setForceSoldOut(false);
+      setFormData((current) => (current.inStock ? { ...current, inStock: false } : current));
+      return;
+    }
+    if (!forceSoldOut) {
+      setFormData((current) => (!current.inStock ? { ...current, inStock: true } : current));
+    }
+  }, [draftTotalStock, forceSoldOut, showAddModal, showEditModal]);
 
   const filteredProducts = useMemo(() => {
     const q = searchTerm.trim().toLowerCase();
@@ -254,40 +287,42 @@ export function AdminProductsPage() {
   };
 
   const openProductEdit = (product: Product) => {
-    setSelectedProduct(product);
+    const syncedProduct = syncProductStock(product);
+    setSelectedProduct(syncedProduct);
+    setForceSoldOut(getForceSoldOutFromProduct(syncedProduct));
     setFormData({
-      name: product.name,
-      price: product.price,
-      originalPrice: product.originalPrice || 0,
-      discountPercent: product.discountPercent || 0,
-      showDiscountPercent: product.showDiscountPercent || false,
-      category: product.category,
-      image: product.image,
-      sizeChartImage: product.sizeChartImage || "",
-      description: product.description,
-      sizes: product.sizes.join(", "),
-      inStock: !isProductSoldOut(product),
-      isPreOrder: Boolean(product.isPreOrder),
-      preOrderDays: product.preOrderDays ?? 7,
-      rating: product.rating,
-      reviews: product.reviews,
+      name: syncedProduct.name,
+      price: syncedProduct.price,
+      originalPrice: syncedProduct.originalPrice || 0,
+      discountPercent: syncedProduct.discountPercent || 0,
+      showDiscountPercent: syncedProduct.showDiscountPercent || false,
+      category: syncedProduct.category,
+      image: syncedProduct.image,
+      sizeChartImage: syncedProduct.sizeChartImage || "",
+      description: syncedProduct.description,
+      sizes: syncedProduct.sizes.join(", "),
+      inStock: !isProductSoldOut(syncedProduct),
+      isPreOrder: Boolean(syncedProduct.isPreOrder),
+      preOrderDays: syncedProduct.preOrderDays ?? 7,
+      rating: syncedProduct.rating,
+      reviews: syncedProduct.reviews,
     });
-    setProductImages((product.images && product.images.length > 0 ? product.images : [product.image]).concat(""));
-    setSelectedSizes(product.sizes);
-    setSelectedColors(product.colors);
-    setSelectedTags(product.tags ?? []);
-    setColorImageDrafts(product.colorImages || {});
-    setStockInput(product.stock !== undefined ? product.stock : 999);
-    setVariantStockDraft(product.variantStock || {});
-    const mode = resolveProductSizeGuideMode(product);
+    setProductImages((syncedProduct.images && syncedProduct.images.length > 0 ? syncedProduct.images : [syncedProduct.image]).concat(""));
+    setSelectedSizes(syncedProduct.sizes);
+    setSelectedColors(syncedProduct.colors);
+    setSelectedTags(syncedProduct.tags ?? []);
+    setColorImageDrafts(syncedProduct.colorImages || {});
+    setStockInput(syncedProduct.stock !== undefined ? syncedProduct.stock : 999);
+    setVariantStockDraft(syncedProduct.variantStock || {});
+    const mode = resolveProductSizeGuideMode(syncedProduct);
     setSizeGuideMode(mode);
-    setSizeGuideProfileKey(product.sizeGuideProfile || "");
+    setSizeGuideProfileKey(syncedProduct.sizeGuideProfile || "");
     setSizeGuideCustomRows(
-      product.sizeGuideOverride?.length
-        ? product.sizeGuideOverride.map((r) => ({ ...r }))
+      syncedProduct.sizeGuideOverride?.length
+        ? syncedProduct.sizeGuideOverride.map((r) => ({ ...r }))
         : [],
     );
-    setStockType(product.variantStock && Object.keys(product.variantStock).length > 0 ? "variant" : "simple");
+    setStockType(syncedProduct.variantStock && Object.keys(syncedProduct.variantStock).length > 0 ? "variant" : "simple");
     setFormTab("info");
     setShowEditModal(true);
   };
@@ -717,21 +752,25 @@ export function AdminProductsPage() {
                       <label className="flex items-center gap-2.5">
                         <input
                           type="checkbox"
-                          checked={!formData.inStock}
-                          onChange={(event) =>
+                          checked={soldOutChecked}
+                          disabled={draftTotalStock <= 0}
+                          onChange={(event) => {
+                            if (draftTotalStock <= 0) return;
+                            const checked = event.target.checked;
+                            setForceSoldOut(checked);
                             setFormData((current) => ({
                               ...current,
-                              inStock: !event.target.checked,
-                            }))
-                          }
-                          className="h-4 w-4 rounded border-black/10 text-black focus:ring-black cursor-pointer"
+                              inStock: !checked,
+                            }));
+                          }}
+                          className="h-4 w-4 rounded border-black/10 text-black focus:ring-black cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                         />
                         <span className="text-[10px] font-extrabold tracking-widest uppercase text-black/70">
                           Sold Out / Hết hàng
                         </span>
                       </label>
                       <p className="text-[9px] font-medium text-black/45 leading-relaxed pl-[26px]">
-                        Khi bật, ngoài cửa hàng sẽ hiện &quot;Hết hàng&quot; và nút thêm vào giỏ hàng bị mờ, không nhấn được.
+                        Tự động bật khi tồn kho về 0. Khi bật thủ công, ngoài cửa hàng sẽ hiện &quot;Hết hàng&quot; ngay sau khi lưu.
                       </p>
                     </div>
                   </div>
@@ -1362,32 +1401,28 @@ export function AdminProductsPage() {
 
                     let finalStock: number | undefined = undefined;
                     let finalVariantStock: Record<string, number> | undefined = undefined;
-                    let finalInStock = formData.inStock;
 
                     if (stockType === "simple") {
                       finalStock = stockInput;
                       finalVariantStock = undefined;
-                      if (formData.inStock && stockInput === 0) {
-                        finalInStock = false;
-                      }
                     } else {
                       finalVariantStock = {};
-                      let totalVariantQty = 0;
                       selectedColors.forEach((color) => {
                         selectedSizes.forEach((size) => {
                           const k = `${color}-${size}`;
                           const qty = variantStockDraft[k] !== undefined ? variantStockDraft[k] : 10;
                           finalVariantStock![k] = qty;
-                          totalVariantQty += qty;
                         });
                       });
                       finalStock = undefined;
-                      if (formData.inStock && totalVariantQty === 0) {
-                        finalInStock = false;
-                      }
                     }
 
-                    const nextProduct: Product = {
+                    const { inStock: finalInStock } = resolveSoldOutState({
+                      forceSoldOut,
+                      totalStock: draftTotalStock,
+                    });
+
+                    const nextProduct = syncProductStock({
                       ...(selectedProduct ?? { id: 0 }),
                       name: formData.name,
                       price: formData.price,
@@ -1418,7 +1453,7 @@ export function AdminProductsPage() {
                       preOrderDays: formData.isPreOrder ? Math.max(1, formData.preOrderDays || 1) : undefined,
                       rating: formData.rating,
                       reviews: formData.reviews,
-                    };
+                    });
 
                     if (showAddModal) addProduct(nextProduct);
                     if (showEditModal && selectedProduct) updateProduct(selectedProduct.id, nextProduct);

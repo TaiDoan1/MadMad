@@ -5,6 +5,7 @@ import { products as initialProducts } from "@/features/products/data/products";
 import type { Product } from "@/types/product";
 import { useToast } from "@/components/common/toast";
 import { safeLocalStorage } from "@/utils/safe-storage";
+import { syncProductStock } from "@/utils/product-stock";
 
 interface ProductContextValue {
   products: Product[];
@@ -62,7 +63,7 @@ export function ProductProvider({ children }: { children: ReactNode }) {
         const data = await response.json();
         console.log("📡 [MADMAD SDK] API trả về dữ liệu thành công. Số lượng sản phẩm:", data.length);
         if (Array.isArray(data)) {
-          setProducts(data);
+          setProducts(data.map((product: Product) => syncProductStock(product)));
           setIsLoading(false);
           return;
         } else {
@@ -103,27 +104,45 @@ export function ProductProvider({ children }: { children: ReactNode }) {
     }
   }, [products, isLoading]);
 
+  useEffect(() => {
+    const onStorage = (event: StorageEvent) => {
+      if (event.key !== PRODUCTS_STORAGE_KEY || !event.newValue) return;
+      try {
+        const parsed = JSON.parse(event.newValue) as Product[];
+        if (Array.isArray(parsed)) {
+          setProducts(parsed.map((product) => syncProductStock(product)));
+        }
+      } catch {
+        // ignore invalid cache payloads
+      }
+    };
+
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+  }, []);
+
   const handleUpdateProduct = async (id: string | number, updatedProduct: Product) => {
+    const normalizedProduct = syncProductStock(updatedProduct);
     const oldProducts = [...products];
     setProducts((currentProducts) =>
-      currentProducts.map((product) => (product.id === id ? updatedProduct : product))
+      currentProducts.map((product) => (product.id === id ? normalizedProduct : product))
     );
     try {
       const response = await fetch(`${API_URL}/products/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(updatedProduct),
+        body: JSON.stringify(normalizedProduct),
       });
       if (response.ok) {
         const savedProduct = await response.json();
-        const mergedProduct: Product = {
-          ...updatedProduct,
+        const mergedProduct = syncProductStock({
+          ...normalizedProduct,
           ...savedProduct,
-          isPreOrder: savedProduct?.isPreOrder ?? updatedProduct.isPreOrder,
-          preOrderDays: savedProduct?.preOrderDays ?? updatedProduct.preOrderDays,
-          sizeGuideProfile: savedProduct?.sizeGuideProfile ?? updatedProduct.sizeGuideProfile,
-          sizeGuideOverride: savedProduct?.sizeGuideOverride ?? updatedProduct.sizeGuideOverride,
-        };
+          isPreOrder: savedProduct?.isPreOrder ?? normalizedProduct.isPreOrder,
+          preOrderDays: savedProduct?.preOrderDays ?? normalizedProduct.preOrderDays,
+          sizeGuideProfile: savedProduct?.sizeGuideProfile ?? normalizedProduct.sizeGuideProfile,
+          sizeGuideOverride: savedProduct?.sizeGuideOverride ?? normalizedProduct.sizeGuideOverride,
+        });
         setProducts((currentProducts) =>
           currentProducts.map((product) => (product.id === id ? mergedProduct : product))
         );
@@ -154,7 +173,7 @@ export function ProductProvider({ children }: { children: ReactNode }) {
         const tempId = `temp-${Date.now()}`;
         // Dùng timestamp để tạo SKU duy nhất, tránh trùng lặp với các sản phẩm đã có trong DB
         const sku = product.sku || `MAD-${Date.now().toString(36).toUpperCase()}`;
-        const newProduct = { ...product, id: tempId, sku };
+        const newProduct = syncProductStock({ ...product, id: tempId, sku });
         setProducts((currentProducts) => [...currentProducts, newProduct]);
         try {
           const response = await fetch(`${API_URL}/products`, {
@@ -164,14 +183,14 @@ export function ProductProvider({ children }: { children: ReactNode }) {
           });
           if (response.ok) {
             const savedProduct = await response.json();
-            const mergedProduct: Product = {
+            const mergedProduct = syncProductStock({
               ...newProduct,
               ...savedProduct,
               isPreOrder: savedProduct?.isPreOrder ?? newProduct.isPreOrder,
               preOrderDays: savedProduct?.preOrderDays ?? newProduct.preOrderDays,
               sizeGuideProfile: savedProduct?.sizeGuideProfile ?? newProduct.sizeGuideProfile,
               sizeGuideOverride: savedProduct?.sizeGuideOverride ?? newProduct.sizeGuideOverride,
-            };
+            });
             setProducts((currentProducts) =>
               currentProducts.map((p) => (p.id === tempId ? mergedProduct : p))
             );
