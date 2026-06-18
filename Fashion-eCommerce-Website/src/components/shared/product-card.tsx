@@ -6,6 +6,7 @@ import { ImageWithFallback } from "@/components/common/image-with-fallback";
 import { useCart } from "@/features/cart/context/cart-context";
 import { useLanguage } from "@/features/settings/context/language-context";
 import type { Product } from "@/types/product";
+import { isProductSoldOut } from "@/utils/product-stock";
 
 interface ProductCardProps {
   product: Product;
@@ -24,7 +25,8 @@ export function ProductCard({ product, variant = "shop" }: ProductCardProps) {
   const primaryTag = (product.tags ?? [])[0];
   const isOnSale = Boolean(product.originalPrice && product.originalPrice > product.price);
   const isPreOrder = Boolean(product.isPreOrder || (product.tags ?? []).some((tag) => tag.toLowerCase().includes("pre-order")));
-  const canBuy = isPreOrder || (product.inStock && (product.stock === undefined || product.stock > 0));
+  const isSoldOut = isProductSoldOut(product);
+  const canBuy = !isSoldOut;
 
   const handleQuickAdd = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -85,7 +87,7 @@ export function ProductCard({ product, variant = "shop" }: ProductCardProps) {
         {/* Quick-add button — appears on hover */}
         {!canBuy ? (
           <span className="absolute bottom-3 right-3 z-10 bg-stone-100 border border-stone-300 px-3 py-2 text-[11px] font-bold uppercase tracking-wide text-stone-400 select-none">
-            Sold out
+            {t("Hết hàng", "Sold out")}
           </span>
         ) : (
           <button
@@ -132,8 +134,8 @@ export function ProductCard({ product, variant = "shop" }: ProductCardProps) {
         )}
 
         {!canBuy && (
-          <span className="text-[11px] font-black text-black uppercase tracking-wider mt-1 block">
-            Sold out
+          <span className="text-[11px] font-black text-black/40 uppercase tracking-wider mt-1 block">
+            {t("Hết hàng", "Sold out")}
           </span>
         )}
       </div>

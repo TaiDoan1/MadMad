@@ -14,6 +14,7 @@ import {
 import { listSizeGuideProfileKeys } from "@/utils/size-recommendation";
 import type { SizeGuideRow } from "@/types/size-guide";
 import type { Product } from "@/types/product";
+import { isProductSoldOut } from "@/utils/product-stock";
 import { useToast } from "@/components/common/toast";
 
 type ProductOptions = {
@@ -209,14 +210,18 @@ export function AdminProductsPage() {
     const stockInfo = getProductStockInfo(product);
     const sizeClass = compact ? "px-2.5 py-1 text-[11px]" : "px-3 py-1 text-xs";
 
+    if (isProductSoldOut(product)) {
+      return (
+        <span className={`rounded-full bg-red-100 font-bold text-red-800 ${sizeClass}`}>
+          Hết hàng
+        </span>
+      );
+    }
+
     if (stockInfo.total === null) {
       return (
-        <span
-          className={`rounded-full font-semibold ${sizeClass} ${
-            product.inStock ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
-          }`}
-        >
-          {product.inStock ? "Còn hàng" : "Hết hàng"}
+        <span className={`rounded-full bg-green-100 font-semibold text-green-800 ${sizeClass}`}>
+          Còn hàng
         </span>
       );
     }
@@ -261,7 +266,7 @@ export function AdminProductsPage() {
       sizeChartImage: product.sizeChartImage || "",
       description: product.description,
       sizes: product.sizes.join(", "),
-      inStock: product.inStock,
+      inStock: !isProductSoldOut(product),
       isPreOrder: Boolean(product.isPreOrder),
       preOrderDays: product.preOrderDays ?? 7,
       rating: product.rating,
@@ -708,18 +713,26 @@ export function AdminProductsPage() {
                       </select>
                     </div>
 
-                    <div className="space-y-1.5">
-                      <label className="block text-[9px] font-extrabold tracking-widest uppercase text-black/50">
-                        Trạng thái Tồn kho
+                    <div className="rounded-2xl border border-black/10 bg-stone-50/40 p-4 space-y-2 md:col-span-2">
+                      <label className="flex items-center gap-2.5">
+                        <input
+                          type="checkbox"
+                          checked={!formData.inStock}
+                          onChange={(event) =>
+                            setFormData((current) => ({
+                              ...current,
+                              inStock: !event.target.checked,
+                            }))
+                          }
+                          className="h-4 w-4 rounded border-black/10 text-black focus:ring-black cursor-pointer"
+                        />
+                        <span className="text-[10px] font-extrabold tracking-widest uppercase text-black/70">
+                          Sold Out / Hết hàng
+                        </span>
                       </label>
-                      <select
-                        value={formData.inStock ? "true" : "false"}
-                        onChange={(event) => setFormData({ ...formData, inStock: event.target.value === "true" })}
-                        className="w-full rounded-xl border border-black/10 bg-stone-50 px-4 py-3 text-xs focus:bg-white focus:border-black/60 focus:outline-none transition-all font-bold"
-                      >
-                        <option value="true">Còn hàng (In Stock)</option>
-                        <option value="false">Hết hàng (Out of Stock)</option>
-                      </select>
+                      <p className="text-[9px] font-medium text-black/45 leading-relaxed pl-[26px]">
+                        Khi bật, ngoài cửa hàng sẽ hiện &quot;Hết hàng&quot; và nút thêm vào giỏ hàng bị mờ, không nhấn được.
+                      </p>
                     </div>
                   </div>
 
@@ -1349,15 +1362,13 @@ export function AdminProductsPage() {
 
                     let finalStock: number | undefined = undefined;
                     let finalVariantStock: Record<string, number> | undefined = undefined;
-                    let autoInStock = formData.inStock;
+                    let finalInStock = formData.inStock;
 
                     if (stockType === "simple") {
                       finalStock = stockInput;
                       finalVariantStock = undefined;
-                      if (stockInput === 0) {
-                        autoInStock = false;
-                      } else {
-                        autoInStock = true;
+                      if (formData.inStock && stockInput === 0) {
+                        finalInStock = false;
                       }
                     } else {
                       finalVariantStock = {};
@@ -1371,10 +1382,8 @@ export function AdminProductsPage() {
                         });
                       });
                       finalStock = undefined;
-                      if (totalVariantQty === 0) {
-                        autoInStock = false;
-                      } else {
-                        autoInStock = true;
+                      if (formData.inStock && totalVariantQty === 0) {
+                        finalInStock = false;
                       }
                     }
 
@@ -1402,7 +1411,7 @@ export function AdminProductsPage() {
                       sizes: selectedSizes,
                       colors: selectedColors,
                       colorImages: Object.keys(colorImages).length ? colorImages : undefined,
-                      inStock: autoInStock,
+                      inStock: finalInStock,
                       stock: finalStock,
                       variantStock: finalVariantStock,
                       isPreOrder: formData.isPreOrder,

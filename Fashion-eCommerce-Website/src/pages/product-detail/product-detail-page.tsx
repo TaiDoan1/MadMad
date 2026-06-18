@@ -11,6 +11,7 @@ import { useProducts } from "@/features/products/context/product-context";
 import { useStorefrontSettings } from "@/features/settings/context/storefront-settings-context";
 import { useLanguage } from "@/features/settings/context/language-context";
 import { useToast } from "@/components/common/toast";
+import { isProductSoldOut } from "@/utils/product-stock";
 
 const COLOR_MAP: Record<string, { bg: string, text: string }> = {
   "Trắng": { bg: "#FFFFFF", text: "#000000" },
@@ -282,7 +283,8 @@ export function ProductDetailPage() {
 
   const availableStock = getAvailableStock();
   const isPreOrder = Boolean(product?.isPreOrder || (product?.tags ?? []).some((tag) => tag.toLowerCase().includes("pre-order")));
-  const canPlaceOrder = isPreOrder || availableStock > 0;
+  const isSoldOut = product ? isProductSoldOut(product) : false;
+  const canPlaceOrder = Boolean(product) && !isSoldOut && (isPreOrder || availableStock > 0);
 
   useEffect(() => {
     if (availableStock > 0 && quantity > availableStock) {
@@ -291,7 +293,8 @@ export function ProductDetailPage() {
   }, [selectedColor, selectedSize, availableStock]);
 
   const isSizeOutOfStock = (size: string) => {
-    if (!product || !product.variantStock || Object.keys(product.variantStock).length === 0) return false;
+    if (!product || isSoldOut) return true;
+    if (!product.variantStock || Object.keys(product.variantStock).length === 0) return false;
     if (selectedColor) {
       const key = `${selectedColor}-${size}`;
       return (product.variantStock[key] ?? 0) <= 0;
@@ -303,7 +306,8 @@ export function ProductDetailPage() {
   };
 
   const isColorOutOfStock = (color: string) => {
-    if (!product || !product.variantStock || Object.keys(product.variantStock).length === 0) return false;
+    if (!product || isSoldOut) return true;
+    if (!product.variantStock || Object.keys(product.variantStock).length === 0) return false;
     if (selectedSize) {
       const key = `${color}-${selectedSize}`;
       return (product.variantStock[key] ?? 0) <= 0;
@@ -495,19 +499,11 @@ export function ProductDetailPage() {
                   </span>
                 )}
               </div>
-              {(() => {
-                const totalStock = product.variantStock && Object.keys(product.variantStock).length > 0
-                  ? Object.values(product.variantStock).reduce((sum, v) => sum + v, 0)
-                  : (product.stock !== undefined ? product.stock : 999);
-                if ((totalStock <= 0 || !product.inStock) && !isPreOrder) {
-                  return (
-                    <span className="inline-block text-xs font-bold uppercase tracking-widest text-black dark:text-white mt-3">
-                      Sold out
-                    </span>
-                  );
-                }
-                return null;
-              })()}
+              {isSoldOut && (
+                <span className="inline-block text-xs font-bold uppercase tracking-widest text-black/40 dark:text-white/40 mt-3">
+                  {t("Hết hàng", "Sold out")}
+                </span>
+              )}
             </div>
 
             {/* Selectors Stack */}
@@ -685,7 +681,7 @@ export function ProductDetailPage() {
                     });
                     showToast(t("Đã thêm vào giỏ hàng!", "Added to cart successfully!"), "success");
                   }}
-                  className="w-full py-4 rounded-[14px] bg-black dark:bg-white text-white dark:text-black text-xs font-bold uppercase tracking-widest flex items-center justify-center gap-2.5 shadow-md transition-all duration-300 hover:bg-neutral-900 dark:hover:bg-neutral-100 active:scale-[0.98] cursor-pointer disabled:bg-neutral-200 dark:disabled:bg-neutral-800 disabled:text-neutral-400 dark:disabled:text-neutral-600 disabled:cursor-not-allowed"
+                  className="w-full py-4 rounded-[14px] bg-black dark:bg-white text-white dark:text-black text-xs font-bold uppercase tracking-widest flex items-center justify-center gap-2.5 shadow-md transition-all duration-300 hover:bg-neutral-900 dark:hover:bg-neutral-100 active:scale-[0.98] cursor-pointer disabled:bg-neutral-200 dark:disabled:bg-neutral-800 disabled:text-neutral-400 dark:disabled:text-neutral-600 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-neutral-200 dark:disabled:hover:bg-neutral-800 disabled:active:scale-100"
                 >
                   <ShoppingCart className="h-4 w-4 shrink-0" />
                   <span>{canPlaceOrder ? t("THÊM VÀO GIỎ HÀNG", "ADD TO CART") : t("HẾT HÀNG", "OUT OF STOCK")}</span>
