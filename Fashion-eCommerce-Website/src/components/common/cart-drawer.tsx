@@ -4,6 +4,7 @@ import { Link } from "react-router";
 import { ImageWithFallback } from "@/components/common/image-with-fallback";
 import { useCart } from "@/features/cart/context/cart-context";
 import { useProducts } from "@/features/products/context/product-context";
+import { useLanguage } from "@/features/settings/context/language-context";
 import { isGiftProduct } from "@/utils/gift-eligibility";
 
 interface CartDrawerProps {
