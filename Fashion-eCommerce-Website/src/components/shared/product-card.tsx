@@ -74,7 +74,11 @@ export function ProductCard({ product, variant = "shop" }: ProductCardProps) {
         )}
 
         {/* Tag badge — top-left */}
-        {isPreOrder ? (
+        {isSoldOut ? (
+          <span className="absolute left-3 top-3 z-10 bg-stone-100 border border-stone-300 px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wide text-stone-500">
+            {t("Hết hàng", "Sold out")}
+          </span>
+        ) : isPreOrder ? (
           <span className="absolute left-3 top-3 z-10 bg-black px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wide text-white">
             Pre-order
           </span>
