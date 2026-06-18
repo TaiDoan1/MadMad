@@ -2,14 +2,18 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState, t
 import { API_URL } from "@/config/api";
 import type { CreateMarketingGiftInput, MarketingGift, MarketingStats } from "@/types/marketing-gift";
 import { useToast } from "@/components/common/toast";
+import { getCurrentMonthValue } from "@/utils/marketing-export";
 
 interface MarketingContextValue {
   gifts: MarketingGift[];
   stats: MarketingStats;
   isLoading: boolean;
-  refreshMarketing: () => Promise<void>;
+  selectedMonth: string;
+  setSelectedMonth: (month: string) => void;
+  refreshMarketing: (month?: string) => Promise<void>;
   createGift: (input: CreateMarketingGiftInput) => Promise<MarketingGift | null>;
   cancelGift: (id: string) => Promise<boolean>;
+  deleteExportedGifts: (month: string) => Promise<number>;
 }
 
 const defaultStats: MarketingStats = {
@@ -27,24 +31,21 @@ export function MarketingProvider({ children }: { children: ReactNode }) {
   const [gifts, setGifts] = useState<MarketingGift[]>([]);
   const [stats, setStats] = useState<MarketingStats>(defaultStats);
   const [isLoading, setIsLoading] = useState(true);
+  const [selectedMonth, setSelectedMonth] = useState(getCurrentMonthValue);
 
-  const refreshMarketing = useCallback(async () => {
+  const refreshMarketing = useCallback(async (month = selectedMonth) => {
     setIsLoading(true);
     try {
+      const monthQuery = month && month !== "all" ? `&month=${encodeURIComponent(month)}` : "";
       const [giftsRes, statsRes] = await Promise.all([
-        fetch(`${API_URL}/marketing?_cb=${Date.now()}`),
-        fetch(`${API_URL}/marketing/stats?_cb=${Date.now()}`),
+        fetch(`${API_URL}/marketing?_cb=${Date.now()}${monthQuery}`),
+        fetch(`${API_URL}/marketing/stats?_cb=${Date.now()}${monthQuery}`),
       ]);
 
       if (giftsRes.ok) {
         const data = await giftsRes.json();
         if (Array.isArray(data)) {
-          setGifts(
-            data.map((gift) => ({
-              ...gift,
-              createdAt: gift.createdAt,
-            })),
-          );
+          setGifts(data);
         }
       }
 
@@ -57,11 +58,11 @@ export function MarketingProvider({ children }: { children: ReactNode }) {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [selectedMonth]);
 
   useEffect(() => {
-    refreshMarketing();
-  }, [refreshMarketing]);
+    refreshMarketing(selectedMonth);
+  }, [selectedMonth, refreshMarketing]);
 
   const createGift = useCallback(
     async (input: CreateMarketingGiftInput) => {
@@ -77,14 +78,14 @@ export function MarketingProvider({ children }: { children: ReactNode }) {
           return null;
         }
         showToast("Đã ghi nhận quà tặng KOL/KOC và trừ tồn kho!", "success");
-        await refreshMarketing();
+        await refreshMarketing(selectedMonth);
         return data as MarketingGift;
       } catch {
         showToast("Lỗi kết nối khi tạo phiếu tặng", "error");
         return null;
       }
     },
-    [refreshMarketing, showToast],
+    [refreshMarketing, selectedMonth, showToast],
   );
 
   const cancelGift = useCallback(
@@ -99,14 +100,38 @@ export function MarketingProvider({ children }: { children: ReactNode }) {
           return false;
         }
         showToast("Đã hủy phiếu tặng và hoàn tồn kho", "success");
-        await refreshMarketing();
+        await refreshMarketing(selectedMonth);
         return true;
       } catch {
         showToast("Lỗi kết nối khi hủy phiếu tặng", "error");
         return false;
       }
     },
-    [refreshMarketing, showToast],
+    [refreshMarketing, selectedMonth, showToast],
+  );
+
+  const deleteExportedGifts = useCallback(
+    async (month: string) => {
+      try {
+        const response = await fetch(`${API_URL}/marketing/bulk`, {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ month }),
+        });
+        const data = await response.json();
+        if (!response.ok) {
+          showToast(data.message || "Không thể xóa phiếu tặng", "error");
+          return 0;
+        }
+        showToast(data.message || "Đã xóa phiếu tặng đã export", "success");
+        await refreshMarketing(selectedMonth);
+        return Number(data.deletedCount) || 0;
+      } catch {
+        showToast("Lỗi kết nối khi xóa phiếu tặng", "error");
+        return 0;
+      }
+    },
+    [refreshMarketing, selectedMonth, showToast],
   );
 
   const value = useMemo(
@@ -114,11 +139,14 @@ export function MarketingProvider({ children }: { children: ReactNode }) {
       gifts,
       stats,
       isLoading,
+      selectedMonth,
+      setSelectedMonth,
       refreshMarketing,
       createGift,
       cancelGift,
+      deleteExportedGifts,
     }),
-    [gifts, stats, isLoading, refreshMarketing, createGift, cancelGift],
+    [gifts, stats, isLoading, selectedMonth, refreshMarketing, createGift, cancelGift, deleteExportedGifts],
   );
 
   return <MarketingContext.Provider value={value}>{children}</MarketingContext.Provider>;

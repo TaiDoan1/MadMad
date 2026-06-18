@@ -11,6 +11,8 @@ import {
   Package,
   Users,
   Ban,
+  Download,
+  Calendar,
 } from "lucide-react";
 
 import { ImageWithFallback } from "@/components/common/image-with-fallback";
@@ -19,6 +21,10 @@ import { useProducts } from "@/features/products/context/product-context";
 import { useToast } from "@/components/common/toast";
 import type { Product } from "@/types/product";
 import { getVariantAvailableStock } from "@/utils/product-stock";
+import {
+  buildMarketingMonthOptions,
+  downloadMarketingCsv,
+} from "@/utils/marketing-export";
 
 const PLATFORMS = ["Instagram", "TikTok", "YouTube", "Facebook", "Khác"];
 
@@ -35,9 +41,24 @@ type DraftGiftItem = {
 export function AdminMarketingPage() {
   const { showToast } = useToast();
   const { products, refreshProducts } = useProducts();
-  const { gifts, stats, isLoading, createGift, cancelGift } = useMarketing();
+  const {
+    gifts,
+    stats,
+    isLoading,
+    selectedMonth,
+    setSelectedMonth,
+    createGift,
+    cancelGift,
+    deleteExportedGifts,
+  } = useMarketing();
+
+  const monthOptions = useMemo(() => buildMarketingMonthOptions(), []);
+  const selectedMonthLabel =
+    monthOptions.find((option) => option.value === selectedMonth)?.label ?? selectedMonth;
 
   const [searchTerm, setSearchTerm] = useState("");
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [kolName, setKolName] = useState("");
   const [kolHandle, setKolHandle] = useState("");
@@ -201,6 +222,29 @@ export function AdminMarketingPage() {
     }
   };
 
+  const handleExportMonth = () => {
+    if (filteredGifts.length === 0) {
+      showToast("Không có dữ liệu để export trong tháng đã chọn", "warning");
+      return;
+    }
+    downloadMarketingCsv(filteredGifts, selectedMonth);
+    showToast(`Đã export ${filteredGifts.length} phiếu (${selectedMonthLabel})`, "success");
+  };
+
+  const handleDeleteExported = async () => {
+    if (selectedMonth === "all") {
+      showToast("Vui lòng chọn một tháng cụ thể để xóa dữ liệu đã export", "warning");
+      return;
+    }
+    setIsDeleting(true);
+    const deletedCount = await deleteExportedGifts(selectedMonth);
+    setIsDeleting(false);
+    setShowDeleteConfirm(false);
+    if (deletedCount > 0) {
+      showToast(`Đã xóa ${deletedCount} phiếu tháng ${selectedMonthLabel}`, "success");
+    }
+  };
+
   return (
     <div className="mx-auto max-w-7xl space-y-6">
       <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
@@ -211,17 +255,57 @@ export function AdminMarketingPage() {
           </div>
           <h1 className="text-2xl font-black tracking-tight text-black">Quản Lý Quà Tặng KOL/KOC</h1>
           <p className="mt-1 text-sm text-black/50">
-            Theo dõi sản phẩm tặng và chi phí cash của brand. Tồn kho size sẽ bị trừ ngay khi ghi nhận.
+            Theo dõi sản phẩm tặng và chi phí cash của brand. Export theo tháng và xóa phiếu đã lưu trữ.
           </p>
         </div>
-        <button
-          type="button"
-          onClick={() => setShowCreateModal(true)}
-          className="inline-flex items-center justify-center gap-2 rounded-xl bg-black px-5 py-3 text-[10px] font-extrabold uppercase tracking-widest text-white transition-colors hover:bg-red-700"
-        >
-          <Plus className="h-4 w-4" />
-          Tạo phiếu tặng
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={handleExportMonth}
+            className="inline-flex items-center justify-center gap-2 rounded-xl border border-black/10 bg-white px-4 py-3 text-[10px] font-extrabold uppercase tracking-widest text-black transition-colors hover:bg-stone-50"
+          >
+            <Download className="h-4 w-4" />
+            Export tháng
+          </button>
+          <button
+            type="button"
+            disabled={selectedMonth === "all" || filteredGifts.length === 0}
+            onClick={() => setShowDeleteConfirm(true)}
+            className="inline-flex items-center justify-center gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-[10px] font-extrabold uppercase tracking-widest text-red-700 transition-colors hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            <Trash2 className="h-4 w-4" />
+            Xóa đã export
+          </button>
+          <button
+            type="button"
+            onClick={() => setShowCreateModal(true)}
+            className="inline-flex items-center justify-center gap-2 rounded-xl bg-black px-5 py-3 text-[10px] font-extrabold uppercase tracking-widest text-white transition-colors hover:bg-red-700"
+          >
+            <Plus className="h-4 w-4" />
+            Tạo phiếu tặng
+          </button>
+        </div>
+      </div>
+
+      <div className="flex flex-col gap-3 rounded-2xl border border-black/10 bg-white p-4 shadow-sm md:flex-row md:items-center md:justify-between">
+        <div className="flex items-center gap-2 text-sm font-bold text-black">
+          <Calendar className="h-4 w-4 text-black/45" />
+          <span>Đang xem: {selectedMonthLabel}</span>
+          <span className="text-black/40">· {filteredGifts.length} phiếu</span>
+        </div>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+          <select
+            value={selectedMonth}
+            onChange={(event) => setSelectedMonth(event.target.value)}
+            className="rounded-xl border border-black/10 bg-stone-50 px-4 py-2.5 text-sm font-bold"
+          >
+            {monthOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -365,6 +449,39 @@ export function AdminMarketingPage() {
           </div>
         )}
       </div>
+
+      {showDeleteConfirm
+        ? createPortal(
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+              <div className="w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl">
+                <h3 className="text-lg font-black text-black">Xóa phiếu đã export?</h3>
+                <p className="mt-3 text-sm text-black/55 leading-relaxed">
+                  Bạn sắp xóa <strong>{filteredGifts.length} phiếu</strong> của{" "}
+                  <strong>{selectedMonthLabel}</strong> khỏi hệ thống. Hành động này không hoàn tồn kho
+                  (quà đã tặng thật). Chỉ xóa sau khi đã export file CSV.
+                </p>
+                <div className="mt-6 flex justify-end gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setShowDeleteConfirm(false)}
+                    className="rounded-xl border border-black/10 px-4 py-2.5 text-[10px] font-extrabold uppercase tracking-widest"
+                  >
+                    Hủy
+                  </button>
+                  <button
+                    type="button"
+                    disabled={isDeleting}
+                    onClick={handleDeleteExported}
+                    className="rounded-xl bg-red-600 px-4 py-2.5 text-[10px] font-extrabold uppercase tracking-widest text-white hover:bg-red-700 disabled:opacity-50"
+                  >
+                    {isDeleting ? "Đang xóa..." : "Xóa phiếu tháng này"}
+                  </button>
+                </div>
+              </div>
+            </div>,
+            document.body,
+          )
+        : null}
 
       {showCreateModal
         ? createPortal(

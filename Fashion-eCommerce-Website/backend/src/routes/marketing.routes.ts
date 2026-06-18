@@ -15,9 +15,13 @@ const buildGiftNumber = () => {
   return `MK${now.getFullYear().toString().slice(-2)}${String(now.getMonth() + 1).padStart(2, "0")}${String(now.getDate()).padStart(2, "0")}-${random}`;
 };
 
-router.get("/", async (_req, res, next) => {
+router.get("/", async (req, res, next) => {
   try {
+    const month = typeof req.query.month === "string" ? req.query.month : undefined;
+    const where = buildMonthWhere(month);
+
     const gifts = await prisma.marketingGift.findMany({
+      where,
       include: { items: true },
       orderBy: { createdAt: "desc" },
     });
@@ -27,10 +31,29 @@ router.get("/", async (_req, res, next) => {
   }
 });
 
-router.get("/stats", async (_req, res, next) => {
+function buildMonthWhere(month?: string) {
+  if (!month || month === "all" || !/^\d{4}-\d{2}$/.test(month)) {
+    return {};
+  }
+  const [year, monthIndex] = month.split("-").map(Number);
+  const start = new Date(year, monthIndex - 1, 1);
+  const end = new Date(year, monthIndex, 1);
+  return {
+    createdAt: {
+      gte: start,
+      lt: end,
+    },
+  };
+}
+
+router.get("/stats", async (req, res, next) => {
   try {
+    const month = typeof req.query.month === "string" ? req.query.month : undefined;
     const gifts = await prisma.marketingGift.findMany({
-      where: { status: "completed" },
+      where: {
+        status: "completed",
+        ...buildMonthWhere(month),
+      },
       select: {
         productValue: true,
         cashAmount: true,
@@ -187,6 +210,39 @@ router.put("/:id/cancel", async (req, res, next) => {
     });
 
     res.json(parseGift(updated));
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.delete("/bulk", async (req, res, next) => {
+  try {
+    const { month, ids } = req.body ?? {};
+
+    if (Array.isArray(ids) && ids.length > 0) {
+      const result = await prisma.marketingGift.deleteMany({
+        where: { id: { in: ids.map(String) } },
+      });
+      return res.json({
+        success: true,
+        deletedCount: result.count,
+        message: `Đã xóa ${result.count} phiếu tặng`,
+      });
+    }
+
+    if (!month || month === "all" || !/^\d{4}-\d{2}$/.test(month)) {
+      return res.status(400).json({ message: "Vui lòng chọn tháng cụ thể để xóa dữ liệu đã export" });
+    }
+
+    const result = await prisma.marketingGift.deleteMany({
+      where: buildMonthWhere(month),
+    });
+
+    res.json({
+      success: true,
+      deletedCount: result.count,
+      message: `Đã xóa ${result.count} phiếu tặng tháng ${month}`,
+    });
   } catch (error) {
     next(error);
   }
