@@ -12,6 +12,7 @@ import { useStorefrontSettings } from "@/features/settings/context/storefront-se
 import { useLanguage } from "@/features/settings/context/language-context";
 import { useToast } from "@/components/common/toast";
 import { isProductSoldOut } from "@/utils/product-stock";
+import { describeGiftConditions, isGiftEligible, isGiftProduct } from "@/utils/gift-eligibility";
 
 const COLOR_MAP: Record<string, { bg: string, text: string }> = {
   "Trắng": { bg: "#FFFFFF", text: "#000000" },
@@ -88,7 +89,7 @@ export function ProductDetailPage() {
   const navigate = useNavigate();
   const transitionTo = useTransitionTo();
   const { products, isLoading } = useProducts();
-  const { addToCart } = useCart();
+  const { addToCart, cartItems } = useCart();
   const { settings } = useStorefrontSettings();
   const { formatPrice, t, translate } = useLanguage();
   const product = products.find((item) => String(item.id) === String(id));
@@ -283,8 +284,10 @@ export function ProductDetailPage() {
 
   const availableStock = getAvailableStock();
   const isPreOrder = Boolean(product?.isPreOrder || (product?.tags ?? []).some((tag) => tag.toLowerCase().includes("pre-order")));
+  const isGift = product ? isGiftProduct(product) : false;
+  const giftEligible = product && isGift ? isGiftEligible(cartItems, products, product) : false;
   const isSoldOut = product ? isProductSoldOut(product) : false;
-  const canPlaceOrder = Boolean(product) && !isSoldOut && (isPreOrder || availableStock > 0);
+  const canPlaceOrder = Boolean(product) && !isSoldOut && (isGift || isPreOrder || availableStock > 0);
 
   useEffect(() => {
     if (availableStock > 0 && quantity > availableStock) {
@@ -485,20 +488,43 @@ export function ProductDetailPage() {
             {/* Price */}
             <div className="w-full">
               <div className="flex items-baseline gap-3 flex-wrap">
-                <span className="text-2xl lg:text-3xl font-black tracking-wide text-foreground">
-                  {formatPrice(product.price)}
-                </span>
-                {product.originalPrice && product.originalPrice > product.price && (
-                  <span className="text-sm font-semibold text-neutral-400 dark:text-neutral-500 line-through">
-                    {formatPrice(product.originalPrice)}
+                {isGift ? (
+                  <span className="text-2xl lg:text-3xl font-black tracking-wide text-emerald-700">
+                    {t("Miễn phí", "Free")}
                   </span>
-                )}
-                {product.showDiscountPercent && product.discountPercent && (
-                  <span className="text-xs font-bold uppercase tracking-wide px-2 py-0.5 rounded bg-primary text-white">
-                    -{product.discountPercent}%
-                  </span>
+                ) : (
+                  <>
+                    <span className="text-2xl lg:text-3xl font-black tracking-wide text-foreground">
+                      {formatPrice(product.price)}
+                    </span>
+                    {product.originalPrice && product.originalPrice > product.price && (
+                      <span className="text-sm font-semibold text-neutral-400 dark:text-neutral-500 line-through">
+                        {formatPrice(product.originalPrice)}
+                      </span>
+                    )}
+                    {product.showDiscountPercent && product.discountPercent && (
+                      <span className="text-xs font-bold uppercase tracking-wide px-2 py-0.5 rounded bg-primary text-white">
+                        -{product.discountPercent}%
+                      </span>
+                    )}
+                  </>
                 )}
               </div>
+              {isGift && (
+                <span className="inline-block mt-3 rounded-full bg-emerald-100 px-3 py-1 text-[10px] font-black uppercase tracking-wider text-emerald-800">
+                  {t("Hàng tặng", "Gift item")}
+                </span>
+              )}
+              {isGift && (
+                <p className="mt-2 text-[11px] font-semibold text-neutral-500">
+                  {t("Điều kiện nhận:", "Conditions:")} {describeGiftConditions(product.giftConditions)}
+                </p>
+              )}
+              {isGift && !giftEligible && (
+                <p className="mt-2 text-[11px] font-semibold text-amber-700">
+                  {t(`Cần ${describeGiftConditions(product.giftConditions)} để nhận quà tặng này.`, `Requires ${describeGiftConditions(product.giftConditions)} to claim this gift.`)}
+                </p>
+              )}
               {isSoldOut && (
                 <span className="inline-block text-xs font-bold uppercase tracking-widest text-black/40 dark:text-white/40 mt-3">
                   {t("Hết hàng", "Sold out")}
@@ -662,29 +688,44 @@ export function ProductDetailPage() {
               {/* Main Actions Stack */}
               <div className="w-full pt-4">
                 <button
-                  disabled={!canPlaceOrder}
+                  disabled={!canPlaceOrder || (isGift && !giftEligible)}
                   onClick={() => {
                     if (!selectedSize || !selectedColor) {
                       showToast(t("Vui lòng chọn size và màu sắc!", "Please select size and color!"), "warning");
                       return;
                     }
-                    if (quantity > availableStock) {
+                    if (!isGift && quantity > availableStock) {
                       showToast(t("Không đủ hàng trong kho!", "Not enough stock available!"), "error");
                       return;
                     }
-                    addToCart({
+                    const result = addToCart({
                       productId: product.id,
                       size: selectedSize,
                       color: selectedColor,
-                      quantity,
-                      priceAtAdd: product.price,
+                      quantity: isGift ? 1 : quantity,
+                      priceAtAdd: isGift ? 0 : product.price,
                     });
-                    showToast(t("Đã thêm vào giỏ hàng!", "Added to cart successfully!"), "success");
+                    if (!result.success) {
+                      showToast(result.message || t("Không thể thêm vào giỏ hàng!", "Could not add to cart!"), "warning");
+                      return;
+                    }
+                    showToast(
+                      isGift
+                        ? t("Đã thêm quà tặng vào giỏ hàng!", "Gift added to cart!")
+                        : t("Đã thêm vào giỏ hàng!", "Added to cart successfully!"),
+                      "success",
+                    );
                   }}
                   className="w-full py-4 rounded-[14px] bg-black dark:bg-white text-white dark:text-black text-xs font-bold uppercase tracking-widest flex items-center justify-center gap-2.5 shadow-md transition-all duration-300 hover:bg-neutral-900 dark:hover:bg-neutral-100 active:scale-[0.98] cursor-pointer disabled:bg-neutral-200 dark:disabled:bg-neutral-800 disabled:text-neutral-400 dark:disabled:text-neutral-600 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-neutral-200 dark:disabled:hover:bg-neutral-800 disabled:active:scale-100"
                 >
                   <ShoppingCart className="h-4 w-4 shrink-0" />
-                  <span>{canPlaceOrder ? t("THÊM VÀO GIỎ HÀNG", "ADD TO CART") : t("HẾT HÀNG", "OUT OF STOCK")}</span>
+                  <span>
+                    {!canPlaceOrder
+                      ? t("HẾT HÀNG", "OUT OF STOCK")
+                      : isGift
+                        ? t("HÀNG TẶNG", "GIFT ITEM")
+                        : t("THÊM VÀO GIỎ HÀNG", "ADD TO CART")}
+                  </span>
                 </button>
               </div>
 

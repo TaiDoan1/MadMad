@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { prisma } from "../config/prisma";
 import { sendOrderConfirmationEmail } from "../services/email.service";
+import { deductStockData, restoreStockData } from "../utils/product-stock";
 
 const router = Router();
 
@@ -259,6 +260,206 @@ router.put("/:id/internal-note", async (req, res, next) => {
 
     res.json(updatedOrder);
   } catch (error) {
+    next(error);
+  }
+});
+
+function parseEditMetaJson(raw: string | null | undefined): Record<string, { from: string; to: string; fromId?: string; toId?: string }> {
+  if (!raw) return {};
+  try {
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === "object" ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+function buildEditMetaJson(
+  item: { productId: string; productName: string; color: string; size: string; editMetaJson: string | null },
+  next: { productId: string; productName: string; color: string; size: string },
+) {
+  const existing = parseEditMetaJson(item.editMetaJson);
+  const meta: Record<string, { from: string; to: string; fromId?: string; toId?: string }> = {};
+
+  const productChanged = next.productId !== item.productId;
+  const colorChanged = next.color !== item.color;
+  const sizeChanged = next.size !== item.size;
+
+  if (productChanged || existing.product) {
+    const from = existing.product?.from ?? item.productName;
+    const to = next.productName;
+    if (from !== to) {
+      meta.product = {
+        from,
+        to,
+        fromId: existing.product?.fromId ?? item.productId,
+        toId: next.productId,
+      };
+    }
+  }
+
+  if (colorChanged || existing.color) {
+    const from = existing.color?.from ?? item.color;
+    const to = next.color;
+    if (from !== to) {
+      meta.color = { from, to };
+    }
+  }
+
+  if (sizeChanged || existing.size) {
+    const from = existing.size?.from ?? item.size;
+    const to = next.size;
+    if (from !== to) {
+      meta.size = { from, to };
+    }
+  }
+
+  return Object.keys(meta).length > 0 ? JSON.stringify(meta) : null;
+}
+
+// 7. PUT /api/orders/:id/items/:itemId - Chỉnh sửa sản phẩm trong đơn (size/màu/mẫu)
+router.put("/:id/items/:itemId", async (req, res, next) => {
+  try {
+    const orderId = Number(req.params.id);
+    const itemId = Number(req.params.itemId);
+    const { productId, color, size, quantity } = req.body;
+
+    if (!productId || !color || !size || !quantity) {
+      return res.status(400).json({ message: "Thiếu thông tin sản phẩm cần cập nhật!" });
+    }
+
+    const order = await prisma.order.findUnique({
+      where: { id: orderId },
+      include: { items: true },
+    });
+
+    if (!order) {
+      return res.status(404).json({ message: "Không tìm thấy đơn hàng" });
+    }
+
+    if (order.status === "completed" || order.status === "cancelled") {
+      return res.status(400).json({ message: "Không thể chỉnh sửa đơn đã hoàn thành hoặc đã hủy!" });
+    }
+
+    const item = order.items.find((row) => row.id === itemId);
+    if (!item) {
+      return res.status(404).json({ message: "Không tìm thấy sản phẩm trong đơn hàng" });
+    }
+
+    const nextQuantity = Math.max(1, Number(quantity));
+    const nextProduct = await prisma.product.findUnique({ where: { id: String(productId) } });
+    if (!nextProduct) {
+      return res.status(404).json({ message: "Không tìm thấy sản phẩm mới" });
+    }
+
+    const nextColor = String(color).trim();
+    const nextSize = String(size).trim();
+    const nextProductId = String(productId);
+    const nextProductName = nextProduct.name;
+    const nextProductImage = nextProduct.image || "";
+    const nextIsPreOrder = !!nextProduct.isPreOrder;
+    const nextPreOrderDays = nextProduct.preOrderDays ?? null;
+    const nextPrice = Number(nextProduct.price);
+
+    const unchanged =
+      item.productId === nextProductId &&
+      item.color === nextColor &&
+      item.size === nextSize &&
+      item.quantity === nextQuantity;
+
+    if (unchanged) {
+      return res.status(400).json({ message: "Không có thay đổi nào để cập nhật!" });
+    }
+
+    const shouldAdjustStock = !item.isPreOrder && !nextIsPreOrder && order.status !== "cancelled";
+
+    const result = await prisma.$transaction(async (tx) => {
+      if (shouldAdjustStock) {
+        const oldProduct = await tx.product.findUnique({ where: { id: item.productId } });
+        if (oldProduct) {
+          const restored = restoreStockData(oldProduct, item.color, item.size, item.quantity);
+          await tx.product.update({
+            where: { id: oldProduct.id },
+            data: restored,
+          });
+        }
+
+        const freshNewProduct = await tx.product.findUnique({ where: { id: nextProductId } });
+        if (!freshNewProduct) {
+          throw new Error("Không tìm thấy sản phẩm mới");
+        }
+        const deducted = deductStockData(freshNewProduct, nextColor, nextSize, nextQuantity);
+        await tx.product.update({
+          where: { id: nextProductId },
+          data: deducted,
+        });
+      }
+
+      const editMetaJson = buildEditMetaJson(item, {
+        productId: nextProductId,
+        productName: nextProductName,
+        color: nextColor,
+        size: nextSize,
+      });
+
+      await tx.orderItem.update({
+        where: { id: itemId },
+        data: {
+          productId: nextProductId,
+          productName: nextProductName,
+          productImage: nextProductImage,
+          color: nextColor,
+          size: nextSize,
+          quantity: nextQuantity,
+          price: nextPrice,
+          isPreOrder: nextIsPreOrder,
+          preOrderDays: nextPreOrderDays,
+          editMetaJson,
+        },
+      });
+
+      const updatedItems = order.items.map((row) =>
+        row.id === itemId
+          ? {
+              ...row,
+              productId: nextProductId,
+              productName: nextProductName,
+              productImage: nextProductImage,
+              color: nextColor,
+              size: nextSize,
+              quantity: nextQuantity,
+              price: nextPrice,
+              isPreOrder: nextIsPreOrder,
+              preOrderDays: nextPreOrderDays,
+              editMetaJson,
+            }
+          : row,
+      );
+
+      const subtotal = updatedItems.reduce((sum, row) => sum + row.price * row.quantity, 0);
+      const total = subtotal - order.discount + order.shipping;
+      const containsPreOrder = updatedItems.some((row) => row.isPreOrder);
+
+      const updatedOrder = await tx.order.update({
+        where: { id: orderId },
+        data: {
+          subtotal,
+          total,
+          containsPreOrder,
+          isEdited: true,
+          editedAt: new Date(),
+        },
+        include: { items: true },
+      });
+
+      return updatedOrder;
+    });
+
+    res.json(result);
+  } catch (error: any) {
+    if (error?.message?.includes("Không đủ tồn kho")) {
+      return res.status(400).json({ message: error.message });
+    }
     next(error);
   }
 });

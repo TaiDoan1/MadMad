@@ -140,6 +140,8 @@ export function ProductProvider({ children }: { children: ReactNode }) {
           ...savedProduct,
           isPreOrder: savedProduct?.isPreOrder ?? normalizedProduct.isPreOrder,
           preOrderDays: savedProduct?.preOrderDays ?? normalizedProduct.preOrderDays,
+          isGiftProduct: savedProduct?.isGiftProduct ?? normalizedProduct.isGiftProduct,
+          giftConditions: savedProduct?.giftConditions ?? normalizedProduct.giftConditions,
           sizeGuideProfile: savedProduct?.sizeGuideProfile ?? normalizedProduct.sizeGuideProfile,
           sizeGuideOverride: savedProduct?.sizeGuideOverride ?? normalizedProduct.sizeGuideOverride,
         });
@@ -188,6 +190,8 @@ export function ProductProvider({ children }: { children: ReactNode }) {
               ...savedProduct,
               isPreOrder: savedProduct?.isPreOrder ?? newProduct.isPreOrder,
               preOrderDays: savedProduct?.preOrderDays ?? newProduct.preOrderDays,
+              isGiftProduct: savedProduct?.isGiftProduct ?? newProduct.isGiftProduct,
+              giftConditions: savedProduct?.giftConditions ?? newProduct.giftConditions,
               sizeGuideProfile: savedProduct?.sizeGuideProfile ?? newProduct.sizeGuideProfile,
               sizeGuideOverride: savedProduct?.sizeGuideOverride ?? newProduct.sizeGuideOverride,
             });

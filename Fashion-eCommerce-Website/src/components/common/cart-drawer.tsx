@@ -4,7 +4,7 @@ import { Link } from "react-router";
 import { ImageWithFallback } from "@/components/common/image-with-fallback";
 import { useCart } from "@/features/cart/context/cart-context";
 import { useProducts } from "@/features/products/context/product-context";
-import { useLanguage } from "@/features/settings/context/language-context";
+import { isGiftProduct } from "@/utils/gift-eligibility";
 
 interface CartDrawerProps {
   open: boolean;
@@ -117,8 +117,15 @@ export function CartDrawer({ open, onClose }: CartDrawerProps) {
                       >
                         {translate(product.name)}
                       </Link>
+                      {(item.isGift || isGiftProduct(product)) && (
+                        <span className="mt-1 inline-block rounded bg-emerald-100 px-2 py-0.5 text-[9px] font-black uppercase tracking-wider text-emerald-800">
+                          {t("Hàng tặng", "Gift")}
+                        </span>
+                      )}
                       <span className="text-[11px] font-semibold whitespace-nowrap">
-                        {formatPrice(item.priceAtAdd * item.quantity)}
+                        {item.isGift || isGiftProduct(product)
+                          ? t("Miễn phí", "Free")
+                          : formatPrice(item.priceAtAdd * item.quantity)}
                       </span>
                     </div>
 
@@ -130,6 +137,7 @@ export function CartDrawer({ open, onClose }: CartDrawerProps) {
 
                     {/* Qty stepper + Remove — exact Flowbit style */}
                     <div className="flex items-center gap-3">
+                      {!(item.isGift || isGiftProduct(product)) ? (
                       <div className="flex items-center border border-black/20">
                         <button
                           onClick={() => updateItemQuantity(item.id, item.quantity - 1)}
@@ -147,6 +155,9 @@ export function CartDrawer({ open, onClose }: CartDrawerProps) {
                           <Plus className="h-2.5 w-2.5" />
                         </button>
                       </div>
+                      ) : (
+                        <span className="text-[11px] font-semibold text-black/45">SL: 1</span>
+                      )}
                       <button
                         onClick={() => removeFromCart(item.id)}
                         className="text-[11px] text-black/35 underline transition-colors hover:text-black"

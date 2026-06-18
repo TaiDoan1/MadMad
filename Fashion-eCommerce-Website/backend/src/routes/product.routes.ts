@@ -28,6 +28,16 @@ const parseProduct = (p: any) => ({
   showDiscountPercent: !!p.showDiscountPercent,
   isPreOrder: !!p.isPreOrder,
   preOrderDays: p.preOrderDays !== null && p.preOrderDays !== undefined ? Number(p.preOrderDays) : null,
+  isGiftProduct: !!p.isGiftProduct,
+  giftConditions: (() => {
+    if (!p.giftConditionsJson) return undefined;
+    try {
+      const parsed = JSON.parse(p.giftConditionsJson);
+      return parsed && typeof parsed === "object" ? parsed : undefined;
+    } catch {
+      return undefined;
+    }
+  })(),
   sizeGuideProfile: p.sizeGuideProfile ? String(p.sizeGuideProfile) : undefined,
   sizeGuideOverride: (() => {
     if (!p.sizeGuideOverrideJson) return undefined;
@@ -165,7 +175,7 @@ router.get("/:id", async (req, res, next) => {
 // 3. POST /api/products - Tạo sản phẩm mới (Admin)
 router.post("/", async (req, res, next) => {
   try {
-    const { name, sku, price, image, category, sizeGuideProfile, sizeGuideOverride, description, sizes, colors, colorImages, images, isFeatured, stock, variantStock, inStock, originalPrice, discountPercent, showDiscountPercent, isPreOrder, preOrderDays } = req.body;
+    const { name, sku, price, image, category, sizeGuideProfile, sizeGuideOverride, description, sizes, colors, colorImages, images, isFeatured, stock, variantStock, inStock, originalPrice, discountPercent, showDiscountPercent, isPreOrder, preOrderDays, isGiftProduct, giftConditions } = req.body;
 
     if (!name || !sku || !price || !image || !category) {
       return res.status(400).json({ message: "Vui lòng nhập đầy đủ thông tin bắt buộc!" });
@@ -182,6 +192,14 @@ router.post("/", async (req, res, next) => {
 
     const sizesStr = Array.isArray(sizes) ? sizes.join(",") : String(sizes || "S,M,L");
     const colorsStr = Array.isArray(colors) ? colors.join(",") : String(colors || "Black");
+
+    const giftConditionsJson =
+      isGiftProduct && giftConditions && typeof giftConditions === "object"
+        ? JSON.stringify({
+            ...(giftConditions.minOrderTotal ? { minOrderTotal: Number(giftConditions.minOrderTotal) } : {}),
+            ...(giftConditions.minProductCount ? { minProductCount: Number(giftConditions.minProductCount) } : {}),
+          })
+        : null;
 
     const newProduct = await prisma.product.create({
       data: {
@@ -207,6 +225,8 @@ router.post("/", async (req, res, next) => {
         showDiscountPercent: showDiscountPercent !== undefined ? !!showDiscountPercent : false,
         isPreOrder: isPreOrder !== undefined ? !!isPreOrder : false,
         preOrderDays: isPreOrder ? (preOrderDays !== undefined && preOrderDays !== null ? Number(preOrderDays) : 7) : null,
+        isGiftProduct: isGiftProduct !== undefined ? !!isGiftProduct : false,
+        giftConditionsJson: isGiftProduct ? giftConditionsJson : null,
       }
     });
 
@@ -223,7 +243,7 @@ router.post("/", async (req, res, next) => {
 router.put("/:id", async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { name, sku, price, image, category, sizeGuideProfile, sizeGuideOverride, description, sizes, colors, colorImages, images, isFeatured, stock, variantStock, inStock, originalPrice, discountPercent, showDiscountPercent, isPreOrder, preOrderDays } = req.body;
+    const { name, sku, price, image, category, sizeGuideProfile, sizeGuideOverride, description, sizes, colors, colorImages, images, isFeatured, stock, variantStock, inStock, originalPrice, discountPercent, showDiscountPercent, isPreOrder, preOrderDays, isGiftProduct, giftConditions } = req.body;
 
     const sizeGuideOverrideJson =
       sizeGuideOverride !== undefined
@@ -258,6 +278,16 @@ router.put("/:id", async (req, res, next) => {
     const imagesStr = finalImages !== undefined
       ? (Array.isArray(finalImages) ? JSON.stringify(finalImages) : String(finalImages))
       : undefined;
+
+    const giftConditionsJson =
+      isGiftProduct !== undefined
+        ? isGiftProduct && giftConditions && typeof giftConditions === "object"
+          ? JSON.stringify({
+              ...(giftConditions.minOrderTotal ? { minOrderTotal: Number(giftConditions.minOrderTotal) } : {}),
+              ...(giftConditions.minProductCount ? { minProductCount: Number(giftConditions.minProductCount) } : {}),
+            })
+          : null
+        : undefined;
 
     const updatedProduct = await prisma.product.update({
       where: { id },
@@ -299,6 +329,8 @@ router.put("/:id", async (req, res, next) => {
           isPreOrder !== undefined
             ? (isPreOrder ? (preOrderDays !== undefined && preOrderDays !== null ? Number(preOrderDays) : 7) : null)
             : (preOrderDays !== undefined ? (preOrderDays !== null ? Number(preOrderDays) : null) : undefined),
+        isGiftProduct: isGiftProduct !== undefined ? !!isGiftProduct : undefined,
+        giftConditionsJson,
       }
     });
 

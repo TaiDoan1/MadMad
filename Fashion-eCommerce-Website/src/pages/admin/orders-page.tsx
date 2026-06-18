@@ -31,25 +31,29 @@ import {
   Users,
   UserPlus,
   User,
+  Pencil,
   CircleCheck
 } from "lucide-react";
 
 import { brandLogo } from "@/assets/images";
 import { ImageWithFallback } from "@/components/common/image-with-fallback";
+import { OrderItemEditModal } from "@/components/admin/order-item-edit-modal";
+import { EditedOrderField, OrderEditLegend } from "@/components/admin/order-edited-field";
 import { useOrders } from "@/features/orders/context/order-context";
 import { useProducts } from "@/features/products/context/product-context";
 import { useMembership } from "@/features/membership/context/membership-context";
 import { useStorefrontSettings } from "@/features/settings/context/storefront-settings-context";
 import type { Order, OrderItem } from "@/types/order";
 import type { Product } from "@/types/product";
+import { parseOrderItemEditMeta, ORDER_EDIT_FIELD_STYLES } from "@/utils/order-edit";
 
 import { useToast } from "@/components/common/toast";
 
 export function AdminOrdersPage() {
   const { showToast } = useToast();
   const { settings } = useStorefrontSettings();
-  const { orders, updateOrderStatus, updateOrderPaymentStatus, updateOrderInternalNote, addOrder } = useOrders();
-  const { products, updateProduct } = useProducts();
+  const { orders, updateOrderStatus, updateOrderPaymentStatus, updateOrderInternalNote, addOrder, updateOrderItem } = useOrders();
+  const { products, updateProduct, refreshProducts } = useProducts();
   const { members, tierConfigs, setMembers } = useMembership(); // Đọc danh sách tất cả thành viên VIP
 
   const handleTogglePaid = (order: Order, isPaid: boolean) => {
@@ -82,6 +86,8 @@ export function AdminOrdersPage() {
   // Selected order details modal
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [showOrderDetail, setShowOrderDetail] = useState(false);
+  const [editingOrderItem, setEditingOrderItem] = useState<{ order: Order; item: OrderItem } | null>(null);
+  const [isSavingOrderItem, setIsSavingOrderItem] = useState(false);
 
   // Batch Printing States
   const [selectedOrderIds, setSelectedOrderIds] = useState<number[]>([]);
@@ -239,6 +245,24 @@ export function AdminOrdersPage() {
       product.image
     );
   };
+
+  const handleSaveOrderItemEdit = async (input: { productId: string; color: string; size: string; quantity: number }) => {
+    if (!editingOrderItem?.item.id) return;
+    setIsSavingOrderItem(true);
+    try {
+      const updatedOrder = await updateOrderItem(editingOrderItem.order.id, editingOrderItem.item.id, input);
+      setSelectedOrder(updatedOrder);
+      setEditingOrderItem(null);
+      await refreshProducts();
+      showToast("Đã cập nhật sản phẩm trong đơn hàng!", "success");
+    } catch (error: any) {
+      showToast(error?.message || "Không thể cập nhật sản phẩm trong đơn hàng", "error");
+    } finally {
+      setIsSavingOrderItem(false);
+    }
+  };
+
+  const canEditOrderItems = (order: Order) => order.status !== "completed" && order.status !== "cancelled";
 
   // TÌM KIẾM & BỘ LỌC DOANH THU & KÊNH & PHÂN LOẠI KHÁCH
   const filteredOrders = orders.filter((order) => {
@@ -963,6 +987,12 @@ export function AdminOrdersPage() {
                                 PRE-ORDER · {preOrderInfo.maxPreOrderDays} NGÀY
                               </span>
                             )}
+                            {order.isEdited && (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[8px] font-black bg-orange-100 text-orange-800 border border-orange-200 uppercase tracking-widest w-max">
+                                <Pencil className="h-2.5 w-2.5" />
+                                ĐÃ CHỈNH SỬA
+                              </span>
+                            )}
                           </div>
                         </td>
                         <td className="px-6 py-4">
@@ -1658,7 +1688,15 @@ export function AdminOrdersPage() {
             <div className="flex items-center justify-between border-b border-black/10 p-6">
               <div>
                 <span className="text-[10px] font-bold text-black/45 tracking-wider uppercase">Duyệt Đơn Hàng</span>
-                <h2 className="text-xl font-black text-black font-mono">{selectedOrder.orderNumber}</h2>
+                <div className="flex flex-wrap items-center gap-2">
+                  <h2 className="text-xl font-black text-black font-mono">{selectedOrder.orderNumber}</h2>
+                  {selectedOrder.isEdited && (
+                    <span className="inline-flex items-center gap-1 rounded-lg border border-orange-200 bg-orange-50 px-2.5 py-1 text-[9px] font-black uppercase tracking-wider text-orange-800">
+                      <Pencil className="h-3 w-3" />
+                      Đơn đã chỉnh sửa
+                    </span>
+                  )}
+                </div>
               </div>
               <div className="flex items-center gap-3">
                 <button
@@ -1924,43 +1962,80 @@ export function AdminOrdersPage() {
 
               {/* Danh sách sản phẩm mua */}
               <div className="space-y-4">
-                <h3 className="text-[10px] font-extrabold tracking-widest text-black/50 uppercase">
-                  Sản phẩm trong hóa đơn
-                </h3>
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <h3 className="text-[10px] font-extrabold tracking-widest text-black/50 uppercase">
+                    Sản phẩm trong hóa đơn
+                  </h3>
+                  {selectedOrder.isEdited && <OrderEditLegend />}
+                </div>
                 <div className="space-y-3 max-h-[300px] overflow-y-auto pr-2">
-                  {selectedOrder.items.map((item, index) => (
+                  {selectedOrder.items.map((item, index) => {
+                    const editMeta = parseOrderItemEditMeta(item.editMeta);
+                    const productName = item.productName || item.product?.name || "";
+
+                    return (
                     <div
-                      key={index}
+                      key={item.id ?? index}
                       className="flex items-center gap-4 rounded-xl border border-black/5 p-4 bg-stone-50/50 hover:bg-white hover:shadow-md transition-all duration-300"
                     >
                       <div className="h-16 w-14 overflow-hidden rounded-lg bg-stone-100 border border-black/5 flex-shrink-0">
                         <ImageWithFallback
                           src={item.productImage || item.product?.image || ""}
-                          alt={item.productName || item.product?.name || ""}
+                          alt={productName}
                           className="h-full w-full object-cover"
                         />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="font-bold text-black uppercase truncate text-xs">{item.productName || item.product?.name || ""}</p>
-                        <p className="text-[10px] text-black/45 mt-1 uppercase">
-                          Size: {item.size} | Màu: {item.color} | Số lượng: {item.quantity}
+                        <p
+                          className={`font-bold uppercase truncate text-xs inline-block px-1.5 py-0.5 rounded ${
+                            editMeta?.product ? ORDER_EDIT_FIELD_STYLES.product : "text-black"
+                          }`}
+                          title={editMeta?.product ? `${editMeta.product.from} → ${editMeta.product.to}` : undefined}
+                        >
+                          {productName}
                         </p>
+                        <div className="text-[10px] text-black/45 mt-1 uppercase flex flex-wrap items-center gap-x-2 gap-y-1">
+                          <EditedOrderField label="Size" value={item.size} field="size" editMeta={editMeta} />
+                          <span>|</span>
+                          <EditedOrderField label="Màu" value={item.color} field="color" editMeta={editMeta} />
+                          <span>|</span>
+                          <span>Số lượng: {item.quantity}</span>
+                        </div>
+                        {editMeta && (
+                          <p className="mt-1 text-[9px] font-semibold text-black/50">
+                            {editMeta.product && <>Mẫu: {editMeta.product.from} → {editMeta.product.to}. </>}
+                            {editMeta.color && <>Màu: {editMeta.color.from} → {editMeta.color.to}. </>}
+                            {editMeta.size && <>Size: {editMeta.size.from} → {editMeta.size.to}.</>}
+                          </p>
+                        )}
                         {isPreOrderItem(item) && (
                           <p className="mt-1 text-[10px] font-black uppercase tracking-wider text-amber-700">
                             Pre-order · Có hàng sau {item.preOrderDays ?? item.product?.preOrderDays ?? 7} ngày
                           </p>
                         )}
                       </div>
-                      <div className="text-right font-mono">
-                        <p className="font-extrabold text-black text-xs">
-                          {(item.price * item.quantity).toLocaleString("vi-VN")}₫
-                        </p>
-                        <p className="text-[9px] text-black/40 mt-0.5">
-                          Đơn giá: {item.price.toLocaleString("vi-VN")}₫
-                        </p>
+                      <div className="flex flex-col items-end gap-2">
+                        <div className="text-right font-mono">
+                          <p className="font-extrabold text-black text-xs">
+                            {(item.price * item.quantity).toLocaleString("vi-VN")}₫
+                          </p>
+                          <p className="text-[9px] text-black/40 mt-0.5">
+                            Đơn giá: {item.price.toLocaleString("vi-VN")}₫
+                          </p>
+                        </div>
+                        {canEditOrderItems(selectedOrder) && item.id && (
+                          <button
+                            type="button"
+                            onClick={() => setEditingOrderItem({ order: selectedOrder, item })}
+                            className="inline-flex items-center gap-1 rounded-lg border border-black/10 bg-white px-2.5 py-1.5 text-[9px] font-bold uppercase text-black/70 hover:bg-stone-50"
+                          >
+                            <Pencil className="h-3 w-3" />
+                            Sửa
+                          </button>
+                        )}
                       </div>
                     </div>
-                  ))}
+                  )})}
                 </div>
               </div>
 
@@ -1992,6 +2067,17 @@ export function AdminOrdersPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {editingOrderItem && (
+        <OrderItemEditModal
+          order={editingOrderItem.order}
+          item={editingOrderItem.item}
+          products={products}
+          onClose={() => setEditingOrderItem(null)}
+          onSave={handleSaveOrderItemEdit}
+          saving={isSavingOrderItem}
+        />
       )}
 
       {/* 🧾 THIẾT KẾ MỚI HÓA ĐƠN ULTRA-MINIMALIST PACKING SLIP (IN ẤN - PRINT ONLY - CỐ ĐỊNH 1 TRANG A6 100x150mm) */}

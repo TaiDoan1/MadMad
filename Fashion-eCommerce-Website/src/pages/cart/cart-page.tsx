@@ -8,6 +8,7 @@ import { useProducts } from "@/features/products/context/product-context";
 import { useLanguage } from "@/features/settings/context/language-context";
 import { useToast } from "@/components/common/toast";
 import { useStorefrontSettings } from "@/features/settings/context/storefront-settings-context";
+import { isGiftProduct } from "@/utils/gift-eligibility";
 
 export function CartPage() {
   const { products } = useProducts();
@@ -109,18 +110,26 @@ export function CartPage() {
                           <Link to={`/product/${product.id}`} className="hover:opacity-70 transition-opacity">
                             <p className="text-xs font-bold uppercase tracking-wider">{translate(product.name)}</p>
                           </Link>
+                          {(item.isGift || isGiftProduct(product)) && (
+                            <span className="mt-1 inline-block rounded bg-emerald-100 px-2 py-0.5 text-[9px] font-black uppercase tracking-wider text-emerald-800">
+                              {t("Hàng tặng", "Gift")}
+                            </span>
+                          )}
                           <p className="mt-0.5 text-xs text-black/50">
                             {item.size && `${item.size}`}
                             {item.color && ` / ${translate(item.color)}`}
                           </p>
                         </div>
                         <p className="text-sm font-semibold whitespace-nowrap">
-                          {formatPrice(item.priceAtAdd * item.quantity)}
+                          {item.isGift || isGiftProduct(product)
+                            ? t("Miễn phí", "Free")
+                            : formatPrice(item.priceAtAdd * item.quantity)}
                         </p>
                       </div>
 
                       {/* Qty + Remove */}
                       <div className="flex items-center gap-6">
+                        {!(item.isGift || isGiftProduct(product)) ? (
                         <div className="flex items-center border border-black/20">
                           <button
                             onClick={() => updateItemQuantity(item.id, item.quantity - 1)}
@@ -136,6 +145,9 @@ export function CartPage() {
                             <Plus className="h-3 w-3" />
                           </button>
                         </div>
+                        ) : (
+                          <span className="text-xs font-semibold text-black/45">SL: 1</span>
+                        )}
                         <button
                           onClick={() => removeFromCart(item.id)}
                           className="text-xs text-black/40 underline transition-colors hover:text-black"

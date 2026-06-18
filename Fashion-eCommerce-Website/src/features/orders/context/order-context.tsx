@@ -1,9 +1,17 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { mockOrders } from "@/features/orders/data/mock-orders";
-import type { Order } from "@/types/order";
+import type { Order, OrderItem } from "@/types/order";
 import { API_URL } from "@/config/api";
 import { safeLocalStorage } from "@/utils/safe-storage";
 import { enqueue, peekQueue, removeFromQueue } from "@/utils/offline-queue";
+import { parseOrderItemEditMeta } from "@/utils/order-edit";
+
+interface UpdateOrderItemInput {
+  productId: string;
+  color: string;
+  size: string;
+  quantity: number;
+}
 
 interface OrderContextValue {
   orders: Order[];
@@ -12,6 +20,7 @@ interface OrderContextValue {
   updateOrderStatus: (id: number, status: Order["status"]) => Promise<void>;
   updateOrderPaymentStatus: (id: number, isPaid: boolean) => Promise<void>;
   updateOrderInternalNote: (id: number, internalNote: string) => Promise<void>;
+  updateOrderItem: (orderId: number, itemId: number, input: UpdateOrderItemInput) => Promise<Order>;
   getOrderById: (id: number) => Order | undefined;
 }
 
@@ -24,10 +33,17 @@ export function OrderProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   // 🛡️ Helper tự động chuyển đổi flat fields từ database Postgres sang nested object shippingAddress để tương thích ngược với giao diện UI cũ, tránh sập trang.
+  const mapOrderItem = (item: any): OrderItem => ({
+    ...item,
+    editMeta: parseOrderItemEditMeta(item.editMeta ?? item.editMetaJson),
+  });
+
   const mapOrderAddress = (order: any): Order => {
     if (!order) return order;
     return {
       ...order,
+      editedAt: order.editedAt ? String(order.editedAt) : undefined,
+      items: Array.isArray(order.items) ? order.items.map(mapOrderItem) : order.items,
       shippingAddress: order.shippingAddress || {
         street: order.street || "Mua trực tiếp tại Shop",
         ward: order.ward || "",
@@ -289,6 +305,32 @@ const LOCAL_ORDERS_KEY = "madmad_orders_fallback";
             current.map((order) => (order.id === id ? { ...order, internalNote } : order)),
           );
         }
+      },
+
+      updateOrderItem: async (orderId, itemId, input) => {
+        const response = await fetch(`${API_URL}/orders/${orderId}/items/${itemId}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(input),
+        });
+
+        if (!response.ok) {
+          const errText = await response.text().catch(() => "");
+          let message = "Không thể cập nhật sản phẩm trong đơn hàng";
+          try {
+            const parsed = JSON.parse(errText);
+            if (parsed?.message) message = parsed.message;
+          } catch {
+            if (errText) message = errText;
+          }
+          throw new Error(message);
+        }
+
+        const updatedOrder = mapOrderAddress(await response.json());
+        setOrders((current) =>
+          current.map((order) => (order.id === orderId ? updatedOrder : order)),
+        );
+        return updatedOrder;
       },
 
       getOrderById: (id) => orders.find((order) => order.id === id),

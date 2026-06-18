@@ -117,6 +117,9 @@ export function AdminProductsPage() {
     inStock: true,
     isPreOrder: false,
     preOrderDays: 7,
+    isGiftProduct: false,
+    giftMinOrderTotal: 0,
+    giftMinProductCount: 0,
     rating: 5,
     reviews: 0,
   });
@@ -146,6 +149,9 @@ export function AdminProductsPage() {
       inStock: true,
       isPreOrder: false,
       preOrderDays: 7,
+      isGiftProduct: false,
+      giftMinOrderTotal: 0,
+      giftMinProductCount: 0,
       rating: 5,
       reviews: 0,
     });
@@ -301,6 +307,9 @@ export function AdminProductsPage() {
       inStock: !isProductSoldOut(syncedProduct),
       isPreOrder: Boolean(syncedProduct.isPreOrder),
       preOrderDays: syncedProduct.preOrderDays ?? 7,
+      isGiftProduct: Boolean(syncedProduct.isGiftProduct),
+      giftMinOrderTotal: syncedProduct.giftConditions?.minOrderTotal ?? 0,
+      giftMinProductCount: syncedProduct.giftConditions?.minProductCount ?? 0,
       rating: syncedProduct.rating,
       reviews: syncedProduct.reviews,
     });
@@ -515,6 +524,11 @@ export function AdminProductsPage() {
                       Pre-order · Có hàng sau {product.preOrderDays ?? 7} ngày
                     </p>
                   )}
+                  {product.isGiftProduct && (
+                    <p className="mt-1 text-[10px] font-black uppercase tracking-wider text-emerald-700">
+                      Hàng tặng
+                    </p>
+                  )}
                   <div className="mt-2 flex flex-wrap items-center gap-2">
                     <div className="text-sm font-semibold">
                       {product.price.toLocaleString("vi-VN")}₫
@@ -588,6 +602,11 @@ export function AdminProductsPage() {
                       {product.isPreOrder && (
                         <p className="mt-1 text-[10px] font-black uppercase tracking-wider text-amber-700">
                           Pre-order · {product.preOrderDays ?? 7} ngày
+                        </p>
+                      )}
+                      {product.isGiftProduct && (
+                        <p className="mt-1 text-[10px] font-black uppercase tracking-wider text-emerald-700">
+                          Hàng tặng
                         </p>
                       )}
                     </div>
@@ -908,6 +927,70 @@ export function AdminProductsPage() {
                         <div className="rounded-xl border border-black/10 bg-white px-3 py-2.5 text-[10px] text-black/60 leading-relaxed">
                           Ngoài cửa hàng sẽ hiển thị nhãn <span className="font-bold">Pre-order</span> và dòng
                           <span className="font-bold"> Có hàng sau {formData.preOrderDays} ngày</span>.
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="rounded-2xl border border-emerald-200 bg-emerald-50/40 p-4 space-y-3">
+                    <label className="flex items-center gap-2.5">
+                      <input
+                        type="checkbox"
+                        checked={formData.isGiftProduct}
+                        onChange={(event) =>
+                          setFormData((current) => ({
+                            ...current,
+                            isGiftProduct: event.target.checked,
+                          }))
+                        }
+                        className="h-4 w-4 rounded border-black/10 text-black focus:ring-black cursor-pointer"
+                      />
+                      <span className="text-[10px] font-extrabold tracking-widest uppercase text-emerald-800">
+                        Đánh dấu là hàng tặng (quà khuyến mãi)
+                      </span>
+                    </label>
+
+                    {formData.isGiftProduct && (
+                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                        <div className="space-y-1.5">
+                          <label className="block text-[9px] font-extrabold tracking-widest uppercase text-black/50">
+                            Điều kiện: đơn tối thiểu (₫)
+                          </label>
+                          <input
+                            type="number"
+                            min={0}
+                            value={formData.giftMinOrderTotal}
+                            onChange={(event) =>
+                              setFormData((current) => ({
+                                ...current,
+                                giftMinOrderTotal: Math.max(0, Number(event.target.value) || 0),
+                              }))
+                            }
+                            placeholder="VD: 500000"
+                            className="w-full rounded-xl border border-black/10 bg-white px-4 py-3 text-xs focus:border-black/60 focus:outline-none transition-all font-mono font-bold"
+                          />
+                        </div>
+                        <div className="space-y-1.5">
+                          <label className="block text-[9px] font-extrabold tracking-widest uppercase text-black/50">
+                            Điều kiện: số sản phẩm tối thiểu
+                          </label>
+                          <input
+                            type="number"
+                            min={0}
+                            value={formData.giftMinProductCount}
+                            onChange={(event) =>
+                              setFormData((current) => ({
+                                ...current,
+                                giftMinProductCount: Math.max(0, Number(event.target.value) || 0),
+                              }))
+                            }
+                            placeholder="VD: 2"
+                            className="w-full rounded-xl border border-black/10 bg-white px-4 py-3 text-xs focus:border-black/60 focus:outline-none transition-all font-mono font-bold"
+                          />
+                        </div>
+                        <div className="sm:col-span-2 rounded-xl border border-emerald-200 bg-white px-3 py-2.5 text-[10px] text-black/60 leading-relaxed">
+                          Ngoài cửa hàng hiển thị nhãn <span className="font-bold text-emerald-700">Hàng tặng</span>.
+                          Khách cần đạt điều kiện (có thể để trống một trong hai) trước khi thêm quà vào giỏ. Giá trong giỏ = 0₫.
                         </div>
                       </div>
                     )}
@@ -1457,6 +1540,13 @@ export function AdminProductsPage() {
                       variantStock: finalVariantStock,
                       isPreOrder: formData.isPreOrder,
                       preOrderDays: formData.isPreOrder ? Math.max(1, formData.preOrderDays || 1) : undefined,
+                      isGiftProduct: formData.isGiftProduct,
+                      giftConditions: formData.isGiftProduct
+                        ? {
+                            ...(formData.giftMinOrderTotal > 0 ? { minOrderTotal: formData.giftMinOrderTotal } : {}),
+                            ...(formData.giftMinProductCount > 0 ? { minProductCount: formData.giftMinProductCount } : {}),
+                          }
+                        : undefined,
                       rating: formData.rating,
                       reviews: formData.reviews,
                     });

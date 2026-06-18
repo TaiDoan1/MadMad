@@ -1,6 +1,20 @@
 import type { Product } from "@/types/product";
 
+export interface OrderItemEditChange {
+  from: string;
+  to: string;
+  fromId?: string;
+  toId?: string;
+}
+
+export interface OrderItemEditMeta {
+  product?: OrderItemEditChange;
+  color?: OrderItemEditChange;
+  size?: OrderItemEditChange;
+}
+
 export interface OrderItem {
+  id?: number;
   product?: Product;
   productId?: string;
   productName?: string;
@@ -11,6 +25,7 @@ export interface OrderItem {
   size: string;
   color: string;
   price: number;
+  editMeta?: OrderItemEditMeta;
 }
 
 export interface Order {
@@ -41,4 +56,6 @@ export interface Order {
   internalNote?: string;
   isPaid?: boolean;
   containsPreOrder?: boolean;
+  isEdited?: boolean;
+  editedAt?: string;
 }

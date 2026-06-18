@@ -26,6 +26,7 @@ import { useToast } from "@/components/common/toast";
 import type { Order, OrderItem } from "@/types/order";
 import { API_URL } from "@/config/api";
 import { safeLocalStorage } from "@/utils/safe-storage";
+import { getGiftEligibilityMessage, isGiftEligible, isGiftProduct } from "@/utils/gift-eligibility";
 
 /* ── Shared input className ───────────────────────────────────────────── */
 const inputCls =
@@ -330,6 +331,15 @@ export function CheckoutPage() {
       showToast(t("Vui lòng điền đầy đủ thông tin giao hàng!", "Please complete all shipping details!"), "warning"); return;
     }
 
+    const invalidGift = resolvedItems.find(({ item, product }) => {
+      if (!isGiftProduct(product) && !item.isGift) return false;
+      return !isGiftEligible(cartItems, products, product);
+    });
+    if (invalidGift) {
+      showToast(getGiftEligibilityMessage(invalidGift.product), "warning");
+      return;
+    }
+
     // Kiểm tra tồn kho realtime trực tiếp từ database trước khi đặt hàng
     const isStockAvailable = await checkStockBeforeCheckout();
     if (!isStockAvailable) return;
@@ -508,7 +518,9 @@ export function CheckoutPage() {
                         </div>
                         <div className="text-right flex-shrink-0">
                           <p className="text-[11px] font-bold text-black font-mono">
-                            {formatPrice(item.priceAtAdd * item.quantity)}
+                            {item.isGift || isGiftProduct(product)
+                              ? t("Miễn phí", "Free")
+                              : formatPrice(item.priceAtAdd * item.quantity)}
                           </p>
                         </div>
                       </div>
@@ -1016,7 +1028,9 @@ export function CheckoutPage() {
                     
                     <div className="text-right flex-shrink-0">
                       <p className="text-xs font-bold text-black font-mono">
-                        {formatPrice(item.priceAtAdd * item.quantity)}
+                        {item.isGift || isGiftProduct(product)
+                          ? t("Miễn phí", "Free")
+                          : formatPrice(item.priceAtAdd * item.quantity)}
                       </p>
                     </div>
                   </div>

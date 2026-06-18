@@ -1,5 +1,10 @@
 import type { SizeGuideRow } from "@/types/size-guide";
 
+export interface GiftConditions {
+  minOrderTotal?: number;
+  minProductCount?: number;
+}
+
 export interface Product {
   id: string | number;
   sku?: string;
@@ -28,6 +33,8 @@ export interface Product {
   variantStock?: Record<string, number>;
   isPreOrder?: boolean;
   preOrderDays?: number;
+  isGiftProduct?: boolean;
+  giftConditions?: GiftConditions;
   createdAt?: string;
 }
 

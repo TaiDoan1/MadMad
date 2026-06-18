@@ -27,6 +27,8 @@ model Product {
   showDiscountPercent Boolean  @default(false)
   isPreOrder   Boolean  @default(false)
   preOrderDays Int?
+  isGiftProduct Boolean @default(false)
+  giftConditionsJson String?
   isFeatured   Boolean  @default(false)
   orderIndex   Int      @default(0) // Lưu thứ tự sắp xếp sản phẩm kéo thả
   stock        Int?     @default(999)
@@ -56,6 +58,8 @@ model Order {
   status         String      @default("pending") // pending, processing, shipping, completed, cancelled
   isPaid         Boolean     @default(false)
   containsPreOrder Boolean   @default(false)
+  isEdited       Boolean     @default(false)
+  editedAt       DateTime?
   notes          String?
   internalNote   String?
   couponCode     String?
@@ -78,6 +82,7 @@ model OrderItem {
   size         String
   color        String
   price        Int
+  editMetaJson String?
 }
 
 // 👑 Bảng Thành viên VIP (VIPMember)

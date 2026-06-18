@@ -9,6 +9,7 @@ import {
 } from "@/features/promotions/services/coupon-service";
 import type { Coupon } from "@/types/coupon";
 import type { CartItem } from "@/types/cart";
+import { getGiftEligibilityMessage, isGiftEligible, isGiftProduct } from "@/utils/gift-eligibility";
 import { safeLocalStorage } from "@/utils/safe-storage";
 
 const CART_STORAGE_KEY = "fashion-ecommerce.cart";
@@ -22,6 +23,11 @@ interface AddCartItemPayload {
   priceAtAdd: number;
 }
 
+interface AddToCartResult {
+  success: boolean;
+  message?: string;
+}
+
 interface CartContextValue {
   cartItems: CartItem[];
   itemCount: number;
@@ -29,7 +35,7 @@ interface CartContextValue {
   availableCoupons: Coupon[];
   appliedCoupon: Coupon | null;
   discountAmount: number;
-  addToCart: (payload: AddCartItemPayload) => void;
+  addToCart: (payload: AddCartItemPayload) => AddToCartResult;
   updateItemQuantity: (itemId: string, quantity: number) => void;
   removeFromCart: (itemId: string) => void;
   applyCoupon: (code: string) => { success: boolean; message: string };
@@ -127,6 +133,23 @@ export function CartProvider({ children }: { children: ReactNode }) {
     }
   }, [appliedCouponCode, activeCartItems, products]);
 
+  // Tự động gỡ hàng tặng khi giỏ không còn đủ điều kiện
+  useEffect(() => {
+    if (!products.length || cartItems.length === 0) return;
+
+    const invalidGiftIds = cartItems
+      .filter((item) => {
+        const product = products.find((p) => String(p.id) === String(item.productId));
+        if (!product || (!isGiftProduct(product) && !item.isGift)) return false;
+        return !isGiftEligible(cartItems, products, product);
+      })
+      .map((item) => item.id);
+
+    if (invalidGiftIds.length > 0) {
+      persist(cartItems.filter((item) => !invalidGiftIds.includes(item.id)));
+    }
+  }, [cartItems, products]);
+
   // Sync coupons từ server để khách hàng dùng được (khác thiết bị/trình duyệt vẫn có).
   useEffect(() => {
     setAvailableCoupons(getAllCouponsSnapshot());
@@ -172,7 +195,36 @@ export function CartProvider({ children }: { children: ReactNode }) {
         return Math.min(coupon.discountAmount, subtotal);
       })(),
       addToCart: ({ productId, size, color, quantity, priceAtAdd }) => {
+        const product = products.find((p) => String(p.id) === String(productId));
         const normalizedQty = Math.max(1, quantity);
+
+        if (product && isGiftProduct(product)) {
+          if (!isGiftEligible(cartItems, products, product)) {
+            return { success: false, message: getGiftEligibilityMessage(product) };
+          }
+
+          const existingGift = cartItems.find(
+            (item) => String(item.productId) === String(productId) && (item.isGift || isGiftProduct(product)),
+          );
+          if (existingGift) {
+            return { success: false, message: "Quà tặng này đã có trong giỏ hàng." };
+          }
+
+          persist([
+            ...cartItems,
+            {
+              id: `${productId}-${size}-${color}-${Date.now()}`,
+              productId,
+              size,
+              color,
+              quantity: 1,
+              priceAtAdd: 0,
+              isGift: true,
+            },
+          ]);
+          return { success: true, message: "Đã thêm quà tặng vào giỏ hàng!" };
+        }
+
         const existing = cartItems.find(
           (item) => String(item.productId) === String(productId) && item.size === size && item.color === color,
         );
@@ -182,7 +234,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
               item.id === existing.id ? { ...item, quantity: item.quantity + normalizedQty } : item,
             ),
           );
-          return;
+          return { success: true };
         }
 
         persist([
@@ -196,11 +248,21 @@ export function CartProvider({ children }: { children: ReactNode }) {
             priceAtAdd,
           },
         ]);
+        return { success: true };
       },
       updateItemQuantity: (itemId, quantity) => {
+        const target = cartItems.find((item) => item.id === itemId);
+        const product = target
+          ? products.find((p) => String(p.id) === String(target.productId))
+          : undefined;
+        const nextQty =
+          target && (target.isGift || isGiftProduct(product))
+            ? 1
+            : Math.max(1, quantity);
+
         persist(
           cartItems.map((item) =>
-            item.id === itemId ? { ...item, quantity: Math.max(1, quantity) } : item,
+            item.id === itemId ? { ...item, quantity: nextQty } : item,
           ),
         );
       },

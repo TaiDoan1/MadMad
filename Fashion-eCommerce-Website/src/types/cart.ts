@@ -5,5 +5,6 @@ export interface CartItem {
   size: string;
   color: string;
   priceAtAdd: number;
+  isGift?: boolean;
 }
 

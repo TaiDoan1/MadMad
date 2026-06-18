@@ -7,6 +7,7 @@ import { useCart } from "@/features/cart/context/cart-context";
 import { useLanguage } from "@/features/settings/context/language-context";
 import type { Product } from "@/types/product";
 import { isProductSoldOut } from "@/utils/product-stock";
+import { isGiftProduct } from "@/utils/gift-eligibility";
 
 interface ProductCardProps {
   product: Product;
@@ -25,8 +26,9 @@ export function ProductCard({ product, variant = "shop" }: ProductCardProps) {
   const primaryTag = (product.tags ?? [])[0];
   const isOnSale = Boolean(product.originalPrice && product.originalPrice > product.price);
   const isPreOrder = Boolean(product.isPreOrder || (product.tags ?? []).some((tag) => tag.toLowerCase().includes("pre-order")));
+  const isGift = isGiftProduct(product);
   const isSoldOut = isProductSoldOut(product);
-  const canBuy = !isSoldOut;
+  const canBuy = !isSoldOut && !isGift;
 
   const handleQuickAdd = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -78,6 +80,10 @@ export function ProductCard({ product, variant = "shop" }: ProductCardProps) {
           <span className="absolute left-3 top-3 z-10 bg-stone-100 border border-stone-300 px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wide text-stone-500">
             {t("Hết hàng", "Sold out")}
           </span>
+        ) : isGift ? (
+          <span className="absolute left-3 top-3 z-10 bg-emerald-600 px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wide text-white">
+            {t("Hàng tặng", "Gift")}
+          </span>
         ) : isPreOrder ? (
           <span className="absolute left-3 top-3 z-10 bg-black px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wide text-white">
             Pre-order
@@ -121,23 +127,37 @@ export function ProductCard({ product, variant = "shop" }: ProductCardProps) {
         </Link>
 
         <div className="flex items-center gap-2">
-          <span className="text-sm font-semibold text-black">
-            {formatPrice(product.price)}
-          </span>
-          {product.originalPrice && product.originalPrice > product.price && (
-            <span className="text-xs text-black/40 line-through">
-              {formatPrice(product.originalPrice)}
+          {isGift ? (
+            <span className="text-sm font-semibold text-emerald-700">
+              {t("Miễn phí", "Free")}
             </span>
+          ) : (
+            <>
+              <span className="text-sm font-semibold text-black">
+                {formatPrice(product.price)}
+              </span>
+              {product.originalPrice && product.originalPrice > product.price && (
+                <span className="text-xs text-black/40 line-through">
+                  {formatPrice(product.originalPrice)}
+                </span>
+              )}
+            </>
           )}
         </div>
 
-        {isPreOrder && !isSoldOut && (
+        {isGift && !isSoldOut && (
+          <span className="mt-1 block text-[10px] font-black uppercase tracking-wider text-emerald-700">
+            {t("Hàng tặng", "Gift item")}
+          </span>
+        )}
+
+        {isPreOrder && !isSoldOut && !isGift && (
           <span className="mt-1 block text-[10px] font-black uppercase tracking-wider text-amber-700">
             Có hàng sau {product.preOrderDays ?? 7} ngày
           </span>
         )}
 
-        {!canBuy && (
+        {!canBuy && !isGift && (
           <span className="text-[11px] font-black text-black/40 uppercase tracking-wider mt-1 block">
             {t("Hết hàng", "Sold out")}
           </span>
