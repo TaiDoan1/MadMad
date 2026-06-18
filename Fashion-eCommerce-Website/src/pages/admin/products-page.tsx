@@ -14,7 +14,7 @@ import {
 import { listSizeGuideProfileKeys } from "@/utils/size-recommendation";
 import type { SizeGuideRow } from "@/types/size-guide";
 import type { Product } from "@/types/product";
-import { getForceSoldOutFromProduct, isProductSoldOut, resolveSoldOutState, syncProductStock } from "@/utils/product-stock";
+import { getForceSoldOutFromProduct, getProductTotalStock, isProductSoldOut, resolveSoldOutState, syncProductStock, usesVariantStock } from "@/utils/product-stock";
 import { useToast } from "@/components/common/toast";
 
 type ProductOptions = {
@@ -166,11 +166,8 @@ export function AdminProductsPage() {
   };
 
   const getProductStockInfo = (prod: Product) => {
-    if (prod.variantStock && Object.keys(prod.variantStock).length > 0) {
-      const total = Object.values(prod.variantStock).reduce((sum, val) => sum + val, 0);
-      return { total, isVariant: true };
-    }
-    return { total: prod.stock !== undefined ? prod.stock : null, isVariant: false };
+    const total = getProductTotalStock(prod);
+    return { total, isVariant: usesVariantStock(prod) };
   };
 
   const normalizedImages = productImages.map((value) => value.trim()).filter(Boolean);
@@ -194,7 +191,7 @@ export function AdminProductsPage() {
           colorSum +
           selectedSizes.reduce((sizeSum, size) => {
             const key = `${color}-${size}`;
-            const qty = variantStockDraft[key] !== undefined ? variantStockDraft[key] : 10;
+            const qty = variantStockDraft[key] !== undefined ? variantStockDraft[key] : 0;
             return sizeSum + qty;
           }, 0)
         );
@@ -265,7 +262,7 @@ export function AdminProductsPage() {
       return (
         <span
           className={`rounded-full bg-amber-105 font-bold text-amber-800 ${sizeClass}`}
-          title={stockInfo.isVariant ? "Tồn kho theo biến thể" : "Tồn kho tổng"}
+          title={stockInfo.isVariant ? "Tổng tồn kho = tổng các size" : "Tồn kho tổng"}
         >
           Sắp hết ({stockInfo.total})
         </span>
@@ -274,7 +271,7 @@ export function AdminProductsPage() {
     return (
       <span
         className={`rounded-full bg-green-100 font-semibold text-green-800 ${sizeClass}`}
-        title={stockInfo.isVariant ? "Tồn kho theo biến thể" : "Tồn kho tổng"}
+        title={stockInfo.isVariant ? "Tổng tồn kho = tổng các size" : "Tồn kho tổng"}
       >
         Còn {stockInfo.total} chiếc
       </span>
@@ -322,7 +319,7 @@ export function AdminProductsPage() {
         ? syncedProduct.sizeGuideOverride.map((r) => ({ ...r }))
         : [],
     );
-    setStockType(syncedProduct.variantStock && Object.keys(syncedProduct.variantStock).length > 0 ? "variant" : "simple");
+    setStockType(usesVariantStock(syncedProduct) ? "variant" : "simple");
     setFormTab("info");
     setShowEditModal(true);
   };
@@ -1272,6 +1269,15 @@ export function AdminProductsPage() {
                     </div>
                   ) : (
                     <div className="space-y-3 bg-stone-50/50 p-4 border border-black/5 rounded-2xl">
+                      <div className="flex items-center justify-between gap-4 rounded-xl border border-black/10 bg-white px-4 py-3">
+                        <div>
+                          <p className="text-[9px] font-extrabold tracking-widest uppercase text-black/50">
+                            Tổng tồn kho
+                          </p>
+                          <p className="text-[9px] text-black/40 mt-0.5">Tự động = tổng số lượng của tất cả size hiện có</p>
+                        </div>
+                        <p className="text-lg font-black font-mono text-black">{draftTotalStock} chiếc</p>
+                      </div>
                       <div>
                         <label className="block text-[9px] font-extrabold tracking-widest uppercase text-black/50">
                           Số lượng chi tiết theo biến thể (Màu sắc - Kích cỡ)
@@ -1282,7 +1288,7 @@ export function AdminProductsPage() {
                         {selectedColors.map((color) =>
                           selectedSizes.map((size) => {
                             const key = `${color}-${size}`;
-                            const value = variantStockDraft[key] !== undefined ? variantStockDraft[key] : 10;
+                            const value = variantStockDraft[key] !== undefined ? variantStockDraft[key] : 0;
                             return (
                               <div key={key} className="flex items-center justify-between bg-white px-4 py-2.5 border border-black/5 rounded-xl gap-4">
                                 <span className="text-[10px] font-black uppercase tracking-wider text-black">
@@ -1410,7 +1416,7 @@ export function AdminProductsPage() {
                       selectedColors.forEach((color) => {
                         selectedSizes.forEach((size) => {
                           const k = `${color}-${size}`;
-                          const qty = variantStockDraft[k] !== undefined ? variantStockDraft[k] : 10;
+                          const qty = variantStockDraft[k] !== undefined ? variantStockDraft[k] : 0;
                           finalVariantStock![k] = qty;
                         });
                       });
@@ -1628,6 +1634,11 @@ export function AdminProductsPage() {
                 <div className="rounded-lg border border-border p-4">
                   <p className="text-sm text-muted-foreground">Trạng thái</p>
                   <p className="text-lg">{previewProduct.inStock ? "Còn hàng" : "Hết hàng"}</p>
+                  {getProductTotalStock(previewProduct) !== null && (
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Tổng tồn kho: {getProductTotalStock(previewProduct)} chiếc
+                    </p>
+                  )}
                 </div>
                 <div className="rounded-lg border border-border p-4">
                   <p className="text-sm text-muted-foreground">Mô tả</p>

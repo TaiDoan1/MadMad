@@ -14,14 +14,38 @@ function getVariantStock(product: Product): Record<string, number> {
   return raw;
 }
 
+export function usesVariantStock(product: Product): boolean {
+  const variantStock = getVariantStock(product);
+  if (Object.keys(variantStock).length > 0) {
+    return true;
+  }
+  const hasAttributes = (product.colors?.length ?? 0) > 0 && (product.sizes?.length ?? 0) > 0;
+  return hasAttributes && (product.stock === undefined || product.stock === null);
+}
+
 export function getProductTotalStock(product: Product): number | null {
   const variantStock = getVariantStock(product);
+
+  if (usesVariantStock(product)) {
+    return (product.colors ?? []).reduce((colorSum, color) => {
+      return (
+        colorSum +
+        (product.sizes ?? []).reduce((sizeSum, size) => {
+          const key = `${color}-${size}`;
+          return sizeSum + Number(variantStock[key] ?? 0);
+        }, 0)
+      );
+    }, 0);
+  }
+
   if (Object.keys(variantStock).length > 0) {
     return Object.values(variantStock).reduce((sum, qty) => sum + Number(qty || 0), 0);
   }
+
   if (product.stock !== undefined && product.stock !== null) {
     return Number(product.stock);
   }
+
   return null;
 }
 
