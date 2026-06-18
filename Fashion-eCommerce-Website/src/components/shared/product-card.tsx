@@ -131,7 +131,7 @@ export function ProductCard({ product, variant = "shop" }: ProductCardProps) {
           )}
         </div>
 
-        {isPreOrder && (
+        {isPreOrder && !isSoldOut && (
           <span className="mt-1 block text-[10px] font-black uppercase tracking-wider text-amber-700">
             Có hàng sau {product.preOrderDays ?? 7} ngày
           </span>

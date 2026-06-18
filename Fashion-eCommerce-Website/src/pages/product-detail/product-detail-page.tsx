@@ -653,7 +653,7 @@ export function ProductDetailPage() {
                 return null;
               })()}
 
-                {isPreOrder && (
+                {isPreOrder && !isSoldOut && (
                   <div className="text-xs font-bold uppercase tracking-widest text-amber-700">
                     {t(`Pre-order · Có hàng sau ${product.preOrderDays ?? 7} ngày`, `Pre-order · Available in ${product.preOrderDays ?? 7} days`)}
                   </div>

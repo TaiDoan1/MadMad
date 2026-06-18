@@ -282,11 +282,6 @@ export function CheckoutPage() {
       const freshProducts = await response.json();
       
       for (const { item, product } of resolvedItems) {
-        const itemIsPreOrder = Boolean(product.isPreOrder || (product.tags ?? []).some((tag) => tag.toLowerCase().includes("pre-order")));
-        if (itemIsPreOrder) {
-          continue;
-        }
-
         const freshProd = freshProducts.find((p: any) => String(p.id) === String(product.id));
         if (!freshProd) {
           showToast(t(`Sản phẩm "${product.name}" không còn tồn tại trên hệ thống!`, `Product "${product.name}" no longer exists!`), "error");

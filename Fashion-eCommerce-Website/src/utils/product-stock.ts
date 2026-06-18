@@ -14,19 +14,26 @@ function getVariantStock(product: Product): Record<string, number> {
   return raw;
 }
 
-export function isProductSoldOut(product: Product): boolean {
-  if (product.isPreOrder || (product.tags ?? []).some((tag) => tag.toLowerCase().includes("pre-order"))) {
-    return false;
+export function getProductTotalStock(product: Product): number | null {
+  const variantStock = getVariantStock(product);
+  if (Object.keys(variantStock).length > 0) {
+    return Object.values(variantStock).reduce((sum, qty) => sum + Number(qty || 0), 0);
   }
+  if (product.stock !== undefined && product.stock !== null) {
+    return Number(product.stock);
+  }
+  return null;
+}
 
+export function isProductSoldOut(product: Product): boolean {
   if (product.inStock === false) {
     return true;
   }
 
-  const variantStock = getVariantStock(product);
-  if (Object.keys(variantStock).length > 0) {
-    return Object.values(variantStock).reduce((sum, qty) => sum + Number(qty || 0), 0) <= 0;
+  const totalStock = getProductTotalStock(product);
+  if (totalStock !== null) {
+    return totalStock <= 0;
   }
 
-  return (product.stock ?? 999) <= 0;
+  return false;
 }
