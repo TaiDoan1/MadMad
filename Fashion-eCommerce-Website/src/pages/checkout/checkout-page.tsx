@@ -219,17 +219,6 @@ export function CheckoutPage() {
     .filter((e): e is { item: (typeof cartItems)[number]; product: NonNullable<(typeof products)[number]> } => Boolean(e.product));
   const hasDiscountedProducts = resolvedItems.some(({ product }) => (product.discountPercent ?? 0) > 0);
 
-  const getProductImageForColor = (product: (typeof products)[number], color: string) => {
-    const cleanColor = (color || "").trim();
-    const colorImages = product.colorImages ?? {};
-    return (
-      colorImages[`${cleanColor}-front`] ||
-      colorImages[cleanColor] ||
-      product.images?.[0] ||
-      product.image
-    );
-  };
-
   // Coupon no longer auto-cleared when discounted products exist in the cart
 
   const memberConfig = currentMember ? tierConfigs.find((c) => c.tier === currentMember.tier) : null;

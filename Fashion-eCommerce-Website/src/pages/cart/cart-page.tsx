@@ -9,6 +9,7 @@ import { useLanguage } from "@/features/settings/context/language-context";
 import { useToast } from "@/components/common/toast";
 import { useStorefrontSettings } from "@/features/settings/context/storefront-settings-context";
 import { isGiftProduct } from "@/utils/gift-eligibility";
+import { getProductImageForColor } from "@/utils/product-image";
 
 export function CartPage() {
   const { products } = useProducts();
@@ -27,17 +28,6 @@ export function CartPage() {
   } = useCart();
 
   const { settings } = useStorefrontSettings();
-
-  const getProductImageForColor = (product: (typeof products)[number], color: string) => {
-    const cleanColor = (color || "").trim();
-    const colorImages = product.colorImages ?? {};
-    return (
-      colorImages[`${cleanColor}-front`] ||
-      colorImages[cleanColor] ||
-      product.images?.[0] ||
-      product.image
-    );
-  };
 
   const resolvedItems = cartItems
     .map((item) => ({

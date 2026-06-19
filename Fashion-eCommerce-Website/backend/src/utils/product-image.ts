@@ -29,7 +29,11 @@ const COLOR_EQUIVALENTS: Record<string, string[]> = {
 };
 
 function normalizeColor(value: string): string {
-  return value.trim().toLowerCase().replace(/\s+/g, " ");
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/[/|]+/g, " ")
+    .replace(/\s+/g, " ");
 }
 
 function colorsEquivalent(a: string, b: string): boolean {
@@ -42,15 +46,27 @@ function colorsEquivalent(a: string, b: string): boolean {
   return leftAliases.includes(right) || rightAliases.includes(left);
 }
 
+function colorLookupVariants(color: string): string[] {
+  const clean = color.trim();
+  if (!clean) return [];
+
+  const variants = new Set<string>([clean]);
+  variants.add(clean.replace(/[/|]+/g, " ").replace(/\s+/g, " ").trim());
+  variants.add(clean.replace(/\s+/g, "/").trim());
+  return [...variants].filter(Boolean);
+}
+
 function findColorImageUrl(colorImages: Record<string, string>, color: string): string | undefined {
   const cleanColor = color.trim();
   if (!cleanColor) return undefined;
 
-  const directFront = colorImages[`${cleanColor}-front`];
-  if (directFront) return directFront;
+  for (const variant of colorLookupVariants(cleanColor)) {
+    const directFront = colorImages[`${variant}-front`];
+    if (directFront) return directFront;
 
-  const direct = colorImages[cleanColor];
-  if (direct) return direct;
+    const direct = colorImages[variant];
+    if (direct) return direct;
+  }
 
   let fallbackBack: string | undefined;
 

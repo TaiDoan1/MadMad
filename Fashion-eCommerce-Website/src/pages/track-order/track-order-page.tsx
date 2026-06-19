@@ -1,11 +1,14 @@
 import { useState, useEffect } from "react";
 import { useOrders } from "@/features/orders/context/order-context";
+import { useProducts } from "@/features/products/context/product-context";
 import { Search, MapPin, Truck, ShieldCheck, DollarSign, Calendar, Clock, Lock, XCircle, MessageCircle, Mail, AlertTriangle } from "lucide-react";
 import { API_URL, GOOGLE_CLIENT_ID } from "@/config/api";
 import { useLanguage } from "@/features/settings/context/language-context";
+import { resolveColorCodedItemImage } from "@/utils/product-image";
 
 export function TrackOrderPage() {
   const { orders, updateOrderStatus } = useOrders();
+  const { products } = useProducts();
   const { formatPrice, t } = useLanguage();
   
   const maskPhone = (phoneStr: string) => {
@@ -398,7 +401,7 @@ export function TrackOrderPage() {
                           <div key={i} className="flex gap-4 items-center">
                             <div className="w-14 h-16 bg-stone-50 border border-black/5 rounded-lg overflow-hidden flex-shrink-0">
                               <img
-                                src={item.productImage || item.product?.image || ""}
+                                src={resolveColorCodedItemImage(item, products)}
                                 alt={item.productName || item.product?.name || ""}
                                 className="w-full h-full object-cover"
                               />

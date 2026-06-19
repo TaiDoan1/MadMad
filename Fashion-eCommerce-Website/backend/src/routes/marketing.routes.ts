@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { prisma } from "../config/prisma";
 import { getVariantAvailable } from "../utils/product-stock";
+import { getProductImageForColorFromDb, isStoredImageMismatch } from "../utils/product-image";
 import {
   deductProductStockWithLog,
   restoreProductStockWithLog,
@@ -49,6 +50,39 @@ function buildMonthWhere(month?: string) {
     },
   };
 }
+
+router.post("/sync-item-images", async (_req, res, next) => {
+  try {
+    const giftItems = await prisma.marketingGiftItem.findMany({
+      where: { color: { not: "" } },
+    });
+
+    const productIds = [...new Set(giftItems.map((item) => item.productId).filter(Boolean))];
+    const products = productIds.length
+      ? await prisma.product.findMany({ where: { id: { in: productIds } } })
+      : [];
+    const productMap = new Map(products.map((product) => [product.id, product]));
+
+    let updated = 0;
+    for (const item of giftItems) {
+      const product = productMap.get(item.productId);
+      if (!product || !item.color?.trim()) continue;
+
+      const expectedImage = getProductImageForColorFromDb(product, item.color);
+      if (!isStoredImageMismatch(item.productImage ?? "", expectedImage)) continue;
+
+      await prisma.marketingGiftItem.update({
+        where: { id: item.id },
+        data: { productImage: expectedImage },
+      });
+      updated += 1;
+    }
+
+    res.json({ updated, total: giftItems.length });
+  } catch (error) {
+    next(error);
+  }
+});
 
 router.get("/stats", async (req, res, next) => {
   try {
@@ -131,7 +165,7 @@ router.post("/", async (req, res, next) => {
         normalizedItems.push({
           productId: product.id,
           productName: product.name,
-          productImage: product.image,
+          productImage: getProductImageForColorFromDb(product, color),
           color,
           size,
           quantity,

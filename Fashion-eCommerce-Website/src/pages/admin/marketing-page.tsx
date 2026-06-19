@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import {
   Gift,
@@ -25,6 +25,10 @@ import {
   buildMarketingMonthOptions,
   downloadMarketingCsv,
 } from "@/utils/marketing-export";
+import {
+  getProductImageForColor,
+  resolveColorCodedItemImage,
+} from "@/utils/product-image";
 
 const PLATFORMS = ["Instagram", "TikTok", "YouTube", "Facebook", "Khác"];
 
@@ -50,7 +54,9 @@ export function AdminMarketingPage() {
     createGift,
     cancelGift,
     deleteExportedGifts,
+    syncMarketingItemImages,
   } = useMarketing();
+  const imageSyncStarted = useRef(false);
 
   const monthOptions = useMemo(() => buildMarketingMonthOptions(), []);
   const selectedMonthLabel =
@@ -99,6 +105,19 @@ export function AdminMarketingPage() {
   const draftTotalCost = draftProductValue + Math.max(0, cashAmount);
 
   const formatMoney = (value: number) => `${value.toLocaleString("vi-VN")}đ`;
+
+  useEffect(() => {
+    if (products.length === 0 || imageSyncStarted.current) return;
+    imageSyncStarted.current = true;
+
+    void syncMarketingItemImages().then((result) => {
+      if (result.updated > 0) {
+        showToast(`Đã đồng bộ ảnh màu cho ${result.updated} dòng quà tặng marketing.`, "success");
+      }
+    }).catch(() => {
+      imageSyncStarted.current = false;
+    });
+  }, [products.length, syncMarketingItemImages, showToast]);
 
   const resetCreateForm = () => {
     setKolName("");
@@ -169,7 +188,7 @@ export function AdminMarketingPage() {
         {
           productId: String(selectedProduct.id),
           productName: selectedProduct.name,
-          productImage: selectedProduct.image,
+          productImage: getProductImageForColor(selectedProduct, selectedColor),
           color: selectedColor,
           size: selectedSize,
           quantity: itemQuantity,
@@ -397,13 +416,11 @@ export function AdminMarketingPage() {
                       <div className="space-y-2">
                         {gift.items.map((item) => (
                           <div key={`${gift.id}-${item.id}`} className="flex items-center gap-2">
-                            {item.productImage ? (
-                              <ImageWithFallback
-                                src={item.productImage}
-                                alt={item.productName}
-                                className="h-10 w-10 rounded-lg object-cover"
-                              />
-                            ) : null}
+                            <ImageWithFallback
+                              src={resolveColorCodedItemImage(item, products)}
+                              alt={item.productName}
+                              className="h-10 w-10 rounded-lg object-cover"
+                            />
                             <div>
                               <p className="text-xs font-bold text-black">{item.productName}</p>
                               <p className="text-[11px] text-black/45">
@@ -641,7 +658,11 @@ export function AdminMarketingPage() {
                             className="flex items-center justify-between rounded-xl border border-black/5 bg-white px-4 py-3"
                           >
                             <div className="flex items-center gap-3">
-                              <ImageWithFallback src={item.productImage} alt={item.productName} className="h-12 w-12 rounded-lg object-cover" />
+                              <ImageWithFallback
+                                src={resolveColorCodedItemImage(item, products)}
+                                alt={item.productName}
+                                className="h-12 w-12 rounded-lg object-cover"
+                              />
                               <div>
                                 <p className="text-sm font-bold text-black">{item.productName}</p>
                                 <p className="text-xs text-black/45">

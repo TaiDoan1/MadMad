@@ -6,6 +6,7 @@ import { useCart } from "@/features/cart/context/cart-context";
 import { useProducts } from "@/features/products/context/product-context";
 import { useLanguage } from "@/features/settings/context/language-context";
 import { isGiftProduct } from "@/utils/gift-eligibility";
+import { getProductImageForColor } from "@/utils/product-image";
 
 interface CartDrawerProps {
   open: boolean;
@@ -16,17 +17,6 @@ export function CartDrawer({ open, onClose }: CartDrawerProps) {
   const { products } = useProducts();
   const { cartItems, subtotal, updateItemQuantity, removeFromCart } = useCart();
   const { formatPrice, t, translate } = useLanguage();
-
-  const getProductImageForColor = (product: (typeof products)[number], color: string) => {
-    const cleanColor = (color || "").trim();
-    const colorImages = product.colorImages ?? {};
-    return (
-      colorImages[`${cleanColor}-front`] ||
-      colorImages[cleanColor] ||
-      product.images?.[0] ||
-      product.image
-    );
-  };
 
   const resolvedItems = cartItems
     .map((item) => ({
