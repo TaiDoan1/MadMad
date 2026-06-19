@@ -1,6 +1,10 @@
 import { Router } from "express";
 import { prisma } from "../config/prisma";
-import { deductStockData, getVariantAvailable, restoreStockData } from "../utils/product-stock";
+import { getVariantAvailable } from "../utils/product-stock";
+import {
+  deductProductStockWithLog,
+  restoreProductStockWithLog,
+} from "../services/stock-movement.service";
 
 const router = Router();
 
@@ -136,13 +140,19 @@ router.post("/", async (req, res, next) => {
         });
       }
 
+      const giftNumber = buildGiftNumber();
+
       for (const item of normalizedItems) {
-        const product = await tx.product.findUnique({ where: { id: item.productId } });
-        if (!product) continue;
-        const nextStock = deductStockData(product, item.color, item.size, item.quantity);
-        await tx.product.update({
-          where: { id: item.productId },
-          data: nextStock,
+        await deductProductStockWithLog(tx, {
+          productId: item.productId,
+          productName: item.productName,
+          color: item.color,
+          size: item.size,
+          quantity: item.quantity,
+          reason: "MARKETING_GIFT",
+          referenceType: "marketing_gift",
+          referenceId: giftNumber,
+          referenceLabel: giftNumber,
         });
       }
 
@@ -152,7 +162,7 @@ router.post("/", async (req, res, next) => {
 
       return tx.marketingGift.create({
         data: {
-          giftNumber: buildGiftNumber(),
+          giftNumber,
           kolName: kolName.trim(),
           kolHandle: kolHandle?.trim() || null,
           platform: platform?.trim() || null,
@@ -193,12 +203,17 @@ router.put("/:id/cancel", async (req, res, next) => {
 
     const updated = await prisma.$transaction(async (tx) => {
       for (const item of gift.items) {
-        const product = await tx.product.findUnique({ where: { id: item.productId } });
-        if (!product) continue;
-        const nextStock = restoreStockData(product, item.color, item.size, item.quantity);
-        await tx.product.update({
-          where: { id: item.productId },
-          data: nextStock,
+        await restoreProductStockWithLog(tx, {
+          productId: item.productId,
+          productName: item.productName,
+          color: item.color,
+          size: item.size,
+          quantity: item.quantity,
+          reason: "MARKETING_GIFT_CANCEL",
+          referenceType: "marketing_gift",
+          referenceId: gift.giftNumber,
+          referenceLabel: gift.giftNumber,
+          notes: "Hoàn kho do hủy phiếu tặng KOL/KOC",
         });
       }
 

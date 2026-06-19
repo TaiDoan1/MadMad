@@ -53,7 +53,7 @@ export function AdminOrdersPage() {
   const { showToast } = useToast();
   const { settings } = useStorefrontSettings();
   const { orders, updateOrderStatus, updateOrderPaymentStatus, updateOrderInternalNote, addOrder, updateOrderItem } = useOrders();
-  const { products, updateProduct, refreshProducts } = useProducts();
+  const { products, refreshProducts } = useProducts();
   const { members, tierConfigs, setMembers } = useMembership(); // Đọc danh sách tất cả thành viên VIP
 
   const handleTogglePaid = (order: Order, isPaid: boolean) => {
@@ -481,6 +481,7 @@ export function AdminOrdersPage() {
   const handleStatusUpdate = (order: Order, newStatus: Order["status"]) => {
     updateOrderStatus(order.id, newStatus);
     setSelectedOrder({ ...order, status: newStatus });
+    refreshProducts();
 
     if (newStatus === "completed") {
       const targetPhone = order.customerPhone.trim().replace(/\s+/g, "");
@@ -516,61 +517,11 @@ export function AdminOrdersPage() {
     }
 
     if (newStatus === "cancelled" && order.status !== "cancelled") {
-      order.items.forEach((item) => {
-        if (isPreOrderItem(item)) return;
-        const product = products.find((p) => String(p.id) === String(item.productId));
-        if (product) {
-          const nextProduct = { ...product };
-          const key = `${item.color}-${item.size}`;
-
-          if (nextProduct.variantStock && nextProduct.variantStock[key] !== undefined) {
-            nextProduct.variantStock = {
-              ...nextProduct.variantStock,
-              [key]: nextProduct.variantStock[key] + item.quantity,
-            };
-            nextProduct.inStock = true;
-            updateProduct(product.id, nextProduct);
-            showToast(`📦 Đã hoàn trả +${item.quantity} biến thể [${item.color}-${item.size}] của "${product.name}" về kho hàng!`, "success");
-          } else if (nextProduct.stock !== undefined) {
-            nextProduct.stock = nextProduct.stock + item.quantity;
-            nextProduct.inStock = true;
-            updateProduct(product.id, nextProduct);
-            showToast(`📦 Đã hoàn trả +${item.quantity} sản phẩm "${product.name}" về kho hàng!`, "success");
-          }
-        }
-      });
+      showToast(`📦 Đã hoàn kho cho đơn ${order.orderNumber} (hủy đơn)`, "success");
     }
 
     if (newStatus !== "cancelled" && order.status === "cancelled") {
-      order.items.forEach((item) => {
-        if (isPreOrderItem(item)) return;
-        const product = products.find((p) => String(p.id) === String(item.productId));
-        if (product) {
-          const nextProduct = { ...product };
-          const key = `${item.color}-${item.size}`;
-
-          if (nextProduct.variantStock && nextProduct.variantStock[key] !== undefined) {
-            const currentStock = nextProduct.variantStock[key];
-            nextProduct.variantStock = {
-              ...nextProduct.variantStock,
-              [key]: Math.max(0, currentStock - item.quantity),
-            };
-            const totalStock = Object.values(nextProduct.variantStock).reduce((sum, v) => (sum as number) + (v as number), 0);
-            if (totalStock === 0) {
-              nextProduct.inStock = false;
-            }
-            updateProduct(product.id, nextProduct);
-            showToast(`📦 Đã khấu trừ -${item.quantity} biến thể [${item.color}-${item.size}] của "${product.name}" khỏi kho (Hoàn tác hủy đơn)!`, "info");
-          } else if (nextProduct.stock !== undefined) {
-            nextProduct.stock = Math.max(0, nextProduct.stock - item.quantity);
-            if (nextProduct.stock === 0) {
-              nextProduct.inStock = false;
-            }
-            updateProduct(product.id, nextProduct);
-            showToast(`📦 Đã khấu trừ -${item.quantity} sản phẩm "${product.name}" khỏi kho (Hoàn tác hủy đơn)!`, "info");
-          }
-        }
-      });
+      showToast(`📦 Đã trừ kho lại cho đơn ${order.orderNumber} (hoàn tác hủy)`, "info");
     }
   };
 
@@ -620,35 +571,7 @@ export function AdminOrdersPage() {
     };
 
     addOrder(newOrder);
-
-    // Tự động trừ tồn kho khi tạo đơn hàng thủ công (đồng bộ bãi kho)
-    manualItems.forEach((item) => {
-      if (isPreOrderItem(item)) return;
-      const product = products.find((p) => String(p.id) === String(item.productId));
-      if (product) {
-        const nextProduct = { ...product };
-        const key = `${item.color}-${item.size}`;
-
-        if (nextProduct.variantStock && nextProduct.variantStock[key] !== undefined) {
-          const currentStock = nextProduct.variantStock[key];
-          nextProduct.variantStock = {
-            ...nextProduct.variantStock,
-            [key]: Math.max(0, currentStock - item.quantity),
-          };
-          const totalStock = Object.values(nextProduct.variantStock).reduce((sum, v) => (sum as number) + (v as number), 0);
-          if (totalStock === 0) {
-            nextProduct.inStock = false;
-          }
-        } else if (nextProduct.stock !== undefined) {
-          const nextStock = Math.max(0, nextProduct.stock - item.quantity);
-          nextProduct.stock = nextStock;
-          if (nextStock === 0) {
-            nextProduct.inStock = false;
-          }
-        }
-        updateProduct(product.id, nextProduct);
-      }
-    });
+    refreshProducts();
 
     if (manualSource === "pos" && checkedMember) {
       const pointsEarned = Math.max(1, Math.floor(manualTotal / 10000));

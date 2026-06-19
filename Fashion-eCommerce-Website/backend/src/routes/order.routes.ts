@@ -1,7 +1,11 @@
 import { Router } from "express";
 import { prisma } from "../config/prisma";
 import { sendOrderConfirmationEmail } from "../services/email.service";
-import { deductStockData, restoreStockData } from "../utils/product-stock";
+import {
+  deductProductStockWithLog,
+  restoreProductStockWithLog,
+  resolveOrderStockReason,
+} from "../services/stock-movement.service";
 
 const router = Router();
 
@@ -146,42 +150,65 @@ router.post("/", async (req, res, next) => {
         ? containsPreOrder
         : normalizedItems.some((item: any) => !!item?.isPreOrder);
 
-    const newOrder = await prisma.order.create({
-      data: {
-        orderNumber: finalOrderNumber,
-        customerName,
-        customerEmail: customerEmail || "",
-        customerPhone,
-        street: street || "Mua trực tiếp tại Shop",
-        ward: ward || "",
-        district: district || "",
-        province: province || "",
-        subtotal: Number(subtotal),
-        discount: Number(discount || 0),
-        shipping: Number(shipping || 0),
-        total: Number(total),
-        paymentMethod: paymentMethod || "cod",
-        shippingMethod: shippingMethod || "standard",
-        status: status || "pending",
-        isPaid: !!isPaid,
-        containsPreOrder: computedContainsPreOrder,
-        notes: notes || "",
-        couponCode: couponCode || "",
-        items: {
-          create: normalizedItems.map((item: any) => ({
-            productId: String(item.productId || item.product?.id || ""),
-            productName: String(item.productName || item.product?.name || ""),
-            productImage: String(item.productImage || item.product?.image || ""),
-            isPreOrder: !!item.isPreOrder,
-            preOrderDays: item.preOrderDays !== undefined && item.preOrderDays !== null ? Number(item.preOrderDays) : null,
-            quantity: Number(item.quantity),
-            size: item.size,
+    const newOrder = await prisma.$transaction(async (tx) => {
+      const created = await tx.order.create({
+        data: {
+          orderNumber: finalOrderNumber,
+          customerName,
+          customerEmail: customerEmail || "",
+          customerPhone,
+          street: street || "Mua trực tiếp tại Shop",
+          ward: ward || "",
+          district: district || "",
+          province: province || "",
+          subtotal: Number(subtotal),
+          discount: Number(discount || 0),
+          shipping: Number(shipping || 0),
+          total: Number(total),
+          paymentMethod: paymentMethod || "cod",
+          shippingMethod: shippingMethod || "standard",
+          status: status || "pending",
+          isPaid: !!isPaid,
+          containsPreOrder: computedContainsPreOrder,
+          notes: notes || "",
+          couponCode: couponCode || "",
+          items: {
+            create: normalizedItems.map((item: any) => ({
+              productId: String(item.productId || item.product?.id || ""),
+              productName: String(item.productName || item.product?.name || ""),
+              productImage: String(item.productImage || item.product?.image || ""),
+              isPreOrder: !!item.isPreOrder,
+              preOrderDays: item.preOrderDays !== undefined && item.preOrderDays !== null ? Number(item.preOrderDays) : null,
+              quantity: Number(item.quantity),
+              size: item.size,
+              color: item.color,
+              price: Number(item.price)
+            }))
+          }
+        },
+        include: { items: true }
+      });
+
+      const orderStatus = status || "pending";
+      if (orderStatus !== "cancelled") {
+        const stockReason = resolveOrderStockReason(finalOrderNumber);
+        for (const item of created.items) {
+          if (item.isPreOrder) continue;
+          await deductProductStockWithLog(tx, {
+            productId: item.productId,
+            productName: item.productName,
             color: item.color,
-            price: Number(item.price)
-          }))
+            size: item.size,
+            quantity: item.quantity,
+            reason: stockReason,
+            referenceType: "order",
+            referenceId: String(created.id),
+            referenceLabel: finalOrderNumber,
+          });
         }
-      },
-      include: { items: true }
+      }
+
+      return created;
     });
 
     // Nếu đơn hàng tạo ra đã Thành công ngay (ví dụ POS/Cửa hàng đã thanh toán và giao trực tiếp), tự tích điểm VIP
@@ -210,9 +237,57 @@ router.put("/:id/status", async (req, res, next) => {
       return res.status(400).json({ message: "Thiếu trạng thái cập nhật!" });
     }
 
-    const updatedOrder = await prisma.order.update({
+    const existingOrder = await prisma.order.findUnique({
       where: { id: orderId },
-      data: { status }
+      include: { items: true },
+    });
+
+    if (!existingOrder) {
+      return res.status(404).json({ message: "Không tìm thấy đơn hàng" });
+    }
+
+    const updatedOrder = await prisma.$transaction(async (tx) => {
+      if (status === "cancelled" && existingOrder.status !== "cancelled") {
+        for (const item of existingOrder.items) {
+          if (item.isPreOrder) continue;
+          await restoreProductStockWithLog(tx, {
+            productId: item.productId,
+            productName: item.productName,
+            color: item.color,
+            size: item.size,
+            quantity: item.quantity,
+            reason: "ORDER_CANCEL",
+            referenceType: "order",
+            referenceId: String(existingOrder.id),
+            referenceLabel: existingOrder.orderNumber,
+            notes: "Hoàn kho do hủy đơn hàng",
+          });
+        }
+      }
+
+      if (status !== "cancelled" && existingOrder.status === "cancelled") {
+        for (const item of existingOrder.items) {
+          if (item.isPreOrder) continue;
+          await deductProductStockWithLog(tx, {
+            productId: item.productId,
+            productName: item.productName,
+            color: item.color,
+            size: item.size,
+            quantity: item.quantity,
+            reason: "ORDER_UNCANCEL",
+            referenceType: "order",
+            referenceId: String(existingOrder.id),
+            referenceLabel: existingOrder.orderNumber,
+            notes: "Trừ kho lại khi hoàn tác hủy đơn",
+          });
+        }
+      }
+
+      return tx.order.update({
+        where: { id: orderId },
+        data: { status },
+        include: { items: true },
+      });
     });
 
     // Tự động tích lũy điểm VIP nếu trạng thái chuyển sang Completed (Đã thành công)
@@ -221,7 +296,10 @@ router.put("/:id/status", async (req, res, next) => {
     }
 
     res.json(updatedOrder);
-  } catch (error) {
+  } catch (error: any) {
+    if (error?.message?.includes("Không đủ tồn kho")) {
+      return res.status(400).json({ message: error.message });
+    }
     next(error);
   }
 });
@@ -375,23 +453,30 @@ router.put("/:id/items/:itemId", async (req, res, next) => {
 
     const result = await prisma.$transaction(async (tx) => {
       if (shouldAdjustStock) {
-        const oldProduct = await tx.product.findUnique({ where: { id: item.productId } });
-        if (oldProduct) {
-          const restored = restoreStockData(oldProduct, item.color, item.size, item.quantity);
-          await tx.product.update({
-            where: { id: oldProduct.id },
-            data: restored,
-          });
-        }
+        await restoreProductStockWithLog(tx, {
+          productId: item.productId,
+          productName: item.productName,
+          color: item.color,
+          size: item.size,
+          quantity: item.quantity,
+          reason: "ORDER_EDIT_IN",
+          referenceType: "order",
+          referenceId: String(orderId),
+          referenceLabel: order.orderNumber,
+          notes: `Hoàn kho dòng cũ trước khi chỉnh sửa đơn`,
+        });
 
-        const freshNewProduct = await tx.product.findUnique({ where: { id: nextProductId } });
-        if (!freshNewProduct) {
-          throw new Error("Không tìm thấy sản phẩm mới");
-        }
-        const deducted = deductStockData(freshNewProduct, nextColor, nextSize, nextQuantity);
-        await tx.product.update({
-          where: { id: nextProductId },
-          data: deducted,
+        await deductProductStockWithLog(tx, {
+          productId: nextProductId,
+          productName: nextProductName,
+          color: nextColor,
+          size: nextSize,
+          quantity: nextQuantity,
+          reason: "ORDER_EDIT_OUT",
+          referenceType: "order",
+          referenceId: String(orderId),
+          referenceLabel: order.orderNumber,
+          notes: `Trừ kho dòng mới sau khi chỉnh sửa đơn`,
         });
       }
 

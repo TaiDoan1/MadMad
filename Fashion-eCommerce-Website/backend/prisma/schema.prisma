@@ -209,6 +209,24 @@ model MarketingGiftItem {
   lineTotal    Int
 }
 
+// 📒 Nhật ký biến động tồn kho (hoàn đơn, trả hàng, đơn hàng, marketing...)
+model StockMovement {
+  id             String   @id @default(uuid())
+  productId      String
+  productName    String
+  color          String
+  size           String
+  quantityDelta  Int
+  reason         String
+  referenceType  String?
+  referenceId    String?
+  referenceLabel String?
+  stockBefore    Int?
+  stockAfter     Int?
+  notes          String?
+  createdAt      DateTime @default(now())
+}
+
 // 🚨 Bảng Nhật ký Lỗi Hệ Thống (SystemLog)
 model SystemLog {
   id        Int      @id @default(autoincrement())
