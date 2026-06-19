@@ -21,6 +21,7 @@ interface OrderContextValue {
   updateOrderPaymentStatus: (id: number, isPaid: boolean) => Promise<void>;
   updateOrderInternalNote: (id: number, internalNote: string) => Promise<void>;
   updateOrderItem: (orderId: number, itemId: number, input: UpdateOrderItemInput) => Promise<Order>;
+  syncOrderItemImages: () => Promise<{ updated: number; total: number }>;
   getOrderById: (id: number) => Order | undefined;
 }
 
@@ -331,6 +332,22 @@ const LOCAL_ORDERS_KEY = "madmad_orders_fallback";
           current.map((order) => (order.id === orderId ? updatedOrder : order)),
         );
         return updatedOrder;
+      },
+
+      syncOrderItemImages: async () => {
+        const response = await fetch(`${API_URL}/orders/sync-item-images`, {
+          method: "POST",
+        });
+
+        if (!response.ok) {
+          throw new Error("Không thể đồng bộ ảnh màu cho đơn hàng");
+        }
+
+        const result = (await response.json()) as { updated: number; total: number };
+        if (result.updated > 0) {
+          await loadOrders(true);
+        }
+        return result;
       },
 
       getOrderById: (id) => orders.find((order) => order.id === id),

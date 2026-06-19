@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   Eye,
   Printer,
@@ -46,15 +46,17 @@ import { useStorefrontSettings } from "@/features/settings/context/storefront-se
 import type { Order, OrderItem } from "@/types/order";
 import type { Product } from "@/types/product";
 import { parseOrderItemEditMeta, ORDER_EDIT_FIELD_STYLES } from "@/utils/order-edit";
+import { getProductImageForColor, resolveOrderItemDisplayImage } from "@/utils/product-image";
 
 import { useToast } from "@/components/common/toast";
 
 export function AdminOrdersPage() {
   const { showToast } = useToast();
   const { settings } = useStorefrontSettings();
-  const { orders, updateOrderStatus, updateOrderPaymentStatus, updateOrderInternalNote, addOrder, updateOrderItem } = useOrders();
+  const { orders, updateOrderStatus, updateOrderPaymentStatus, updateOrderInternalNote, addOrder, updateOrderItem, syncOrderItemImages } = useOrders();
   const { products, refreshProducts } = useProducts();
   const { members, tierConfigs, setMembers } = useMembership(); // Đọc danh sách tất cả thành viên VIP
+  const imageSyncStarted = useRef(false);
 
   const handleTogglePaid = (order: Order, isPaid: boolean) => {
     updateOrderPaymentStatus(order.id, isPaid);
@@ -80,6 +82,20 @@ export function AdminOrdersPage() {
     setCurrentPage(1);
   }, [searchTerm, filterStatus, filterSource, filterCustomerType, filterShippingMethod]);
 
+  // Đồng bộ ảnh màu áo cho các đơn hàng cũ (chạy một lần khi đã tải catalog sản phẩm)
+  useEffect(() => {
+    if (products.length === 0 || imageSyncStarted.current) return;
+    imageSyncStarted.current = true;
+
+    void syncOrderItemImages().then((result) => {
+      if (result.updated > 0) {
+        showToast(`Đã đồng bộ ảnh màu cho ${result.updated} dòng sản phẩm trong đơn hàng.`, "success");
+      }
+    }).catch(() => {
+      imageSyncStarted.current = false;
+    });
+  }, [products.length, syncOrderItemImages, showToast]);
+
   // Manual Shipping Method State
   const [manualShippingMethod, setManualShippingMethod] = useState<"standard" | "express">("standard");
 
@@ -88,6 +104,19 @@ export function AdminOrdersPage() {
   const [showOrderDetail, setShowOrderDetail] = useState(false);
   const [editingOrderItem, setEditingOrderItem] = useState<{ order: Order; item: OrderItem } | null>(null);
   const [isSavingOrderItem, setIsSavingOrderItem] = useState(false);
+
+  useEffect(() => {
+    if (!selectedOrder) return;
+    const refreshed = orders.find((order) => order.id === selectedOrder.id);
+    if (!refreshed) return;
+
+    const imageChanged = refreshed.items.some(
+      (item, index) => item.productImage !== selectedOrder.items[index]?.productImage,
+    );
+    if (imageChanged) {
+      setSelectedOrder(refreshed);
+    }
+  }, [orders, selectedOrder]);
 
   // Batch Printing States
   const [selectedOrderIds, setSelectedOrderIds] = useState<number[]>([]);
@@ -233,17 +262,6 @@ export function AdminOrdersPage() {
       0,
     );
     return { containsPreOrder: true, maxPreOrderDays: maxPreOrderDays || 7 };
-  };
-
-  const getProductImageForColor = (product: Product, color: string) => {
-    const cleanColor = color.trim();
-    const colorImages = product.colorImages ?? {};
-    return (
-      colorImages[`${cleanColor}-front`] ||
-      colorImages[cleanColor] ||
-      product.images?.[0] ||
-      product.image
-    );
   };
 
   const handleSaveOrderItemEdit = async (input: { productId: string; color: string; size: string; quantity: number }) => {
@@ -1280,7 +1298,7 @@ export function AdminOrdersPage() {
                         >
                           <div className="h-12 w-10 overflow-hidden rounded bg-stone-100 border border-black/5 flex-shrink-0 font-mono">
                             <ImageWithFallback
-                              src={item.productImage || item.product?.image || ""}
+                              src={resolveOrderItemDisplayImage(item, products)}
                               alt={item.productName || item.product?.name || ""}
                               className="h-full w-full object-cover"
                             />
@@ -1903,7 +1921,7 @@ export function AdminOrdersPage() {
                     >
                       <div className="h-16 w-14 overflow-hidden rounded-lg bg-stone-100 border border-black/5 flex-shrink-0">
                         <ImageWithFallback
-                          src={item.productImage || item.product?.image || ""}
+                          src={resolveOrderItemDisplayImage(item, products)}
                           alt={productName}
                           className="h-full w-full object-cover"
                         />

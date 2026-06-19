@@ -6,6 +6,7 @@ import {
   restoreProductStockWithLog,
   resolveOrderStockReason,
 } from "../services/stock-movement.service";
+import { getProductImageForColorFromDb, isStoredImageMismatch } from "../utils/product-image";
 
 const router = Router();
 
@@ -92,6 +93,42 @@ router.get("/", async (req, res, next) => {
   }
 });
 
+// POST /api/orders/sync-item-images - Đồng bộ ảnh sản phẩm theo màu cho các dòng đơn hàng cũ
+router.post("/sync-item-images", async (_req, res, next) => {
+  try {
+    const orderItems = await prisma.orderItem.findMany({
+      where: {
+        color: { not: "" },
+      },
+    });
+
+    const productIds = [...new Set(orderItems.map((item) => item.productId).filter(Boolean))];
+    const products = productIds.length
+      ? await prisma.product.findMany({ where: { id: { in: productIds } } })
+      : [];
+    const productMap = new Map(products.map((product) => [product.id, product]));
+
+    let updated = 0;
+    for (const item of orderItems) {
+      const product = productMap.get(item.productId);
+      if (!product || !item.color?.trim()) continue;
+
+      const expectedImage = getProductImageForColorFromDb(product, item.color);
+      if (!isStoredImageMismatch(item.productImage, expectedImage)) continue;
+
+      await prisma.orderItem.update({
+        where: { id: item.id },
+        data: { productImage: expectedImage },
+      });
+      updated += 1;
+    }
+
+    res.json({ updated, total: orderItems.length });
+  } catch (error) {
+    next(error);
+  }
+});
+
 // 2. GET /api/orders/:id - Chi tiết đơn hàng
 router.get("/:id", async (req, res, next) => {
   try {
@@ -150,6 +187,44 @@ router.post("/", async (req, res, next) => {
         ? containsPreOrder
         : normalizedItems.some((item: any) => !!item?.isPreOrder);
 
+    const productIds = [
+      ...new Set(
+        normalizedItems
+          .map((item: any) => String(item.productId || item.product?.id || ""))
+          .filter(Boolean),
+      ),
+    ];
+    const products = productIds.length
+      ? await prisma.product.findMany({ where: { id: { in: productIds } } })
+      : [];
+    const productMap = new Map(products.map((product) => [product.id, product]));
+
+    const itemsForCreate = normalizedItems.map((item: any) => {
+      const productId = String(item.productId || item.product?.id || "");
+      const product = productMap.get(productId);
+      const color = String(item.color || "");
+      let productImage = String(item.productImage || item.product?.image || "");
+      if (product && color) {
+        const resolvedImage = getProductImageForColorFromDb(product, color);
+        if (resolvedImage) productImage = resolvedImage;
+      }
+
+      return {
+        productId,
+        productName: String(item.productName || item.product?.name || ""),
+        productImage,
+        isPreOrder: !!item.isPreOrder,
+        preOrderDays:
+          item.preOrderDays !== undefined && item.preOrderDays !== null
+            ? Number(item.preOrderDays)
+            : null,
+        quantity: Number(item.quantity),
+        size: item.size,
+        color: item.color,
+        price: Number(item.price),
+      };
+    });
+
     const newOrder = await prisma.$transaction(async (tx) => {
       const created = await tx.order.create({
         data: {
@@ -173,20 +248,10 @@ router.post("/", async (req, res, next) => {
           notes: notes || "",
           couponCode: couponCode || "",
           items: {
-            create: normalizedItems.map((item: any) => ({
-              productId: String(item.productId || item.product?.id || ""),
-              productName: String(item.productName || item.product?.name || ""),
-              productImage: String(item.productImage || item.product?.image || ""),
-              isPreOrder: !!item.isPreOrder,
-              preOrderDays: item.preOrderDays !== undefined && item.preOrderDays !== null ? Number(item.preOrderDays) : null,
-              quantity: Number(item.quantity),
-              size: item.size,
-              color: item.color,
-              price: Number(item.price)
-            }))
-          }
+            create: itemsForCreate,
+          },
         },
-        include: { items: true }
+        include: { items: true },
       });
 
       const orderStatus = status || "pending";
@@ -434,7 +499,7 @@ router.put("/:id/items/:itemId", async (req, res, next) => {
     const nextSize = String(size).trim();
     const nextProductId = String(productId);
     const nextProductName = nextProduct.name;
-    const nextProductImage = nextProduct.image || "";
+    const nextProductImage = getProductImageForColorFromDb(nextProduct, nextColor);
     const nextIsPreOrder = !!nextProduct.isPreOrder;
     const nextPreOrderDays = nextProduct.preOrderDays ?? null;
     const nextPrice = Number(nextProduct.price);

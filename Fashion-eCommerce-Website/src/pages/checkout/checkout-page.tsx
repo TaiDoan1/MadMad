@@ -27,6 +27,7 @@ import type { Order, OrderItem } from "@/types/order";
 import { API_URL } from "@/config/api";
 import { safeLocalStorage } from "@/utils/safe-storage";
 import { getGiftEligibilityMessage, isGiftEligible, isGiftProduct } from "@/utils/gift-eligibility";
+import { getProductImageForColor } from "@/utils/product-image";
 
 /* ── Shared input className ───────────────────────────────────────────── */
 const inputCls =
@@ -364,6 +365,9 @@ export function CheckoutPage() {
       const itemIsPreOrder = Boolean(product.isPreOrder || (product.tags ?? []).some((tag) => tag.toLowerCase().includes("pre-order")));
       return {
         product,
+        productId: product.id,
+        productName: product.name,
+        productImage: getProductImageForColor(product, item.color),
         quantity: item.quantity,
         size: item.size,
         color: item.color,
