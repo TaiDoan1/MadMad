@@ -5,6 +5,8 @@ import {
   restoreProductStockWithLog,
   type StockMovementReason,
 } from "../services/stock-movement.service";
+import { inferReceivedFromMovements } from "../services/inventory-receipt.service";
+import { parseVariantStock } from "../utils/product-stock";
 
 const router = Router();
 
@@ -17,6 +19,7 @@ const VALID_REASONS: StockMovementReason[] = [
   "ORDER_EDIT_OUT",
   "MARKETING_GIFT",
   "MARKETING_GIFT_CANCEL",
+  "STOCK_RECEIPT",
   "ADMIN_ADJUSTMENT",
   "RETURN",
   "REFUND",
@@ -182,6 +185,34 @@ router.post("/returns", async (req, res, next) => {
     res.status(201).json(movement);
   } catch (error: any) {
     res.status(400).json({ message: error.message || "Không thể ghi nhận hoàn/trả hàng" });
+  }
+});
+
+router.post("/backfill-received", async (_req, res, next) => {
+  try {
+    const products = await prisma.product.findMany();
+    let updated = 0;
+
+    for (const product of products) {
+      const receivedVariant = parseVariantStock(product.receivedVariantStock);
+      const hasReceived =
+        product.receivedStock !== null && product.receivedStock !== undefined
+          ? product.receivedStock > 0
+          : Object.values(receivedVariant).some((qty) => Number(qty) > 0);
+
+      if (hasReceived) continue;
+
+      const inferred = await inferReceivedFromMovements(product);
+      await prisma.product.update({
+        where: { id: product.id },
+        data: inferred,
+      });
+      updated += 1;
+    }
+
+    res.json({ updated, total: products.length });
+  } catch (error) {
+    next(error);
   }
 });
 

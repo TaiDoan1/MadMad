@@ -33,6 +33,8 @@ model Product {
   orderIndex   Int      @default(0) // Lưu thứ tự sắp xếp sản phẩm kéo thả
   stock        Int?     @default(999)
   variantStock String?  @default("{}")
+  receivedStock Int?
+  receivedVariantStock String? @default("{}")
   inStock      Boolean  @default(true)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt

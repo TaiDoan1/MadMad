@@ -1,6 +1,12 @@
 import { Router } from "express";
 import { prisma } from "../config/prisma";
 import { uploadToCloudinary } from "../utils/cloudinary";
+import { parseVariantStock } from "../utils/product-stock";
+import {
+  applyProductInventoryChange,
+  buildInitialReceivedStock,
+  logInitialInventoryReceipt,
+} from "../services/inventory-receipt.service";
 
 const router = Router();
 
@@ -21,7 +27,9 @@ const parseProduct = (p: any) => ({
   colorImages: p.colorImages ? JSON.parse(p.colorImages) : {},
   images: p.images ? JSON.parse(p.images) : [],
   variantStock: p.variantStock ? JSON.parse(p.variantStock) : {},
+  receivedVariantStock: p.receivedVariantStock ? JSON.parse(p.receivedVariantStock) : {},
   stock: p.stock !== null && p.stock !== undefined ? Number(p.stock) : 999,
+  receivedStock: p.receivedStock !== null && p.receivedStock !== undefined ? Number(p.receivedStock) : null,
   inStock: p.inStock !== null && p.inStock !== undefined ? !!p.inStock : true,
   originalPrice: p.originalPrice !== null && p.originalPrice !== undefined ? Number(p.originalPrice) : null,
   discountPercent: p.discountPercent !== null && p.discountPercent !== undefined ? Number(p.discountPercent) : null,
@@ -201,7 +209,22 @@ router.post("/", async (req, res, next) => {
           })
         : null;
 
-    const newProduct = await prisma.product.create({
+    const stockValue = stock !== undefined && stock !== null ? Number(stock) : 999;
+    const variantStockObj =
+      variantStock !== undefined && variantStock !== null
+        ? typeof variantStock === "object"
+          ? variantStock
+          : JSON.parse(String(variantStock))
+        : {};
+    const received = buildInitialReceivedStock(stockValue, variantStockObj, {
+      sizes: sizesStr,
+      colors: colorsStr,
+      stock: stockValue,
+      variantStock: JSON.stringify(variantStockObj),
+    });
+
+    const newProduct = await prisma.$transaction(async (tx) => {
+      const created = await tx.product.create({
       data: {
         name,
         sku,
@@ -217,8 +240,10 @@ router.post("/", async (req, res, next) => {
         colorImages: JSON.stringify(cleanData.colorImages),
         images: JSON.stringify(cleanData.images),
         isFeatured: !!isFeatured,
-        stock: stock !== undefined && stock !== null ? Number(stock) : 999,
-        variantStock: variantStock !== undefined && variantStock !== null ? (typeof variantStock === "object" ? JSON.stringify(variantStock) : String(variantStock)) : "{}",
+        stock: stockValue,
+        variantStock: JSON.stringify(variantStockObj),
+        receivedStock: received.receivedStock,
+        receivedVariantStock: received.receivedVariantStock,
         inStock: inStock !== undefined ? !!inStock : true,
         originalPrice: originalPrice !== undefined && originalPrice !== null ? Number(originalPrice) : null,
         discountPercent: discountPercent !== undefined && discountPercent !== null ? Number(discountPercent) : null,
@@ -227,7 +252,11 @@ router.post("/", async (req, res, next) => {
         preOrderDays: isPreOrder ? (preOrderDays !== undefined && preOrderDays !== null ? Number(preOrderDays) : 7) : null,
         isGiftProduct: isGiftProduct !== undefined ? !!isGiftProduct : false,
         giftConditionsJson: isGiftProduct ? giftConditionsJson : null,
-      }
+      },
+      });
+
+      await logInitialInventoryReceipt(tx, created, stockValue, variantStockObj);
+      return created;
     });
 
     res.status(201).json(parseProduct(newProduct));
@@ -289,7 +318,37 @@ router.put("/:id", async (req, res, next) => {
           : null
         : undefined;
 
-    const updatedProduct = await prisma.product.update({
+    const existing = await prisma.product.findUnique({ where: { id } });
+    if (!existing) {
+      return res.status(404).json({ message: "Không tìm thấy sản phẩm" });
+    }
+
+    const variantStockObj =
+      variantStock !== undefined && variantStock !== null
+        ? typeof variantStock === "object"
+          ? variantStock
+          : JSON.parse(String(variantStock))
+        : undefined;
+
+    const updatedProduct = await prisma.$transaction(async (tx) => {
+      let inventoryPatch: {
+        stock?: number | null;
+        variantStock?: string;
+        receivedStock?: number | null;
+        receivedVariantStock?: string;
+      } = {};
+
+      if (stock !== undefined || variantStockObj !== undefined) {
+        const change = await applyProductInventoryChange(tx, existing, {
+          stock: stock !== undefined && stock !== null ? Number(stock) : undefined,
+          variantStock: variantStockObj,
+        });
+        if (change) {
+          inventoryPatch = change;
+        }
+      }
+
+      return tx.product.update({
       where: { id },
       data: {
         name,
@@ -318,8 +377,16 @@ router.put("/:id", async (req, res, next) => {
         colorImages: colorImagesStr,
         images: imagesStr,
         isFeatured: isFeatured !== undefined ? !!isFeatured : undefined,
-        stock: stock !== undefined && stock !== null ? Number(stock) : undefined,
-        variantStock: variantStock !== undefined && variantStock !== null ? (typeof variantStock === "object" ? JSON.stringify(variantStock) : String(variantStock)) : undefined,
+        stock: inventoryPatch.stock !== undefined ? inventoryPatch.stock : stock !== undefined && stock !== null ? Number(stock) : undefined,
+        variantStock:
+          inventoryPatch.variantStock ??
+          (variantStock !== undefined && variantStock !== null
+            ? typeof variantStock === "object"
+              ? JSON.stringify(variantStock)
+              : String(variantStock)
+            : undefined),
+        receivedStock: inventoryPatch.receivedStock,
+        receivedVariantStock: inventoryPatch.receivedVariantStock,
         inStock: inStock !== undefined ? !!inStock : undefined,
         originalPrice: originalPrice !== undefined ? (originalPrice !== null ? Number(originalPrice) : null) : undefined,
         discountPercent: discountPercent !== undefined ? (discountPercent !== null ? Number(discountPercent) : null) : undefined,
@@ -331,7 +398,8 @@ router.put("/:id", async (req, res, next) => {
             : (preOrderDays !== undefined ? (preOrderDays !== null ? Number(preOrderDays) : null) : undefined),
         isGiftProduct: isGiftProduct !== undefined ? !!isGiftProduct : undefined,
         giftConditionsJson,
-      }
+      },
+      });
     });
 
     res.json(parseProduct(updatedProduct));

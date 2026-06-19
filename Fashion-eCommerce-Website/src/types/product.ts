@@ -31,6 +31,8 @@ export interface Product {
   inStock: boolean;
   stock?: number;
   variantStock?: Record<string, number>;
+  receivedStock?: number | null;
+  receivedVariantStock?: Record<string, number>;
   isPreOrder?: boolean;
   preOrderDays?: number;
   isGiftProduct?: boolean;

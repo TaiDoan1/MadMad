@@ -7,6 +7,7 @@ export type StockMovementReason =
   | "ORDER_EDIT_OUT"
   | "MARKETING_GIFT"
   | "MARKETING_GIFT_CANCEL"
+  | "STOCK_RECEIPT"
   | "ADMIN_ADJUSTMENT"
   | "RETURN"
   | "REFUND";
@@ -45,6 +46,7 @@ export const STOCK_MOVEMENT_REASON_LABELS: Record<StockMovementReason, string> =
   ORDER_EDIT_OUT: "Sửa đơn — trừ kho dòng mới",
   MARKETING_GIFT: "Tặng KOL/KOC",
   MARKETING_GIFT_CANCEL: "Hủy tặng KOL — hoàn kho",
+  STOCK_RECEIPT: "Nhập kho / tăng tồn",
   ADMIN_ADJUSTMENT: "Admin chỉnh tồn kho",
   RETURN: "Hoàn hàng / trả hàng",
   REFUND: "Hoàn tiền / trả đơn",

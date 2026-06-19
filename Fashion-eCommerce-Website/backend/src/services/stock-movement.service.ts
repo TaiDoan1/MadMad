@@ -10,6 +10,7 @@ export type StockMovementReason =
   | "ORDER_EDIT_OUT"
   | "MARKETING_GIFT"
   | "MARKETING_GIFT_CANCEL"
+  | "STOCK_RECEIPT"
   | "ADMIN_ADJUSTMENT"
   | "RETURN"
   | "REFUND";

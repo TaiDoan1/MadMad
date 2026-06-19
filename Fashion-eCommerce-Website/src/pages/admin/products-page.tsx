@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState, type DragEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type DragEvent } from "react";
 import { createPortal } from "react-dom";
-import { Edit, Eye, Image as ImageIcon, Plus, Search, Settings2, Trash2, X } from "lucide-react";
+import { ClipboardList, Edit, Eye, Image as ImageIcon, Plus, Search, Settings2, Trash2, X } from "lucide-react";
 
 import { ImageUploadInput } from "@/components/common/image-upload-input";
 import { ImageWithFallback } from "@/components/common/image-with-fallback";
@@ -14,7 +14,20 @@ import {
 import { listSizeGuideProfileKeys } from "@/utils/size-recommendation";
 import type { SizeGuideRow } from "@/types/size-guide";
 import type { Product } from "@/types/product";
-import { getForceSoldOutFromProduct, getProductTotalStock, isProductSoldOut, resolveSoldOutState, syncProductStock, usesVariantStock } from "@/utils/product-stock";
+import type { StockMovement } from "@/types/stock-movement";
+import { STOCK_MOVEMENT_REASON_LABELS } from "@/types/stock-movement";
+import { API_URL } from "@/config/api";
+import {
+  formatStockRatio,
+  getForceSoldOutFromProduct,
+  getProductStockSummary,
+  getProductTotalStock,
+  getVariantReceivedStock,
+  isProductSoldOut,
+  resolveSoldOutState,
+  syncProductStock,
+  usesVariantStock,
+} from "@/utils/product-stock";
 import { useToast } from "@/components/common/toast";
 
 type ProductOptions = {
@@ -127,6 +140,10 @@ export function AdminProductsPage() {
   const [stockType, setStockType] = useState<"simple" | "variant">("simple");
   const [stockInput, setStockInput] = useState<number>(999);
   const [variantStockDraft, setVariantStockDraft] = useState<Record<string, number>>({});
+  const [stockHistoryProduct, setStockHistoryProduct] = useState<Product | null>(null);
+  const [stockHistoryMovements, setStockHistoryMovements] = useState<StockMovement[]>([]);
+  const [stockHistoryLoading, setStockHistoryLoading] = useState(false);
+  const receivedBackfillStarted = useRef(false);
   const [forceSoldOut, setForceSoldOut] = useState(false);
 
   const [formTab, setFormTab] = useState<"info" | "attributes" | "media" | "inventory">("info");
@@ -171,10 +188,47 @@ export function AdminProductsPage() {
     setSizeGuideCustomRows([]);
   };
 
-  const getProductStockInfo = (prod: Product) => {
-    const total = getProductTotalStock(prod);
-    return { total, isVariant: usesVariantStock(prod) };
+  useEffect(() => {
+    if (products.length === 0 || receivedBackfillStarted.current) return;
+    receivedBackfillStarted.current = true;
+
+    void fetch(`${API_URL}/inventory/backfill-received`, { method: "POST" })
+      .then((response) => (response.ok ? response.json() : null))
+      .then(async (result) => {
+        if (result?.updated > 0) {
+          await refreshProducts();
+        }
+      })
+      .catch(() => {
+        receivedBackfillStarted.current = false;
+      });
+  }, [products.length, refreshProducts]);
+
+  const openStockHistory = async (product: Product) => {
+    setStockHistoryProduct(product);
+    setStockHistoryLoading(true);
+    setStockHistoryMovements([]);
+    try {
+      const params = new URLSearchParams({
+        productId: String(product.id),
+        month: "all",
+      });
+      const response = await fetch(`${API_URL}/inventory/movements?${params.toString()}`);
+      if (response.ok) {
+        const data = await response.json();
+        setStockHistoryMovements(Array.isArray(data) ? data : []);
+      }
+    } catch {
+      showToast("Không thể tải lịch sử trừ kho", "error");
+    } finally {
+      setStockHistoryLoading(false);
+    }
   };
+
+  const editStockSummary = useMemo(
+    () => (selectedProduct ? getProductStockSummary(selectedProduct) : null),
+    [selectedProduct],
+  );
 
   const normalizedImages = productImages.map((value) => value.trim()).filter(Boolean);
   const mainImage = normalizedImages[0] || formData.image.trim();
@@ -243,44 +297,47 @@ export function AdminProductsPage() {
   const canReorderProducts = !searchTerm && selectedCategory === "all";
 
   const renderStockBadge = (product: Product, compact = false) => {
-    const stockInfo = getProductStockInfo(product);
+    const summary = getProductStockSummary(product);
     const sizeClass = compact ? "px-2.5 py-1 text-[11px]" : "px-3 py-1 text-xs";
+    const title =
+      summary.received !== null
+        ? `Còn ${summary.current ?? 0} / Đã nhập kho ${summary.received}${
+            summary.sold !== null ? ` · Đã bán ${summary.sold}` : ""
+          } · Bấm để xem lịch sử`
+        : `${summary.isVariant ? "Tổng tồn kho theo biến thể" : "Tồn kho tổng"} · Bấm để xem lịch sử`;
 
-    if (isProductSoldOut(product)) {
-      return (
-        <span className={`rounded-full bg-red-100 font-bold text-red-800 ${sizeClass}`}>
-          Hết hàng
-        </span>
-      );
-    }
-
-    if (stockInfo.total === null) {
-      return (
-        <span className={`rounded-full bg-green-100 font-semibold text-green-800 ${sizeClass}`}>
-          Còn hàng
-        </span>
-      );
-    }
-    if (stockInfo.total <= 0) {
-      return <span className={`rounded-full bg-red-100 font-bold text-red-800 ${sizeClass}`}>Hết hàng (0)</span>;
-    }
-    if (stockInfo.total <= 5) {
-      return (
-        <span
-          className={`rounded-full bg-amber-105 font-bold text-amber-800 ${sizeClass}`}
-          title={stockInfo.isVariant ? "Tổng tồn kho = tổng các size" : "Tồn kho tổng"}
-        >
-          Sắp hết ({stockInfo.total})
-        </span>
-      );
-    }
-    return (
-      <span
-        className={`rounded-full bg-green-100 font-semibold text-green-800 ${sizeClass}`}
-        title={stockInfo.isVariant ? "Tổng tồn kho = tổng các size" : "Tồn kho tổng"}
+    const badgeButton = (label: string, className: string) => (
+      <button
+        type="button"
+        onClick={() => void openStockHistory(product)}
+        className={`rounded-full font-bold transition-colors hover:opacity-80 ${sizeClass} ${className}`}
+        title={title}
       >
-        Còn {stockInfo.total} chiếc
-      </span>
+        {label}
+      </button>
+    );
+
+    if (isProductSoldOut(product) || (summary.current !== null && summary.current <= 0)) {
+      return badgeButton(
+        summary.received !== null ? `0/${summary.received}` : "Hết hàng",
+        "bg-red-100 text-red-800",
+      );
+    }
+
+    if (summary.current === null) {
+      return badgeButton("Còn hàng", "bg-green-100 font-semibold text-green-800");
+    }
+
+    if (summary.current <= 5) {
+      return badgeButton(
+        summary.received !== null ? summary.display : `Sắp hết (${summary.current})`,
+        "bg-amber-100 text-amber-800",
+      );
+    }
+
+    return badgeButton(
+      summary.received !== null ? summary.display : `Còn ${summary.current} chiếc`,
+      "bg-green-100 font-semibold text-green-800",
     );
   };
 
@@ -634,6 +691,9 @@ export function AdminProductsPage() {
                     </button>
                     <button type="button" className="rounded p-2 text-blue-600 transition-colors hover:bg-blue-100" title="Ảnh theo màu" onClick={() => openProductColorImages(product)}>
                       <ImageIcon className="h-4 w-4" />
+                    </button>
+                    <button type="button" className="rounded p-2 transition-colors hover:bg-muted" title="Lịch sử trừ kho" onClick={() => void openStockHistory(product)}>
+                      <ClipboardList className="h-4 w-4" />
                     </button>
                     <button type="button" className="rounded p-2 text-red-600 transition-colors hover:bg-red-100" title="Xóa" onClick={() => handleDeleteProduct(product)}>
                       <Trash2 className="h-4 w-4" />
@@ -1295,6 +1355,40 @@ export function AdminProductsPage() {
               {/* TAB 4: INVENTORY */}
               {formTab === "inventory" && (
                 <div className="space-y-6 animate-fadeIn">
+                  {showEditModal && editStockSummary && (
+                    <div className="grid gap-3 sm:grid-cols-3">
+                      <div className="rounded-2xl border border-black/10 bg-stone-50 px-4 py-3">
+                        <p className="text-[9px] font-extrabold uppercase tracking-widest text-black/45">Đã nhập kho</p>
+                        <p className="mt-1 text-xl font-black font-mono text-black">
+                          {editStockSummary.received ?? "—"}
+                        </p>
+                      </div>
+                      <div className="rounded-2xl border border-black/10 bg-stone-50 px-4 py-3">
+                        <p className="text-[9px] font-extrabold uppercase tracking-widest text-black/45">Còn lại</p>
+                        <p className="mt-1 text-xl font-black font-mono text-black">
+                          {editStockSummary.current ?? "—"}
+                        </p>
+                      </div>
+                      <div className="rounded-2xl border border-black/10 bg-stone-50 px-4 py-3">
+                        <p className="text-[9px] font-extrabold uppercase tracking-widest text-black/45">Đã bán / tặng</p>
+                        <p className="mt-1 text-xl font-black font-mono text-black">
+                          {editStockSummary.sold ?? "—"}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
+                  {showEditModal && selectedProduct && (
+                    <button
+                      type="button"
+                      onClick={() => void openStockHistory(selectedProduct)}
+                      className="inline-flex items-center gap-2 rounded-xl border border-black/10 bg-white px-4 py-2.5 text-[10px] font-extrabold uppercase tracking-widest text-black hover:bg-stone-50"
+                    >
+                      <ClipboardList className="h-4 w-4" />
+                      Xem lịch sử trừ kho
+                    </button>
+                  )}
+
                   <div className="space-y-1.5">
                     <label className="block text-[9px] font-extrabold tracking-widest uppercase text-black/50">
                       Phương thức quản lý kho
@@ -1340,6 +1434,11 @@ export function AdminProductsPage() {
                       <label className="block text-[9px] font-extrabold tracking-widest uppercase text-black/50">
                         Số lượng tồn kho tổng
                       </label>
+                      <p className="text-[9px] text-black/45">
+                        {editStockSummary?.received
+                          ? `Hiển thị: ${formatStockRatio(stockInput, editStockSummary.received)} (còn / đã nhập)`
+                          : "Lần đầu lưu số lượng này sẽ được ghi nhận là tổng nhập kho."}
+                      </p>
                       <input
                         type="number"
                         min={0}
@@ -1357,7 +1456,11 @@ export function AdminProductsPage() {
                           <p className="text-[9px] font-extrabold tracking-widest uppercase text-black/50">
                             Tổng tồn kho
                           </p>
-                          <p className="text-[9px] text-black/40 mt-0.5">Tự động = tổng số lượng của tất cả size hiện có</p>
+                          <p className="text-[9px] text-black/40 mt-0.5">
+                            {editStockSummary?.received
+                              ? `Còn / Đã nhập: ${formatStockRatio(draftTotalStock, editStockSummary.received)}`
+                              : "Tự động = tổng số lượng của tất cả size hiện có"}
+                          </p>
                         </div>
                         <p className="text-lg font-black font-mono text-black">{draftTotalStock} chiếc</p>
                       </div>
@@ -1372,11 +1475,21 @@ export function AdminProductsPage() {
                           selectedSizes.map((size) => {
                             const key = `${color}-${size}`;
                             const value = variantStockDraft[key] !== undefined ? variantStockDraft[key] : 0;
+                            const received = selectedProduct
+                              ? getVariantReceivedStock(selectedProduct, color, size)
+                              : null;
                             return (
                               <div key={key} className="flex items-center justify-between bg-white px-4 py-2.5 border border-black/5 rounded-xl gap-4">
-                                <span className="text-[10px] font-black uppercase tracking-wider text-black">
-                                  {color} <span className="opacity-40">/</span> {size}
-                                </span>
+                                <div className="min-w-0">
+                                  <span className="text-[10px] font-black uppercase tracking-wider text-black">
+                                    {color} <span className="opacity-40">/</span> {size}
+                                  </span>
+                                  {received !== null && (
+                                    <p className="text-[9px] text-black/40 font-mono mt-0.5">
+                                      Còn / Đã nhập: {formatStockRatio(value, received)}
+                                    </p>
+                                  )}
+                                </div>
                                 <input
                                   type="number"
                                   min={0}
@@ -1959,6 +2072,85 @@ export function AdminProductsPage() {
           </div>
         </div>
       , document.body) : null}
+
+      {stockHistoryProduct
+        ? createPortal(
+            <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/60 p-4">
+              <div className="flex max-h-[85vh] w-full max-w-4xl flex-col overflow-hidden rounded-3xl bg-white shadow-2xl">
+                <div className="flex items-center justify-between border-b border-black/10 px-6 py-4">
+                  <div>
+                    <h3 className="text-lg font-black uppercase text-black">Lịch sử trừ kho</h3>
+                    <p className="text-xs text-black/45 mt-1">{stockHistoryProduct.name}</p>
+                    <p className="text-[11px] font-mono text-black/55 mt-1">
+                      {(() => {
+                        const summary = getProductStockSummary(stockHistoryProduct);
+                        return summary.received !== null
+                          ? `Còn ${summary.current ?? 0} / Đã nhập ${summary.received}`
+                          : `Tồn hiện tại: ${summary.current ?? "—"}`;
+                      })()}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setStockHistoryProduct(null)}
+                    className="rounded-full p-2 hover:bg-stone-100"
+                  >
+                    <X className="h-5 w-5" />
+                  </button>
+                </div>
+
+                <div className="flex-1 overflow-y-auto p-4">
+                  {stockHistoryLoading ? (
+                    <p className="py-10 text-center text-sm text-black/45">Đang tải lịch sử...</p>
+                  ) : stockHistoryMovements.length === 0 ? (
+                    <p className="py-10 text-center text-sm text-black/45">Chưa có biến động tồn kho cho sản phẩm này.</p>
+                  ) : (
+                    <table className="w-full text-left text-xs">
+                      <thead>
+                        <tr className="border-b border-black/10 text-[10px] uppercase tracking-wider text-black/45">
+                          <th className="px-3 py-2">Thời gian</th>
+                          <th className="px-3 py-2">Màu / Size</th>
+                          <th className="px-3 py-2 text-center">Biến động</th>
+                          <th className="px-3 py-2">Nguyên nhân</th>
+                          <th className="px-3 py-2">Tham chiếu</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {stockHistoryMovements.map((row) => (
+                          <tr key={row.id} className="border-b border-black/5">
+                            <td className="px-3 py-3 font-mono text-[11px] whitespace-nowrap">
+                              {new Date(row.createdAt).toLocaleString("vi-VN")}
+                            </td>
+                            <td className="px-3 py-3 uppercase">
+                              {row.color} / {row.size}
+                              {row.stockBefore != null && row.stockAfter != null && (
+                                <p className="mt-0.5 text-[10px] text-black/40 normal-case">
+                                  {row.stockBefore} → {row.stockAfter}
+                                </p>
+                              )}
+                            </td>
+                            <td className="px-3 py-3 text-center font-black font-mono">
+                              <span className={row.quantityDelta < 0 ? "text-red-700" : "text-green-700"}>
+                                {row.quantityDelta > 0 ? `+${row.quantityDelta}` : row.quantityDelta}
+                              </span>
+                            </td>
+                            <td className="px-3 py-3">
+                              {STOCK_MOVEMENT_REASON_LABELS[row.reason] ?? row.reason}
+                            </td>
+                            <td className="px-3 py-3 text-[11px] text-black/55">
+                              {row.referenceLabel || row.notes || "—"}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  )}
+                </div>
+              </div>
+            </div>,
+            document.body,
+          )
+        : null}
     </div>
   );
 }

@@ -1,0 +1,3 @@
+ALTER TABLE "Product"
+  ADD COLUMN IF NOT EXISTS "receivedStock" INTEGER,
+  ADD COLUMN IF NOT EXISTS "receivedVariantStock" TEXT DEFAULT '{}';
