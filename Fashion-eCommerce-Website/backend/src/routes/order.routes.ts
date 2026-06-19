@@ -7,6 +7,7 @@ import {
   resolveOrderStockReason,
 } from "../services/stock-movement.service";
 import { getProductImageForColorFromDb, isStoredImageMismatch } from "../utils/product-image";
+import { syncMissingOrderStockDeductions } from "../services/order-stock-sync.service";
 
 const router = Router();
 
@@ -124,6 +125,16 @@ router.post("/sync-item-images", async (_req, res, next) => {
     }
 
     res.json({ updated, total: orderItems.length });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// POST /api/orders/sync-stock-deductions - Trừ kho cho các dòng đơn hàng chưa có nhật ký tồn kho
+router.post("/sync-stock-deductions", async (_req, res, next) => {
+  try {
+    const result = await syncMissingOrderStockDeductions();
+    res.json(result);
   } catch (error) {
     next(error);
   }

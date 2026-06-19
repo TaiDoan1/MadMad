@@ -22,6 +22,13 @@ interface OrderContextValue {
   updateOrderInternalNote: (id: number, internalNote: string) => Promise<void>;
   updateOrderItem: (orderId: number, itemId: number, input: UpdateOrderItemInput) => Promise<Order>;
   syncOrderItemImages: () => Promise<{ updated: number; total: number }>;
+  syncOrderStockDeductions: () => Promise<{
+    deductedItems: number;
+    skippedItems: number;
+    giftItemsDeducted: number;
+    ordersChecked: number;
+    errors: string[];
+  }>;
   getOrderById: (id: number) => Order | undefined;
 }
 
@@ -345,6 +352,22 @@ const LOCAL_ORDERS_KEY = "madmad_orders_fallback";
 
         const result = (await response.json()) as { updated: number; total: number };
         if (result.updated > 0) {
+          await loadOrders(true);
+        }
+        return result;
+      },
+
+      syncOrderStockDeductions: async () => {
+        const response = await fetch(`${API_URL}/orders/sync-stock-deductions`, {
+          method: "POST",
+        });
+
+        if (!response.ok) {
+          throw new Error("Không thể đồng bộ trừ kho cho đơn hàng");
+        }
+
+        const result = await response.json();
+        if (result.deductedItems > 0) {
           await loadOrders(true);
         }
         return result;

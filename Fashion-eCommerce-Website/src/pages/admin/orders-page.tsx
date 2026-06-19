@@ -47,16 +47,19 @@ import type { Order, OrderItem } from "@/types/order";
 import type { Product } from "@/types/product";
 import { parseOrderItemEditMeta, ORDER_EDIT_FIELD_STYLES } from "@/utils/order-edit";
 import { getProductImageForColor, resolveOrderItemDisplayImage } from "@/utils/product-image";
+import { getProductStockSummary } from "@/utils/product-stock";
+import { isGiftProduct } from "@/utils/gift-eligibility";
 
 import { useToast } from "@/components/common/toast";
 
 export function AdminOrdersPage() {
   const { showToast } = useToast();
   const { settings } = useStorefrontSettings();
-  const { orders, updateOrderStatus, updateOrderPaymentStatus, updateOrderInternalNote, addOrder, updateOrderItem, syncOrderItemImages } = useOrders();
+  const { orders, updateOrderStatus, updateOrderPaymentStatus, updateOrderInternalNote, addOrder, updateOrderItem, syncOrderItemImages, syncOrderStockDeductions } = useOrders();
   const { products, refreshProducts } = useProducts();
   const { members, tierConfigs, setMembers } = useMembership(); // Đọc danh sách tất cả thành viên VIP
   const imageSyncStarted = useRef(false);
+  const stockSyncStarted = useRef(false);
 
   const handleTogglePaid = (order: Order, isPaid: boolean) => {
     updateOrderPaymentStatus(order.id, isPaid);
@@ -95,6 +98,29 @@ export function AdminOrdersPage() {
       imageSyncStarted.current = false;
     });
   }, [products.length, syncOrderItemImages, showToast]);
+
+  useEffect(() => {
+    if (products.length === 0 || stockSyncStarted.current) return;
+    stockSyncStarted.current = true;
+
+    void syncOrderStockDeductions()
+      .then(async (result) => {
+        if (result.deductedItems > 0) {
+          await refreshProducts();
+          const giftNote =
+            result.giftItemsDeducted > 0
+              ? ` (trong đó ${result.giftItemsDeducted} dòng hàng tặng)`
+              : "";
+          showToast(`Đã trừ kho cho ${result.deductedItems} dòng đơn hàng chưa ghi nhận${giftNote}.`, "success");
+        }
+        if (result.errors.length > 0) {
+          showToast(`Một số đơn không trừ được kho: ${result.errors.slice(0, 2).join("; ")}`, "warning");
+        }
+      })
+      .catch(() => {
+        stockSyncStarted.current = false;
+      });
+  }, [products.length, syncOrderStockDeductions, refreshProducts, showToast]);
 
   // Manual Shipping Method State
   const [manualShippingMethod, setManualShippingMethod] = useState<"standard" | "express">("standard");
@@ -1913,6 +1939,13 @@ export function AdminOrdersPage() {
                   {selectedOrder.items.map((item, index) => {
                     const editMeta = parseOrderItemEditMeta(item.editMeta);
                     const productName = item.productName || item.product?.name || "";
+                    const catalogProduct = products.find(
+                      (product) => String(product.id) === String(item.productId),
+                    );
+                    const isGiftLine =
+                      item.price <= 0 ||
+                      Boolean(catalogProduct && isGiftProduct(catalogProduct));
+                    const stockSummary = catalogProduct ? getProductStockSummary(catalogProduct) : null;
 
                     return (
                     <div
@@ -1935,12 +1968,25 @@ export function AdminOrdersPage() {
                         >
                           {productName}
                         </p>
+                        {isGiftLine && (
+                          <span className="mt-1 inline-block rounded-full bg-emerald-100 px-2 py-0.5 text-[9px] font-black uppercase tracking-wider text-emerald-800">
+                            Hàng tặng
+                          </span>
+                        )}
                         <div className="text-[10px] text-black/45 mt-1 uppercase flex flex-wrap items-center gap-x-2 gap-y-1">
                           <EditedOrderField label="Size" value={item.size} field="size" editMeta={editMeta} />
                           <span>|</span>
                           <EditedOrderField label="Màu" value={item.color} field="color" editMeta={editMeta} />
                           <span>|</span>
                           <span>Số lượng: {item.quantity}</span>
+                          {stockSummary?.received !== null && stockSummary?.received !== undefined && (
+                            <>
+                              <span>|</span>
+                              <span className="font-mono normal-case">
+                                Kho: {stockSummary.display}
+                              </span>
+                            </>
+                          )}
                         </div>
                         {editMeta && (
                           <p className="mt-1 text-[9px] font-semibold text-black/50">
