@@ -27,10 +27,35 @@ export function OrderItemEditModal({
   const [quantity, setQuantity] = useState(item.quantity);
   const [productSearch, setProductSearch] = useState("");
 
-  const selectedProduct = useMemo(
-    () => products.find((product) => String(product.id) === productId),
-    [products, productId],
-  );
+  const selectedProduct = useMemo(() => {
+    const matched = products.find((product) => String(product.id) === productId);
+    if (matched) return matched;
+
+    if (!productId) return null;
+
+    return {
+      id: productId,
+      name: item.productName || item.product?.name || "Sản phẩm trong đơn",
+      price: item.price,
+      image: item.productImage || item.product?.image || "",
+      category: item.product?.category || "",
+      rating: item.product?.rating ?? 0,
+      reviews: item.product?.reviews ?? 0,
+      description: item.product?.description || "",
+      inStock: item.product?.inStock ?? true,
+      colors: item.color
+        ? [item.color, ...(item.product?.colors ?? [])].filter(
+            (value, index, list) => list.indexOf(value) === index,
+          )
+        : item.product?.colors ?? [],
+      sizes: item.size
+        ? [item.size, ...(item.product?.sizes ?? [])].filter(
+            (value, index, list) => list.indexOf(value) === index,
+          )
+        : item.product?.sizes ?? [],
+      isPreOrder: item.isPreOrder ?? false,
+    } as Product;
+  }, [products, productId, item]);
 
   const filteredProducts = useMemo(() => {
     const query = productSearch.trim().toLowerCase();
@@ -54,10 +79,11 @@ export function OrderItemEditModal({
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!selectedProduct || !canEdit) return;
+    if (!color.trim() || !size.trim()) return;
     await onSave({
       productId: String(selectedProduct.id),
-      color,
-      size,
+      color: color.trim(),
+      size: size.trim(),
       quantity,
     });
   };

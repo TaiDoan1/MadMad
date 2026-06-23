@@ -137,17 +137,11 @@ export function AdminOrdersPage() {
   const [isSavingOrderItem, setIsSavingOrderItem] = useState(false);
 
   useEffect(() => {
-    if (!selectedOrder) return;
+    if (!selectedOrder || editingOrderItem) return;
     const refreshed = orders.find((order) => order.id === selectedOrder.id);
     if (!refreshed) return;
-
-    const imageChanged = refreshed.items.some(
-      (item, index) => item.productImage !== selectedOrder.items[index]?.productImage,
-    );
-    if (imageChanged) {
-      setSelectedOrder(refreshed);
-    }
-  }, [orders, selectedOrder]);
+    setSelectedOrder(refreshed);
+  }, [orders, selectedOrder?.id, editingOrderItem]);
 
   // Batch Printing States
   const [selectedOrderIds, setSelectedOrderIds] = useState<number[]>([]);

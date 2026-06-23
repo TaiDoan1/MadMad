@@ -10,6 +10,7 @@ import { getProductImageForColorFromDb, isStoredImageMismatch } from "../utils/p
 import {
   deductOutboundOrderItems,
   isOutboundOrderStatus,
+  orderItemHasStockMovement,
   syncMissingOrderOutboundDeductions,
 } from "../services/stock-outbound.service";
 
@@ -553,22 +554,27 @@ router.put("/:id/items/:itemId", async (req, res, next) => {
       return res.status(400).json({ message: "Không có thay đổi nào để cập nhật!" });
     }
 
-    const shouldAdjustStock = !item.isPreOrder && !nextIsPreOrder && order.status !== "cancelled";
+    const shouldAdjustStock =
+      !item.isPreOrder && !nextIsPreOrder && isOutboundOrderStatus(order.status);
 
     const result = await prisma.$transaction(async (tx) => {
       if (shouldAdjustStock) {
-        await restoreProductStockWithLog(tx, {
-          productId: item.productId,
-          productName: item.productName,
-          color: item.color,
-          size: item.size,
-          quantity: item.quantity,
-          reason: "ORDER_EDIT_IN",
-          referenceType: "order",
-          referenceId: String(orderId),
-          referenceLabel: order.orderNumber,
-          notes: `Hoàn kho dòng cũ trước khi chỉnh sửa đơn`,
-        });
+        const hadStockDeduction = await orderItemHasStockMovement(tx, order, item);
+
+        if (hadStockDeduction) {
+          await restoreProductStockWithLog(tx, {
+            productId: item.productId,
+            productName: item.productName,
+            color: item.color,
+            size: item.size,
+            quantity: item.quantity,
+            reason: "ORDER_EDIT_IN",
+            referenceType: "order",
+            referenceId: String(orderId),
+            referenceLabel: order.orderNumber,
+            notes: `Hoàn kho dòng cũ trước khi chỉnh sửa đơn`,
+          });
+        }
 
         await deductProductStockWithLog(tx, {
           productId: nextProductId,
