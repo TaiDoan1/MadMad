@@ -11,6 +11,7 @@ import {
   RefreshCw,
   Search,
   X,
+  Eye,
 } from "lucide-react";
 
 import { ImageWithFallback } from "@/components/common/image-with-fallback";
@@ -22,6 +23,7 @@ import {
   STOCK_MOVEMENT_REASON_LABELS,
   STOCK_MOVEMENT_REASON_OPTIONS,
   formatStockMovementReference,
+  isEditStockReason,
 } from "@/types/stock-movement";
 import { buildMarketingMonthOptions, getCurrentMonthValue } from "@/utils/marketing-export";
 import { getVariantAvailableStock } from "@/utils/product-stock";
@@ -52,6 +54,9 @@ export function AdminInventoryPage() {
   const [returnOrderRef, setReturnOrderRef] = useState("");
   const [returnNotes, setReturnNotes] = useState("");
   const [productSearch, setProductSearch] = useState("");
+  const [selectedMovement, setSelectedMovement] = useState<StockMovement | null>(null);
+  const [relatedMovements, setRelatedMovements] = useState<StockMovement[]>([]);
+  const [detailLoading, setDetailLoading] = useState(false);
 
   const selectedMonthLabel =
     monthOptions.find((option) => option.value === selectedMonth)?.label ?? selectedMonth;
@@ -229,7 +234,46 @@ export function AdminInventoryPage() {
       year: "numeric",
       hour: "2-digit",
       minute: "2-digit",
+      second: "2-digit",
     });
+
+  const openMovementDetail = async (row: StockMovement) => {
+    setSelectedMovement(row);
+    setRelatedMovements([]);
+    setDetailLoading(true);
+    try {
+      const response = await fetch(`${API_URL}/inventory/movements/${row.id}`);
+      if (response.ok) {
+        const data = (await response.json()) as {
+          movement: StockMovement;
+          related: StockMovement[];
+        };
+        setSelectedMovement(data.movement);
+        setRelatedMovements(data.related ?? []);
+      }
+    } catch {
+      showToast("Không tải được chi tiết biến động", "error");
+    } finally {
+      setDetailLoading(false);
+    }
+  };
+
+  const renderMovementDelta = (row: StockMovement) => {
+    const isIn = row.quantityDelta > 0;
+    return (
+      <span
+        className={`inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-[11px] font-black ${
+          isIn
+            ? "bg-emerald-100 text-emerald-800 border border-emerald-200"
+            : "bg-red-100 text-red-800 border border-red-200"
+        }`}
+      >
+        {isIn ? <ArrowUpCircle className="h-3.5 w-3.5" /> : <ArrowDownCircle className="h-3.5 w-3.5" />}
+        {isIn ? "+" : ""}
+        {row.quantityDelta}
+      </span>
+    );
+  };
 
   return (
     <div className="mx-auto max-w-7xl space-y-6 p-4 md:p-6">
@@ -240,7 +284,7 @@ export function AdminInventoryPage() {
             <h1 className="text-xl font-black uppercase tracking-tight">Lịch Sử Tồn Kho</h1>
           </div>
           <p className="mt-1 text-xs text-black/50">
-            Theo dõi cộng/trừ kho: đơn hàng, hủy đơn, sửa đơn, hoàn trả, tặng KOL...
+            Khi sửa size/màu đơn hàng: + hoàn kho biến thể cũ, − trừ kho biến thể mới (2 dòng riêng).
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -384,18 +428,19 @@ export function AdminInventoryPage() {
                 <th className="px-4 py-3">Nguyên nhân</th>
                 <th className="px-4 py-3">Tham chiếu</th>
                 <th className="px-4 py-3">Ghi chú</th>
+                <th className="px-4 py-3 text-center">Chi tiết</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-black/5">
               {isLoading ? (
                 <tr>
-                  <td colSpan={7} className="px-4 py-12 text-center text-black/40">
+                  <td colSpan={8} className="px-4 py-12 text-center text-black/40">
                     Đang tải lịch sử...
                   </td>
                 </tr>
               ) : movements.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-4 py-12 text-center text-black/40">
+                  <td colSpan={8} className="px-4 py-12 text-center text-black/40">
                     Chưa có biến động tồn kho trong bộ lọc này.
                   </td>
                 </tr>
@@ -407,7 +452,11 @@ export function AdminInventoryPage() {
                   const product = products.find((p) => String(p.id) === row.productId);
 
                   return (
-                    <tr key={row.id} className="hover:bg-stone-50/60">
+                    <tr
+                      key={row.id}
+                      className="cursor-pointer hover:bg-stone-50/60"
+                      onClick={() => void openMovementDetail(row)}
+                    >
                       <td className="px-4 py-3 font-mono text-[11px] text-black/65 whitespace-nowrap">
                         {formatDate(row.createdAt)}
                       </td>
@@ -444,6 +493,11 @@ export function AdminInventoryPage() {
                           {isIn ? "+" : ""}
                           {row.quantityDelta}
                         </span>
+                        {isEditStockReason(row.reason) && (
+                          <p className="mt-1 text-[9px] font-semibold text-violet-700">
+                            {row.reason.includes("_IN") ? "Hoàn dòng cũ" : "Trừ dòng mới"}
+                          </p>
+                        )}
                       </td>
                       <td className="px-4 py-3">
                         <span className="rounded-lg bg-stone-100 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-black/70">
@@ -456,6 +510,19 @@ export function AdminInventoryPage() {
                       <td className="px-4 py-3 text-[11px] text-black/55 max-w-[200px]">
                         {row.notes || "—"}
                       </td>
+                      <td className="px-4 py-3 text-center">
+                        <button
+                          type="button"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            void openMovementDetail(row);
+                          }}
+                          className="inline-flex items-center gap-1 rounded-lg border border-black/10 px-2 py-1.5 text-[9px] font-bold uppercase text-black/60 hover:bg-stone-100"
+                        >
+                          <Eye className="h-3 w-3" />
+                          Xem
+                        </button>
+                      </td>
                     </tr>
                   );
                 })
@@ -464,6 +531,117 @@ export function AdminInventoryPage() {
           </table>
         </div>
       </div>
+
+      {selectedMovement &&
+        createPortal(
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs">
+            <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl border border-black/10 bg-white shadow-2xl">
+              <div className="sticky top-0 z-10 flex items-center justify-between border-b border-black/10 bg-white px-5 py-4">
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-black/45">Chi tiết biến động</p>
+                  <h3 className="text-sm font-black">{selectedMovement.productName}</h3>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedMovement(null);
+                    setRelatedMovements([]);
+                  }}
+                  className="rounded-lg border border-black/10 p-2"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+
+              <div className="space-y-4 p-5">
+                <div className="flex flex-wrap items-center gap-3">
+                  {renderMovementDelta(selectedMovement)}
+                  <span className="rounded-lg bg-stone-100 px-2.5 py-1 text-[10px] font-bold uppercase text-black/70">
+                    {STOCK_MOVEMENT_REASON_LABELS[selectedMovement.reason as StockMovementReason] ??
+                      selectedMovement.reason}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3 text-xs">
+                  <div className="rounded-xl bg-stone-50 p-3">
+                    <p className="text-[9px] font-bold uppercase text-black/45">Thời gian</p>
+                    <p className="mt-1 font-mono font-semibold">{formatDate(selectedMovement.createdAt)}</p>
+                  </div>
+                  <div className="rounded-xl bg-stone-50 p-3">
+                    <p className="text-[9px] font-bold uppercase text-black/45">Biến thể</p>
+                    <p className="mt-1 font-semibold uppercase">
+                      {selectedMovement.color} / {selectedMovement.size}
+                    </p>
+                  </div>
+                  <div className="rounded-xl bg-stone-50 p-3">
+                    <p className="text-[9px] font-bold uppercase text-black/45">Tồn trước → sau</p>
+                    <p className="mt-1 font-mono font-semibold">
+                      {selectedMovement.stockBefore ?? "—"} → {selectedMovement.stockAfter ?? "—"}
+                    </p>
+                  </div>
+                  <div className="rounded-xl bg-stone-50 p-3">
+                    <p className="text-[9px] font-bold uppercase text-black/45">Tham chiếu</p>
+                    <p className="mt-1 font-mono text-[11px] font-semibold">
+                      {formatStockMovementReference(selectedMovement)}
+                    </p>
+                  </div>
+                  <div className="col-span-2 rounded-xl bg-stone-50 p-3">
+                    <p className="text-[9px] font-bold uppercase text-black/45">Ghi chú</p>
+                    <p className="mt-1 text-sm">{selectedMovement.notes || "—"}</p>
+                  </div>
+                  <div className="col-span-2 rounded-xl bg-stone-50 p-3">
+                    <p className="text-[9px] font-bold uppercase text-black/45">Mã sản phẩm</p>
+                    <p className="mt-1 font-mono text-[11px]">{selectedMovement.productId}</p>
+                  </div>
+                </div>
+
+                {detailLoading ? (
+                  <p className="text-center text-sm text-black/45">Đang tải biến động liên quan...</p>
+                ) : relatedMovements.length > 0 ? (
+                  <div className="rounded-xl border border-violet-200 bg-violet-50/40 p-4">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-violet-800">
+                      Biến động cùng tham chiếu (± trong cùng thao tác)
+                    </p>
+                    <div className="mt-3 space-y-2">
+                      {relatedMovements.map((related) => (
+                        <div
+                          key={related.id}
+                          className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-violet-100 bg-white px-3 py-2 text-xs"
+                        >
+                          <div>
+                            <p className="font-bold uppercase">
+                              {related.color} / {related.size}
+                            </p>
+                            <p className="text-[10px] text-black/50">
+                              {STOCK_MOVEMENT_REASON_LABELS[related.reason as StockMovementReason] ?? related.reason}
+                            </p>
+                            <p className="text-[10px] text-black/45">{related.notes || "—"}</p>
+                          </div>
+                          <div className="text-right">
+                            {renderMovementDelta(related)}
+                            <p className="mt-1 font-mono text-[10px] text-black/45">
+                              {related.stockBefore ?? "—"} → {related.stockAfter ?? "—"}
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    {isEditStockReason(selectedMovement.reason) && relatedMovements.length === 1 && (
+                      <p className="mt-3 text-[11px] text-violet-900">
+                        Đây là cặp ± khi sửa đơn/marketing: một dòng hoàn biến thể cũ (+), một dòng trừ biến thể mới (−).
+                      </p>
+                    )}
+                  </div>
+                ) : isEditStockReason(selectedMovement.reason) ? (
+                  <p className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] text-amber-900">
+                    Chưa thấy dòng ± đối ứng trong cùng tham chiếu. Các lần sửa trước đây có thể chỉ ghi nhận trừ kho.
+                  </p>
+                ) : null}
+              </div>
+            </div>
+          </div>,
+          document.body,
+        )}
 
       {showReturnModal &&
         createPortal(

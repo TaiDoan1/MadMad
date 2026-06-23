@@ -4,9 +4,9 @@ import { getVariantAvailable } from "../utils/product-stock";
 import { getProductImageForColorFromDb, isStoredImageMismatch } from "../utils/product-image";
 import {
   deductProductStockWithLog,
+  restoreProductStockWithLog,
 } from "../services/stock-movement.service";
 import {
-  marketingItemHasStockMovement,
   restoreMarketingItemsIfDeducted,
   syncMissingMarketingOutboundDeductions,
 } from "../services/stock-outbound.service";
@@ -284,22 +284,18 @@ router.put("/:id/items/:itemId", async (req, res, next) => {
     }
 
     const updated = await prisma.$transaction(async (tx) => {
-      const giftRef = { giftNumber: gift.giftNumber };
-
-      if (await marketingItemHasStockMovement(tx, giftRef, item)) {
-        await restoreProductStockWithLog(tx, {
-          productId: item.productId,
-          productName: item.productName,
-          color: item.color,
-          size: item.size,
-          quantity: item.quantity,
-          reason: "MARKETING_GIFT_EDIT_IN",
-          referenceType: "marketing_gift",
-          referenceId: gift.giftNumber,
-          referenceLabel: gift.giftNumber,
-          notes: "Hoàn kho dòng cũ trước khi sửa phiếu marketing",
-        });
-      }
+      await restoreProductStockWithLog(tx, {
+        productId: item.productId,
+        productName: item.productName,
+        color: item.color,
+        size: item.size,
+        quantity: item.quantity,
+        reason: "MARKETING_GIFT_EDIT_IN",
+        referenceType: "marketing_gift",
+        referenceId: gift.giftNumber,
+        referenceLabel: gift.giftNumber,
+        notes: `Hoàn kho ${item.color} / ${item.size} (dòng cũ) khi sửa phiếu marketing`,
+      });
 
       await deductProductStockWithLog(tx, {
         productId: nextProductId,
@@ -311,7 +307,7 @@ router.put("/:id/items/:itemId", async (req, res, next) => {
         referenceType: "marketing_gift",
         referenceId: gift.giftNumber,
         referenceLabel: gift.giftNumber,
-        notes: "Trừ kho dòng mới sau khi sửa phiếu marketing",
+        notes: `Trừ kho ${nextColor} / ${nextSize} (dòng mới) khi sửa phiếu marketing`,
       });
 
       await tx.marketingGiftItem.update({

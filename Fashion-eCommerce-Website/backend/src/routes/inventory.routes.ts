@@ -96,6 +96,37 @@ router.get("/movements", async (req, res, next) => {
   }
 });
 
+router.get("/movements/:id", async (req, res, next) => {
+  try {
+    const movement = await prisma.stockMovement.findUnique({
+      where: { id: req.params.id },
+    });
+
+    if (!movement) {
+      return res.status(404).json({ message: "Không tìm thấy biến động tồn kho" });
+    }
+
+    const refLabel = movement.referenceLabel ?? movement.referenceId;
+    const windowStart = new Date(movement.createdAt.getTime() - 2 * 60 * 1000);
+    const windowEnd = new Date(movement.createdAt.getTime() + 2 * 60 * 1000);
+
+    const related = refLabel
+      ? await prisma.stockMovement.findMany({
+          where: {
+            id: { not: movement.id },
+            createdAt: { gte: windowStart, lte: windowEnd },
+            OR: [{ referenceLabel: refLabel }, { referenceId: refLabel }],
+          },
+          orderBy: { createdAt: "asc" },
+        })
+      : [];
+
+    res.json({ movement, related });
+  } catch (error) {
+    next(error);
+  }
+});
+
 router.get("/stats", async (req, res, next) => {
   try {
     const month = typeof req.query.month === "string" ? req.query.month : undefined;

@@ -9,7 +9,6 @@ import { getProductImageForColorFromDb, isStoredImageMismatch } from "../utils/p
 import {
   deductOrderItemsIfNeeded,
   isInactiveOrderStatus,
-  orderItemHasStockMovement,
   restoreOrderItemsIfDeducted,
   syncMissingOrderOutboundDeductions,
 } from "../services/stock-outbound.service";
@@ -550,22 +549,18 @@ router.put("/:id/items/:itemId", async (req, res, next) => {
 
     const result = await prisma.$transaction(async (tx) => {
       if (shouldAdjustStock) {
-        const hadStockDeduction = await orderItemHasStockMovement(tx, order, item);
-
-        if (hadStockDeduction) {
-          await restoreProductStockWithLog(tx, {
-            productId: item.productId,
-            productName: item.productName,
-            color: item.color,
-            size: item.size,
-            quantity: item.quantity,
-            reason: "ORDER_EDIT_IN",
-            referenceType: "order",
-            referenceId: String(orderId),
-            referenceLabel: order.orderNumber,
-            notes: `Hoàn kho dòng cũ trước khi chỉnh sửa đơn`,
-          });
-        }
+        await restoreProductStockWithLog(tx, {
+          productId: item.productId,
+          productName: item.productName,
+          color: item.color,
+          size: item.size,
+          quantity: item.quantity,
+          reason: "ORDER_EDIT_IN",
+          referenceType: "order",
+          referenceId: String(orderId),
+          referenceLabel: order.orderNumber,
+          notes: `Hoàn kho ${item.color} / ${item.size} (dòng cũ) khi chỉnh sửa đơn`,
+        });
 
         await deductProductStockWithLog(tx, {
           productId: nextProductId,
@@ -577,7 +572,7 @@ router.put("/:id/items/:itemId", async (req, res, next) => {
           referenceType: "order",
           referenceId: String(orderId),
           referenceLabel: order.orderNumber,
-          notes: `Trừ kho dòng mới sau khi chỉnh sửa đơn`,
+          notes: `Trừ kho ${nextColor} / ${nextSize} (dòng mới) khi chỉnh sửa đơn`,
         });
       }
 

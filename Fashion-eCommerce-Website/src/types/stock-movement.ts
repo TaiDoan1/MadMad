@@ -75,6 +75,15 @@ export function formatStockMovementReference(row: Pick<StockMovement, "reference
   return label;
 }
 
+export function isEditStockReason(reason: string) {
+  return (
+    reason === "ORDER_EDIT_IN" ||
+    reason === "ORDER_EDIT_OUT" ||
+    reason === "MARKETING_GIFT_EDIT_IN" ||
+    reason === "MARKETING_GIFT_EDIT_OUT"
+  );
+}
+
 export const STOCK_MOVEMENT_REASON_OPTIONS: Array<{ value: StockMovementReason | "all"; label: string }> = [
   { value: "all", label: "Tất cả nguyên nhân" },
   ...Object.entries(STOCK_MOVEMENT_REASON_LABELS).map(([value, label]) => ({
