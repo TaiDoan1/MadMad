@@ -12,6 +12,12 @@ interface MarketingContextValue {
   setSelectedMonth: (month: string) => void;
   refreshMarketing: (month?: string) => Promise<void>;
   syncMarketingItemImages: () => Promise<{ updated: number; total: number }>;
+  syncMarketingStockDeductions: () => Promise<{
+    deductedItems: number;
+    skippedItems: number;
+    giftsChecked: number;
+    errors: string[];
+  }>;
   createGift: (input: CreateMarketingGiftInput) => Promise<MarketingGift | null>;
   cancelGift: (id: string) => Promise<boolean>;
   deleteExportedGifts: (month: string) => Promise<number>;
@@ -80,6 +86,23 @@ export function MarketingProvider({ children }: { children: ReactNode }) {
     }
     return result;
   }, [refreshMarketing, selectedMonth]);
+
+  const syncMarketingStockDeductions = useCallback(async () => {
+    const response = await fetch(`${API_URL}/marketing/sync-stock-deductions`, {
+      method: "POST",
+    });
+
+    if (!response.ok) {
+      throw new Error("Không thể đồng bộ trừ kho marketing");
+    }
+
+    return (await response.json()) as {
+      deductedItems: number;
+      skippedItems: number;
+      giftsChecked: number;
+      errors: string[];
+    };
+  }, []);
 
   const createGift = useCallback(
     async (input: CreateMarketingGiftInput) => {
@@ -160,11 +183,12 @@ export function MarketingProvider({ children }: { children: ReactNode }) {
       setSelectedMonth,
       refreshMarketing,
       syncMarketingItemImages,
+      syncMarketingStockDeductions,
       createGift,
       cancelGift,
       deleteExportedGifts,
     }),
-    [gifts, stats, isLoading, selectedMonth, refreshMarketing, syncMarketingItemImages, createGift, cancelGift, deleteExportedGifts],
+    [gifts, stats, isLoading, selectedMonth, refreshMarketing, syncMarketingItemImages, syncMarketingStockDeductions, createGift, cancelGift, deleteExportedGifts],
   );
 
   return <MarketingContext.Provider value={value}>{children}</MarketingContext.Provider>;

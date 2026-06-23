@@ -1,8 +1,9 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import {
   ArrowDownCircle,
   ArrowUpCircle,
+  Boxes,
   Calendar,
   ClipboardList,
   Package,
@@ -39,6 +40,8 @@ export function AdminInventoryPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [showReturnModal, setShowReturnModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSyncingOutbound, setIsSyncingOutbound] = useState(false);
+  const stockSyncStarted = useRef(false);
 
   const [returnProductId, setReturnProductId] = useState("");
   const [returnColor, setReturnColor] = useState("");
@@ -108,6 +111,60 @@ export function AdminInventoryPage() {
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  const syncOutboundStock = useCallback(async () => {
+    setIsSyncingOutbound(true);
+    try {
+      const response = await fetch(`${API_URL}/inventory/sync-outbound`, { method: "POST" });
+      if (!response.ok) {
+        throw new Error("Không thể đồng bộ trừ kho");
+      }
+
+      const result = (await response.json()) as {
+        orders: { deductedItems: number; giftItemsDeducted: number; errors: string[] };
+        marketing: { deductedItems: number; errors: string[] };
+        totalDeducted: number;
+        totalErrors: string[];
+      };
+
+      if (result.totalDeducted > 0) {
+        await refreshProducts();
+        await loadData();
+        const orderCount = result.orders.deductedItems;
+        const marketingCount = result.marketing.deductedItems;
+        const giftNote =
+          result.orders.giftItemsDeducted > 0
+            ? ` (${result.orders.giftItemsDeducted} dòng hàng tặng đơn)`
+            : "";
+        showToast(
+          `Đã trừ kho: ${orderCount} dòng đơn hàng${giftNote}, ${marketingCount} dòng marketing.`,
+          "success",
+        );
+      } else {
+        showToast("Đã kiểm tra đơn hàng và marketing — không còn dòng nào cần trừ kho.", "success");
+      }
+
+      if (result.totalErrors.length > 0) {
+        showToast(`Một số dòng không trừ được kho: ${result.totalErrors.slice(0, 2).join("; ")}`, "warning");
+      }
+
+      return result;
+    } catch (error: any) {
+      showToast(error?.message || "Lỗi khi đồng bộ trừ kho", "error");
+      throw error;
+    } finally {
+      setIsSyncingOutbound(false);
+    }
+  }, [loadData, refreshProducts, showToast]);
+
+  useEffect(() => {
+    if (products.length === 0 || stockSyncStarted.current) return;
+    stockSyncStarted.current = true;
+
+    void syncOutboundStock().catch(() => {
+      stockSyncStarted.current = false;
+    });
+  }, [products.length, syncOutboundStock]);
 
   const resetReturnForm = () => {
     setReturnProductId("");
@@ -186,6 +243,15 @@ export function AdminInventoryPage() {
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => void syncOutboundStock()}
+            disabled={isSyncingOutbound}
+            className="inline-flex items-center gap-1.5 rounded-xl border border-black/10 bg-white px-4 py-2.5 text-[10px] font-bold uppercase tracking-wider hover:bg-stone-50 disabled:opacity-50"
+          >
+            <Boxes className={`h-3.5 w-3.5 ${isSyncingOutbound ? "animate-pulse" : ""}`} />
+            {isSyncingOutbound ? "Đang đồng bộ..." : "Trừ kho đơn + marketing"}
+          </button>
           <button
             type="button"
             onClick={() => loadData()}

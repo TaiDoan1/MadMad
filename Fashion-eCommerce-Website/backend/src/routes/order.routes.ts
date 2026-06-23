@@ -7,7 +7,11 @@ import {
   resolveOrderStockReason,
 } from "../services/stock-movement.service";
 import { getProductImageForColorFromDb, isStoredImageMismatch } from "../utils/product-image";
-import { syncMissingOrderStockDeductions } from "../services/order-stock-sync.service";
+import {
+  deductOutboundOrderItems,
+  isOutboundOrderStatus,
+  syncMissingOrderOutboundDeductions,
+} from "../services/stock-outbound.service";
 
 const router = Router();
 
@@ -133,7 +137,7 @@ router.post("/sync-item-images", async (_req, res, next) => {
 // POST /api/orders/sync-stock-deductions - Trừ kho cho các dòng đơn hàng chưa có nhật ký tồn kho
 router.post("/sync-stock-deductions", async (_req, res, next) => {
   try {
-    const result = await syncMissingOrderStockDeductions();
+    const result = await syncMissingOrderOutboundDeductions();
     res.json(result);
   } catch (error) {
     next(error);
@@ -266,7 +270,7 @@ router.post("/", async (req, res, next) => {
       });
 
       const orderStatus = status || "pending";
-      if (orderStatus !== "cancelled") {
+      if (orderStatus !== "cancelled" && isOutboundOrderStatus(orderStatus)) {
         const stockReason = resolveOrderStockReason(finalOrderNumber);
         for (const item of created.items) {
           if (item.isPreOrder) continue;
@@ -280,6 +284,7 @@ router.post("/", async (req, res, next) => {
             referenceType: "order",
             referenceId: String(created.id),
             referenceLabel: finalOrderNumber,
+            notes: "Trừ kho khi tạo đơn đã xuất kho",
           });
         }
       }
@@ -357,6 +362,29 @@ router.put("/:id/status", async (req, res, next) => {
             notes: "Trừ kho lại khi hoàn tác hủy đơn",
           });
         }
+      }
+
+      const wasOutbound = isOutboundOrderStatus(existingOrder.status);
+      const willBeOutbound = isOutboundOrderStatus(status);
+      if (willBeOutbound && !wasOutbound && status !== "cancelled") {
+        await deductOutboundOrderItems(
+          tx,
+          {
+            id: existingOrder.id,
+            orderNumber: existingOrder.orderNumber,
+            status,
+            items: existingOrder.items.map((item) => ({
+              productId: item.productId,
+              productName: item.productName,
+              color: item.color,
+              size: item.size,
+              quantity: item.quantity,
+              isPreOrder: item.isPreOrder,
+              price: item.price,
+            })),
+          },
+          "Trừ kho khi chuyển đơn sang trạng thái xuất kho",
+        );
       }
 
       return tx.order.update({

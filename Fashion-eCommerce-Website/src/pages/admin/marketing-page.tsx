@@ -55,8 +55,11 @@ export function AdminMarketingPage() {
     cancelGift,
     deleteExportedGifts,
     syncMarketingItemImages,
+    syncMarketingStockDeductions,
+    refreshMarketing,
   } = useMarketing();
   const imageSyncStarted = useRef(false);
+  const stockSyncStarted = useRef(false);
 
   const monthOptions = useMemo(() => buildMarketingMonthOptions(), []);
   const selectedMonthLabel =
@@ -118,6 +121,26 @@ export function AdminMarketingPage() {
       imageSyncStarted.current = false;
     });
   }, [products.length, syncMarketingItemImages, showToast]);
+
+  useEffect(() => {
+    if (products.length === 0 || stockSyncStarted.current) return;
+    stockSyncStarted.current = true;
+
+    void syncMarketingStockDeductions()
+      .then(async (result) => {
+        if (result.deductedItems > 0) {
+          await refreshProducts();
+          await refreshMarketing(selectedMonth);
+          showToast(`Đã trừ kho cho ${result.deductedItems} dòng quà tặng KOL/KOC chưa ghi nhận.`, "success");
+        }
+        if (result.errors.length > 0) {
+          showToast(`Một số phiếu marketing không trừ được kho: ${result.errors.slice(0, 2).join("; ")}`, "warning");
+        }
+      })
+      .catch(() => {
+        stockSyncStarted.current = false;
+      });
+  }, [products.length, syncMarketingStockDeductions, refreshProducts, refreshMarketing, selectedMonth, showToast]);
 
   const resetCreateForm = () => {
     setKolName("");

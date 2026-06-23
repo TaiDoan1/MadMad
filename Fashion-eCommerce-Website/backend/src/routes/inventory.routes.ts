@@ -7,6 +7,7 @@ import {
 } from "../services/stock-movement.service";
 import { inferReceivedFromMovements } from "../services/inventory-receipt.service";
 import { parseVariantStock } from "../utils/product-stock";
+import { syncAllOutboundStockDeductions } from "../services/stock-outbound.service";
 
 const router = Router();
 
@@ -211,6 +212,15 @@ router.post("/backfill-received", async (_req, res, next) => {
     }
 
     res.json({ updated, total: products.length });
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.post("/sync-outbound", async (_req, res, next) => {
+  try {
+    const result = await syncAllOutboundStockDeductions();
+    res.json(result);
   } catch (error) {
     next(error);
   }

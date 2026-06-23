@@ -55,7 +55,7 @@ import { useToast } from "@/components/common/toast";
 export function AdminOrdersPage() {
   const { showToast } = useToast();
   const { settings } = useStorefrontSettings();
-  const { orders, updateOrderStatus, updateOrderPaymentStatus, updateOrderInternalNote, addOrder, updateOrderItem, syncOrderItemImages, syncOrderStockDeductions } = useOrders();
+  const { orders, updateOrderStatus, updateOrderPaymentStatus, updateOrderInternalNote, addOrder, updateOrderItem, syncOrderItemImages, syncOutboundStockDeductions } = useOrders();
   const { products, refreshProducts } = useProducts();
   const { members, tierConfigs, setMembers } = useMembership(); // Đọc danh sách tất cả thành viên VIP
   const imageSyncStarted = useRef(false);
@@ -103,24 +103,29 @@ export function AdminOrdersPage() {
     if (products.length === 0 || stockSyncStarted.current) return;
     stockSyncStarted.current = true;
 
-    void syncOrderStockDeductions()
+    void syncOutboundStockDeductions()
       .then(async (result) => {
-        if (result.deductedItems > 0) {
+        if (result.totalDeducted > 0) {
           await refreshProducts();
+          const orderCount = result.orders.deductedItems;
+          const marketingCount = result.marketing.deductedItems;
           const giftNote =
-            result.giftItemsDeducted > 0
-              ? ` (trong đó ${result.giftItemsDeducted} dòng hàng tặng)`
+            result.orders.giftItemsDeducted > 0
+              ? ` (đơn hàng có ${result.orders.giftItemsDeducted} dòng hàng tặng)`
               : "";
-          showToast(`Đã trừ kho cho ${result.deductedItems} dòng đơn hàng chưa ghi nhận${giftNote}.`, "success");
+          showToast(
+            `Đã trừ kho xuất kho: ${orderCount} dòng đơn hàng${giftNote}, ${marketingCount} dòng marketing.`,
+            "success",
+          );
         }
-        if (result.errors.length > 0) {
-          showToast(`Một số đơn không trừ được kho: ${result.errors.slice(0, 2).join("; ")}`, "warning");
+        if (result.totalErrors.length > 0) {
+          showToast(`Một số dòng không trừ được kho: ${result.totalErrors.slice(0, 2).join("; ")}`, "warning");
         }
       })
       .catch(() => {
         stockSyncStarted.current = false;
       });
-  }, [products.length, syncOrderStockDeductions, refreshProducts, showToast]);
+  }, [products.length, syncOutboundStockDeductions, refreshProducts, showToast]);
 
   // Manual Shipping Method State
   const [manualShippingMethod, setManualShippingMethod] = useState<"standard" | "express">("standard");

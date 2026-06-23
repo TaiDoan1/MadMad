@@ -29,6 +29,23 @@ interface OrderContextValue {
     ordersChecked: number;
     errors: string[];
   }>;
+  syncOutboundStockDeductions: () => Promise<{
+    orders: {
+      deductedItems: number;
+      skippedItems: number;
+      giftItemsDeducted: number;
+      ordersChecked: number;
+      errors: string[];
+    };
+    marketing: {
+      deductedItems: number;
+      skippedItems: number;
+      giftsChecked: number;
+      errors: string[];
+    };
+    totalDeducted: number;
+    totalErrors: string[];
+  }>;
   getOrderById: (id: number) => Order | undefined;
 }
 
@@ -368,6 +385,22 @@ const LOCAL_ORDERS_KEY = "madmad_orders_fallback";
 
         const result = await response.json();
         if (result.deductedItems > 0) {
+          await loadOrders(true);
+        }
+        return result;
+      },
+
+      syncOutboundStockDeductions: async () => {
+        const response = await fetch(`${API_URL}/inventory/sync-outbound`, {
+          method: "POST",
+        });
+
+        if (!response.ok) {
+          throw new Error("Không thể đồng bộ trừ kho xuất kho");
+        }
+
+        const result = await response.json();
+        if (result.totalDeducted > 0) {
           await loadOrders(true);
         }
         return result;

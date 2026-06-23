@@ -6,6 +6,7 @@ import {
   deductProductStockWithLog,
   restoreProductStockWithLog,
 } from "../services/stock-movement.service";
+import { syncMissingMarketingOutboundDeductions } from "../services/stock-outbound.service";
 
 const router = Router();
 
@@ -79,6 +80,15 @@ router.post("/sync-item-images", async (_req, res, next) => {
     }
 
     res.json({ updated, total: giftItems.length });
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.post("/sync-stock-deductions", async (_req, res, next) => {
+  try {
+    const result = await syncMissingMarketingOutboundDeductions();
+    res.json(result);
   } catch (error) {
     next(error);
   }
