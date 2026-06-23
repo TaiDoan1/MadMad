@@ -2,6 +2,7 @@ import type { Prisma } from "@prisma/client";
 import { prisma } from "../config/prisma";
 import {
   deductProductStockWithLog,
+  restoreProductStockWithLog,
   resolveOrderStockReason,
 } from "./stock-movement.service";
 
@@ -111,22 +112,18 @@ export async function deductOrderItemIfNeeded(
     notes:
       notes ??
       (isGiftLine
-        ? "Trừ kho hàng tặng khi xuất kho đơn hàng"
-        : "Trừ kho khi xuất kho đơn hàng"),
+        ? "Trừ kho hàng tặng khi đặt hàng thành công"
+        : "Trừ kho khi đặt hàng thành công"),
   });
 
   return { deducted: true, skipped: false, isGiftLine };
 }
 
-export async function deductOutboundOrderItems(
+export async function deductOrderItemsIfNeeded(
   tx: TxClient,
   order: OrderRow,
   notes?: string,
 ) {
-  if (!isOutboundOrderStatus(order.status)) {
-    return { deductedItems: 0, skippedItems: 0, giftItemsDeducted: 0 };
-  }
-
   let deductedItems = 0;
   let skippedItems = 0;
   let giftItemsDeducted = 0;
@@ -142,6 +139,49 @@ export async function deductOutboundOrderItems(
   }
 
   return { deductedItems, skippedItems, giftItemsDeducted };
+}
+
+/** @deprecated use deductOrderItemsIfNeeded */
+export async function deductOutboundOrderItems(
+  tx: TxClient,
+  order: OrderRow,
+  notes?: string,
+) {
+  if (!isOutboundOrderStatus(order.status)) {
+    return { deductedItems: 0, skippedItems: 0, giftItemsDeducted: 0 };
+  }
+
+  return deductOrderItemsIfNeeded(tx, order, notes);
+}
+
+export async function restoreOrderItemsIfDeducted(
+  tx: TxClient,
+  order: Pick<OrderRow, "id" | "orderNumber">,
+  items: OrderItemRow[],
+  notes?: string,
+) {
+  let restoredItems = 0;
+
+  for (const item of items) {
+    if (item.isPreOrder) continue;
+    if (!(await orderItemHasStockMovement(tx, order, item))) continue;
+
+    await restoreProductStockWithLog(tx, {
+      productId: item.productId,
+      productName: item.productName,
+      color: item.color,
+      size: item.size,
+      quantity: item.quantity,
+      reason: "ORDER_CANCEL",
+      referenceType: "order",
+      referenceId: String(order.id),
+      referenceLabel: order.orderNumber,
+      notes: notes ?? "Hoàn kho do hủy/hoàn đơn",
+    });
+    restoredItems += 1;
+  }
+
+  return { restoredItems };
 }
 
 export async function deductMarketingGiftItemIfNeeded(
@@ -176,7 +216,7 @@ export async function deductMarketingGiftItemIfNeeded(
 
 export async function syncMissingOrderOutboundDeductions() {
   const orders = await prisma.order.findMany({
-    where: { status: { in: [...OUTBOUND_ORDER_STATUSES] } },
+    where: { status: { not: "cancelled" } },
     include: { items: true },
     orderBy: { createdAt: "asc" },
   });
@@ -189,7 +229,7 @@ export async function syncMissingOrderOutboundDeductions() {
   for (const order of orders) {
     try {
       const result = await prisma.$transaction(async (tx) =>
-        deductOutboundOrderItems(tx, order as OrderRow, "Đồng bộ trừ kho đơn đã xuất kho"),
+        deductOrderItemsIfNeeded(tx, order as OrderRow, "Đồng bộ trừ kho đơn đã đặt thành công"),
       );
       deductedItems += result.deductedItems;
       skippedItems += result.skippedItems;

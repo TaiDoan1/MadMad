@@ -32,6 +32,7 @@ import {
   UserPlus,
   User,
   Pencil,
+  RotateCcw,
   CircleCheck
 } from "lucide-react";
 
@@ -307,6 +308,31 @@ export function AdminOrdersPage() {
 
   const canEditOrderItems = (order: Order) => order.status !== "completed" && order.status !== "cancelled";
 
+  const isCodOrder = (order: Order) => {
+    const method = (order.paymentMethod || "").toLowerCase();
+    return method === "cod" || method.includes("cod") || method.includes("thu hộ");
+  };
+
+  const canReturnCodOrder = (order: Order) =>
+    isCodOrder(order) &&
+    order.status !== "cancelled" &&
+    order.status !== "completed" &&
+    (order.status === "processing" || order.status === "shipping");
+
+  const handleReturnCodOrder = (order: Order) => {
+    if (
+      !window.confirm(
+        `Xác nhận hoàn đơn COD ${order.orderNumber}?\n\nKhách không nhận hàng — tồn kho sẽ được cộng lại.`,
+      )
+    ) {
+      return;
+    }
+    updateOrderStatus(order.id, "cancelled");
+    setSelectedOrder({ ...order, status: "cancelled" });
+    void refreshProducts();
+    showToast(`Đã hoàn đơn COD ${order.orderNumber} — hàng đã cộng lại kho.`, "success");
+  };
+
   // TÌM KIẾM & BỘ LỌC DOANH THU & KÊNH & PHÂN LOẠI KHÁCH
   const filteredOrders = orders.filter((order) => {
     const matchesSearch =
@@ -560,7 +586,7 @@ export function AdminOrdersPage() {
     }
 
     if (newStatus === "cancelled" && order.status !== "cancelled") {
-      showToast(`📦 Đã hoàn kho cho đơn ${order.orderNumber} (hủy đơn)`, "success");
+      showToast(`📦 Đã hoàn kho cho đơn ${order.orderNumber}`, "success");
     }
 
     if (newStatus !== "cancelled" && order.status === "cancelled") {
@@ -1711,6 +1737,16 @@ export function AdminOrdersPage() {
                     <option value="completed">ĐÃ GIAO THÀNH CÔNG</option>
                     <option value="cancelled">ĐÃ HỦY ĐƠN</option>
                   </select>
+                  {canReturnCodOrder(selectedOrder) && (
+                    <button
+                      type="button"
+                      onClick={() => handleReturnCodOrder(selectedOrder)}
+                      className="mt-3 inline-flex w-full items-center justify-center gap-1.5 rounded-xl border border-amber-200 bg-amber-50 px-4 py-2.5 text-[10px] font-bold uppercase tracking-wider text-amber-900 hover:bg-amber-100"
+                    >
+                      <RotateCcw className="h-3.5 w-3.5" />
+                      Hoàn đơn COD (khách không nhận)
+                    </button>
+                  )}
                 </div>
 
                 <div className="bg-stone-50 rounded-xl p-5 border border-black/5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">

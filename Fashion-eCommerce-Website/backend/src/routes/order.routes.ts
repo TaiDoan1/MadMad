@@ -4,13 +4,12 @@ import { sendOrderConfirmationEmail } from "../services/email.service";
 import {
   deductProductStockWithLog,
   restoreProductStockWithLog,
-  resolveOrderStockReason,
 } from "../services/stock-movement.service";
 import { getProductImageForColorFromDb, isStoredImageMismatch } from "../utils/product-image";
 import {
-  deductOutboundOrderItems,
-  isOutboundOrderStatus,
+  deductOrderItemsIfNeeded,
   orderItemHasStockMovement,
+  restoreOrderItemsIfDeducted,
   syncMissingOrderOutboundDeductions,
 } from "../services/stock-outbound.service";
 
@@ -271,23 +270,25 @@ router.post("/", async (req, res, next) => {
       });
 
       const orderStatus = status || "pending";
-      if (orderStatus !== "cancelled" && isOutboundOrderStatus(orderStatus)) {
-        const stockReason = resolveOrderStockReason(finalOrderNumber);
-        for (const item of created.items) {
-          if (item.isPreOrder) continue;
-          await deductProductStockWithLog(tx, {
-            productId: item.productId,
-            productName: item.productName,
-            color: item.color,
-            size: item.size,
-            quantity: item.quantity,
-            reason: stockReason,
-            referenceType: "order",
-            referenceId: String(created.id),
-            referenceLabel: finalOrderNumber,
-            notes: "Trừ kho khi tạo đơn đã xuất kho",
-          });
-        }
+      if (orderStatus !== "cancelled") {
+        await deductOrderItemsIfNeeded(
+          tx,
+          {
+            id: created.id,
+            orderNumber: finalOrderNumber,
+            status: orderStatus,
+            items: created.items.map((item) => ({
+              productId: item.productId,
+              productName: item.productName,
+              color: item.color,
+              size: item.size,
+              quantity: item.quantity,
+              isPreOrder: item.isPreOrder,
+              price: item.price,
+            })),
+          },
+          "Trừ kho khi đặt hàng thành công",
+        );
       }
 
       return created;
@@ -330,45 +331,24 @@ router.put("/:id/status", async (req, res, next) => {
 
     const updatedOrder = await prisma.$transaction(async (tx) => {
       if (status === "cancelled" && existingOrder.status !== "cancelled") {
-        for (const item of existingOrder.items) {
-          if (item.isPreOrder) continue;
-          await restoreProductStockWithLog(tx, {
+        await restoreOrderItemsIfDeducted(
+          tx,
+          existingOrder,
+          existingOrder.items.map((item) => ({
             productId: item.productId,
             productName: item.productName,
             color: item.color,
             size: item.size,
             quantity: item.quantity,
-            reason: "ORDER_CANCEL",
-            referenceType: "order",
-            referenceId: String(existingOrder.id),
-            referenceLabel: existingOrder.orderNumber,
-            notes: "Hoàn kho do hủy đơn hàng",
-          });
-        }
+            isPreOrder: item.isPreOrder,
+            price: item.price,
+          })),
+          "Hoàn kho do hủy đơn hàng",
+        );
       }
 
       if (status !== "cancelled" && existingOrder.status === "cancelled") {
-        for (const item of existingOrder.items) {
-          if (item.isPreOrder) continue;
-          await deductProductStockWithLog(tx, {
-            productId: item.productId,
-            productName: item.productName,
-            color: item.color,
-            size: item.size,
-            quantity: item.quantity,
-            reason: "ORDER_UNCANCEL",
-            referenceType: "order",
-            referenceId: String(existingOrder.id),
-            referenceLabel: existingOrder.orderNumber,
-            notes: "Trừ kho lại khi hoàn tác hủy đơn",
-          });
-        }
-      }
-
-      const wasOutbound = isOutboundOrderStatus(existingOrder.status);
-      const willBeOutbound = isOutboundOrderStatus(status);
-      if (willBeOutbound && !wasOutbound && status !== "cancelled") {
-        await deductOutboundOrderItems(
+        await deductOrderItemsIfNeeded(
           tx,
           {
             id: existingOrder.id,
@@ -384,7 +364,7 @@ router.put("/:id/status", async (req, res, next) => {
               price: item.price,
             })),
           },
-          "Trừ kho khi chuyển đơn sang trạng thái xuất kho",
+          "Trừ kho lại khi hoàn tác hủy đơn",
         );
       }
 
@@ -554,8 +534,7 @@ router.put("/:id/items/:itemId", async (req, res, next) => {
       return res.status(400).json({ message: "Không có thay đổi nào để cập nhật!" });
     }
 
-    const shouldAdjustStock =
-      !item.isPreOrder && !nextIsPreOrder && isOutboundOrderStatus(order.status);
+    const shouldAdjustStock = !item.isPreOrder && !nextIsPreOrder && order.status !== "cancelled";
 
     const result = await prisma.$transaction(async (tx) => {
       if (shouldAdjustStock) {
