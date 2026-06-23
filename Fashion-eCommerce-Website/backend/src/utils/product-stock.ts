@@ -26,9 +26,31 @@ export function usesVariantStock(product: DbProduct): boolean {
   return sizes.length > 0 && colors.length > 0 && (product.stock === null || product.stock === undefined);
 }
 
+function splitCsvValues(raw: string | null | undefined): string[] {
+  return raw ? raw.split(",").map((value) => value.trim()).filter(Boolean) : [];
+}
+
+export function resolveVariantColor(product: DbProduct, color: string): string {
+  const trimmed = color.trim();
+  const colors = splitCsvValues(product.colors);
+  const match = colors.find((value) => value.toLowerCase() === trimmed.toLowerCase());
+  return match ?? trimmed;
+}
+
+export function resolveVariantSize(product: DbProduct, size: string): string {
+  const trimmed = size.trim();
+  const sizes = splitCsvValues(product.sizes);
+  const match = sizes.find((value) => value.toLowerCase() === trimmed.toLowerCase());
+  return match ?? trimmed;
+}
+
+export function resolveVariantKey(product: DbProduct, color: string, size: string): string {
+  return `${resolveVariantColor(product, color)}-${resolveVariantSize(product, size)}`;
+}
+
 export function getVariantAvailable(product: DbProduct, color: string, size: string): number {
   const variantStock = parseVariantStock(product.variantStock);
-  const key = `${color}-${size}`;
+  const key = resolveVariantKey(product, color, size);
   if (usesVariantStock(product)) {
     return Number(variantStock[key] ?? 0);
   }
@@ -66,12 +88,14 @@ export function deductStockData(
   quantity: number,
 ): { stock: number | null | undefined; variantStock: string; inStock: boolean } {
   const variantStock = parseVariantStock(product.variantStock);
-  const key = `${color}-${size}`;
+  const resolvedColor = resolveVariantColor(product, color);
+  const resolvedSize = resolveVariantSize(product, size);
+  const key = `${resolvedColor}-${resolvedSize}`;
 
   if (usesVariantStock(product)) {
     const current = Number(variantStock[key] ?? 0);
     if (current < quantity) {
-      throw new Error(`Không đủ tồn kho cho ${color} / ${size} (còn ${current}, cần ${quantity})`);
+      throw new Error(`Không đủ tồn kho cho ${resolvedColor} / ${resolvedSize} (còn ${current}, cần ${quantity})`);
     }
     variantStock[key] = current - quantity;
     const total = getTotalStock({
@@ -104,7 +128,7 @@ export function restoreStockData(
   quantity: number,
 ): { stock: number | null | undefined; variantStock: string; inStock: boolean } {
   const variantStock = parseVariantStock(product.variantStock);
-  const key = `${color}-${size}`;
+  const key = resolveVariantKey(product, color, size);
 
   if (usesVariantStock(product)) {
     variantStock[key] = Number(variantStock[key] ?? 0) + quantity;

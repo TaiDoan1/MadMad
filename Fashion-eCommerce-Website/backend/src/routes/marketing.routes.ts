@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { prisma } from "../config/prisma";
-import { getVariantAvailable } from "../utils/product-stock";
+import { getVariantAvailable, resolveVariantColor, resolveVariantSize } from "../utils/product-stock";
 import { getProductImageForColorFromDb, isStoredImageMismatch } from "../utils/product-image";
 import {
   deductProductStockWithLog,
@@ -265,8 +265,11 @@ router.put("/:id/items/:itemId", async (req, res, next) => {
       return res.status(404).json({ message: "Không tìm thấy sản phẩm mới" });
     }
 
-    const nextColor = String(color).trim();
-    const nextSize = String(size).trim();
+    const oldProduct = await prisma.product.findUnique({ where: { id: item.productId } });
+    const nextColor = resolveVariantColor(nextProduct, String(color));
+    const nextSize = resolveVariantSize(nextProduct, String(size));
+    const oldColor = oldProduct ? resolveVariantColor(oldProduct, item.color) : String(item.color).trim();
+    const oldSize = oldProduct ? resolveVariantSize(oldProduct, item.size) : String(item.size).trim();
     const nextProductId = String(productId);
     const nextProductName = nextProduct.name;
     const nextProductImage = getProductImageForColorFromDb(nextProduct, nextColor);
@@ -275,8 +278,8 @@ router.put("/:id/items/:itemId", async (req, res, next) => {
 
     const unchanged =
       item.productId === nextProductId &&
-      item.color === nextColor &&
-      item.size === nextSize &&
+      oldColor === nextColor &&
+      oldSize === nextSize &&
       item.quantity === nextQuantity;
 
     if (unchanged) {
@@ -287,14 +290,14 @@ router.put("/:id/items/:itemId", async (req, res, next) => {
       await restoreProductStockWithLog(tx, {
         productId: item.productId,
         productName: item.productName,
-        color: item.color,
-        size: item.size,
+        color: oldColor,
+        size: oldSize,
         quantity: item.quantity,
         reason: "MARKETING_GIFT_EDIT_IN",
         referenceType: "marketing_gift",
         referenceId: gift.giftNumber,
         referenceLabel: gift.giftNumber,
-        notes: `Hoàn kho ${item.color} / ${item.size} (dòng cũ) khi sửa phiếu marketing`,
+        notes: `Hoàn kho ${oldColor} / ${oldSize} (dòng cũ) khi sửa phiếu marketing`,
       });
 
       await deductProductStockWithLog(tx, {

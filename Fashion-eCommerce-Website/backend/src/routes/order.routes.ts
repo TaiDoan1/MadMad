@@ -6,9 +6,11 @@ import {
   restoreProductStockWithLog,
 } from "../services/stock-movement.service";
 import { getProductImageForColorFromDb, isStoredImageMismatch } from "../utils/product-image";
+import { resolveVariantColor, resolveVariantSize } from "../utils/product-stock";
 import {
   deductOrderItemsIfNeeded,
   isInactiveOrderStatus,
+  reconcileEditedOrderStockAdjustments,
   restoreOrderItemsIfDeducted,
   syncMissingOrderOutboundDeductions,
 } from "../services/stock-outbound.service";
@@ -138,7 +140,8 @@ router.post("/sync-item-images", async (_req, res, next) => {
 router.post("/sync-stock-deductions", async (_req, res, next) => {
   try {
     const result = await syncMissingOrderOutboundDeductions();
-    res.json(result);
+    const reconciled = await reconcileEditedOrderStockAdjustments();
+    res.json({ ...result, reconciled });
   } catch (error) {
     next(error);
   }
@@ -525,8 +528,12 @@ router.put("/:id/items/:itemId", async (req, res, next) => {
       return res.status(404).json({ message: "Không tìm thấy sản phẩm mới" });
     }
 
-    const nextColor = String(color).trim();
-    const nextSize = String(size).trim();
+    const oldProduct = await prisma.product.findUnique({ where: { id: item.productId } });
+
+    const nextColor = resolveVariantColor(nextProduct, String(color));
+    const nextSize = resolveVariantSize(nextProduct, String(size));
+    const oldColor = oldProduct ? resolveVariantColor(oldProduct, item.color) : String(item.color).trim();
+    const oldSize = oldProduct ? resolveVariantSize(oldProduct, item.size) : String(item.size).trim();
     const nextProductId = String(productId);
     const nextProductName = nextProduct.name;
     const nextProductImage = getProductImageForColorFromDb(nextProduct, nextColor);
@@ -536,32 +543,34 @@ router.put("/:id/items/:itemId", async (req, res, next) => {
 
     const unchanged =
       item.productId === nextProductId &&
-      item.color === nextColor &&
-      item.size === nextSize &&
+      oldColor === nextColor &&
+      oldSize === nextSize &&
       item.quantity === nextQuantity;
 
     if (unchanged) {
       return res.status(400).json({ message: "Không có thay đổi nào để cập nhật!" });
     }
 
-    const shouldAdjustStock =
-      !item.isPreOrder && !nextIsPreOrder && !isInactiveOrderStatus(order.status);
+    const shouldRestoreOld = !item.isPreOrder && !isInactiveOrderStatus(order.status);
+    const shouldDeductNew = !nextIsPreOrder && !isInactiveOrderStatus(order.status);
 
     const result = await prisma.$transaction(async (tx) => {
-      if (shouldAdjustStock) {
+      if (shouldRestoreOld) {
         await restoreProductStockWithLog(tx, {
           productId: item.productId,
           productName: item.productName,
-          color: item.color,
-          size: item.size,
+          color: oldColor,
+          size: oldSize,
           quantity: item.quantity,
           reason: "ORDER_EDIT_IN",
           referenceType: "order",
           referenceId: String(orderId),
           referenceLabel: order.orderNumber,
-          notes: `Hoàn kho ${item.color} / ${item.size} (dòng cũ) khi chỉnh sửa đơn`,
+          notes: `Hoàn kho ${oldColor} / ${oldSize} (dòng cũ) khi chỉnh sửa đơn`,
         });
+      }
 
+      if (shouldDeductNew) {
         await deductProductStockWithLog(tx, {
           productId: nextProductId,
           productName: nextProductName,

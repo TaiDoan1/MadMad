@@ -1,5 +1,6 @@
 import type { Prisma } from "@prisma/client";
 import { prisma } from "../config/prisma";
+import { resolveVariantColor, resolveVariantSize } from "../utils/product-stock";
 import {
   deductProductStockWithLog,
   restoreProductStockWithLog,
@@ -68,6 +69,189 @@ export async function orderItemHasStockMovement(
     },
   });
   return count > 0;
+}
+
+type VariantLine = {
+  productId: string;
+  productName: string;
+  color: string;
+  size: string;
+};
+
+function parseEditedOriginalVariant(item: {
+  productId: string;
+  productName: string;
+  color: string;
+  size: string;
+  editMetaJson: string | null;
+}): VariantLine | null {
+  if (!item.editMetaJson) return null;
+
+  try {
+    const meta = JSON.parse(item.editMetaJson) as {
+      product?: { from?: string; fromId?: string };
+      color?: { from?: string };
+      size?: { from?: string };
+    };
+
+    const productId = meta.product?.fromId ?? item.productId;
+    const color = meta.color?.from ?? item.color;
+    const size = meta.size?.from ?? item.size;
+    const productName = meta.product?.from ?? item.productName;
+
+    const changed =
+      productId !== item.productId ||
+      color.trim().toLowerCase() !== item.color.trim().toLowerCase() ||
+      size.trim().toLowerCase() !== item.size.trim().toLowerCase();
+
+    if (!changed) return null;
+
+    return {
+      productId,
+      productName,
+      color,
+      size,
+    };
+  } catch {
+    return null;
+  }
+}
+
+async function getOrderLineNetDelta(
+  tx: TxClient,
+  order: Pick<OrderRow, "id" | "orderNumber">,
+  line: VariantLine,
+) {
+  const product = await tx.product.findUnique({ where: { id: line.productId } });
+  const color = product ? resolveVariantColor(product, line.color) : line.color.trim();
+  const size = product ? resolveVariantSize(product, line.size) : line.size.trim();
+
+  const movements = await tx.stockMovement.findMany({
+    where: {
+      productId: line.productId,
+      OR: [
+        { referenceType: "order", referenceId: String(order.id) },
+        { referenceLabel: order.orderNumber },
+      ],
+    },
+  });
+
+  return movements
+    .filter((movement) => {
+      const movementColor = product ? resolveVariantColor(product, movement.color) : movement.color;
+      const movementSize = product ? resolveVariantSize(product, movement.size) : movement.size;
+      return movementColor === color && movementSize === size;
+    })
+    .reduce((sum, movement) => sum + movement.quantityDelta, 0);
+}
+
+async function hasOrderLineMovementReason(
+  tx: TxClient,
+  order: Pick<OrderRow, "id" | "orderNumber">,
+  line: VariantLine,
+  reasons: StockMovementReason[],
+) {
+  const product = await tx.product.findUnique({ where: { id: line.productId } });
+  const color = product ? resolveVariantColor(product, line.color) : line.color.trim();
+  const size = product ? resolveVariantSize(product, line.size) : line.size.trim();
+
+  const movements = await tx.stockMovement.findMany({
+    where: {
+      productId: line.productId,
+      reason: { in: reasons },
+      OR: [
+        { referenceType: "order", referenceId: String(order.id) },
+        { referenceLabel: order.orderNumber },
+      ],
+    },
+  });
+
+  return movements.some((movement) => {
+    const movementColor = product ? resolveVariantColor(product, movement.color) : movement.color;
+    const movementSize = product ? resolveVariantSize(product, movement.size) : movement.size;
+    return movementColor === color && movementSize === size;
+  });
+}
+
+export async function reconcileEditedOrderStockAdjustments() {
+  const orders = await prisma.order.findMany({
+    where: {
+      isEdited: true,
+      status: { notIn: [...INACTIVE_ORDER_STATUSES] },
+    },
+    include: { items: true },
+    orderBy: { editedAt: "asc" },
+  });
+
+  let restoredItems = 0;
+  let deductedItems = 0;
+  const errors: string[] = [];
+
+  for (const order of orders) {
+    for (const item of order.items) {
+      if (item.isPreOrder) continue;
+
+      const original = parseEditedOriginalVariant(item);
+      if (!original) continue;
+
+      const current: VariantLine = {
+        productId: item.productId,
+        productName: item.productName,
+        color: item.color,
+        size: item.size,
+      };
+
+      try {
+        await prisma.$transaction(async (tx) => {
+          const originalNet = await getOrderLineNetDelta(tx, order, original);
+          const currentNet = await getOrderLineNetDelta(tx, order, current);
+          const hasEditIn = await hasOrderLineMovementReason(tx, order, original, ["ORDER_EDIT_IN"]);
+          const hasEditOut = await hasOrderLineMovementReason(tx, order, current, ["ORDER_EDIT_OUT"]);
+
+          if (!hasEditIn && originalNet < 0) {
+            await restoreProductStockWithLog(tx, {
+              productId: original.productId,
+              productName: original.productName,
+              color: original.color,
+              size: original.size,
+              quantity: item.quantity,
+              reason: "ORDER_EDIT_IN",
+              referenceType: "order",
+              referenceId: String(order.id),
+              referenceLabel: order.orderNumber,
+              notes: `Hoàn kho ${original.color} / ${original.size} (đồng bộ sau sửa đơn)`,
+            });
+            restoredItems += 1;
+          }
+
+          if (!hasEditOut && currentNet >= 0) {
+            await deductProductStockWithLog(tx, {
+              productId: current.productId,
+              productName: current.productName,
+              color: current.color,
+              size: current.size,
+              quantity: item.quantity,
+              reason: "ORDER_EDIT_OUT",
+              referenceType: "order",
+              referenceId: String(order.id),
+              referenceLabel: order.orderNumber,
+              notes: `Trừ kho ${current.color} / ${current.size} (đồng bộ sau sửa đơn)`,
+            });
+            deductedItems += 1;
+          }
+        });
+      } catch (error: any) {
+        errors.push(`${order.orderNumber}: ${error?.message || "Lỗi không xác định"}`);
+      }
+    }
+  }
+
+  return {
+    ordersChecked: orders.length,
+    restoredItems,
+    deductedItems,
+    errors,
+  };
 }
 
 export async function marketingItemHasStockMovement(
@@ -327,11 +511,13 @@ export async function syncMissingMarketingOutboundDeductions() {
 export async function syncAllOutboundStockDeductions() {
   const orders = await syncMissingOrderOutboundDeductions();
   const marketing = await syncMissingMarketingOutboundDeductions();
+  const reconciled = await reconcileEditedOrderStockAdjustments();
 
   return {
     orders,
     marketing,
-    totalDeducted: orders.deductedItems + marketing.deductedItems,
-    totalErrors: [...orders.errors, ...marketing.errors],
+    reconciled,
+    totalDeducted: orders.deductedItems + marketing.deductedItems + reconciled.deductedItems,
+    totalErrors: [...orders.errors, ...marketing.errors, ...reconciled.errors],
   };
 }

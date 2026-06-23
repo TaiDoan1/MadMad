@@ -1,5 +1,11 @@
 import type { Prisma } from "@prisma/client";
-import { deductStockData, getVariantAvailable, restoreStockData } from "../utils/product-stock";
+import {
+  deductStockData,
+  getVariantAvailable,
+  resolveVariantColor,
+  resolveVariantSize,
+  restoreStockData,
+} from "../utils/product-stock";
 
 export type StockMovementReason =
   | "CHECKOUT"
@@ -86,8 +92,10 @@ export async function deductProductStockWithLog(
     throw new Error(`Không tìm thấy sản phẩm: ${params.productId}`);
   }
 
-  const stockBefore = getVariantAvailable(product, params.color, params.size);
-  const nextStock = deductStockData(product, params.color, params.size, params.quantity);
+  const color = resolveVariantColor(product, params.color);
+  const size = resolveVariantSize(product, params.size);
+  const stockBefore = getVariantAvailable(product, color, size);
+  const nextStock = deductStockData(product, color, size, params.quantity);
   await tx.product.update({
     where: { id: params.productId },
     data: nextStock,
@@ -98,8 +106,8 @@ export async function deductProductStockWithLog(
   await recordStockMovement(tx, {
     productId: params.productId,
     productName: params.productName || product.name,
-    color: params.color,
-    size: params.size,
+    color,
+    size,
     quantityDelta: -params.quantity,
     reason: params.reason,
     referenceType: params.referenceType,
@@ -131,8 +139,10 @@ export async function restoreProductStockWithLog(
     throw new Error(`Không tìm thấy sản phẩm: ${params.productId}`);
   }
 
-  const stockBefore = getVariantAvailable(product, params.color, params.size);
-  const nextStock = restoreStockData(product, params.color, params.size, params.quantity);
+  const color = resolveVariantColor(product, params.color);
+  const size = resolveVariantSize(product, params.size);
+  const stockBefore = getVariantAvailable(product, color, size);
+  const nextStock = restoreStockData(product, color, size, params.quantity);
   await tx.product.update({
     where: { id: params.productId },
     data: nextStock,
@@ -143,8 +153,8 @@ export async function restoreProductStockWithLog(
   await recordStockMovement(tx, {
     productId: params.productId,
     productName: params.productName || product.name,
-    color: params.color,
-    size: params.size,
+    color,
+    size,
     quantityDelta: params.quantity,
     reason: params.reason,
     referenceType: params.referenceType,
