@@ -52,23 +52,46 @@ export function isInactiveOrderStatus(status: string) {
   return INACTIVE_ORDER_STATUSES.includes(status as (typeof INACTIVE_ORDER_STATUSES)[number]);
 }
 
+async function orderLineHasStockMovement(
+  tx: TxClient,
+  reference:
+    | { type: "order"; id: number; label: string }
+    | { type: "marketing_gift"; label: string },
+  line: Pick<OrderItemRow, "productId" | "color" | "size">,
+) {
+  const product = await tx.product.findUnique({ where: { id: line.productId } });
+  const color = product ? resolveVariantColor(product, line.color) : line.color.trim();
+  const size = product ? resolveVariantSize(product, line.size) : line.size.trim();
+
+  const movements = await tx.stockMovement.findMany({
+    where: {
+      productId: line.productId,
+      OR:
+        reference.type === "order"
+          ? [
+              { referenceType: "order", referenceId: String(reference.id) },
+              { referenceLabel: reference.label },
+            ]
+          : [
+              { referenceType: "marketing_gift", referenceId: reference.label },
+              { referenceLabel: reference.label },
+            ],
+    },
+  });
+
+  return movements.some((movement) => {
+    const movementColor = product ? resolveVariantColor(product, movement.color) : movement.color;
+    const movementSize = product ? resolveVariantSize(product, movement.size) : movement.size;
+    return movementColor === color && movementSize === size;
+  });
+}
+
 export async function orderItemHasStockMovement(
   tx: TxClient,
   order: Pick<OrderRow, "id" | "orderNumber">,
   item: Pick<OrderItemRow, "productId" | "color" | "size">,
 ) {
-  const count = await tx.stockMovement.count({
-    where: {
-      productId: item.productId,
-      color: item.color,
-      size: item.size,
-      OR: [
-        { referenceType: "order", referenceId: String(order.id) },
-        { referenceLabel: order.orderNumber },
-      ],
-    },
-  });
-  return count > 0;
+  return orderLineHasStockMovement(tx, { type: "order", id: order.id, label: order.orderNumber }, item);
 }
 
 type VariantLine = {
@@ -259,18 +282,7 @@ export async function marketingItemHasStockMovement(
   gift: Pick<MarketingGiftRow, "giftNumber">,
   item: Pick<MarketingGiftRow["items"][number], "productId" | "color" | "size">,
 ) {
-  const count = await tx.stockMovement.count({
-    where: {
-      productId: item.productId,
-      color: item.color,
-      size: item.size,
-      OR: [
-        { referenceType: "marketing_gift", referenceId: gift.giftNumber },
-        { referenceLabel: gift.giftNumber },
-      ],
-    },
-  });
-  return count > 0;
+  return orderLineHasStockMovement(tx, { type: "marketing_gift", label: gift.giftNumber }, item);
 }
 
 export async function deductOrderItemIfNeeded(
