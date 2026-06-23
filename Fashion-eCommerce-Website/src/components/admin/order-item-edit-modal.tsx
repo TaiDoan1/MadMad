@@ -74,7 +74,7 @@ export function OrderItemEditModal({
   }, [selectedProduct, color, size]);
 
   const availableStock = selectedProduct ? getVariantAvailableStock(selectedProduct, color, size) : 0;
-  const canEdit = order.status !== "completed" && order.status !== "cancelled";
+  const canEdit = order.status !== "completed" && order.status !== "cancelled" && order.status !== "returned";
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();

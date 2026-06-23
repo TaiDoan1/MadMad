@@ -86,7 +86,7 @@ export function AdminDashboardPage() {
 
   const totalItemsSold = useMemo(() => {
     return filteredOrders
-      .filter((o) => o.status !== "cancelled")
+      .filter((o) => o.status !== "cancelled" && o.status !== "returned")
       .reduce((sum, o) => sum + o.items.reduce((itemSum, item) => itemSum + item.quantity, 0), 0);
   }, [filteredOrders]);
 
@@ -96,7 +96,7 @@ export function AdminDashboardPage() {
     let totalQty = 0;
 
     filteredOrders
-      .filter((o) => o.status !== "cancelled")
+      .filter((o) => o.status !== "cancelled" && o.status !== "returned")
       .forEach((o) => {
         o.items.forEach((item) => {
           const sz = (item.size ?? "M").toUpperCase().trim();
@@ -126,7 +126,7 @@ export function AdminDashboardPage() {
     const stats: Record<number, { name: string; image: string; price: number; quantity: number; revenue: number }> = {};
     
     filteredOrders
-      .filter((o) => o.status !== "cancelled")
+      .filter((o) => o.status !== "cancelled" && o.status !== "returned")
       .forEach((o) => {
         o.items.forEach((item) => {
           const pid = item.productId || item.product?.id;

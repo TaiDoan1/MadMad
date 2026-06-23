@@ -16,11 +16,14 @@ const VALID_REASONS: StockMovementReason[] = [
   "CHECKOUT",
   "MANUAL_ORDER",
   "ORDER_CANCEL",
+  "ORDER_RETURN",
   "ORDER_UNCANCEL",
   "ORDER_EDIT_IN",
   "ORDER_EDIT_OUT",
   "MARKETING_GIFT",
   "MARKETING_GIFT_CANCEL",
+  "MARKETING_GIFT_EDIT_IN",
+  "MARKETING_GIFT_EDIT_OUT",
   "STOCK_RECEIPT",
   "ADMIN_ADJUSTMENT",
   "RETURN",
@@ -71,7 +74,7 @@ router.get("/movements", async (req, res, next) => {
     let movements = await prisma.stockMovement.findMany({
       where,
       orderBy: { createdAt: "desc" },
-      take: 500,
+      take: 2000,
     });
 
     if (search) {

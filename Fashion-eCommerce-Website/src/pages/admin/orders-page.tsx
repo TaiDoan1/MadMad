@@ -306,7 +306,8 @@ export function AdminOrdersPage() {
     }
   };
 
-  const canEditOrderItems = (order: Order) => order.status !== "completed" && order.status !== "cancelled";
+  const canEditOrderItems = (order: Order) =>
+    order.status !== "completed" && order.status !== "cancelled" && order.status !== "returned";
 
   const isCodOrder = (order: Order) => {
     const method = (order.paymentMethod || "").toLowerCase();
@@ -316,19 +317,20 @@ export function AdminOrdersPage() {
   const canReturnCodOrder = (order: Order) =>
     isCodOrder(order) &&
     order.status !== "cancelled" &&
+    order.status !== "returned" &&
     order.status !== "completed" &&
     (order.status === "processing" || order.status === "shipping");
 
   const handleReturnCodOrder = (order: Order) => {
     if (
       !window.confirm(
-        `Xác nhận hoàn đơn COD ${order.orderNumber}?\n\nKhách không nhận hàng — tồn kho sẽ được cộng lại.`,
+        `Xác nhận hoàn đơn COD ${order.orderNumber}?\n\nKhách không nhận hàng — tồn kho sẽ được cộng lại. Đơn chuyển sang trạng thái HOÀN ĐƠN (khác hủy đơn).`,
       )
     ) {
       return;
     }
-    updateOrderStatus(order.id, "cancelled");
-    setSelectedOrder({ ...order, status: "cancelled" });
+    updateOrderStatus(order.id, "returned");
+    setSelectedOrder({ ...order, status: "returned" });
     void refreshProducts();
     showToast(`Đã hoàn đơn COD ${order.orderNumber} — hàng đã cộng lại kho.`, "success");
   };
@@ -586,10 +588,17 @@ export function AdminOrdersPage() {
     }
 
     if (newStatus === "cancelled" && order.status !== "cancelled") {
-      showToast(`📦 Đã hoàn kho cho đơn ${order.orderNumber}`, "success");
+      showToast(`📦 Đã hoàn kho cho đơn ${order.orderNumber} (hủy đơn)`, "success");
     }
 
-    if (newStatus !== "cancelled" && order.status === "cancelled") {
+    if (newStatus === "returned" && order.status !== "returned") {
+      showToast(`📦 Đã hoàn kho cho đơn ${order.orderNumber} (hoàn đơn COD)`, "success");
+    }
+
+    if (
+      (newStatus !== "cancelled" && order.status === "cancelled") ||
+      (newStatus !== "returned" && order.status === "returned")
+    ) {
       showToast(`📦 Đã trừ kho lại cho đơn ${order.orderNumber} (hoàn tác hủy)`, "info");
     }
   };
@@ -695,6 +704,8 @@ export function AdminOrdersPage() {
         return "bg-green-50 text-green-700 border-green-200";
       case "cancelled":
         return "bg-red-50 text-red-700 border-red-200";
+      case "returned":
+        return "bg-orange-50 text-orange-800 border-orange-200";
       case "shipping":
         return "bg-indigo-50 text-indigo-700 border-indigo-200";
       case "processing":
@@ -713,6 +724,8 @@ export function AdminOrdersPage() {
         return "Thành công";
       case "cancelled":
         return "Đã hủy";
+      case "returned":
+        return "Hoàn đơn";
       case "shipping":
         return "Đang giao";
       case "processing":
@@ -884,6 +897,7 @@ export function AdminOrdersPage() {
               <option value="shipping">ĐANG GIAO HÀNG</option>
               <option value="completed">ĐÃ GIAO THÀNH CÔNG</option>
               <option value="cancelled">ĐÃ HỦY ĐƠN</option>
+              <option value="returned">HOÀN ĐƠN COD</option>
             </select>
           </div>
         </div>
@@ -1066,6 +1080,7 @@ export function AdminOrdersPage() {
                             <option value="shipping" className="bg-white text-indigo-700">Đang giao</option>
                             <option value="completed" className="bg-white text-green-700">Thành công</option>
                             <option value="cancelled" className="bg-white text-red-700">Đã hủy</option>
+                            <option value="returned" className="bg-white text-orange-700">Hoàn đơn</option>
                           </select>
                         </td>
                         <td className="px-6 py-4 text-right font-extrabold text-black font-mono">
@@ -1736,6 +1751,7 @@ export function AdminOrdersPage() {
                     <option value="shipping">ĐANG GIAO HÀNG</option>
                     <option value="completed">ĐÃ GIAO THÀNH CÔNG</option>
                     <option value="cancelled">ĐÃ HỦY ĐƠN</option>
+                    <option value="returned">HOÀN ĐƠN COD</option>
                   </select>
                   {canReturnCodOrder(selectedOrder) && (
                     <button

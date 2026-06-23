@@ -4,6 +4,7 @@ import {
   deductProductStockWithLog,
   restoreProductStockWithLog,
   resolveOrderStockReason,
+  type StockMovementReason,
 } from "./stock-movement.service";
 
 type TxClient = Prisma.TransactionClient;
@@ -40,8 +41,14 @@ type MarketingGiftRow = {
   }>;
 };
 
+export const INACTIVE_ORDER_STATUSES = ["cancelled", "returned"] as const;
+
 export function isOutboundOrderStatus(status: string) {
   return OUTBOUND_ORDER_STATUSES.includes(status as (typeof OUTBOUND_ORDER_STATUSES)[number]);
+}
+
+export function isInactiveOrderStatus(status: string) {
+  return INACTIVE_ORDER_STATUSES.includes(status as (typeof INACTIVE_ORDER_STATUSES)[number]);
 }
 
 export async function orderItemHasStockMovement(
@@ -159,6 +166,7 @@ export async function restoreOrderItemsIfDeducted(
   order: Pick<OrderRow, "id" | "orderNumber">,
   items: OrderItemRow[],
   notes?: string,
+  reason: StockMovementReason = "ORDER_CANCEL",
 ) {
   let restoredItems = 0;
 
@@ -172,11 +180,41 @@ export async function restoreOrderItemsIfDeducted(
       color: item.color,
       size: item.size,
       quantity: item.quantity,
-      reason: "ORDER_CANCEL",
+      reason,
       referenceType: "order",
       referenceId: String(order.id),
       referenceLabel: order.orderNumber,
       notes: notes ?? "Hoàn kho do hủy/hoàn đơn",
+    });
+    restoredItems += 1;
+  }
+
+  return { restoredItems };
+}
+
+export async function restoreMarketingItemsIfDeducted(
+  tx: TxClient,
+  gift: Pick<MarketingGiftRow, "giftNumber">,
+  items: MarketingGiftRow["items"],
+  notes?: string,
+  reason: StockMovementReason = "MARKETING_GIFT_CANCEL",
+) {
+  let restoredItems = 0;
+
+  for (const item of items) {
+    if (!(await marketingItemHasStockMovement(tx, gift, item))) continue;
+
+    await restoreProductStockWithLog(tx, {
+      productId: item.productId,
+      productName: item.productName,
+      color: item.color,
+      size: item.size,
+      quantity: item.quantity,
+      reason,
+      referenceType: "marketing_gift",
+      referenceId: gift.giftNumber,
+      referenceLabel: gift.giftNumber,
+      notes: notes ?? "Hoàn kho phiếu marketing",
     });
     restoredItems += 1;
   }
@@ -216,7 +254,7 @@ export async function deductMarketingGiftItemIfNeeded(
 
 export async function syncMissingOrderOutboundDeductions() {
   const orders = await prisma.order.findMany({
-    where: { status: { not: "cancelled" } },
+    where: { status: { notIn: [...INACTIVE_ORDER_STATUSES] } },
     include: { items: true },
     orderBy: { createdAt: "asc" },
   });

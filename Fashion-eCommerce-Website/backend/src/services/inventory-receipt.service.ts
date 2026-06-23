@@ -18,8 +18,10 @@ type DbProduct = {
 
 const RETURN_REASONS = new Set([
   "ORDER_CANCEL",
+  "ORDER_RETURN",
   "ORDER_EDIT_IN",
   "MARKETING_GIFT_CANCEL",
+  "MARKETING_GIFT_EDIT_IN",
   "RETURN",
   "REFUND",
 ]);
@@ -30,6 +32,7 @@ const SALE_REASONS = new Set([
   "ORDER_EDIT_OUT",
   "ORDER_UNCANCEL",
   "MARKETING_GIFT",
+  "MARKETING_GIFT_EDIT_OUT",
 ]);
 
 function parseVariantKey(key: string, sizes: string[]): { color: string; size: string } {

@@ -8,6 +8,7 @@ import {
 import { getProductImageForColorFromDb, isStoredImageMismatch } from "../utils/product-image";
 import {
   deductOrderItemsIfNeeded,
+  isInactiveOrderStatus,
   orderItemHasStockMovement,
   restoreOrderItemsIfDeducted,
   syncMissingOrderOutboundDeductions,
@@ -270,7 +271,7 @@ router.post("/", async (req, res, next) => {
       });
 
       const orderStatus = status || "pending";
-      if (orderStatus !== "cancelled") {
+      if (!isInactiveOrderStatus(orderStatus)) {
         await deductOrderItemsIfNeeded(
           tx,
           {
@@ -330,7 +331,16 @@ router.put("/:id/status", async (req, res, next) => {
     }
 
     const updatedOrder = await prisma.$transaction(async (tx) => {
-      if (status === "cancelled" && existingOrder.status !== "cancelled") {
+      const wasInactive = isInactiveOrderStatus(existingOrder.status);
+      const willBeInactive = isInactiveOrderStatus(status);
+
+      if (willBeInactive && !wasInactive) {
+        const restoreReason = status === "returned" ? "ORDER_RETURN" : "ORDER_CANCEL";
+        const restoreNotes =
+          status === "returned"
+            ? "Hoàn kho do hoàn đơn COD (khách không nhận)"
+            : "Hoàn kho do hủy đơn hàng";
+
         await restoreOrderItemsIfDeducted(
           tx,
           existingOrder,
@@ -343,11 +353,12 @@ router.put("/:id/status", async (req, res, next) => {
             isPreOrder: item.isPreOrder,
             price: item.price,
           })),
-          "Hoàn kho do hủy đơn hàng",
+          restoreNotes,
+          restoreReason,
         );
       }
 
-      if (status !== "cancelled" && existingOrder.status === "cancelled") {
+      if (!willBeInactive && wasInactive) {
         await deductOrderItemsIfNeeded(
           tx,
           {
@@ -364,7 +375,7 @@ router.put("/:id/status", async (req, res, next) => {
               price: item.price,
             })),
           },
-          "Trừ kho lại khi hoàn tác hủy đơn",
+          "Trừ kho lại khi hoàn tác hủy/hoàn đơn",
         );
       }
 
@@ -500,8 +511,8 @@ router.put("/:id/items/:itemId", async (req, res, next) => {
       return res.status(404).json({ message: "Không tìm thấy đơn hàng" });
     }
 
-    if (order.status === "completed" || order.status === "cancelled") {
-      return res.status(400).json({ message: "Không thể chỉnh sửa đơn đã hoàn thành hoặc đã hủy!" });
+    if (order.status === "completed" || isInactiveOrderStatus(order.status)) {
+      return res.status(400).json({ message: "Không thể chỉnh sửa đơn đã hoàn thành, đã hủy hoặc đã hoàn!" });
     }
 
     const item = order.items.find((row) => row.id === itemId);
@@ -534,7 +545,8 @@ router.put("/:id/items/:itemId", async (req, res, next) => {
       return res.status(400).json({ message: "Không có thay đổi nào để cập nhật!" });
     }
 
-    const shouldAdjustStock = !item.isPreOrder && !nextIsPreOrder && order.status !== "cancelled";
+    const shouldAdjustStock =
+      !item.isPreOrder && !nextIsPreOrder && !isInactiveOrderStatus(order.status);
 
     const result = await prisma.$transaction(async (tx) => {
       if (shouldAdjustStock) {

@@ -48,9 +48,9 @@ export interface Order {
   total: number;
   paymentMethod: string;
   shippingMethod?: "standard" | "express";
-  // Backend statuses: pending, processing, shipping, completed, cancelled
+  // Backend statuses: pending, processing, shipping, completed, cancelled, returned
   // Keep legacy UI variants for backwards compatibility
-  status: "pending" | "processing" | "confirmed" | "shipping" | "delivered" | "completed" | "cancelled";
+  status: "pending" | "processing" | "confirmed" | "shipping" | "delivered" | "completed" | "cancelled" | "returned";
   createdAt: string;
   notes?: string;
   internalNote?: string;

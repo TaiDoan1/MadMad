@@ -13,13 +13,17 @@ import {
   Ban,
   Download,
   Calendar,
+  Pencil,
 } from "lucide-react";
 
 import { ImageWithFallback } from "@/components/common/image-with-fallback";
+import { OrderItemEditModal } from "@/components/admin/order-item-edit-modal";
 import { useMarketing } from "@/features/marketing/context/marketing-context";
 import { useProducts } from "@/features/products/context/product-context";
 import { useToast } from "@/components/common/toast";
 import type { Product } from "@/types/product";
+import type { MarketingGift, MarketingGiftItem } from "@/types/marketing-gift";
+import type { Order } from "@/types/order";
 import { getVariantAvailableStock } from "@/utils/product-stock";
 import {
   buildMarketingMonthOptions,
@@ -57,9 +61,15 @@ export function AdminMarketingPage() {
     syncMarketingItemImages,
     syncMarketingStockDeductions,
     refreshMarketing,
+    updateGiftItem,
   } = useMarketing();
   const imageSyncStarted = useRef(false);
   const stockSyncStarted = useRef(false);
+  const [editingGiftItem, setEditingGiftItem] = useState<{
+    gift: MarketingGift;
+    item: MarketingGiftItem;
+  } | null>(null);
+  const [isSavingGiftItem, setIsSavingGiftItem] = useState(false);
 
   const monthOptions = useMemo(() => buildMarketingMonthOptions(), []);
   const selectedMonthLabel =
@@ -108,6 +118,42 @@ export function AdminMarketingPage() {
   const draftTotalCost = draftProductValue + Math.max(0, cashAmount);
 
   const formatMoney = (value: number) => `${value.toLocaleString("vi-VN")}đ`;
+
+  const handleSaveGiftItemEdit = async (input: {
+    productId: string;
+    color: string;
+    size: string;
+    quantity: number;
+  }) => {
+    if (!editingGiftItem?.item.id) return;
+    setIsSavingGiftItem(true);
+    try {
+      const updated = await updateGiftItem(editingGiftItem.gift.id, editingGiftItem.item.id, input);
+      if (updated) {
+        setEditingGiftItem(null);
+        await refreshProducts();
+      }
+    } finally {
+      setIsSavingGiftItem(false);
+    }
+  };
+
+  const toMarketingEditOrder = (gift: MarketingGift): Order => ({
+    id: 0,
+    orderNumber: gift.giftNumber,
+    customerName: gift.kolName,
+    customerEmail: "",
+    customerPhone: "",
+    shippingAddress: { street: "", ward: "", district: "", province: "" },
+    items: [],
+    subtotal: gift.productValue,
+    discount: 0,
+    shipping: 0,
+    total: gift.totalCost,
+    paymentMethod: "marketing",
+    status: gift.status === "cancelled" ? "cancelled" : "pending",
+    createdAt: gift.createdAt,
+  });
 
   useEffect(() => {
     if (products.length === 0 || imageSyncStarted.current) return;
@@ -438,18 +484,30 @@ export function AdminMarketingPage() {
                     <td className="px-4 py-4">
                       <div className="space-y-2">
                         {gift.items.map((item) => (
-                          <div key={`${gift.id}-${item.id}`} className="flex items-center gap-2">
-                            <ImageWithFallback
-                              src={resolveColorCodedItemImage(item, products)}
-                              alt={item.productName}
-                              className="h-10 w-10 rounded-lg object-cover"
-                            />
-                            <div>
-                              <p className="text-xs font-bold text-black">{item.productName}</p>
-                              <p className="text-[11px] text-black/45">
-                                {item.color} / {item.size} × {item.quantity}
-                              </p>
+                          <div key={`${gift.id}-${item.id}`} className="flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-2">
+                              <ImageWithFallback
+                                src={resolveColorCodedItemImage(item, products)}
+                                alt={item.productName}
+                                className="h-10 w-10 rounded-lg object-cover"
+                              />
+                              <div>
+                                <p className="text-xs font-bold text-black">{item.productName}</p>
+                                <p className="text-[11px] text-black/45">
+                                  {item.color} / {item.size} × {item.quantity}
+                                </p>
+                              </div>
                             </div>
+                            {gift.status === "completed" && item.id && (
+                              <button
+                                type="button"
+                                onClick={() => setEditingGiftItem({ gift, item })}
+                                className="inline-flex items-center gap-1 rounded-lg border border-black/10 px-2 py-1 text-[9px] font-bold uppercase text-black/65 hover:bg-stone-50"
+                              >
+                                <Pencil className="h-3 w-3" />
+                                Sửa
+                              </button>
+                            )}
                           </div>
                         ))}
                       </div>
@@ -747,6 +805,26 @@ export function AdminMarketingPage() {
             document.body,
           )
         : null}
+
+      {editingGiftItem && (
+        <OrderItemEditModal
+          order={toMarketingEditOrder(editingGiftItem.gift)}
+          item={{
+            id: Number(editingGiftItem.item.id) || undefined,
+            productId: editingGiftItem.item.productId,
+            productName: editingGiftItem.item.productName,
+            productImage: editingGiftItem.item.productImage,
+            color: editingGiftItem.item.color,
+            size: editingGiftItem.item.size,
+            quantity: editingGiftItem.item.quantity,
+            price: editingGiftItem.item.unitPrice,
+          }}
+          products={products}
+          onClose={() => setEditingGiftItem(null)}
+          onSave={handleSaveGiftItemEdit}
+          saving={isSavingGiftItem}
+        />
+      )}
     </div>
   );
 }

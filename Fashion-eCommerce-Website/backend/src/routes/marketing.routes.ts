@@ -4,9 +4,12 @@ import { getVariantAvailable } from "../utils/product-stock";
 import { getProductImageForColorFromDb, isStoredImageMismatch } from "../utils/product-image";
 import {
   deductProductStockWithLog,
-  restoreProductStockWithLog,
 } from "../services/stock-movement.service";
-import { syncMissingMarketingOutboundDeductions } from "../services/stock-outbound.service";
+import {
+  marketingItemHasStockMovement,
+  restoreMarketingItemsIfDeducted,
+  syncMissingMarketingOutboundDeductions,
+} from "../services/stock-outbound.service";
 
 const router = Router();
 
@@ -230,6 +233,141 @@ router.post("/", async (req, res, next) => {
   }
 });
 
+router.put("/:id/items/:itemId", async (req, res, next) => {
+  try {
+    const { id, itemId } = req.params;
+    const { productId, color, size, quantity } = req.body;
+
+    if (!productId || !color || !size || !quantity) {
+      return res.status(400).json({ message: "Thiếu thông tin sản phẩm cần cập nhật!" });
+    }
+
+    const gift = await prisma.marketingGift.findUnique({
+      where: { id },
+      include: { items: true },
+    });
+
+    if (!gift) {
+      return res.status(404).json({ message: "Không tìm thấy phiếu tặng" });
+    }
+    if (gift.status !== "completed") {
+      return res.status(400).json({ message: "Chỉ sửa được phiếu tặng đang hoạt động!" });
+    }
+
+    const item = gift.items.find((row) => row.id === itemId);
+    if (!item) {
+      return res.status(404).json({ message: "Không tìm thấy dòng sản phẩm trong phiếu tặng" });
+    }
+
+    const nextQuantity = Math.max(1, Number(quantity));
+    const nextProduct = await prisma.product.findUnique({ where: { id: String(productId) } });
+    if (!nextProduct) {
+      return res.status(404).json({ message: "Không tìm thấy sản phẩm mới" });
+    }
+
+    const nextColor = String(color).trim();
+    const nextSize = String(size).trim();
+    const nextProductId = String(productId);
+    const nextProductName = nextProduct.name;
+    const nextProductImage = getProductImageForColorFromDb(nextProduct, nextColor);
+    const nextUnitPrice = Number(nextProduct.price) || 0;
+    const nextLineTotal = nextUnitPrice * nextQuantity;
+
+    const unchanged =
+      item.productId === nextProductId &&
+      item.color === nextColor &&
+      item.size === nextSize &&
+      item.quantity === nextQuantity;
+
+    if (unchanged) {
+      return res.status(400).json({ message: "Không có thay đổi nào để cập nhật!" });
+    }
+
+    const updated = await prisma.$transaction(async (tx) => {
+      const giftRef = { giftNumber: gift.giftNumber };
+
+      if (await marketingItemHasStockMovement(tx, giftRef, item)) {
+        await restoreProductStockWithLog(tx, {
+          productId: item.productId,
+          productName: item.productName,
+          color: item.color,
+          size: item.size,
+          quantity: item.quantity,
+          reason: "MARKETING_GIFT_EDIT_IN",
+          referenceType: "marketing_gift",
+          referenceId: gift.giftNumber,
+          referenceLabel: gift.giftNumber,
+          notes: "Hoàn kho dòng cũ trước khi sửa phiếu marketing",
+        });
+      }
+
+      await deductProductStockWithLog(tx, {
+        productId: nextProductId,
+        productName: nextProductName,
+        color: nextColor,
+        size: nextSize,
+        quantity: nextQuantity,
+        reason: "MARKETING_GIFT_EDIT_OUT",
+        referenceType: "marketing_gift",
+        referenceId: gift.giftNumber,
+        referenceLabel: gift.giftNumber,
+        notes: "Trừ kho dòng mới sau khi sửa phiếu marketing",
+      });
+
+      await tx.marketingGiftItem.update({
+        where: { id: itemId },
+        data: {
+          productId: nextProductId,
+          productName: nextProductName,
+          productImage: nextProductImage,
+          color: nextColor,
+          size: nextSize,
+          quantity: nextQuantity,
+          unitPrice: nextUnitPrice,
+          lineTotal: nextLineTotal,
+        },
+      });
+
+      const updatedItems = gift.items.map((row) =>
+        row.id === itemId
+          ? {
+              ...row,
+              productId: nextProductId,
+              productName: nextProductName,
+              productImage: nextProductImage,
+              color: nextColor,
+              size: nextSize,
+              quantity: nextQuantity,
+              unitPrice: nextUnitPrice,
+              lineTotal: nextLineTotal,
+            }
+          : row,
+      );
+
+      const productValue = updatedItems.reduce((sum, row) => {
+        if (row.id === itemId) return sum + nextLineTotal;
+        return sum + row.lineTotal;
+      }, 0);
+
+      return tx.marketingGift.update({
+        where: { id },
+        data: {
+          productValue,
+          totalCost: productValue + gift.cashAmount,
+        },
+        include: { items: true },
+      });
+    });
+
+    res.json(parseGift(updated));
+  } catch (error: any) {
+    if (error?.message?.includes("Không đủ tồn kho")) {
+      return res.status(400).json({ message: error.message });
+    }
+    next(error);
+  }
+});
+
 router.put("/:id/cancel", async (req, res, next) => {
   try {
     const { id } = req.params;
@@ -246,20 +384,12 @@ router.put("/:id/cancel", async (req, res, next) => {
     }
 
     const updated = await prisma.$transaction(async (tx) => {
-      for (const item of gift.items) {
-        await restoreProductStockWithLog(tx, {
-          productId: item.productId,
-          productName: item.productName,
-          color: item.color,
-          size: item.size,
-          quantity: item.quantity,
-          reason: "MARKETING_GIFT_CANCEL",
-          referenceType: "marketing_gift",
-          referenceId: gift.giftNumber,
-          referenceLabel: gift.giftNumber,
-          notes: "Hoàn kho do hủy phiếu tặng KOL/KOC",
-        });
-      }
+      await restoreMarketingItemsIfDeducted(
+        tx,
+        gift,
+        gift.items,
+        "Hoàn kho do hủy phiếu tặng KOL/KOC",
+      );
 
       return tx.marketingGift.update({
         where: { id },

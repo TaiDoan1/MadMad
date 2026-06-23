@@ -21,6 +21,7 @@ import type { StockMovement, StockMovementReason, StockMovementStats } from "@/t
 import {
   STOCK_MOVEMENT_REASON_LABELS,
   STOCK_MOVEMENT_REASON_OPTIONS,
+  formatStockMovementReference,
 } from "@/types/stock-movement";
 import { buildMarketingMonthOptions, getCurrentMonthValue } from "@/utils/marketing-export";
 import { getVariantAvailableStock } from "@/utils/product-stock";
@@ -450,7 +451,7 @@ export function AdminInventoryPage() {
                         </span>
                       </td>
                       <td className="px-4 py-3 font-mono text-[11px] text-black/70">
-                        {row.referenceLabel || row.referenceId || "—"}
+                        {formatStockMovementReference(row)}
                       </td>
                       <td className="px-4 py-3 text-[11px] text-black/55 max-w-[200px]">
                         {row.notes || "—"}
