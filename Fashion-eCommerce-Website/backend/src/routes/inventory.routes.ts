@@ -8,6 +8,7 @@ import {
 import { inferReceivedFromMovements } from "../services/inventory-receipt.service";
 import { parseVariantStock } from "../utils/product-stock";
 import { syncAllOutboundStockDeductions } from "../services/stock-outbound.service";
+import { ensureDatabaseMigrations } from "../services/database-migrate.service";
 
 const router = Router();
 
@@ -219,7 +220,17 @@ router.post("/backfill-received", async (_req, res, next) => {
 
 router.post("/sync-outbound", async (_req, res, next) => {
   try {
+    await ensureDatabaseMigrations();
     const result = await syncAllOutboundStockDeductions();
+    res.json(result);
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.post("/migrate-db", async (_req, res, next) => {
+  try {
+    const result = await ensureDatabaseMigrations();
     res.json(result);
   } catch (error) {
     next(error);

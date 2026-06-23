@@ -10,6 +10,7 @@ import authRoutes    from "./routes/auth.routes";
 import logsRoutes    from "./routes/logs.routes";
 import marketingRoutes from "./routes/marketing.routes";
 import inventoryRoutes from "./routes/inventory.routes";
+import { ensureDatabaseMigrations } from "./services/database-migrate.service";
 
 dotenv.config();
 
@@ -27,7 +28,12 @@ app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ limit: "10mb", extended: true }));
 
 // 📝 Middleware ghi nhận mọi yêu cầu HTTP để chuẩn đoán kết nối local
-app.use((req, res, next) => {
+app.use(async (req, res, next) => {
+  try {
+    await ensureDatabaseMigrations();
+  } catch (error) {
+    console.error("❌ Database migration failed:", error);
+  }
   console.log(`📡 [HTTP REQUEST] ${req.method} ${req.url}`);
   next();
 });
