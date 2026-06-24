@@ -23,6 +23,8 @@ interface MarketingContextValue {
     quantity: number;
   }) => Promise<MarketingGift | null>;
   deleteGiftItem: (giftId: string, itemId: string) => Promise<MarketingGift | null>;
+  deleteGift: (giftId: string, password: string) => Promise<boolean>;
+  updateGiftStatus: (giftId: string, status: MarketingGift["status"]) => Promise<MarketingGift | null>;
   refreshMarketing: (month?: string) => Promise<void>;
   syncMarketingItemImages: () => Promise<{ updated: number; total: number }>;
   syncMarketingStockDeductions: () => Promise<{
@@ -33,7 +35,7 @@ interface MarketingContextValue {
   }>;
   createGift: (input: CreateMarketingGiftInput) => Promise<MarketingGift | null>;
   cancelGift: (id: string) => Promise<boolean>;
-  deleteExportedGifts: (month: string) => Promise<number>;
+  deleteExportedGifts: (month: string, password: string) => Promise<number>;
 }
 
 const defaultStats: MarketingStats = {
@@ -194,6 +196,57 @@ export function MarketingProvider({ children }: { children: ReactNode }) {
     [refreshMarketing, selectedMonth, showToast],
   );
 
+  const deleteGift = useCallback(
+    async (giftId: string, password: string) => {
+      try {
+        const response = await fetch(`${API_URL}/marketing/${giftId}`, {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ password }),
+        });
+        const data = await response.json();
+        if (!response.ok) {
+          showToast(data.message || "Không thể xóa phiếu tặng", "error");
+          return false;
+        }
+        showToast(data.message || "Đã xóa phiếu marketing!", "success");
+        await refreshMarketing(selectedMonth);
+        return true;
+      } catch {
+        showToast("Lỗi kết nối khi xóa phiếu tặng", "error");
+        return false;
+      }
+    },
+    [refreshMarketing, selectedMonth, showToast],
+  );
+
+  const updateGiftStatus = useCallback(
+    async (giftId: string, status: MarketingGift["status"]) => {
+      try {
+        const response = await fetch(`${API_URL}/marketing/${giftId}/status`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ status }),
+        });
+        const data = await response.json();
+        if (!response.ok) {
+          showToast(data.message || "Không thể đổi trạng thái phiếu", "error");
+          return null;
+        }
+        showToast(
+          status === "completed" ? "Đã chuyển sang Đã tặng" : "Đã chuyển sang Đã hủy",
+          "success",
+        );
+        await refreshMarketing(selectedMonth);
+        return data as MarketingGift;
+      } catch {
+        showToast("Lỗi kết nối khi đổi trạng thái", "error");
+        return null;
+      }
+    },
+    [refreshMarketing, selectedMonth, showToast],
+  );
+
   const createGift = useCallback(
     async (input: CreateMarketingGiftInput) => {
       try {
@@ -241,12 +294,12 @@ export function MarketingProvider({ children }: { children: ReactNode }) {
   );
 
   const deleteExportedGifts = useCallback(
-    async (month: string) => {
+    async (month: string, password: string) => {
       try {
         const response = await fetch(`${API_URL}/marketing/bulk`, {
           method: "DELETE",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ month }),
+          body: JSON.stringify({ month, password }),
         });
         const data = await response.json();
         if (!response.ok) {
@@ -277,11 +330,13 @@ export function MarketingProvider({ children }: { children: ReactNode }) {
       updateGiftItem,
       addGiftItem,
       deleteGiftItem,
+      deleteGift,
+      updateGiftStatus,
       createGift,
       cancelGift,
       deleteExportedGifts,
     }),
-    [gifts, stats, isLoading, selectedMonth, refreshMarketing, syncMarketingItemImages, syncMarketingStockDeductions, updateGiftItem, addGiftItem, deleteGiftItem, createGift, cancelGift, deleteExportedGifts],
+    [gifts, stats, isLoading, selectedMonth, refreshMarketing, syncMarketingItemImages, syncMarketingStockDeductions, updateGiftItem, addGiftItem, deleteGiftItem, deleteGift, updateGiftStatus, createGift, cancelGift, deleteExportedGifts],
   );
 
   return <MarketingContext.Provider value={value}>{children}</MarketingContext.Provider>;

@@ -30,6 +30,7 @@ import {
   buildMarketingMonthOptions,
   downloadMarketingCsv,
 } from "@/utils/marketing-export";
+import { MARKETING_DELETE_PASSWORD } from "@/config/marketing-admin";
 import {
   getProductImageForColor,
   resolveColorCodedItemImage,
@@ -65,6 +66,8 @@ export function AdminMarketingPage() {
     updateGiftItem,
     addGiftItem,
     deleteGiftItem,
+    deleteGift,
+    updateGiftStatus,
   } = useMarketing();
   const imageSyncStarted = useRef(false);
   const stockSyncStarted = useRef(false);
@@ -79,6 +82,11 @@ export function AdminMarketingPage() {
   const [detailQuantity, setDetailQuantity] = useState(1);
   const [isAddingGiftItem, setIsAddingGiftItem] = useState(false);
   const [isSavingGiftItem, setIsSavingGiftItem] = useState(false);
+  const [showGiftDeleteModal, setShowGiftDeleteModal] = useState(false);
+  const [giftDeletePassword, setGiftDeletePassword] = useState("");
+  const [isDeletingGift, setIsDeletingGift] = useState(false);
+  const [bulkDeletePassword, setBulkDeletePassword] = useState("");
+  const [isUpdatingGiftStatus, setIsUpdatingGiftStatus] = useState(false);
 
   const monthOptions = useMemo(() => buildMarketingMonthOptions(), []);
   const selectedMonthLabel =
@@ -411,17 +419,56 @@ export function AdminMarketingPage() {
     showToast(`Đã export ${filteredGifts.length} phiếu (${selectedMonthLabel})`, "success");
   };
 
-  const handleDeleteExported = async () => {
+  const handleDeleteExported = async (password: string) => {
     if (selectedMonth === "all") {
       showToast("Vui lòng chọn một tháng cụ thể để xóa dữ liệu đã export", "warning");
       return;
     }
+    if (password.trim() !== MARKETING_DELETE_PASSWORD) {
+      showToast("Mật khẩu không đúng!", "error");
+      return;
+    }
     setIsDeleting(true);
-    const deletedCount = await deleteExportedGifts(selectedMonth);
+    const deletedCount = await deleteExportedGifts(selectedMonth, password.trim());
     setIsDeleting(false);
     setShowDeleteConfirm(false);
+    setBulkDeletePassword("");
     if (deletedCount > 0) {
       showToast(`Đã xóa ${deletedCount} phiếu tháng ${selectedMonthLabel}`, "success");
+    }
+  };
+
+  const handleConfirmDeleteGift = async () => {
+    if (!selectedGift) return;
+    if (giftDeletePassword.trim() !== MARKETING_DELETE_PASSWORD) {
+      showToast("Mật khẩu không đúng!", "error");
+      return;
+    }
+    setIsDeletingGift(true);
+    try {
+      const ok = await deleteGift(selectedGift.id, giftDeletePassword.trim());
+      if (ok) {
+        setSelectedGift(null);
+        setShowGiftDeleteModal(false);
+        setGiftDeletePassword("");
+        await refreshProducts();
+      }
+    } finally {
+      setIsDeletingGift(false);
+    }
+  };
+
+  const handleGiftStatusChange = async (status: MarketingGift["status"]) => {
+    if (!selectedGift || selectedGift.status === status) return;
+    setIsUpdatingGiftStatus(true);
+    try {
+      const updated = await updateGiftStatus(selectedGift.id, status);
+      if (updated) {
+        setSelectedGift(updated);
+        await refreshProducts();
+      }
+    } finally {
+      setIsUpdatingGiftStatus(false);
     }
   };
 
@@ -644,16 +691,25 @@ export function AdminMarketingPage() {
                       <p className="mt-1 font-semibold">{new Date(selectedGift.createdAt).toLocaleString("vi-VN")}</p>
                     </div>
                     <div className="rounded-xl bg-stone-50 p-3">
+                      <p className="text-[9px] font-bold uppercase text-black/45">Trạng thái</p>
+                      <select
+                        value={selectedGift.status}
+                        disabled={isUpdatingGiftStatus}
+                        onChange={(e) => void handleGiftStatusChange(e.target.value as MarketingGift["status"])}
+                        className="mt-1 w-full rounded-lg border border-black/10 bg-white px-2 py-1.5 text-xs font-bold focus:border-black/40 focus:outline-none disabled:opacity-50"
+                      >
+                        <option value="completed">Đã tặng</option>
+                        <option value="cancelled">Đã hủy</option>
+                      </select>
+                    </div>
+                    <div className="rounded-xl bg-stone-50 p-3">
                       <p className="text-[9px] font-bold uppercase text-black/45">Giá trị SP</p>
                       <p className="mt-1 font-black">{formatMoney(selectedGift.productValue)}</p>
                     </div>
                     <div className="rounded-xl bg-stone-50 p-3">
-                      <p className="text-[9px] font-bold uppercase text-black/45">Cash</p>
-                      <p className="mt-1 font-black">{formatMoney(selectedGift.cashAmount)}</p>
-                    </div>
-                    <div className="rounded-xl bg-stone-50 p-3">
                       <p className="text-[9px] font-bold uppercase text-black/45">Tổng chi phí</p>
                       <p className="mt-1 font-black text-primary">{formatMoney(selectedGift.totalCost)}</p>
+                      <p className="mt-0.5 text-[10px] text-black/45">Cash: {formatMoney(selectedGift.cashAmount)}</p>
                     </div>
                   </div>
 
@@ -783,22 +839,37 @@ export function AdminMarketingPage() {
                   </div>
                 </div>
 
-                <div className="flex justify-between gap-3 border-t border-black/10 px-5 py-4">
-                  {selectedGift.status === "completed" ? (
+                <div className="flex flex-wrap items-center justify-between gap-3 border-t border-black/10 px-5 py-4">
+                  <div className="flex flex-wrap items-center gap-2">
+                    {selectedGift.status === "completed" ? (
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          const ok = await handleCancelGift(selectedGift.id);
+                          if (ok) {
+                            setSelectedGift((current) =>
+                              current ? { ...current, status: "cancelled" } : null,
+                            );
+                          }
+                        }}
+                        className="inline-flex items-center gap-1.5 rounded-xl border border-amber-200 px-4 py-2.5 text-[10px] font-extrabold uppercase tracking-wider text-amber-800 hover:bg-amber-50"
+                      >
+                        <Ban className="h-3.5 w-3.5" />
+                        Hủy & hoàn kho
+                      </button>
+                    ) : null}
                     <button
                       type="button"
-                      onClick={async () => {
-                        const ok = await handleCancelGift(selectedGift.id);
-                        if (ok) setSelectedGift(null);
+                      onClick={() => {
+                        setGiftDeletePassword("");
+                        setShowGiftDeleteModal(true);
                       }}
                       className="inline-flex items-center gap-1.5 rounded-xl border border-red-200 px-4 py-2.5 text-[10px] font-extrabold uppercase tracking-wider text-red-700 hover:bg-red-50"
                     >
-                      <Ban className="h-3.5 w-3.5" />
-                      Hủy phiếu & hoàn kho
+                      <Trash2 className="h-3.5 w-3.5" />
+                      Xóa phiếu
                     </button>
-                  ) : (
-                    <span />
-                  )}
+                  </div>
                   <button
                     type="button"
                     onClick={() => {
@@ -808,6 +879,56 @@ export function AdminMarketingPage() {
                     className="rounded-xl border border-black/10 px-5 py-2.5 text-[10px] font-extrabold uppercase tracking-widest"
                   >
                     Đóng
+                  </button>
+                </div>
+              </div>
+            </div>,
+            document.body,
+          )
+        : null}
+
+      {showGiftDeleteModal && selectedGift
+        ? createPortal(
+            <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/70 p-4">
+              <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
+                <h3 className="text-lg font-black text-black">Xóa phiếu {selectedGift.giftNumber}?</h3>
+                <p className="mt-2 text-sm text-black/55 leading-relaxed">
+                  Phiếu sẽ bị xóa vĩnh viễn.
+                  {selectedGift.status === "completed"
+                    ? " Tồn kho các sản phẩm trong phiếu sẽ được hoàn lại."
+                    : ""}
+                </p>
+                <div className="mt-4 space-y-1.5">
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-black/50">
+                    Nhập mật khẩu xác nhận
+                  </label>
+                  <input
+                    type="password"
+                    value={giftDeletePassword}
+                    onChange={(e) => setGiftDeletePassword(e.target.value)}
+                    placeholder="Mật khẩu..."
+                    className="w-full rounded-xl border border-black/10 px-4 py-3 text-sm focus:border-black/40 focus:outline-none"
+                    autoFocus
+                  />
+                </div>
+                <div className="mt-6 flex justify-end gap-3">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowGiftDeleteModal(false);
+                      setGiftDeletePassword("");
+                    }}
+                    className="rounded-xl border border-black/10 px-4 py-2.5 text-[10px] font-extrabold uppercase tracking-widest"
+                  >
+                    Hủy
+                  </button>
+                  <button
+                    type="button"
+                    disabled={isDeletingGift || !giftDeletePassword.trim()}
+                    onClick={() => void handleConfirmDeleteGift()}
+                    className="rounded-xl bg-red-600 px-4 py-2.5 text-[10px] font-extrabold uppercase tracking-widest text-white hover:bg-red-700 disabled:opacity-50"
+                  >
+                    {isDeletingGift ? "Đang xóa..." : "Xác nhận xóa"}
                   </button>
                 </div>
               </div>
@@ -826,18 +947,33 @@ export function AdminMarketingPage() {
                   <strong>{selectedMonthLabel}</strong> khỏi hệ thống. Hành động này không hoàn tồn kho
                   (quà đã tặng thật). Chỉ xóa sau khi đã export file CSV.
                 </p>
+                <div className="mt-4 space-y-1.5">
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-black/50">
+                    Nhập mật khẩu xác nhận
+                  </label>
+                  <input
+                    type="password"
+                    value={bulkDeletePassword}
+                    onChange={(e) => setBulkDeletePassword(e.target.value)}
+                    placeholder="Mật khẩu..."
+                    className="w-full rounded-xl border border-black/10 px-4 py-3 text-sm focus:border-black/40 focus:outline-none"
+                  />
+                </div>
                 <div className="mt-6 flex justify-end gap-3">
                   <button
                     type="button"
-                    onClick={() => setShowDeleteConfirm(false)}
+                    onClick={() => {
+                      setShowDeleteConfirm(false);
+                      setBulkDeletePassword("");
+                    }}
                     className="rounded-xl border border-black/10 px-4 py-2.5 text-[10px] font-extrabold uppercase tracking-widest"
                   >
                     Hủy
                   </button>
                   <button
                     type="button"
-                    disabled={isDeleting}
-                    onClick={handleDeleteExported}
+                    disabled={isDeleting || !bulkDeletePassword.trim()}
+                    onClick={() => void handleDeleteExported(bulkDeletePassword)}
                     className="rounded-xl bg-red-600 px-4 py-2.5 text-[10px] font-extrabold uppercase tracking-widest text-white hover:bg-red-700 disabled:opacity-50"
                   >
                     {isDeleting ? "Đang xóa..." : "Xóa phiếu tháng này"}

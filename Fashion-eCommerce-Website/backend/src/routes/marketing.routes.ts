@@ -7,11 +7,18 @@ import {
   restoreProductStockWithLog,
 } from "../services/stock-movement.service";
 import {
+  marketingItemHasStockMovement,
   restoreMarketingItemsIfDeducted,
   syncMissingMarketingOutboundDeductions,
 } from "../services/stock-outbound.service";
 
 const router = Router();
+
+const MARKETING_ADMIN_PASSWORD = process.env.MARKETING_ADMIN_PASSWORD || "050120";
+
+function verifyMarketingAdminPassword(password: unknown) {
+  return String(password || "").trim() === MARKETING_ADMIN_PASSWORD;
+}
 
 const parseGift = (gift: any) => ({
   ...gift,
@@ -533,6 +540,125 @@ router.delete("/:id/items/:itemId", async (req, res, next) => {
   }
 });
 
+router.put("/:id/status", async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+
+    if (!status || !["completed", "cancelled"].includes(String(status))) {
+      return res.status(400).json({ message: "Trạng thái không hợp lệ!" });
+    }
+
+    const gift = await prisma.marketingGift.findUnique({
+      where: { id },
+      include: { items: true },
+    });
+
+    if (!gift) {
+      return res.status(404).json({ message: "Không tìm thấy phiếu tặng" });
+    }
+
+    if (gift.status === status) {
+      return res.status(400).json({ message: "Phiếu đang ở trạng thái này rồi" });
+    }
+
+    const updated = await prisma.$transaction(async (tx) => {
+      if (status === "cancelled" && gift.status === "completed") {
+        await restoreMarketingItemsIfDeducted(
+          tx,
+          gift,
+          gift.items,
+          "Hoàn kho do chuyển phiếu marketing sang Đã hủy",
+        );
+      }
+
+      if (status === "completed" && gift.status === "cancelled") {
+        for (const item of gift.items) {
+          const product = await tx.product.findUnique({ where: { id: item.productId } });
+          const color = product ? resolveVariantColor(product, item.color) : item.color;
+          const size = product ? resolveVariantSize(product, item.size) : item.size;
+          const available = product ? getVariantAvailable(product, color, size) : 0;
+
+          if (available < item.quantity) {
+            throw new Error(
+              `"${item.productName}" [${color}/${size}] không đủ hàng (còn ${available})`,
+            );
+          }
+
+          if (!(await marketingItemHasStockMovement(tx, gift, item))) {
+            await deductProductStockWithLog(tx, {
+              productId: item.productId,
+              productName: item.productName,
+              color,
+              size,
+              quantity: item.quantity,
+              reason: "MARKETING_GIFT",
+              referenceType: "marketing_gift",
+              referenceId: gift.giftNumber,
+              referenceLabel: gift.giftNumber,
+              notes: "Trừ kho khi kích hoạt lại phiếu marketing",
+            });
+          }
+        }
+      }
+
+      return tx.marketingGift.update({
+        where: { id },
+        data: { status: String(status) },
+        include: { items: true },
+      });
+    });
+
+    res.json(parseGift(updated));
+  } catch (error: any) {
+    if (error?.message?.includes("Không đủ tồn kho") || error?.message?.includes("không đủ hàng")) {
+      return res.status(400).json({ message: error.message });
+    }
+    next(error);
+  }
+});
+
+router.delete("/:id", async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { password } = req.body ?? {};
+
+    if (!verifyMarketingAdminPassword(password)) {
+      return res.status(403).json({ message: "Mật khẩu không đúng!" });
+    }
+
+    const gift = await prisma.marketingGift.findUnique({
+      where: { id },
+      include: { items: true },
+    });
+
+    if (!gift) {
+      return res.status(404).json({ message: "Không tìm thấy phiếu tặng" });
+    }
+
+    await prisma.$transaction(async (tx) => {
+      if (gift.status === "completed") {
+        await restoreMarketingItemsIfDeducted(
+          tx,
+          gift,
+          gift.items,
+          "Hoàn kho do xóa phiếu tặng KOL/KOC",
+        );
+      }
+
+      await tx.marketingGift.delete({ where: { id } });
+    });
+
+    res.json({
+      success: true,
+      message: `Đã xóa phiếu ${gift.giftNumber}`,
+      giftNumber: gift.giftNumber,
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
 router.put("/:id/cancel", async (req, res, next) => {
   try {
     const { id } = req.params;
@@ -571,7 +697,11 @@ router.put("/:id/cancel", async (req, res, next) => {
 
 router.delete("/bulk", async (req, res, next) => {
   try {
-    const { month, ids } = req.body ?? {};
+    const { month, ids, password } = req.body ?? {};
+
+    if (!verifyMarketingAdminPassword(password)) {
+      return res.status(403).json({ message: "Mật khẩu không đúng!" });
+    }
 
     if (Array.isArray(ids) && ids.length > 0) {
       const result = await prisma.marketingGift.deleteMany({
