@@ -398,14 +398,36 @@ export async function restoreMarketingItemsIfDeducted(
   let restoredItems = 0;
 
   for (const item of items) {
-    if (!(await marketingItemHasStockMovement(tx, gift, item))) continue;
+    const product = await tx.product.findUnique({ where: { id: item.productId } });
+    const color = product ? resolveVariantColor(product, item.color) : item.color.trim();
+    const size = product ? resolveVariantSize(product, item.size) : item.size.trim();
+
+    const movements = await tx.stockMovement.findMany({
+      where: {
+        productId: item.productId,
+        OR: [
+          { referenceType: "marketing_gift", referenceId: gift.giftNumber },
+          { referenceLabel: gift.giftNumber },
+        ],
+      },
+    });
+    const net = movements
+      .filter((m) => {
+        const mc = product ? resolveVariantColor(product, m.color) : m.color;
+        const ms = product ? resolveVariantSize(product, m.size) : m.size;
+        return mc === color && ms === size;
+      })
+      .reduce((sum, m) => sum + m.quantityDelta, 0);
+
+    const restoreQty = net < 0 ? Math.min(item.quantity, Math.abs(net)) : net === 0 ? item.quantity : 0;
+    if (restoreQty <= 0) continue;
 
     await restoreProductStockWithLog(tx, {
       productId: item.productId,
       productName: item.productName,
-      color: item.color,
-      size: item.size,
-      quantity: item.quantity,
+      color,
+      size,
+      quantity: restoreQty,
       reason,
       referenceType: "marketing_gift",
       referenceId: gift.giftNumber,
@@ -446,6 +468,148 @@ export async function deductMarketingGiftItemIfNeeded(
   });
 
   return { deducted: true, skipped: false };
+}
+
+export async function reconcileOrderStockWithCurrentItems(tx: TxClient, order: OrderRow) {
+  let deductedItems = 0;
+  let restoredItems = 0;
+  const currentKeys = new Set<string>();
+  const currentLines: Array<{
+    key: string;
+    productId: string;
+    productName: string;
+    color: string;
+    size: string;
+    quantity: number;
+  }> = [];
+
+  for (const item of order.items) {
+    if (item.isPreOrder) continue;
+    const product = await tx.product.findUnique({ where: { id: item.productId } });
+    const color = product ? resolveVariantColor(product, item.color) : item.color.trim();
+    const size = product ? resolveVariantSize(product, item.size) : item.size.trim();
+    const key = `${item.productId}|${color}|${size}`;
+    currentKeys.add(key);
+    currentLines.push({
+      key,
+      productId: item.productId,
+      productName: item.productName,
+      color,
+      size,
+      quantity: item.quantity,
+    });
+  }
+
+  const movements = await tx.stockMovement.findMany({
+    where: {
+      OR: [
+        { referenceType: "order", referenceId: String(order.id) },
+        { referenceLabel: order.orderNumber },
+      ],
+    },
+  });
+
+  const netByKey = new Map<string, number>();
+  const metaByKey = new Map<string, { productId: string; productName: string; color: string; size: string }>();
+
+  for (const movement of movements) {
+    const product = await tx.product.findUnique({ where: { id: movement.productId } });
+    const color = product ? resolveVariantColor(product, movement.color) : movement.color.trim();
+    const size = product ? resolveVariantSize(product, movement.size) : movement.size.trim();
+    const key = `${movement.productId}|${color}|${size}`;
+    netByKey.set(key, (netByKey.get(key) ?? 0) + movement.quantityDelta);
+    if (!metaByKey.has(key)) {
+      metaByKey.set(key, {
+        productId: movement.productId,
+        productName: movement.productName,
+        color,
+        size,
+      });
+    }
+  }
+
+  for (const line of currentLines) {
+    const expectedNet = -line.quantity;
+    const actualNet = netByKey.get(line.key) ?? 0;
+    const gap = expectedNet - actualNet;
+
+    if (gap < 0) {
+      await deductProductStockWithLog(tx, {
+        productId: line.productId,
+        productName: line.productName,
+        color: line.color,
+        size: line.size,
+        quantity: Math.abs(gap),
+        reason: "ORDER_EDIT_OUT",
+        referenceType: "order",
+        referenceId: String(order.id),
+        referenceLabel: order.orderNumber,
+        notes: `Đồng bộ trừ kho theo dòng đơn hiện tại (${line.color}/${line.size})`,
+      });
+      deductedItems += 1;
+    } else if (gap > 0) {
+      await restoreProductStockWithLog(tx, {
+        productId: line.productId,
+        productName: line.productName,
+        color: line.color,
+        size: line.size,
+        quantity: gap,
+        reason: "ORDER_EDIT_IN",
+        referenceType: "order",
+        referenceId: String(order.id),
+        referenceLabel: order.orderNumber,
+        notes: `Đồng bộ hoàn kho theo dòng đơn hiện tại (${line.color}/${line.size})`,
+      });
+      restoredItems += 1;
+    }
+  }
+
+  for (const [key, net] of netByKey.entries()) {
+    if (currentKeys.has(key) || net >= 0) continue;
+    const meta = metaByKey.get(key);
+    if (!meta) continue;
+    await restoreProductStockWithLog(tx, {
+      productId: meta.productId,
+      productName: meta.productName,
+      color: meta.color,
+      size: meta.size,
+      quantity: Math.abs(net),
+      reason: "ORDER_EDIT_IN",
+      referenceType: "order",
+      referenceId: String(order.id),
+      referenceLabel: order.orderNumber,
+      notes: "Hoàn kho biến thể không còn trong đơn (đồng bộ)",
+    });
+    restoredItems += 1;
+  }
+
+  return { deductedItems, restoredItems };
+}
+
+export async function reconcileActiveOrderStockWithCurrentItems() {
+  const orders = await prisma.order.findMany({
+    where: { status: { notIn: [...INACTIVE_ORDER_STATUSES] } },
+    include: { items: true },
+    orderBy: { createdAt: "asc" },
+  });
+
+  let deductedItems = 0;
+  let restoredItems = 0;
+  const errors: string[] = [];
+
+  for (const order of orders) {
+    try {
+      const result = await prisma.$transaction(async (tx) =>
+        reconcileOrderStockWithCurrentItems(tx, order as OrderRow),
+      );
+      deductedItems += result.deductedItems;
+      restoredItems += result.restoredItems;
+    } catch (error: any) {
+      errors.push(`${order.orderNumber}: ${error?.message || "Lỗi không xác định"}`);
+    }
+  }
+
+  return { ordersChecked: orders.length, deductedItems, restoredItems, errors };
 }
 
 export async function syncMissingOrderOutboundDeductions() {
@@ -521,6 +685,7 @@ export async function syncMissingMarketingOutboundDeductions() {
 }
 
 export async function syncAllOutboundStockDeductions() {
+  const orderReconcile = await reconcileActiveOrderStockWithCurrentItems();
   const orders = await syncMissingOrderOutboundDeductions();
   const marketing = await syncMissingMarketingOutboundDeductions();
   const reconciled = await reconcileEditedOrderStockAdjustments();
@@ -528,8 +693,11 @@ export async function syncAllOutboundStockDeductions() {
   return {
     orders,
     marketing,
+    orderReconcile,
     reconciled,
-    totalDeducted: orders.deductedItems + marketing.deductedItems + reconciled.deductedItems,
-    totalErrors: [...orders.errors, ...marketing.errors, ...reconciled.errors],
+    totalDeducted:
+      orders.deductedItems + marketing.deductedItems + reconciled.deductedItems + orderReconcile.deductedItems,
+    totalRestored: orderReconcile.restoredItems + reconciled.restoredItems,
+    totalErrors: [...orders.errors, ...marketing.errors, ...reconciled.errors, ...orderReconcile.errors],
   };
 }
