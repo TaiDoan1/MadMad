@@ -21,6 +21,7 @@ export interface OrderItem {
   productImage?: string;
   isPreOrder?: boolean;
   preOrderDays?: number;
+  preOrderFulfilledAt?: string;
   quantity: number;
   size: string;
   color: string;

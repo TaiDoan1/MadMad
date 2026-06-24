@@ -7,6 +7,7 @@ import {
   buildInitialReceivedStock,
   logInitialInventoryReceipt,
 } from "../services/inventory-receipt.service";
+import { fulfillReleasedPreOrderItems } from "../services/stock-outbound.service";
 
 const router = Router();
 
@@ -401,6 +402,10 @@ router.put("/:id", async (req, res, next) => {
       },
       });
     });
+
+    if (isPreOrder !== undefined && !isPreOrder && existing.isPreOrder) {
+      await fulfillReleasedPreOrderItems({ productId: id });
+    }
 
     res.json(parseProduct(updatedProduct));
   } catch (error) {

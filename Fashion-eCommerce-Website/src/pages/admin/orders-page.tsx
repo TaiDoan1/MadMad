@@ -271,23 +271,28 @@ export function AdminOrdersPage() {
     };
   };
 
-  const isPreOrderItem = (item: OrderItem) =>
-    Boolean(
-      item.isPreOrder ||
-      item.product?.isPreOrder ||
-      (item.product?.tags ?? []).some((tag) => tag.toLowerCase().includes("pre-order")),
-    );
+  const isPendingPreOrderItem = (item: OrderItem) => Boolean(item.isPreOrder);
+
+  const isFulfilledPreOrderItem = (item: OrderItem) => Boolean(item.preOrderFulfilledAt);
 
   const getOrderPreOrderInfo = (order: Order) => {
-    const preOrderItems = order.items.filter(isPreOrderItem);
-    if (preOrderItems.length === 0 && !order.containsPreOrder) {
-      return { containsPreOrder: false, maxPreOrderDays: 0 };
+    const pendingItems = order.items.filter(isPendingPreOrderItem);
+    const fulfilledItems = order.items.filter(isFulfilledPreOrderItem);
+
+    if (pendingItems.length === 0 && fulfilledItems.length === 0 && !order.containsPreOrder) {
+      return { containsPreOrder: false, hasFulfilledPreOrder: false, maxPreOrderDays: 0 };
     }
-    const maxPreOrderDays = preOrderItems.reduce(
+
+    const maxPreOrderDays = pendingItems.reduce(
       (max, item) => Math.max(max, item.preOrderDays ?? item.product?.preOrderDays ?? 7),
       0,
     );
-    return { containsPreOrder: true, maxPreOrderDays: maxPreOrderDays || 7 };
+
+    return {
+      containsPreOrder: pendingItems.length > 0,
+      hasFulfilledPreOrder: fulfilledItems.length > 0,
+      maxPreOrderDays: maxPreOrderDays || 7,
+    };
   };
 
   const handleSaveOrderItemEdit = async (input: { productId: string; color: string; size: string; quantity: number }) => {
@@ -643,7 +648,12 @@ export function AdminOrdersPage() {
       paymentMethod: manualPaymentMethod,
       shippingMethod: manualSource === "pos" ? undefined : manualShippingMethod,
       status: manualSource === "pos" ? "completed" : "pending",
-      containsPreOrder: manualItems.some(isPreOrderItem),
+      containsPreOrder: manualItems.some(
+        (item) =>
+          item.isPreOrder ||
+          item.product?.isPreOrder ||
+          (item.product?.tags ?? []).some((tag) => tag.toLowerCase().includes("pre-order")),
+      ),
       createdAt: new Date().toISOString(),
       notes: manualNotes.trim() || `Đơn hàng tạo thủ công qua kênh ${manualSource.toUpperCase()}${checkedMember ? ` (Thành viên VIP: ${checkedMember.memberCardId})` : ""}`,
     };
@@ -991,6 +1001,11 @@ export function AdminOrdersPage() {
                             {preOrderInfo.containsPreOrder && (
                               <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[8px] font-black bg-amber-100 text-amber-800 border border-amber-200 uppercase tracking-widest w-max">
                                 PRE-ORDER · {preOrderInfo.maxPreOrderDays} NGÀY
+                              </span>
+                            )}
+                            {!preOrderInfo.containsPreOrder && preOrderInfo.hasFulfilledPreOrder && (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[8px] font-black bg-emerald-100 text-emerald-800 border border-emerald-200 uppercase tracking-widest w-max">
+                                PRE-ORDER · ĐÃ CÓ HÀNG
                               </span>
                             )}
                             {order.isEdited && (
@@ -2046,9 +2061,14 @@ export function AdminOrdersPage() {
                             {editMeta.size && <>Size: {editMeta.size.from} → {editMeta.size.to}.</>}
                           </p>
                         )}
-                        {isPreOrderItem(item) && (
+                        {isPendingPreOrderItem(item) && (
                           <p className="mt-1 text-[10px] font-black uppercase tracking-wider text-amber-700">
                             Pre-order · Có hàng sau {item.preOrderDays ?? item.product?.preOrderDays ?? 7} ngày
+                          </p>
+                        )}
+                        {isFulfilledPreOrderItem(item) && (
+                          <p className="mt-1 text-[10px] font-black uppercase tracking-wider text-emerald-700">
+                            Pre-order · Đã có hàng
                           </p>
                         )}
                       </div>

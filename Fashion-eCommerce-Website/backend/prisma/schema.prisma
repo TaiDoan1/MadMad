@@ -80,6 +80,7 @@ model OrderItem {
   productImage String
   isPreOrder   Boolean  @default(false)
   preOrderDays Int?
+  preOrderFulfilledAt DateTime?
   quantity     Int
   size         String
   color        String

@@ -52,6 +52,16 @@ export function isInactiveOrderStatus(status: string) {
   return INACTIVE_ORDER_STATUSES.includes(status as (typeof INACTIVE_ORDER_STATUSES)[number]);
 }
 
+async function refreshOrderContainsPreOrder(tx: TxClient, orderId: number) {
+  const pendingCount = await tx.orderItem.count({
+    where: { orderId, isPreOrder: true },
+  });
+  await tx.order.update({
+    where: { id: orderId },
+    data: { containsPreOrder: pendingCount > 0 },
+  });
+}
+
 async function orderLineHasStockMovement(
   tx: TxClient,
   reference:
@@ -646,6 +656,93 @@ export async function syncMissingOrderOutboundDeductions() {
   };
 }
 
+export async function fulfillReleasedPreOrderItems(options?: { productId?: string }) {
+  const staleItems = await prisma.orderItem.findMany({
+    where: {
+      isPreOrder: true,
+      ...(options?.productId ? { productId: options.productId } : {}),
+      order: { status: { notIn: [...INACTIVE_ORDER_STATUSES] } },
+    },
+    include: { order: true },
+  });
+
+  if (staleItems.length === 0) {
+    return { fulfilledItems: 0, deductedItems: 0, ordersUpdated: 0, errors: [] as string[] };
+  }
+
+  const productIds = [...new Set(staleItems.map((item) => item.productId))];
+  const releasedProducts = await prisma.product.findMany({
+    where: { id: { in: productIds }, isPreOrder: false },
+    select: { id: true },
+  });
+  const releasedProductIds = new Set(releasedProducts.map((product) => product.id));
+
+  let fulfilledItems = 0;
+  let deductedItems = 0;
+  const touchedOrderIds = new Set<number>();
+  const errors: string[] = [];
+
+  for (const item of staleItems) {
+    if (!releasedProductIds.has(item.productId)) continue;
+
+    try {
+      await prisma.$transaction(async (tx) => {
+        const current = await tx.orderItem.findUnique({ where: { id: item.id } });
+        if (!current?.isPreOrder) return;
+
+        await tx.orderItem.update({
+          where: { id: item.id },
+          data: {
+            isPreOrder: false,
+            preOrderDays: null,
+            preOrderFulfilledAt: new Date(),
+          },
+        });
+
+        const order = item.order;
+        const line = {
+          productId: item.productId,
+          productName: item.productName,
+          color: item.color,
+          size: item.size,
+          quantity: item.quantity,
+          isPreOrder: false,
+          price: item.price,
+        };
+
+        if (!(await orderItemHasStockMovement(tx, order, line))) {
+          await deductProductStockWithLog(tx, {
+            productId: line.productId,
+            productName: line.productName,
+            color: line.color,
+            size: line.size,
+            quantity: line.quantity,
+            reason: resolveOrderStockReason(order.orderNumber),
+            referenceType: "order",
+            referenceId: String(order.id),
+            referenceLabel: order.orderNumber,
+            notes: "Pre-order đã có hàng — trừ kho",
+          });
+          deductedItems += 1;
+        }
+
+        await refreshOrderContainsPreOrder(tx, order.id);
+        fulfilledItems += 1;
+        touchedOrderIds.add(order.id);
+      });
+    } catch (error: any) {
+      errors.push(`${item.order.orderNumber}: ${error?.message || "Lỗi không xác định"}`);
+    }
+  }
+
+  return {
+    fulfilledItems,
+    deductedItems,
+    ordersUpdated: touchedOrderIds.size,
+    errors,
+  };
+}
+
 export async function syncMissingMarketingOutboundDeductions() {
   const gifts = await prisma.marketingGift.findMany({
     where: { status: "completed" },
@@ -685,19 +782,31 @@ export async function syncMissingMarketingOutboundDeductions() {
 }
 
 export async function syncAllOutboundStockDeductions() {
+  const preOrderFulfill = await fulfillReleasedPreOrderItems();
   const orderReconcile = await reconcileActiveOrderStockWithCurrentItems();
   const orders = await syncMissingOrderOutboundDeductions();
   const marketing = await syncMissingMarketingOutboundDeductions();
   const reconciled = await reconcileEditedOrderStockAdjustments();
 
   return {
+    preOrderFulfill,
     orders,
     marketing,
     orderReconcile,
     reconciled,
     totalDeducted:
-      orders.deductedItems + marketing.deductedItems + reconciled.deductedItems + orderReconcile.deductedItems,
+      preOrderFulfill.deductedItems +
+      orders.deductedItems +
+      marketing.deductedItems +
+      reconciled.deductedItems +
+      orderReconcile.deductedItems,
     totalRestored: orderReconcile.restoredItems + reconciled.restoredItems,
-    totalErrors: [...orders.errors, ...marketing.errors, ...reconciled.errors, ...orderReconcile.errors],
+    totalErrors: [
+      ...preOrderFulfill.errors,
+      ...orders.errors,
+      ...marketing.errors,
+      ...reconciled.errors,
+      ...orderReconcile.errors,
+    ],
   };
 }
