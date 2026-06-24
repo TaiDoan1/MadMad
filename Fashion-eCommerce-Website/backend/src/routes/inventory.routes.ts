@@ -9,6 +9,7 @@ import { inferReceivedFromMovements } from "../services/inventory-receipt.servic
 import { parseVariantStock } from "../utils/product-stock";
 import { syncAllOutboundStockDeductions } from "../services/stock-outbound.service";
 import { ensureDatabaseMigrations } from "../services/database-migrate.service";
+import { resetInventoryToFreshBaseline } from "../services/inventory-reset.service";
 
 const router = Router();
 
@@ -257,6 +258,18 @@ router.post("/sync-outbound", async (_req, res, next) => {
     await ensureDatabaseMigrations();
     const result = await syncAllOutboundStockDeductions();
     res.json(result);
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.post("/reset-baseline", async (_req, res, next) => {
+  try {
+    const result = await resetInventoryToFreshBaseline();
+    res.json({
+      message: "Đã reset tồn kho về mức nhập kho hiện tại và xóa toàn bộ lịch sử biến động.",
+      ...result,
+    });
   } catch (error) {
     next(error);
   }
