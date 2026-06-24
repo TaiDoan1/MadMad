@@ -14,6 +14,7 @@ import {
   Download,
   Calendar,
   Pencil,
+  Eye,
 } from "lucide-react";
 
 import { ImageWithFallback } from "@/components/common/image-with-fallback";
@@ -62,6 +63,8 @@ export function AdminMarketingPage() {
     syncMarketingStockDeductions,
     refreshMarketing,
     updateGiftItem,
+    addGiftItem,
+    deleteGiftItem,
   } = useMarketing();
   const imageSyncStarted = useRef(false);
   const stockSyncStarted = useRef(false);
@@ -69,6 +72,12 @@ export function AdminMarketingPage() {
     gift: MarketingGift;
     item: MarketingGiftItem;
   } | null>(null);
+  const [selectedGift, setSelectedGift] = useState<MarketingGift | null>(null);
+  const [detailProductId, setDetailProductId] = useState("");
+  const [detailColor, setDetailColor] = useState("");
+  const [detailSize, setDetailSize] = useState("");
+  const [detailQuantity, setDetailQuantity] = useState(1);
+  const [isAddingGiftItem, setIsAddingGiftItem] = useState(false);
   const [isSavingGiftItem, setIsSavingGiftItem] = useState(false);
 
   const monthOptions = useMemo(() => buildMarketingMonthOptions(), []);
@@ -119,6 +128,88 @@ export function AdminMarketingPage() {
 
   const formatMoney = (value: number) => `${value.toLocaleString("vi-VN")}đ`;
 
+  const summarizeGiftItems = (gift: MarketingGift) => {
+    const count = gift.items.length;
+    const pieces = gift.items.reduce((sum, item) => sum + item.quantity, 0);
+    if (count === 0) return "Chưa có SP";
+    if (count === 1) {
+      const item = gift.items[0];
+      return `${item.productName} · ${item.color}/${item.size} ×${item.quantity}`;
+    }
+    return `${count} SP · ${pieces} chiếc`;
+  };
+
+  const detailProduct = useMemo(
+    () => products.find((product) => String(product.id) === String(detailProductId)) ?? null,
+    [products, detailProductId],
+  );
+
+  const resetDetailAddForm = () => {
+    setDetailProductId("");
+    setDetailColor("");
+    setDetailSize("");
+    setDetailQuantity(1);
+  };
+
+  const handleDetailProductChange = (productId: string) => {
+    setDetailProductId(productId);
+    const product = products.find((p) => String(p.id) === productId);
+    setDetailColor(product?.colors?.[0] ?? "");
+    setDetailSize(product?.sizes?.[0] ?? "");
+    setDetailQuantity(1);
+  };
+
+  const handleOpenGiftDetail = (gift: MarketingGift) => {
+    setSelectedGift(gift);
+    resetDetailAddForm();
+  };
+
+  const handleAddGiftItemInDetail = async () => {
+    if (!selectedGift) return;
+    if (!detailProduct) {
+      showToast("Vui lòng chọn sản phẩm", "warning");
+      return;
+    }
+    if (!detailColor || !detailSize) {
+      showToast("Vui lòng chọn màu và size", "warning");
+      return;
+    }
+    const available = getAvailableForSelection(detailProduct, detailColor, detailSize);
+    if (available < detailQuantity) {
+      showToast(`Không đủ tồn kho (còn ${available})`, "error");
+      return;
+    }
+
+    setIsAddingGiftItem(true);
+    try {
+      const updated = await addGiftItem(selectedGift.id, {
+        productId: String(detailProduct.id),
+        color: detailColor,
+        size: detailSize,
+        quantity: detailQuantity,
+      });
+      if (updated) {
+        setSelectedGift(updated);
+        resetDetailAddForm();
+        await refreshProducts();
+      }
+    } finally {
+      setIsAddingGiftItem(false);
+    }
+  };
+
+  const handleDeleteGiftItem = async (gift: MarketingGift, item: MarketingGiftItem) => {
+    if (!item.id) return;
+    if (!window.confirm(`Xóa "${item.productName}" (${item.color}/${item.size}) khỏi phiếu?\n\nTồn kho sẽ được hoàn lại.`)) {
+      return;
+    }
+    const updated = await deleteGiftItem(gift.id, item.id);
+    if (updated) {
+      setSelectedGift(updated);
+      await refreshProducts();
+    }
+  };
+
   const handleSaveGiftItemEdit = async (input: {
     productId: string;
     color: string;
@@ -131,6 +222,7 @@ export function AdminMarketingPage() {
       const updated = await updateGiftItem(editingGiftItem.gift.id, editingGiftItem.item.id, input);
       if (updated) {
         setEditingGiftItem(null);
+        setSelectedGift((current) => (current?.id === updated.id ? updated : current));
         await refreshProducts();
       }
     } finally {
@@ -458,66 +550,40 @@ export function AdminMarketingPage() {
                 <tr>
                   <th className="px-4 py-3">Mã / Ngày</th>
                   <th className="px-4 py-3">KOL/KOC</th>
-                  <th className="px-4 py-3">Sản phẩm tặng</th>
-                  <th className="px-4 py-3">Giá trị SP</th>
-                  <th className="px-4 py-3">Cash</th>
-                  <th className="px-4 py-3">Tổng</th>
-                  <th className="px-4 py-3">Trạng thái</th>
-                  <th className="px-4 py-3">Thao tác</th>
+                  <th className="px-4 py-3">Sản phẩm</th>
+                  <th className="px-4 py-3 text-right">Giá trị SP</th>
+                  <th className="px-4 py-3 text-right">Cash</th>
+                  <th className="px-4 py-3 text-right">Tổng</th>
+                  <th className="px-4 py-3 text-center">TT</th>
+                  <th className="px-4 py-3 text-center">Chi tiết</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredGifts.map((gift) => (
-                  <tr key={gift.id} className="border-t border-black/5 align-top">
-                    <td className="px-4 py-4">
+                  <tr key={gift.id} className="border-t border-black/5 hover:bg-stone-50/60">
+                    <td className="px-4 py-3 whitespace-nowrap">
                       <p className="font-bold text-black">{gift.giftNumber}</p>
-                      <p className="mt-1 text-xs text-black/45">
-                        {new Date(gift.createdAt).toLocaleString("vi-VN")}
+                      <p className="text-[11px] text-black/45">
+                        {new Date(gift.createdAt).toLocaleDateString("vi-VN")}
                       </p>
                     </td>
-                    <td className="px-4 py-4">
+                    <td className="px-4 py-3">
                       <p className="font-bold text-black">{gift.kolName}</p>
-                      <p className="text-xs text-black/45">
+                      <p className="text-[11px] text-black/45 truncate max-w-[140px]">
                         {[gift.platform, gift.kolHandle].filter(Boolean).join(" · ") || "—"}
                       </p>
                     </td>
-                    <td className="px-4 py-4">
-                      <div className="space-y-2">
-                        {gift.items.map((item) => (
-                          <div key={`${gift.id}-${item.id}`} className="flex items-center justify-between gap-2">
-                            <div className="flex items-center gap-2">
-                              <ImageWithFallback
-                                src={resolveColorCodedItemImage(item, products)}
-                                alt={item.productName}
-                                className="h-10 w-10 rounded-lg object-cover"
-                              />
-                              <div>
-                                <p className="text-xs font-bold text-black">{item.productName}</p>
-                                <p className="text-[11px] text-black/45">
-                                  {item.color} / {item.size} × {item.quantity}
-                                </p>
-                              </div>
-                            </div>
-                            {gift.status === "completed" && item.id && (
-                              <button
-                                type="button"
-                                onClick={() => setEditingGiftItem({ gift, item })}
-                                className="inline-flex items-center gap-1 rounded-lg border border-black/10 px-2 py-1 text-[9px] font-bold uppercase text-black/65 hover:bg-stone-50"
-                              >
-                                <Pencil className="h-3 w-3" />
-                                Sửa
-                              </button>
-                            )}
-                          </div>
-                        ))}
-                      </div>
+                    <td className="px-4 py-3 max-w-[220px]">
+                      <p className="text-xs font-semibold text-black/75 truncate" title={summarizeGiftItems(gift)}>
+                        {summarizeGiftItems(gift)}
+                      </p>
                     </td>
-                    <td className="px-4 py-4 font-bold">{formatMoney(gift.productValue)}</td>
-                    <td className="px-4 py-4 font-bold">{formatMoney(gift.cashAmount)}</td>
-                    <td className="px-4 py-4 font-black text-primary">{formatMoney(gift.totalCost)}</td>
-                    <td className="px-4 py-4">
+                    <td className="px-4 py-3 text-right font-bold whitespace-nowrap">{formatMoney(gift.productValue)}</td>
+                    <td className="px-4 py-3 text-right font-bold whitespace-nowrap">{formatMoney(gift.cashAmount)}</td>
+                    <td className="px-4 py-3 text-right font-black text-primary whitespace-nowrap">{formatMoney(gift.totalCost)}</td>
+                    <td className="px-4 py-3 text-center">
                       <span
-                        className={`rounded-full px-3 py-1 text-[10px] font-extrabold uppercase tracking-wider ${
+                        className={`inline-block rounded-full px-2.5 py-1 text-[9px] font-extrabold uppercase tracking-wider ${
                           gift.status === "completed"
                             ? "bg-green-100 text-green-800"
                             : "bg-stone-200 text-stone-600"
@@ -526,19 +592,15 @@ export function AdminMarketingPage() {
                         {gift.status === "completed" ? "Đã tặng" : "Đã hủy"}
                       </span>
                     </td>
-                    <td className="px-4 py-4">
-                      {gift.status === "completed" ? (
-                        <button
-                          type="button"
-                          onClick={() => handleCancelGift(gift.id)}
-                          className="inline-flex items-center gap-1 rounded-lg border border-red-200 px-3 py-2 text-[10px] font-extrabold uppercase tracking-wider text-red-700 hover:bg-red-50"
-                        >
-                          <Ban className="h-3.5 w-3.5" />
-                          Hủy & hoàn kho
-                        </button>
-                      ) : (
-                        <span className="text-xs text-black/35">—</span>
-                      )}
+                    <td className="px-4 py-3 text-center">
+                      <button
+                        type="button"
+                        onClick={() => handleOpenGiftDetail(gift)}
+                        className="inline-flex items-center gap-1 rounded-lg border border-black/10 px-2.5 py-1.5 text-[9px] font-bold uppercase text-black/65 hover:bg-white"
+                      >
+                        <Eye className="h-3 w-3" />
+                        Xem
+                      </button>
                     </td>
                   </tr>
                 ))}
@@ -547,6 +609,212 @@ export function AdminMarketingPage() {
           </div>
         )}
       </div>
+
+      {selectedGift
+        ? createPortal(
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs">
+              <div className="flex max-h-[92vh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-black/10 bg-white shadow-2xl">
+                <div className="flex items-start justify-between border-b border-black/10 px-5 py-4">
+                  <div>
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-black/45">Chi tiết phiếu tặng</p>
+                    <h3 className="text-lg font-black text-black">{selectedGift.giftNumber}</h3>
+                    <p className="mt-1 text-sm font-bold text-black">{selectedGift.kolName}</p>
+                    <p className="text-xs text-black/50">
+                      {[selectedGift.platform, selectedGift.kolHandle, selectedGift.contactInfo]
+                        .filter(Boolean)
+                        .join(" · ") || "—"}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedGift(null);
+                      resetDetailAddForm();
+                    }}
+                    className="rounded-lg border border-black/10 p-2 hover:bg-stone-50"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+
+                <div className="flex-1 space-y-5 overflow-y-auto p-5">
+                  <div className="grid grid-cols-2 gap-3 text-xs md:grid-cols-4">
+                    <div className="rounded-xl bg-stone-50 p-3">
+                      <p className="text-[9px] font-bold uppercase text-black/45">Ngày tạo</p>
+                      <p className="mt-1 font-semibold">{new Date(selectedGift.createdAt).toLocaleString("vi-VN")}</p>
+                    </div>
+                    <div className="rounded-xl bg-stone-50 p-3">
+                      <p className="text-[9px] font-bold uppercase text-black/45">Giá trị SP</p>
+                      <p className="mt-1 font-black">{formatMoney(selectedGift.productValue)}</p>
+                    </div>
+                    <div className="rounded-xl bg-stone-50 p-3">
+                      <p className="text-[9px] font-bold uppercase text-black/45">Cash</p>
+                      <p className="mt-1 font-black">{formatMoney(selectedGift.cashAmount)}</p>
+                    </div>
+                    <div className="rounded-xl bg-stone-50 p-3">
+                      <p className="text-[9px] font-bold uppercase text-black/45">Tổng chi phí</p>
+                      <p className="mt-1 font-black text-primary">{formatMoney(selectedGift.totalCost)}</p>
+                    </div>
+                  </div>
+
+                  {selectedGift.notes ? (
+                    <div className="rounded-xl border border-black/5 bg-stone-50 px-4 py-3 text-sm text-black/70">
+                      <p className="text-[9px] font-bold uppercase text-black/45">Ghi chú</p>
+                      <p className="mt-1">{selectedGift.notes}</p>
+                    </div>
+                  ) : null}
+
+                  <div>
+                    <div className="mb-3 flex items-center justify-between">
+                      <h4 className="text-[10px] font-extrabold uppercase tracking-widest text-black/60">
+                        Sản phẩm tặng ({selectedGift.items.length})
+                      </h4>
+                    </div>
+
+                    <div className="space-y-2">
+                      {selectedGift.items.map((item) => (
+                        <div
+                          key={item.id}
+                          className="flex items-center justify-between gap-3 rounded-xl border border-black/5 bg-white px-3 py-3"
+                        >
+                          <div className="flex min-w-0 items-center gap-3">
+                            <ImageWithFallback
+                              src={resolveColorCodedItemImage(item, products)}
+                              alt={item.productName}
+                              className="h-12 w-12 shrink-0 rounded-lg object-cover"
+                            />
+                            <div className="min-w-0">
+                              <p className="truncate text-sm font-bold text-black">{item.productName}</p>
+                              <p className="text-xs text-black/50">
+                                {item.color} / {item.size} × {item.quantity}
+                              </p>
+                              <p className="text-xs font-bold text-black/70">{formatMoney(item.lineTotal)}</p>
+                            </div>
+                          </div>
+                          {selectedGift.status === "completed" && item.id ? (
+                            <div className="flex shrink-0 items-center gap-1">
+                              <button
+                                type="button"
+                                onClick={() => setEditingGiftItem({ gift: selectedGift, item })}
+                                className="inline-flex items-center gap-1 rounded-lg border border-black/10 px-2 py-1.5 text-[9px] font-bold uppercase hover:bg-stone-50"
+                              >
+                                <Pencil className="h-3 w-3" />
+                                Sửa
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => void handleDeleteGiftItem(selectedGift, item)}
+                                className="inline-flex items-center gap-1 rounded-lg border border-red-200 px-2 py-1.5 text-[9px] font-bold uppercase text-red-700 hover:bg-red-50"
+                              >
+                                <Trash2 className="h-3 w-3" />
+                                Xóa
+                              </button>
+                            </div>
+                          ) : null}
+                        </div>
+                      ))}
+                    </div>
+
+                    {selectedGift.status === "completed" ? (
+                      <div className="mt-4 space-y-3 rounded-xl border border-dashed border-black/15 bg-stone-50/70 p-4">
+                        <p className="text-[10px] font-extrabold uppercase tracking-widest text-black/55">Thêm sản phẩm</p>
+                        <div className="grid grid-cols-1 gap-2 sm:grid-cols-5">
+                          <select
+                            value={detailProductId}
+                            onChange={(e) => handleDetailProductChange(e.target.value)}
+                            className="rounded-xl border border-black/10 bg-white px-3 py-2 text-xs font-bold sm:col-span-2"
+                          >
+                            <option value="">Chọn sản phẩm</option>
+                            {products.map((product) => (
+                              <option key={product.id} value={product.id}>
+                                {product.name}
+                              </option>
+                            ))}
+                          </select>
+                          <select
+                            value={detailColor}
+                            onChange={(e) => setDetailColor(e.target.value)}
+                            disabled={!detailProduct}
+                            className="rounded-xl border border-black/10 bg-white px-3 py-2 text-xs font-bold"
+                          >
+                            {(detailProduct?.colors ?? []).map((color) => (
+                              <option key={color} value={color}>
+                                {color}
+                              </option>
+                            ))}
+                          </select>
+                          <select
+                            value={detailSize}
+                            onChange={(e) => setDetailSize(e.target.value)}
+                            disabled={!detailProduct}
+                            className="rounded-xl border border-black/10 bg-white px-3 py-2 text-xs font-bold"
+                          >
+                            {(detailProduct?.sizes ?? []).map((size) => (
+                              <option key={size} value={size}>
+                                {size}
+                              </option>
+                            ))}
+                          </select>
+                          <input
+                            type="number"
+                            min={1}
+                            value={detailQuantity}
+                            onChange={(e) => setDetailQuantity(Math.max(1, Number(e.target.value) || 1))}
+                            disabled={!detailProduct}
+                            className="rounded-xl border border-black/10 bg-white px-3 py-2 text-xs font-bold"
+                          />
+                        </div>
+                        {detailProduct && detailColor && detailSize ? (
+                          <p className="text-[11px] text-black/50">
+                            Tồn kho: {getAvailableForSelection(detailProduct, detailColor, detailSize)} chiếc
+                          </p>
+                        ) : null}
+                        <button
+                          type="button"
+                          disabled={isAddingGiftItem || !detailProduct}
+                          onClick={() => void handleAddGiftItemInDetail()}
+                          className="inline-flex items-center gap-1.5 rounded-xl bg-black px-4 py-2 text-[10px] font-extrabold uppercase tracking-widest text-white disabled:opacity-50"
+                        >
+                          <Plus className="h-3.5 w-3.5" />
+                          {isAddingGiftItem ? "Đang thêm..." : "Thêm sản phẩm"}
+                        </button>
+                      </div>
+                    ) : null}
+                  </div>
+                </div>
+
+                <div className="flex justify-between gap-3 border-t border-black/10 px-5 py-4">
+                  {selectedGift.status === "completed" ? (
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        const ok = await handleCancelGift(selectedGift.id);
+                        if (ok) setSelectedGift(null);
+                      }}
+                      className="inline-flex items-center gap-1.5 rounded-xl border border-red-200 px-4 py-2.5 text-[10px] font-extrabold uppercase tracking-wider text-red-700 hover:bg-red-50"
+                    >
+                      <Ban className="h-3.5 w-3.5" />
+                      Hủy phiếu & hoàn kho
+                    </button>
+                  ) : (
+                    <span />
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedGift(null);
+                      resetDetailAddForm();
+                    }}
+                    className="rounded-xl border border-black/10 px-5 py-2.5 text-[10px] font-extrabold uppercase tracking-widest"
+                  >
+                    Đóng
+                  </button>
+                </div>
+              </div>
+            </div>,
+            document.body,
+          )
+        : null}
 
       {showDeleteConfirm
         ? createPortal(

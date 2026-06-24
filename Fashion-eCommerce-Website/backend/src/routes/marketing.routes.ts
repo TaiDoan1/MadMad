@@ -367,6 +367,172 @@ router.put("/:id/items/:itemId", async (req, res, next) => {
   }
 });
 
+router.post("/:id/items", async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { productId, color, size, quantity } = req.body;
+
+    if (!productId || !color || !size || !quantity) {
+      return res.status(400).json({ message: "Thiếu thông tin sản phẩm cần thêm!" });
+    }
+
+    const gift = await prisma.marketingGift.findUnique({
+      where: { id },
+      include: { items: true },
+    });
+
+    if (!gift) {
+      return res.status(404).json({ message: "Không tìm thấy phiếu tặng" });
+    }
+    if (gift.status !== "completed") {
+      return res.status(400).json({ message: "Chỉ thêm sản phẩm vào phiếu tặng đang hoạt động!" });
+    }
+
+    const nextQuantity = Math.max(1, Number(quantity));
+    const product = await prisma.product.findUnique({ where: { id: String(productId) } });
+    if (!product) {
+      return res.status(404).json({ message: "Không tìm thấy sản phẩm" });
+    }
+
+    const nextColor = resolveVariantColor(product, String(color));
+    const nextSize = resolveVariantSize(product, String(size));
+    const duplicate = gift.items.find(
+      (row) =>
+        row.productId === String(productId) &&
+        row.color.toLowerCase() === nextColor.toLowerCase() &&
+        row.size.toLowerCase() === nextSize.toLowerCase(),
+    );
+    if (duplicate) {
+      return res.status(400).json({
+        message: "Sản phẩm này đã có trong phiếu. Hãy sửa số lượng dòng hiện có.",
+      });
+    }
+
+    const available = getVariantAvailable(product, nextColor, nextSize);
+    if (available < nextQuantity) {
+      return res.status(400).json({
+        message: `"${product.name}" [${nextColor}/${nextSize}] không đủ hàng (còn ${available})`,
+      });
+    }
+
+    const unitPrice = Number(product.price) || 0;
+    const lineTotal = unitPrice * nextQuantity;
+
+    const updated = await prisma.$transaction(async (tx) => {
+      await deductProductStockWithLog(tx, {
+        productId: product.id,
+        productName: product.name,
+        color: nextColor,
+        size: nextSize,
+        quantity: nextQuantity,
+        reason: "MARKETING_GIFT",
+        referenceType: "marketing_gift",
+        referenceId: gift.giftNumber,
+        referenceLabel: gift.giftNumber,
+        notes: `Thêm dòng mới khi sửa phiếu marketing`,
+      });
+
+      await tx.marketingGiftItem.create({
+        data: {
+          giftId: gift.id,
+          productId: product.id,
+          productName: product.name,
+          productImage: getProductImageForColorFromDb(product, nextColor),
+          color: nextColor,
+          size: nextSize,
+          quantity: nextQuantity,
+          unitPrice,
+          lineTotal,
+        },
+      });
+
+      const allItems = await tx.marketingGiftItem.findMany({ where: { giftId: gift.id } });
+      const productValue = allItems.reduce((sum, row) => sum + row.lineTotal, 0);
+
+      return tx.marketingGift.update({
+        where: { id },
+        data: {
+          productValue,
+          totalCost: productValue + gift.cashAmount,
+        },
+        include: { items: true },
+      });
+    });
+
+    res.status(201).json(parseGift(updated));
+  } catch (error: any) {
+    if (error?.message?.includes("Không đủ tồn kho")) {
+      return res.status(400).json({ message: error.message });
+    }
+    next(error);
+  }
+});
+
+router.delete("/:id/items/:itemId", async (req, res, next) => {
+  try {
+    const { id, itemId } = req.params;
+
+    const gift = await prisma.marketingGift.findUnique({
+      where: { id },
+      include: { items: true },
+    });
+
+    if (!gift) {
+      return res.status(404).json({ message: "Không tìm thấy phiếu tặng" });
+    }
+    if (gift.status !== "completed") {
+      return res.status(400).json({ message: "Chỉ xóa sản phẩm trong phiếu tặng đang hoạt động!" });
+    }
+
+    const item = gift.items.find((row) => row.id === itemId);
+    if (!item) {
+      return res.status(404).json({ message: "Không tìm thấy dòng sản phẩm trong phiếu tặng" });
+    }
+    if (gift.items.length <= 1) {
+      return res.status(400).json({
+        message: "Phiếu phải có ít nhất 1 sản phẩm. Hãy hủy phiếu nếu muốn hoàn toàn bỏ quà tặng.",
+      });
+    }
+
+    const oldProduct = await prisma.product.findUnique({ where: { id: item.productId } });
+    const oldColor = oldProduct ? resolveVariantColor(oldProduct, item.color) : item.color.trim();
+    const oldSize = oldProduct ? resolveVariantSize(oldProduct, item.size) : item.size.trim();
+
+    const updated = await prisma.$transaction(async (tx) => {
+      await restoreProductStockWithLog(tx, {
+        productId: item.productId,
+        productName: item.productName,
+        color: oldColor,
+        size: oldSize,
+        quantity: item.quantity,
+        reason: "MARKETING_GIFT_EDIT_IN",
+        referenceType: "marketing_gift",
+        referenceId: gift.giftNumber,
+        referenceLabel: gift.giftNumber,
+        notes: `Hoàn kho khi xóa dòng ${oldColor} / ${oldSize} khỏi phiếu marketing`,
+      });
+
+      await tx.marketingGiftItem.delete({ where: { id: itemId } });
+
+      const allItems = await tx.marketingGiftItem.findMany({ where: { giftId: gift.id } });
+      const productValue = allItems.reduce((sum, row) => sum + row.lineTotal, 0);
+
+      return tx.marketingGift.update({
+        where: { id },
+        data: {
+          productValue,
+          totalCost: productValue + gift.cashAmount,
+        },
+        include: { items: true },
+      });
+    });
+
+    res.json(parseGift(updated));
+  } catch (error) {
+    next(error);
+  }
+});
+
 router.put("/:id/cancel", async (req, res, next) => {
   try {
     const { id } = req.params;

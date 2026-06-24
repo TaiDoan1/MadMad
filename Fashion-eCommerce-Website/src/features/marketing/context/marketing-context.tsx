@@ -16,6 +16,13 @@ interface MarketingContextValue {
     size: string;
     quantity: number;
   }) => Promise<MarketingGift | null>;
+  addGiftItem: (giftId: string, input: {
+    productId: string;
+    color: string;
+    size: string;
+    quantity: number;
+  }) => Promise<MarketingGift | null>;
+  deleteGiftItem: (giftId: string, itemId: string) => Promise<MarketingGift | null>;
   refreshMarketing: (month?: string) => Promise<void>;
   syncMarketingItemImages: () => Promise<{ updated: number; total: number }>;
   syncMarketingStockDeductions: () => Promise<{
@@ -138,6 +145,55 @@ export function MarketingProvider({ children }: { children: ReactNode }) {
     [refreshMarketing, selectedMonth, showToast],
   );
 
+  const addGiftItem = useCallback(
+    async (
+      giftId: string,
+      input: { productId: string; color: string; size: string; quantity: number },
+    ) => {
+      try {
+        const response = await fetch(`${API_URL}/marketing/${giftId}/items`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(input),
+        });
+        const data = await response.json();
+        if (!response.ok) {
+          showToast(data.message || "Không thể thêm sản phẩm vào phiếu", "error");
+          return null;
+        }
+        showToast("Đã thêm sản phẩm vào phiếu marketing!", "success");
+        await refreshMarketing(selectedMonth);
+        return data as MarketingGift;
+      } catch {
+        showToast("Lỗi kết nối khi thêm sản phẩm", "error");
+        return null;
+      }
+    },
+    [refreshMarketing, selectedMonth, showToast],
+  );
+
+  const deleteGiftItem = useCallback(
+    async (giftId: string, itemId: string) => {
+      try {
+        const response = await fetch(`${API_URL}/marketing/${giftId}/items/${itemId}`, {
+          method: "DELETE",
+        });
+        const data = await response.json();
+        if (!response.ok) {
+          showToast(data.message || "Không thể xóa sản phẩm khỏi phiếu", "error");
+          return null;
+        }
+        showToast("Đã xóa sản phẩm và hoàn tồn kho!", "success");
+        await refreshMarketing(selectedMonth);
+        return data as MarketingGift;
+      } catch {
+        showToast("Lỗi kết nối khi xóa sản phẩm", "error");
+        return null;
+      }
+    },
+    [refreshMarketing, selectedMonth, showToast],
+  );
+
   const createGift = useCallback(
     async (input: CreateMarketingGiftInput) => {
       try {
@@ -219,11 +275,13 @@ export function MarketingProvider({ children }: { children: ReactNode }) {
       syncMarketingItemImages,
       syncMarketingStockDeductions,
       updateGiftItem,
+      addGiftItem,
+      deleteGiftItem,
       createGift,
       cancelGift,
       deleteExportedGifts,
     }),
-    [gifts, stats, isLoading, selectedMonth, refreshMarketing, syncMarketingItemImages, syncMarketingStockDeductions, updateGiftItem, createGift, cancelGift, deleteExportedGifts],
+    [gifts, stats, isLoading, selectedMonth, refreshMarketing, syncMarketingItemImages, syncMarketingStockDeductions, updateGiftItem, addGiftItem, deleteGiftItem, createGift, cancelGift, deleteExportedGifts],
   );
 
   return <MarketingContext.Provider value={value}>{children}</MarketingContext.Provider>;
