@@ -52,6 +52,7 @@ import { getProductStockSummary } from "@/utils/product-stock";
 import { isGiftProduct } from "@/utils/gift-eligibility";
 
 import { useToast } from "@/components/common/toast";
+import { getProvinces, getDistrictsByProvinceCode, getWardsByDistrictCode } from "@/features/checkout/services/address-service";
 
 export function AdminOrdersPage() {
   const { showToast } = useToast();
@@ -99,6 +100,29 @@ export function AdminOrdersPage() {
       imageSyncStarted.current = false;
     });
   }, [products.length, syncOrderItemImages, showToast]);
+
+  // Fetch provinces list when modal is active or page loads
+  useEffect(() => {
+    getProvinces().then((data) => setProvincesList(data));
+  }, []);
+
+  // Fetch districts when provinceCode changes
+  useEffect(() => {
+    if (!provinceCode) {
+      setDistrictsList([]);
+      return;
+    }
+    getDistrictsByProvinceCode(provinceCode).then((data) => setDistrictsList(data));
+  }, [provinceCode]);
+
+  // Fetch wards when districtCode changes
+  useEffect(() => {
+    if (!districtCode) {
+      setWardsList([]);
+      return;
+    }
+    getWardsByDistrictCode(districtCode).then((data) => setWardsList(data));
+  }, [districtCode]);
 
   useEffect(() => {
     if (products.length === 0 || stockSyncStarted.current) return;
@@ -190,6 +214,14 @@ export function AdminOrdersPage() {
   const [manualWard, setManualWard] = useState("");
   const [manualDistrict, setManualDistrict] = useState("");
   const [manualProvince, setManualProvince] = useState("");
+
+  // Address selection codes & lists
+  const [provincesList, setProvincesList] = useState<{ code: string; name: string }[]>([]);
+  const [districtsList, setDistrictsList] = useState<{ code: string; name: string }[]>([]);
+  const [wardsList, setWardsList] = useState<{ code: string; name: string }[]>([]);
+  const [provinceCode, setProvinceCode] = useState("");
+  const [districtCode, setDistrictCode] = useState("");
+  const [wardCode, setWardCode] = useState("");
 
   // Internal Packing Note
   const [internalPackingNotes, setInternalPackingNotes] = useState<Record<string, string>>({});
@@ -697,6 +729,9 @@ export function AdminOrdersPage() {
     setManualWard("");
     setManualDistrict("");
     setManualProvince("");
+    setProvinceCode("");
+    setDistrictCode("");
+    setWardCode("");
     setManualItems([]);
     setManualDiscount(0);
     setManualPaymentMethod("cod");
@@ -1192,6 +1227,16 @@ export function AdminOrdersPage() {
                 onClick={() => {
                   setCheckedMember(null);
                   setVipCheckMessage("");
+                  setManualCustomerName("");
+                  setManualCustomerPhone("");
+                  setManualCustomerEmail("");
+                  setManualStreet("");
+                  setManualWard("");
+                  setManualDistrict("");
+                  setManualProvince("");
+                  setProvinceCode("");
+                  setDistrictCode("");
+                  setWardCode("");
                   setShowCreateModal(false);
                 }}
                 className="rounded-xl p-2 border border-black/5 hover:border-black/20 hover:bg-stone-50 transition-colors"
@@ -1559,30 +1604,70 @@ export function AdminOrdersPage() {
                       className="w-full rounded-xl border border-black/10 bg-white px-3 py-2 focus:border-black/60 transition-all text-xs"
                     />
                     <div className="grid grid-cols-3 gap-2">
-                      <input
-                        type="text"
+                      <select
                         required
-                        value={manualWard}
-                        onChange={(e) => setManualWard(e.target.value)}
-                        placeholder="Phường/Xã"
+                        value={provinceCode}
+                        onChange={(e) => {
+                          const code = e.target.value;
+                          setProvinceCode(code);
+                          const name = provincesList.find((p) => p.code === code)?.name || "";
+                          setManualProvince(name);
+                          setDistrictCode("");
+                          setManualDistrict("");
+                          setWardCode("");
+                          setManualWard("");
+                        }}
                         className="w-full rounded-xl border border-black/10 bg-white px-2 py-2 focus:border-black/60 transition-all text-xs"
-                      />
-                      <input
-                        type="text"
+                      >
+                        <option value="">Chọn Tỉnh/Thành</option>
+                        {provincesList.map((p) => (
+                          <option key={p.code} value={p.code}>
+                            {p.name}
+                          </option>
+                        ))}
+                      </select>
+
+                      <select
                         required
-                        value={manualDistrict}
-                        onChange={(e) => setManualDistrict(e.target.value)}
-                        placeholder="Quận/Huyện"
-                        className="w-full rounded-xl border border-black/10 bg-white px-2 py-2 focus:border-black/60 transition-all text-xs"
-                      />
-                      <input
-                        type="text"
+                        disabled={!provinceCode}
+                        value={districtCode}
+                        onChange={(e) => {
+                          const code = e.target.value;
+                          setDistrictCode(code);
+                          const name = districtsList.find((d) => d.code === code)?.name || "";
+                          setManualDistrict(name);
+                          setWardCode("");
+                          setManualWard("");
+                        }}
+                        className="w-full rounded-xl border border-black/10 bg-white px-2 py-2 focus:border-black/60 transition-all text-xs disabled:opacity-50"
+                      >
+                        <option value="">Chọn Quận/Huyện</option>
+                        {districtsList.map((d) => (
+                          <option key={d.code} value={d.code}>
+                            {d.name}
+                          </option>
+                        ))}
+                      </select>
+
+                      <select
                         required
-                        value={manualProvince}
-                        onChange={(e) => setManualProvince(e.target.value)}
-                        placeholder="Tỉnh/Thành"
-                        className="w-full rounded-xl border border-black/10 bg-white px-2 py-2 focus:border-black/60 transition-all text-xs"
-                      />
+                        disabled={!districtCode}
+                        value={wardCode}
+                        onChange={(e) => {
+                          const code = e.target.value;
+                          setWardCode(code);
+                          const name = wardsList.find((w) => w.code === code)?.name || "";
+                          setManualWard(name);
+                        }}
+                        className="w-full rounded-xl border border-black/10 bg-white px-2 py-2 focus:border-black/60 transition-all text-xs disabled:opacity-50"
+                      >
+                        <option value="">Chọn Phường/Xã</option>
+                        {wardsList.map((w) => (
+                          <option key={w.code} value={w.code}>
+                            {w.name}
+                          </option>
+                        ))}
+                      </select>
                     </div>
                   </div>
                 ) : (
