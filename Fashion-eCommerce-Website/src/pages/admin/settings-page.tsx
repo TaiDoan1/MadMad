@@ -7,7 +7,7 @@ import { brandLogo } from "@/assets/images";
 import { useStorefrontSettings } from "@/features/settings/context/storefront-settings-context";
 import { readStoredCoupons, saveCoupons } from "@/features/promotions/services/coupon-service";
 import type { Coupon } from "@/types/coupon";
-import { API_URL, API_ADMIN_KEY } from "@/config/api";
+import { API_URL, getAdminKey } from "@/config/api";
 import { useToast } from "@/components/common/toast";
 
 export function AdminSettingsPage() {
@@ -169,7 +169,7 @@ export function AdminSettingsPage() {
         method: "PUT",
         headers: { 
           "Content-Type": "application/json",
-          "x-admin-key": API_ADMIN_KEY
+          "x-admin-key": getAdminKey()
         },
         body: JSON.stringify({ coupons: nextCoupons }),
       });
@@ -277,7 +277,7 @@ export function AdminSettingsPage() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "x-admin-key": API_ADMIN_KEY,
+          "x-admin-key": getAdminKey(),
         },
         body: JSON.stringify({
           to: testEmailTo,
@@ -363,12 +363,12 @@ export function AdminSettingsPage() {
   const handleExportBackup = async () => {
     try {
       const ordersRes = await fetch(`${API_URL}/orders`, {
-        headers: { "x-admin-key": API_ADMIN_KEY }
+        headers: { "x-admin-key": getAdminKey() }
       });
       const orders = await ordersRes.json();
       
       const membersRes = await fetch(`${API_URL}/members`, {
-        headers: { "x-admin-key": API_ADMIN_KEY }
+        headers: { "x-admin-key": getAdminKey() }
       });
       const members = await membersRes.json();
 

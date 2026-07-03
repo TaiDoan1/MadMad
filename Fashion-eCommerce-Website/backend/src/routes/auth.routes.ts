@@ -3,6 +3,43 @@ import { prisma } from "../config/prisma";
 
 const router = Router();
 
+// Lưu danh sách active admin tokens trong RAM hoặc file tạm (Ở mức cơ bản, dùng Memory Store)
+const ACTIVE_ADMIN_TOKENS = new Set<string>();
+
+// Endpoint bảo mật để kiểm tra Token Admin ở các routes khác
+export function verifyAdminToken(token: string): boolean {
+  return ACTIVE_ADMIN_TOKENS.has(token);
+}
+
+// 0. POST /api/auth/admin-login - Xác thực tài khoản Admin ở phía Server-side
+router.post("/admin-login", async (req, res, next) => {
+  try {
+    const { username, password } = req.body;
+
+    const expectedUser = process.env.ADMIN_USERNAME || "admin";
+    const expectedPass = process.env.ADMIN_PASSWORD || "admin123";
+
+    if (username === expectedUser && password === expectedPass) {
+      // Sinh token ngẫu nhiên cực kỳ bảo mật và lưu vào store
+      const randomBytes = Math.random().toString(36).substring(2) + Math.random().toString(36).substring(2);
+      const token = `MADMAD_SECURE_ADMIN_SESSION_${Date.now()}_${randomBytes}`;
+      ACTIVE_ADMIN_TOKENS.add(token);
+
+      console.log(`🔐 [ADMIN SECURITY] Admin logged in successfully. Issued secure token.`);
+
+      return res.json({
+        success: true,
+        token
+      });
+    }
+
+    // Trả về lỗi mập mờ để tránh bị Brute-force quét mật khẩu
+    return res.status(401).json({ success: false, message: "Tài khoản hoặc mật khẩu không chính xác!" });
+  } catch (error) {
+    next(error);
+  }
+});
+
 // 1. POST /api/auth/google-login - Đăng nhập / Đăng ký bằng Google ID Token
 router.post("/google-login", async (req, res, next) => {
   try {

@@ -3,7 +3,7 @@ import { createContext, useContext, useMemo, useState, useEffect, type ReactNode
 import { brandLogo } from "@/assets/images";
 import type { StorefrontSettings } from "@/types/storefront-settings";
 import { DEFAULT_SIZE_GUIDE_CONFIG, normalizeSizeGuideConfig } from "@/utils/size-recommendation";
-import { API_URL, API_ADMIN_KEY } from "@/config/api";
+import { API_URL, getAdminKey } from "@/config/api";
 import { safeLocalStorage } from "@/utils/safe-storage";
 import { enqueue, peekQueue, removeFromQueue } from "@/utils/offline-queue";
 
@@ -319,7 +319,7 @@ export function StorefrontSettingsProvider({ children }: { children: ReactNode }
         method: "PUT",
         headers: { 
           "Content-Type": "application/json",
-          "x-admin-key": API_ADMIN_KEY
+          "x-admin-key": getAdminKey()
         },
         body: JSON.stringify(cloudPayload),
       });
@@ -383,7 +383,7 @@ export function StorefrontSettingsProvider({ children }: { children: ReactNode }
             method: "PUT",
             headers: { 
               "Content-Type": "application/json",
-              "x-admin-key": API_ADMIN_KEY
+              "x-admin-key": getAdminKey()
             },
             body: JSON.stringify(cloudPayload),
           })

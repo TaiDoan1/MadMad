@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { mockOrders } from "@/features/orders/data/mock-orders";
 import type { Order, OrderItem } from "@/types/order";
-import { API_URL, API_ADMIN_KEY } from "@/config/api";
+import { API_URL, getAdminKey } from "@/config/api";
 import { safeLocalStorage } from "@/utils/safe-storage";
 import { enqueue, peekQueue, removeFromQueue } from "@/utils/offline-queue";
 import { parseOrderItemEditMeta } from "@/utils/order-edit";
@@ -101,7 +101,7 @@ const LOCAL_ORDERS_KEY = "madmad_orders_fallback";
           method: "POST",
           headers: { 
             "Content-Type": "application/json",
-            "x-admin-key": API_ADMIN_KEY
+            "x-admin-key": getAdminKey()
           },
           body: JSON.stringify(q.payload),
         });
@@ -135,7 +135,7 @@ const LOCAL_ORDERS_KEY = "madmad_orders_fallback";
           method: "PUT",
           headers: { 
             "Content-Type": "application/json",
-            "x-admin-key": API_ADMIN_KEY
+            "x-admin-key": getAdminKey()
           },
           body: JSON.stringify({ internalNote: q.payload.internalNote }),
         });
@@ -155,7 +155,7 @@ const LOCAL_ORDERS_KEY = "madmad_orders_fallback";
     try {
       if (!silent) setLoading(true);
       const response = await fetch(`${API_URL}/orders`, {
-        headers: { "x-admin-key": API_ADMIN_KEY }
+        headers: { "x-admin-key": getAdminKey() }
       });
       if (response.ok) {
         const data = await response.json();
@@ -232,7 +232,7 @@ const LOCAL_ORDERS_KEY = "madmad_orders_fallback";
             method: "POST",
             headers: { 
               "Content-Type": "application/json",
-              "x-admin-key": API_ADMIN_KEY
+              "x-admin-key": getAdminKey()
             },
             body: JSON.stringify(payload),
           });
@@ -273,7 +273,7 @@ const LOCAL_ORDERS_KEY = "madmad_orders_fallback";
             method: "PUT",
             headers: { 
               "Content-Type": "application/json",
-              "x-admin-key": API_ADMIN_KEY
+              "x-admin-key": getAdminKey()
             },
             body: JSON.stringify({ status }),
           });
@@ -309,7 +309,7 @@ const LOCAL_ORDERS_KEY = "madmad_orders_fallback";
               method: "PUT",
               headers: { 
                 "Content-Type": "application/json",
-                "x-admin-key": API_ADMIN_KEY
+                "x-admin-key": getAdminKey()
               },
               body: JSON.stringify({ isPaid }),
             });
@@ -334,7 +334,7 @@ const LOCAL_ORDERS_KEY = "madmad_orders_fallback";
             method: "PUT",
             headers: { 
               "Content-Type": "application/json",
-              "x-admin-key": API_ADMIN_KEY
+              "x-admin-key": getAdminKey()
             },
             body: JSON.stringify({ internalNote }),
           });
@@ -357,7 +357,7 @@ const LOCAL_ORDERS_KEY = "madmad_orders_fallback";
           method: "PUT",
           headers: { 
             "Content-Type": "application/json",
-            "x-admin-key": API_ADMIN_KEY
+            "x-admin-key": getAdminKey()
           },
           body: JSON.stringify(input),
         });
@@ -384,7 +384,7 @@ const LOCAL_ORDERS_KEY = "madmad_orders_fallback";
       syncOrderItemImages: async () => {
         const response = await fetch(`${API_URL}/orders/sync-item-images`, {
           method: "POST",
-          headers: { "x-admin-key": API_ADMIN_KEY },
+          headers: { "x-admin-key": getAdminKey() },
         });
 
         if (!response.ok) {
@@ -401,7 +401,7 @@ const LOCAL_ORDERS_KEY = "madmad_orders_fallback";
       syncOrderStockDeductions: async () => {
         const response = await fetch(`${API_URL}/orders/sync-stock-deductions`, {
           method: "POST",
-          headers: { "x-admin-key": API_ADMIN_KEY },
+          headers: { "x-admin-key": getAdminKey() },
         });
 
         if (!response.ok) {
@@ -418,7 +418,7 @@ const LOCAL_ORDERS_KEY = "madmad_orders_fallback";
       syncOutboundStockDeductions: async () => {
         const response = await fetch(`${API_URL}/inventory/sync-outbound`, {
           method: "POST",
-          headers: { "x-admin-key": API_ADMIN_KEY },
+          headers: { "x-admin-key": getAdminKey() },
         });
 
         if (!response.ok) {

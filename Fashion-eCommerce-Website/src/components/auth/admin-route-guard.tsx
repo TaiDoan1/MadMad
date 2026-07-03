@@ -10,7 +10,9 @@ export function AdminRouteGuard() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
 
-  const handleLoginSubmit = (e: React.FormEvent) => {
+  const [loading, setLoading] = useState(false);
+
+  const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
 
@@ -19,7 +21,9 @@ export function AdminRouteGuard() {
       return;
     }
 
-    const success = loginAdmin(username, password);
+    setLoading(true);
+    const success = await loginAdmin(username, password);
+    setLoading(false);
     if (!success) {
       setError("Sai tài khoản hoặc mật khẩu quản trị viên.");
     }
@@ -94,12 +98,13 @@ export function AdminRouteGuard() {
             </div>
           </div>
 
-          <button
+           <button
             type="submit"
-            className="w-full bg-white hover:bg-red-600 hover:text-white text-black h-11 text-xs font-bold tracking-widest uppercase transition-all rounded-xl flex items-center justify-center gap-1.5 mt-6 shadow-lg shadow-black/30"
+            disabled={loading}
+            className="w-full bg-white hover:bg-red-600 hover:text-white text-black h-11 text-xs font-bold tracking-widest uppercase transition-all rounded-xl flex items-center justify-center gap-1.5 mt-6 shadow-lg shadow-black/30 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            Đăng nhập hệ thống
-            <ArrowRight className="h-4 w-4" />
+            {loading ? "Đang xác thực..." : "Đăng nhập hệ thống"}
+            {!loading && <ArrowRight className="h-4 w-4" />}
           </button>
         </form>
 

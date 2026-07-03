@@ -16,7 +16,7 @@ import type { SizeGuideRow } from "@/types/size-guide";
 import type { Product } from "@/types/product";
 import type { StockMovement } from "@/types/stock-movement";
 import { STOCK_MOVEMENT_REASON_LABELS } from "@/types/stock-movement";
-import { API_URL, API_ADMIN_KEY } from "@/config/api";
+import { API_URL, getAdminKey } from "@/config/api";
 import {
   formatStockRatio,
   getForceSoldOutFromProduct,
@@ -194,7 +194,7 @@ export function AdminProductsPage() {
 
     void fetch(`${API_URL}/inventory/backfill-received`, { 
       method: "POST",
-      headers: { "x-admin-key": API_ADMIN_KEY }
+      headers: { "x-admin-key": getAdminKey() }
     })
       .then((response) => (response.ok ? response.json() : null))
       .then(async (result) => {
@@ -217,7 +217,7 @@ export function AdminProductsPage() {
         month: "all",
       });
       const response = await fetch(`${API_URL}/inventory/movements?${params.toString()}`, {
-        headers: { "x-admin-key": API_ADMIN_KEY }
+        headers: { "x-admin-key": getAdminKey() }
       });
       if (response.ok) {
         const data = await response.json();
