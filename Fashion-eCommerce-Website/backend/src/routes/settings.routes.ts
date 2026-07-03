@@ -69,21 +69,22 @@ router.get("/", async (req, res, next) => {
     const { verifyAdminToken } = require("./auth.routes");
     const isAdmin = adminKey && typeof verifyAdminToken === "function" && verifyAdminToken(adminKey);
 
+    const CryptoJS = require("crypto-js");
+    const ENCRYPTION_KEY = "MADMAD_SECURE_PAYLOAD_KEY_2026";
+
+    let rawData: any;
     if (isAdmin) {
-      res.json({
+      rawData = {
         ...setting,
         instagramImages,
         coupons,
         productOptions,
         membershipTiers,
         sizeGuide,
-      });
+      };
     } else {
-      // Ẩn đi: smtpHost, smtpPort, smtpUser, smtpPass, smtpSenderName, 
-      // bankAccount, bankAccountName, bankId, momoPhone, momoAccountName, 
-      // printInvoiceBankAccount, printInvoiceAccountName, printInvoiceBankId,
-      // couponsJson, coupons (vì coupon chứa mã code/giảm giá ẩn không muốn đối thủ crawl hoặc biết trước các mã bí mật)
-      const publicSetting = {
+      // Ẩn đi các trường nhạy cảm
+      rawData = {
         id: setting.id,
         brandName: setting.brandName,
         logoUrl: setting.logoUrl,
@@ -113,8 +114,11 @@ router.get("/", async (req, res, next) => {
         membershipTiers,
         sizeGuide,
       };
-      res.json(publicSetting);
     }
+
+    // Thực hiện mã hóa AES toàn bộ dữ liệu trước khi phản hồi về Client
+    const cipherText = CryptoJS.AES.encrypt(JSON.stringify(rawData), ENCRYPTION_KEY).toString();
+    res.json({ encryptedPayload: cipherText });
   } catch (error) {
     next(error);
   }

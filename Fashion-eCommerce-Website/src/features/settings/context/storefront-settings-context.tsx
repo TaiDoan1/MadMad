@@ -1,4 +1,5 @@
 import { createContext, useContext, useMemo, useState, useEffect, type ReactNode } from "react";
+import CryptoJS from "crypto-js";
 
 import { brandLogo } from "@/assets/images";
 import type { StorefrontSettings } from "@/types/storefront-settings";
@@ -339,7 +340,12 @@ export function StorefrontSettingsProvider({ children }: { children: ReactNode }
           headers: { "x-admin-key": getAdminKey() }
         });
         if (response.ok) {
-          const cloudSettings = (await response.json()) as CloudSettings;
+          const resJson = await response.json();
+          const ENCRYPTION_KEY = "MADMAD_SECURE_PAYLOAD_KEY_2026";
+          const bytes = CryptoJS.AES.decrypt(resJson.encryptedPayload, ENCRYPTION_KEY);
+          const decryptedText = bytes.toString(CryptoJS.enc.Utf8);
+          const cloudSettings = JSON.parse(decryptedText) as CloudSettings;
+
           setSettings((current) => ({
             ...current,
             ...mapCloudToLocal(cloudSettings),
