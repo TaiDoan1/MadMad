@@ -66,8 +66,15 @@ router.get("/", async (req, res, next) => {
     // Kiểm tra quyền Admin. Nếu có header x-admin-key hợp lệ, cho phép trả về đầy đủ.
     // Nếu là client công khai thông thường (khách mua hàng), ẩn toàn bộ các trường nhạy cảm.
     const adminKey = req.headers["x-admin-key"] as string;
+    
+    // Hỗ trợ kiểm tra cả Token phiên động và Khóa tĩnh bí mật
+    const expectedStaticKey = process.env.ADMIN_SECRET_KEY || "MADMAD_DEFAULT_SECRET_KEY_2026";
+    const isStaticValid = adminKey === expectedStaticKey;
+    
     const { verifyAdminToken } = require("./auth.routes");
-    const isAdmin = adminKey && typeof verifyAdminToken === "function" && verifyAdminToken(adminKey);
+    const isTokenValid = adminKey && typeof verifyAdminToken === "function" && verifyAdminToken(adminKey);
+    
+    const isAdmin = isStaticValid || isTokenValid;
 
     const CryptoJS = require("crypto-js");
     const ENCRYPTION_KEY = "MADMAD_SECURE_PAYLOAD_KEY_2026";
