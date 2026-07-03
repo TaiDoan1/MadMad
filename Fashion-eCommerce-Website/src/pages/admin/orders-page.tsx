@@ -1224,7 +1224,7 @@ export function AdminOrdersPage() {
                       />
                     </div>
 
-                    {productSearchQuery && (
+                    {!selectedProductToAdd && (
                       <div className="border border-black/10 bg-white rounded-xl max-h-[180px] overflow-y-auto p-2 space-y-1 z-10 relative">
                         {filteredProductsToSelect.length === 0 ? (
                           <p className="text-center text-[10px] text-black/40 py-4">Không tìm thấy sản phẩm phù hợp.</p>
@@ -1355,7 +1355,7 @@ export function AdminOrdersPage() {
                     </div>
                   ) : (
                     <div className="border border-dashed border-black/15 bg-white rounded-2xl p-6 text-center text-black/45 text-[10px] font-semibold leading-relaxed">
-                      Vui lòng gõ tìm kiếm ở ô trên để hiển thị sản phẩm kèm hình ảnh trực quan!
+                      Vui lòng chọn một sản phẩm từ danh sách hoặc tìm kiếm ở trên để cấu hình Size, Màu sắc và Số lượng!
                     </div>
                   )}
                 </div>
@@ -1519,6 +1519,17 @@ export function AdminOrdersPage() {
                       onChange={(e) => setManualCustomerName(e.target.value)}
                       placeholder="VÍ DỤ: LÊ VĂN B"
                       className="w-full rounded-xl border border-black/10 bg-stone-50 px-4 py-2.5 focus:border-black/60 focus:bg-white transition-all uppercase font-bold"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-black/50 mb-1">Số Điện Thoại Khách Hàng (Bắt buộc)</label>
+                    <input
+                      type="text"
+                      required
+                      value={manualCustomerPhone}
+                      onChange={(e) => setManualCustomerPhone(e.target.value)}
+                      placeholder="VÍ DỤ: 0912345678"
+                      className="w-full rounded-xl border border-black/10 bg-stone-50 px-4 py-2.5 focus:border-black/60 focus:bg-white transition-all font-bold"
                     />
                   </div>
                   <div>
