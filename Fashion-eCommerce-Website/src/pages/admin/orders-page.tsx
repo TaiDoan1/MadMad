@@ -101,29 +101,6 @@ export function AdminOrdersPage() {
     });
   }, [products.length, syncOrderItemImages, showToast]);
 
-  // Fetch provinces list when modal is active or page loads
-  useEffect(() => {
-    getProvinces().then((data) => setProvincesList(data));
-  }, []);
-
-  // Fetch districts when provinceCode changes
-  useEffect(() => {
-    if (!provinceCode) {
-      setDistrictsList([]);
-      return;
-    }
-    getDistrictsByProvinceCode(provinceCode).then((data) => setDistrictsList(data));
-  }, [provinceCode]);
-
-  // Fetch wards when districtCode changes
-  useEffect(() => {
-    if (!districtCode) {
-      setWardsList([]);
-      return;
-    }
-    getWardsByDistrictCode(districtCode).then((data) => setWardsList(data));
-  }, [districtCode]);
-
   useEffect(() => {
     if (products.length === 0 || stockSyncStarted.current) return;
     stockSyncStarted.current = true;
@@ -236,6 +213,29 @@ export function AdminOrdersPage() {
 
   // Items added in manual order
   const [manualItems, setManualItems] = useState<OrderItem[]>([]);
+
+  // Fetch provinces list when modal is active or page loads
+  useEffect(() => {
+    getProvinces().then((data) => setProvincesList(data));
+  }, []);
+
+  // Fetch districts when provinceCode changes
+  useEffect(() => {
+    if (!provinceCode) {
+      setDistrictsList([]);
+      return;
+    }
+    getDistrictsByProvinceCode(provinceCode).then((data) => setDistrictsList(data));
+  }, [provinceCode]);
+
+  // Fetch wards when districtCode changes
+  useEffect(() => {
+    if (!districtCode) {
+      setWardsList([]);
+      return;
+    }
+    getWardsByDistrictCode(districtCode).then((data) => setWardsList(data));
+  }, [districtCode]);
 
   // Membership VIP Check States
   const [checkedMember, setCheckedMember] = useState<any | null>(null);
