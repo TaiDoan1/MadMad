@@ -15,6 +15,9 @@ function getVariantStock(product: Product): Record<string, number> {
 }
 
 export function usesVariantStock(product: Product): boolean {
+  if (product.stock === undefined && product.variantStock === undefined) {
+    return false;
+  }
   const variantStock = getVariantStock(product);
   if (Object.keys(variantStock).length > 0) {
     return true;
