@@ -1,0 +1,6 @@
+import{t as i}from"./index-pNZ4Jbj6.js";/**
+ * @license lucide-react v0.487.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */const f=[["rect",{width:"14",height:"14",x:"8",y:"8",rx:"2",ry:"2",key:"17jyea"}],["path",{d:"M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2",key:"zix9uf"}]],y=i("copy",f),s="https://provinces.open-api.vn/api/v2";let r=null;const o={};async function d(){if(r)return r;try{const t=await fetch(`${s}/p`,{cache:"force-cache"});if(!t.ok)throw new Error("provinces fetch failed");return r=(await t.json()).map(e=>({code:String(e.code),name:e.name})),r}catch{return[]}}async function h(t){if(!t)return[];if(o[t])return o[t];try{const n=await fetch(`${s}/p/${t}?depth=2`,{cache:"force-cache"});if(!n.ok)throw new Error("wards fetch failed");const a=((await n.json()).wards??[]).map(c=>({code:String(c.code),name:c.name}));return o[t]=a,a}catch{return[]}}async function w(t){var e;return((e=(await d()).find(a=>a.code===t))==null?void 0:e.name)??""}async function m(t,n){if(n){const a=(await h(n)).find(c=>c.code===t);if(a)return a.name}for(const e of Object.values(o)){const a=e.find(c=>c.code===t);if(a)return a.name}return""}export{y as C,h as a,m as b,w as c,d as g};

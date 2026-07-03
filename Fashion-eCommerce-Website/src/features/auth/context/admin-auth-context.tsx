@@ -1,4 +1,4 @@
-import { createContext, useContext, useMemo, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { safeLocalStorage } from "@/utils/safe-storage";
 import { API_URL } from "@/config/api";
 
@@ -20,6 +20,30 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
     }
     return safeLocalStorage.getItem(ADMIN_AUTH_STORAGE_KEY) === "true";
   });
+
+  // Khi app khởi động, kiểm tra token đang lưu có còn hợp lệ không
+  // Nếu token cũ (từ hệ thống cũ hoặc server đã đổi secret), tự động đăng xuất
+  useEffect(() => {
+    const storedAuth = safeLocalStorage.getItem(ADMIN_AUTH_STORAGE_KEY);
+    const storedToken = safeLocalStorage.getItem(ADMIN_TOKEN_STORAGE_KEY);
+
+    if (storedAuth !== "true" || !storedToken) return;
+
+    // Validate token bằng cách thử gọi API settings (endpoint nhẹ nhất)
+    // Nếu trả về 401 tức token đã hết hạn/vô hiệu → tự động đăng xuất
+    fetch(`${API_URL}/settings`, {
+      headers: { "x-admin-key": storedToken }
+    }).then(res => {
+      if (res.status === 401) {
+        // Token không hợp lệ → clear localStorage và bắt đăng nhập lại
+        safeLocalStorage.removeItem(ADMIN_AUTH_STORAGE_KEY);
+        safeLocalStorage.removeItem(ADMIN_TOKEN_STORAGE_KEY);
+        setIsAdminAuthenticated(false);
+      }
+    }).catch(() => {
+      // Nếu mất mạng hoàn toàn, giữ nguyên trạng thái (không logout khi offline)
+    });
+  }, []);
 
   const value = useMemo<AdminAuthContextValue>(
     () => ({

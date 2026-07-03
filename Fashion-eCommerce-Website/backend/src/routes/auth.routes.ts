@@ -1,14 +1,21 @@
 import { Router } from "express";
 import { prisma } from "../config/prisma";
+import jwt from "jsonwebtoken";
 
 const router = Router();
 
-// Lưu danh sách active admin tokens trong RAM hoặc file tạm (Ở mức cơ bản, dùng Memory Store)
-const ACTIVE_ADMIN_TOKENS = new Set<string>();
+// JWT secret: dùng env var nếu có, fallback về giá trị mặc định
+const JWT_SECRET = process.env.ADMIN_JWT_SECRET || process.env.ADMIN_SECRET_KEY || "MADMAD_DEFAULT_SECRET_KEY_2026";
+const JWT_EXPIRES_IN = "30d"; // Token có hiệu lực 30 ngày, tránh bị đăng xuất liên tục
 
-// Endpoint bảo mật để kiểm tra Token Admin ở các routes khác
+// Xác minh JWT token - dùng được ở mọi nơi, không cần RAM store
 export function verifyAdminToken(token: string): boolean {
-  return ACTIVE_ADMIN_TOKENS.has(token);
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET) as any;
+    return decoded?.role === "admin";
+  } catch {
+    return false;
+  }
 }
 
 // 0. POST /api/auth/admin-login - Xác thực tài khoản Admin ở phía Server-side
@@ -20,12 +27,12 @@ router.post("/admin-login", async (req, res, next) => {
     const expectedPass = process.env.ADMIN_PASSWORD || "admin123";
 
     if (username === expectedUser && password === expectedPass) {
-      // Sinh token ngẫu nhiên cực kỳ bảo mật và lưu vào store
-      const randomBytes = Math.random().toString(36).substring(2) + Math.random().toString(36).substring(2);
-      const token = `MADMAD_SECURE_ADMIN_SESSION_${Date.now()}_${randomBytes}`;
-      ACTIVE_ADMIN_TOKENS.add(token);
-
-      console.log(`🔐 [ADMIN SECURITY] Admin logged in successfully. Issued secure token.`);
+      // Sinh JWT token có hiệu lực 30 ngày - sống qua mọi lần server restart
+      const token = jwt.sign(
+        { role: "admin", user: username, iat: Math.floor(Date.now() / 1000) },
+        JWT_SECRET,
+        { expiresIn: JWT_EXPIRES_IN }
+      );
 
       return res.json({
         success: true,
