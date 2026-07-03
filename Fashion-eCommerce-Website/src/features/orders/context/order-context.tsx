@@ -21,6 +21,9 @@ interface OrderContextValue {
   updateOrderPaymentStatus: (id: number, isPaid: boolean) => Promise<void>;
   updateOrderInternalNote: (id: number, internalNote: string) => Promise<void>;
   updateOrderItem: (orderId: number, itemId: number, input: UpdateOrderItemInput) => Promise<Order>;
+  addOrderItem: (orderId: number, itemData: { productId: string; color: string; size: string; quantity: number; isGift: boolean }) => Promise<Order>;
+  removeOrderItem: (orderId: number, itemId: number) => Promise<Order>;
+  applyOrderCoupon: (orderId: number, couponCode: string) => Promise<Order>;
   syncOrderItemImages: () => Promise<{ updated: number; total: number }>;
   syncOrderStockDeductions: () => Promise<{
     deductedItems: number;
@@ -357,6 +360,91 @@ const LOCAL_ORDERS_KEY = "madmad_orders_fallback";
         if (!response.ok) {
           const errText = await response.text().catch(() => "");
           let message = "Không thể cập nhật sản phẩm trong đơn hàng";
+          try {
+            const parsed = JSON.parse(errText);
+            if (parsed?.message) message = parsed.message;
+          } catch {
+            if (errText) message = errText;
+          }
+          throw new Error(message);
+        }
+
+        const updatedOrder = mapOrderAddress(await response.json());
+        setOrders((current) =>
+          current.map((order) => (order.id === orderId ? updatedOrder : order)),
+        );
+        return updatedOrder;
+      },
+
+      addOrderItem: async (orderId, itemData) => {
+        const response = await fetch(`${API_URL}/orders/${orderId}/items`, {
+          method: "POST",
+          headers: { 
+            "Content-Type": "application/json",
+            "x-admin-key": getAdminKey()
+          },
+          body: JSON.stringify(itemData),
+        });
+
+        if (!response.ok) {
+          const errText = await response.text().catch(() => "");
+          let message = "Không thể thêm sản phẩm vào đơn hàng";
+          try {
+            const parsed = JSON.parse(errText);
+            if (parsed?.message) message = parsed.message;
+          } catch {
+            if (errText) message = errText;
+          }
+          throw new Error(message);
+        }
+
+        const updatedOrder = mapOrderAddress(await response.json());
+        setOrders((current) =>
+          current.map((order) => (order.id === orderId ? updatedOrder : order)),
+        );
+        return updatedOrder;
+      },
+
+      removeOrderItem: async (orderId, itemId) => {
+        const response = await fetch(`${API_URL}/orders/${orderId}/items/${itemId}`, {
+          method: "DELETE",
+          headers: { 
+            "x-admin-key": getAdminKey()
+          },
+        });
+
+        if (!response.ok) {
+          const errText = await response.text().catch(() => "");
+          let message = "Không thể xóa sản phẩm khỏi đơn hàng";
+          try {
+            const parsed = JSON.parse(errText);
+            if (parsed?.message) message = parsed.message;
+          } catch {
+            if (errText) message = errText;
+          }
+          throw new Error(message);
+        }
+
+        const updatedOrder = mapOrderAddress(await response.json());
+        setOrders((current) =>
+          current.map((order) => (order.id === orderId ? updatedOrder : order)),
+        );
+        return updatedOrder;
+      },
+
+      applyOrderCoupon: async (orderId, couponCode) => {
+        const response = await fetch(`${API_URL}/orders/${orderId}/coupon`, {
+          method: "PUT",
+          headers: { 
+            "Content-Type": "application/json",
+            "x-admin-key": getAdminKey()
+          },
+          body: JSON.stringify({ couponCode }),
+        });
+
+        if (!response.ok) {
+          const errText = await response.text().catch(() => "");
+          let message = "Không thể áp dụng mã giảm giá";
           try {
             const parsed = JSON.parse(errText);
             if (parsed?.message) message = parsed.message;

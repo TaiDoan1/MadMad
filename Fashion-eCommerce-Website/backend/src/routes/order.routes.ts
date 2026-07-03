@@ -658,4 +658,241 @@ router.put("/:id/items/:itemId", async (req, res, next) => {
   }
 });
 
+// 8. POST /api/orders/:id/items - Thêm sản phẩm hoặc quà tặng mới vào đơn hàng (Admin)
+router.post("/:id/items", requireAdminAuth, async (req, res, next) => {
+  try {
+    const orderId = Number(req.params.id);
+    const { productId, color, size, quantity, isGift } = req.body;
+
+    if (!productId || !color || !size || !quantity) {
+      return res.status(400).json({ message: "Thiếu thông tin sản phẩm cần thêm!" });
+    }
+
+    const order = await prisma.order.findUnique({
+      where: { id: orderId },
+      include: { items: true },
+    });
+
+    if (!order) {
+      return res.status(404).json({ message: "Không tìm thấy đơn hàng" });
+    }
+
+    if (order.status === "completed" || isInactiveOrderStatus(order.status)) {
+      return res.status(400).json({ message: "Không thể chỉnh sửa đơn đã hoàn thành, đã hủy hoặc đã hoàn!" });
+    }
+
+    const product = await prisma.product.findUnique({ where: { id: String(productId) } });
+    if (!product) {
+      return res.status(404).json({ message: "Không tìm thấy sản phẩm" });
+    }
+
+    const nextColor = resolveVariantColor(product, String(color));
+    const nextSize = resolveVariantSize(product, String(size));
+    const nextQuantity = Math.max(1, Number(quantity));
+    const nextPrice = isGift ? 0 : Number(product.price);
+    const nextIsPreOrder = !!product.isPreOrder;
+    const nextPreOrderDays = product.preOrderDays ?? null;
+    const nextProductImage = getProductImageForColorFromDb(product, nextColor);
+
+    const shouldDeduct = !nextIsPreOrder && !isInactiveOrderStatus(order.status);
+
+    const result = await prisma.$transaction(async (tx) => {
+      if (shouldDeduct) {
+        await deductProductStockWithLog(tx, {
+          productId: String(productId),
+          productName: product.name,
+          color: nextColor,
+          size: nextSize,
+          quantity: nextQuantity,
+          reason: isGift ? "GIFT_OUT" : "ORDER_EDIT_OUT",
+          referenceType: "order",
+          referenceId: String(orderId),
+          referenceLabel: order.orderNumber,
+          notes: `Thêm ${isGift ? "sản phẩm tặng" : "sản phẩm thường"} ${nextColor} / ${nextSize} khi chỉnh sửa đơn`,
+        });
+      }
+
+      await tx.orderItem.create({
+        data: {
+          orderId,
+          productId: String(productId),
+          productName: product.name,
+          productImage: nextProductImage,
+          color: nextColor,
+          size: nextSize,
+          quantity: nextQuantity,
+          price: nextPrice,
+          isPreOrder: nextIsPreOrder,
+          preOrderDays: nextPreOrderDays,
+        },
+      });
+
+      const updatedItems = [
+        ...order.items,
+        {
+          price: nextPrice,
+          quantity: nextQuantity,
+          isPreOrder: nextIsPreOrder,
+        }
+      ];
+
+      const subtotal = updatedItems.reduce((sum, row) => sum + row.price * row.quantity, 0);
+      const total = subtotal - order.discount + order.shipping;
+      const containsPreOrder = updatedItems.some((row) => row.isPreOrder);
+
+      const updatedOrder = await tx.order.update({
+        where: { id: orderId },
+        data: {
+          subtotal,
+          total,
+          containsPreOrder,
+          isEdited: true,
+          editedAt: new Date(),
+        },
+        include: { items: true },
+      });
+
+      return updatedOrder;
+    });
+
+    res.json(result);
+  } catch (error: any) {
+    if (error?.message?.includes("Không đủ tồn kho")) {
+      return res.status(400).json({ message: error.message });
+    }
+    next(error);
+  }
+});
+
+// 9. DELETE /api/orders/:id/items/:itemId - Xóa sản phẩm khỏi đơn hàng (Admin)
+router.delete("/:id/items/:itemId", requireAdminAuth, async (req, res, next) => {
+  try {
+    const orderId = Number(req.params.id);
+    const itemId = Number(req.params.itemId);
+
+    const order = await prisma.order.findUnique({
+      where: { id: orderId },
+      include: { items: true },
+    });
+
+    if (!order) {
+      return res.status(404).json({ message: "Không tìm thấy đơn hàng" });
+    }
+
+    if (order.status === "completed" || isInactiveOrderStatus(order.status)) {
+      return res.status(400).json({ message: "Không thể chỉnh sửa đơn đã hoàn thành, đã hủy hoặc đã hoàn!" });
+    }
+
+    const item = order.items.find((row) => row.id === itemId);
+    if (!item) {
+      return res.status(404).json({ message: "Không tìm thấy sản phẩm trong đơn hàng" });
+    }
+
+    const shouldRestore = !item.isPreOrder && !isInactiveOrderStatus(order.status);
+
+    const result = await prisma.$transaction(async (tx) => {
+      if (shouldRestore) {
+        await restoreProductStockWithLog(tx, {
+          productId: item.productId,
+          productName: item.productName,
+          color: item.color,
+          size: item.size,
+          quantity: item.quantity,
+          reason: "ORDER_EDIT_IN",
+          referenceType: "order",
+          referenceId: String(orderId),
+          referenceLabel: order.orderNumber,
+          notes: `Hoàn kho sản phẩm khi xóa khỏi đơn hàng chỉnh sửa`,
+        });
+      }
+
+      await tx.orderItem.delete({
+        where: { id: itemId },
+      });
+
+      const updatedItems = order.items.filter((row) => row.id !== itemId);
+      const subtotal = updatedItems.reduce((sum, row) => sum + row.price * row.quantity, 0);
+      const total = subtotal - order.discount + order.shipping;
+      const containsPreOrder = updatedItems.some((row) => row.isPreOrder);
+
+      const updatedOrder = await tx.order.update({
+        where: { id: orderId },
+        data: {
+          subtotal,
+          total,
+          containsPreOrder,
+          isEdited: true,
+          editedAt: new Date(),
+        },
+        include: { items: true },
+      });
+
+      return updatedOrder;
+    });
+
+    res.json(result);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// 10. PUT /api/orders/:id/coupon - Áp dụng voucher giảm giá vào đơn hàng (Admin)
+router.put("/:id/coupon", requireAdminAuth, async (req, res, next) => {
+  try {
+    const orderId = Number(req.params.id);
+    const { couponCode } = req.body;
+
+    const order = await prisma.order.findUnique({
+      where: { id: orderId },
+      include: { items: true },
+    });
+
+    if (!order) {
+      return res.status(404).json({ message: "Không tìm thấy đơn hàng" });
+    }
+
+    if (order.status === "completed" || isInactiveOrderStatus(order.status)) {
+      return res.status(400).json({ message: "Không thể chỉnh sửa đơn đã hoàn thành, đã hủy hoặc đã hoàn!" });
+    }
+
+    // Lấy cấu hình Storefront để tra cứu coupons
+    const settings = await prisma.storefrontSetting.findUnique({ where: { id: 1 } });
+    const couponsList = settings?.couponsJson ? JSON.parse(settings.couponsJson) : [];
+
+    let discount = 0;
+
+    if (couponCode && String(couponCode).trim()) {
+      const targetCoupon = couponsList.find(
+        (c: any) => String(c.code).trim().toUpperCase() === String(couponCode).trim().toUpperCase()
+      );
+
+      if (!targetCoupon) {
+        return res.status(404).json({ message: "Mã giảm giá không tồn tại!" });
+      }
+
+      // Tính số tiền giảm giá
+      discount = Number(targetCoupon.discountAmount || 0);
+    }
+
+    // Cập nhật lại tổng tiền đơn hàng
+    const subtotal = order.subtotal;
+    const total = Math.max(0, subtotal - discount + order.shipping);
+
+    const updatedOrder = await prisma.order.update({
+      where: { id: orderId },
+      data: {
+        discount,
+        total,
+        isEdited: true,
+        editedAt: new Date(),
+      },
+      include: { items: true },
+    });
+
+    res.json(updatedOrder);
+  } catch (error) {
+    next(error);
+  }
+});
+
 export default router;

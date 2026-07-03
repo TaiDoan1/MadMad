@@ -57,7 +57,7 @@ import { getProvinces, getWardsByProvinceCode } from "@/features/checkout/servic
 export function AdminOrdersPage() {
   const { showToast } = useToast();
   const { settings } = useStorefrontSettings();
-  const { orders, updateOrderStatus, updateOrderPaymentStatus, updateOrderInternalNote, addOrder, updateOrderItem, syncOrderItemImages, syncOutboundStockDeductions } = useOrders();
+  const { orders, updateOrderStatus, updateOrderPaymentStatus, updateOrderInternalNote, addOrder, updateOrderItem, addOrderItem, removeOrderItem, applyOrderCoupon, syncOrderItemImages, syncOutboundStockDeductions } = useOrders();
   const { products, refreshProducts } = useProducts();
   const { members, tierConfigs, setMembers } = useMembership(); // Đọc danh sách tất cả thành viên VIP
   const imageSyncStarted = useRef(false);
@@ -211,6 +211,15 @@ export function AdminOrdersPage() {
   // Items added in manual order
   const [manualItems, setManualItems] = useState<OrderItem[]>([]);
 
+  // Selected Order Detail Editing States
+  const [detailProductSearchQuery, setDetailProductSearchQuery] = useState("");
+  const [detailSelectedProduct, setDetailSelectedProduct] = useState<Product | "">("");
+  const [detailSelectedSize, setDetailSelectedSize] = useState("M");
+  const [detailSelectedColor, setDetailSelectedColor] = useState("");
+  const [detailQuantity, setDetailQuantity] = useState(1);
+  const [detailIsGift, setDetailIsGift] = useState(false);
+  const [detailCouponCode, setDetailCouponCode] = useState("");
+
   // Fetch provinces list when modal is active or page loads
   useEffect(() => {
     getProvinces().then((data) => setProvincesList(data));
@@ -328,6 +337,66 @@ export function AdminOrdersPage() {
       showToast(error?.message || "Không thể cập nhật sản phẩm trong đơn hàng", "error");
     } finally {
       setIsSavingOrderItem(false);
+    }
+  };
+
+  const handleAddOrderItemToDetail = async () => {
+    if (!selectedOrder) return;
+    if (!detailSelectedProduct) {
+      showToast("Vui lòng chọn sản phẩm cần thêm!", "warning");
+      return;
+    }
+    if (!detailSelectedColor) {
+      showToast("Vui lòng chọn màu sắc!", "warning");
+      return;
+    }
+
+    try {
+      const updated = await addOrderItem(selectedOrder.id, {
+        productId: String(detailSelectedProduct.id),
+        color: detailSelectedColor,
+        size: detailSelectedSize,
+        quantity: detailQuantity,
+        isGift: detailIsGift
+      });
+      setSelectedOrder(updated);
+      await refreshProducts();
+      // Clear inputs
+      setDetailSelectedProduct("");
+      setDetailProductSearchQuery("");
+      setDetailSelectedColor("");
+      setDetailQuantity(1);
+      setDetailIsGift(false);
+      showToast("Đã thêm sản phẩm thành công!", "success");
+    } catch (error: any) {
+      showToast(error?.message || "Không thể thêm sản phẩm", "error");
+    }
+  };
+
+  const handleRemoveOrderItemFromDetail = async (itemId: number) => {
+    if (!selectedOrder) return;
+    if (!window.confirm("Bạn có chắc chắn muốn xóa sản phẩm này khỏi đơn hàng? Tồn kho sẽ được hoàn trả lại.")) return;
+
+    try {
+      const updated = await removeOrderItem(selectedOrder.id, itemId);
+      setSelectedOrder(updated);
+      await refreshProducts();
+      showToast("Đã xóa sản phẩm khỏi đơn hàng và hoàn trả kho!", "success");
+    } catch (error: any) {
+      showToast(error?.message || "Không thể xóa sản phẩm", "error");
+    }
+  };
+
+  const handleApplyCouponToDetail = async () => {
+    if (!selectedOrder) return;
+    
+    try {
+      const updated = await applyOrderCoupon(selectedOrder.id, detailCouponCode);
+      setSelectedOrder(updated);
+      setDetailCouponCode("");
+      showToast("Áp dụng mã giảm giá thành công!", "success");
+    } catch (error: any) {
+      showToast(error?.message || "Mã giảm giá không hợp lệ", "error");
     }
   };
 
@@ -2138,20 +2207,225 @@ export function AdminOrdersPage() {
                           </p>
                         </div>
                         {canEditOrderItems(selectedOrder) && item.id && (
-                          <button
-                            type="button"
-                            onClick={() => setEditingOrderItem({ order: selectedOrder, item })}
-                            className="inline-flex items-center gap-1 rounded-lg border border-black/10 bg-white px-2.5 py-1.5 text-[9px] font-bold uppercase text-black/70 hover:bg-stone-50"
-                          >
-                            <Pencil className="h-3 w-3" />
-                            Sửa
-                          </button>
+                          <div className="flex gap-2">
+                            <button
+                              type="button"
+                              onClick={() => setEditingOrderItem({ order: selectedOrder, item })}
+                              className="inline-flex items-center gap-1 rounded-lg border border-black/10 bg-white px-2 py-1 text-[9px] font-bold uppercase text-black/70 hover:bg-stone-50"
+                            >
+                              <Pencil className="h-3 w-3" />
+                              Sửa
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveOrderItemFromDetail(item.id!)}
+                              className="inline-flex items-center gap-1 rounded-lg border border-red-200 bg-red-50 px-2 py-1 text-[9px] font-bold uppercase text-red-600 hover:bg-red-100"
+                            >
+                              <Trash2 className="h-3 w-3" />
+                              Xóa
+                            </button>
+                          </div>
                         )}
                       </div>
                     </div>
-                  )})}
+                    );
+                  })}
                 </div>
               </div>
+
+              {/* 🛠️ BẢNG ĐIỀU KHIỂN CHỈNH SỬA ĐƠN HÀNG NÂNG CAO */}
+              {canEditOrderItems(selectedOrder) && (
+                <div className="rounded-xl border border-dashed border-black/20 bg-stone-50/40 p-4 space-y-4">
+                  <h4 className="text-[10px] font-black tracking-widest text-black/60 uppercase flex items-center gap-1.5">
+                    <PlusCircle className="h-3.5 w-3.5 text-stone-700" />
+                    Chỉnh sửa đơn hàng nâng cao
+                  </h4>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {/* Panel: Thêm sản phẩm hoặc quà tặng */}
+                    <div className="space-y-3">
+                      <p className="text-[9px] font-bold text-black/40 uppercase tracking-wider">Thêm sản phẩm / Quà tặng</p>
+                      
+                      <div className="relative">
+                        <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-black/30" />
+                        <input
+                          type="text"
+                          value={detailProductSearchQuery}
+                          onChange={(e) => {
+                            setDetailProductSearchQuery(e.target.value);
+                            if (!e.target.value) setDetailSelectedProduct(null);
+                          }}
+                          placeholder="Tìm sản phẩm thêm vào đơn..."
+                          className="w-full rounded-lg border border-black/15 pl-8 pr-3 py-2 text-xs focus:border-black/60 focus:outline-none placeholder:text-black/25 font-semibold"
+                        />
+                      </div>
+
+                      {detailProductSearchQuery.trim() && !detailSelectedProduct && (
+                        <div className="border border-black/10 bg-white rounded-lg max-h-[140px] overflow-y-auto p-1.5 space-y-0.5 shadow-sm">
+                          {products
+                            .filter((p) =>
+                              p.name.toLowerCase().includes(detailProductSearchQuery.toLowerCase()) ||
+                              (p.sku && p.sku.toLowerCase().includes(detailProductSearchQuery.toLowerCase()))
+                            )
+                            .slice(0, 6)
+                            .map((p) => (
+                              <button
+                                key={p.id}
+                                type="button"
+                                onClick={() => {
+                                  setDetailSelectedProduct(p);
+                                  const colors = p.colors && p.colors.length > 0 ? p.colors : ["Mặc định"];
+                                  setDetailSelectedColor(colors[0]);
+                                  const sizes = p.sizes && p.sizes.length > 0 ? p.sizes : ["Free Size"];
+                                  setDetailSelectedSize(sizes[0]);
+                                  setDetailQuantity(1);
+                                  setDetailProductSearchQuery(p.name);
+                                }}
+                                className="w-full text-left rounded-md px-2.5 py-2 hover:bg-stone-50 text-[10px] font-bold uppercase transition-colors flex justify-between"
+                              >
+                                <span className="truncate max-w-[65%]">{p.name}</span>
+                                <span className="text-black/40 font-mono">{p.price.toLocaleString("vi-VN")}₫</span>
+                              </button>
+                            ))}
+                          {products.filter((p) =>
+                            p.name.toLowerCase().includes(detailProductSearchQuery.toLowerCase())
+                          ).length === 0 && (
+                            <p className="text-center text-[9px] text-black/30 py-3">Không tìm thấy sản phẩm</p>
+                          )}
+                        </div>
+                      )}
+
+                      {detailSelectedProduct && (
+                        <div className="space-y-2.5 bg-white border border-black/8 rounded-xl p-3">
+                          <div className="flex items-center justify-between">
+                            <span className="text-[10px] font-extrabold uppercase text-black truncate max-w-[75%]">{detailSelectedProduct.name}</span>
+                            <button
+                              type="button"
+                              onClick={() => { setDetailSelectedProduct(null); setDetailProductSearchQuery(""); }}
+                              className="text-[8px] font-black text-red-400 uppercase hover:underline ml-2 shrink-0"
+                            >
+                              Đổi
+                            </button>
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-2">
+                            <div>
+                              <label className="block text-[8px] font-bold text-black/40 uppercase mb-1">Màu sắc</label>
+                              <select
+                                value={detailSelectedColor}
+                                onChange={(e) => setDetailSelectedColor(e.target.value)}
+                                className="w-full rounded-lg border border-black/15 bg-white px-2 py-1.5 text-[10px] font-bold"
+                              >
+                                {(detailSelectedProduct.colors && detailSelectedProduct.colors.length > 0
+                                  ? detailSelectedProduct.colors
+                                  : ["Mặc định"]
+                                ).map((c: string) => (
+                                  <option key={c} value={c}>{c}</option>
+                                ))}
+                              </select>
+                            </div>
+                            <div>
+                              <label className="block text-[8px] font-bold text-black/40 uppercase mb-1">Kích cỡ</label>
+                              <select
+                                value={detailSelectedSize}
+                                onChange={(e) => setDetailSelectedSize(e.target.value)}
+                                className="w-full rounded-lg border border-black/15 bg-white px-2 py-1.5 text-[10px] font-bold"
+                              >
+                                {(detailSelectedProduct.sizes && detailSelectedProduct.sizes.length > 0
+                                  ? detailSelectedProduct.sizes
+                                  : ["Free Size"]
+                                ).map((s: string) => (
+                                  <option key={s} value={s}>{s}</option>
+                                ))}
+                              </select>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center justify-between pt-2 border-t border-stone-100 gap-3">
+                            <div className="flex items-center gap-2">
+                              <span className="text-[8px] font-bold text-black/40 uppercase shrink-0">Số lượng:</span>
+                              <input
+                                type="number"
+                                min="1"
+                                max="99"
+                                value={detailQuantity}
+                                onChange={(e) => setDetailQuantity(Math.max(1, Math.min(99, Number(e.target.value))))}
+                                className="w-14 rounded-lg border border-black/15 p-1 text-center text-xs font-bold"
+                              />
+                            </div>
+                            <label className="flex items-center gap-1.5 cursor-pointer shrink-0">
+                              <input
+                                type="checkbox"
+                                checked={detailIsGift}
+                                onChange={(e) => setDetailIsGift(e.target.checked)}
+                                className="rounded border-black/20 text-black h-3 w-3"
+                              />
+                              <span className="text-[8px] font-black uppercase text-emerald-700 tracking-wider whitespace-nowrap">🎁 Quà tặng (0₫)</span>
+                            </label>
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={handleAddOrderItemToDetail}
+                            className="w-full rounded-lg bg-black text-white text-[10px] font-bold uppercase tracking-wider py-2 hover:bg-stone-800 transition-colors mt-1"
+                          >
+                            ✓ Xác nhận thêm vào đơn
+                          </button>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Panel: Áp dụng Voucher giảm giá */}
+                    <div className="space-y-3 flex flex-col">
+                      <p className="text-[9px] font-bold text-black/40 uppercase tracking-wider">Áp dụng Voucher giảm giá</p>
+
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          value={detailCouponCode}
+                          onChange={(e) => setDetailCouponCode(e.target.value.toUpperCase())}
+                          placeholder="NHẬP MÃ VOUCHER..."
+                          className="flex-1 rounded-lg border border-black/15 px-3 py-2 text-xs focus:border-black/60 focus:outline-none placeholder:text-black/20 font-mono font-bold tracking-wider uppercase"
+                        />
+                        <button
+                          type="button"
+                          onClick={handleApplyCouponToDetail}
+                          className="rounded-lg bg-stone-900 text-white px-3 py-2 text-[10px] font-bold uppercase tracking-wider hover:bg-stone-700 transition-colors shrink-0"
+                        >
+                          Áp dụng
+                        </button>
+                      </div>
+
+                      {selectedOrder.discount > 0 && (
+                        <div className="flex items-center justify-between rounded-lg bg-red-50 border border-red-100 px-3 py-2">
+                          <span className="text-[9px] font-extrabold text-red-700 uppercase tracking-wider">
+                            🏷️ Đang giảm: -{selectedOrder.discount.toLocaleString("vi-VN")}₫
+                          </span>
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              try {
+                                const updated = await applyOrderCoupon(selectedOrder.id, "");
+                                setSelectedOrder(updated);
+                                showToast("Đã hủy mã giảm giá!", "info");
+                              } catch {
+                                showToast("Không thể gỡ mã giảm giá", "error");
+                              }
+                            }}
+                            className="text-[8px] font-black text-red-500 uppercase hover:underline ml-2 shrink-0"
+                          >
+                            Gỡ bỏ
+                          </button>
+                        </div>
+                      )}
+
+                      <p className="text-[8px] text-black/30 leading-relaxed mt-auto pt-2">
+                        * Mọi thay đổi sẽ được đồng bộ thời gian thực lên server. Thêm sản phẩm sẽ tự động trừ tồn kho và ghi log lịch sử.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* Tổng kết tiền đơn hàng */}
               <div className="border-t border-black/10 pt-5 flex justify-end font-mono">
