@@ -6,7 +6,8 @@ const router = Router();
 
 // JWT secret: dùng env var nếu có, fallback về giá trị mặc định
 const JWT_SECRET = process.env.ADMIN_JWT_SECRET || process.env.ADMIN_SECRET_KEY || "MADMAD_DEFAULT_SECRET_KEY_2026";
-const JWT_EXPIRES_IN = "30d"; // Token có hiệu lực 30 ngày, tránh bị đăng xuất liên tục
+const JWT_EXPIRES_IN = "90d"; // Token có hiệu lực 90 ngày
+const JWT_REFRESH_THRESHOLD_DAYS = 14; // Tự động gia hạn khi còn ít hơn 14 ngày
 
 // Xác minh JWT token - dùng được ở mọi nơi, không cần RAM store
 export function verifyAdminToken(token: string): boolean {
@@ -27,16 +28,17 @@ router.post("/admin-login", async (req, res, next) => {
     const expectedPass = process.env.ADMIN_PASSWORD || "admin123";
 
     if (username === expectedUser && password === expectedPass) {
-      // Sinh JWT token có hiệu lực 30 ngày - sống qua mọi lần server restart
+      // Sinh JWT token có hiệu lực 90 ngày - sống qua mọi lần server restart
       const token = jwt.sign(
-        { role: "admin", user: username, iat: Math.floor(Date.now() / 1000) },
+        { role: "admin", user: username, issuedAt: Date.now() },
         JWT_SECRET,
         { expiresIn: JWT_EXPIRES_IN }
       );
 
       return res.json({
         success: true,
-        token
+        token,
+        expiresIn: JWT_EXPIRES_IN
       });
     }
 
@@ -44,6 +46,61 @@ router.post("/admin-login", async (req, res, next) => {
     return res.status(401).json({ success: false, message: "Tài khoản hoặc mật khẩu không chính xác!" });
   } catch (error) {
     next(error);
+  }
+});
+
+// 0b. POST /api/auth/admin-refresh - Tự động gia hạn token khi còn gần hết hạn
+// Không cần username/password — chỉ cần token hiện tại còn hợp lệ
+router.post("/admin-refresh", (req, res) => {
+  try {
+    const authHeader = req.headers["x-admin-key"] as string;
+    if (!authHeader) {
+      return res.status(401).json({ success: false, message: "Thiếu token xác thực!" });
+    }
+
+    // Xác minh token hiện tại có hợp lệ không
+    let decoded: any;
+    try {
+      decoded = jwt.verify(authHeader, JWT_SECRET);
+    } catch {
+      return res.status(401).json({ success: false, message: "Token không hợp lệ hoặc đã hết hạn!" });
+    }
+
+    if (decoded?.role !== "admin") {
+      return res.status(403).json({ success: false, message: "Token không có quyền Admin!" });
+    }
+
+    // Kiểm tra xem token còn bao nhiêu ngày nữa hết hạn
+    const nowSeconds = Math.floor(Date.now() / 1000);
+    const remainingSeconds = (decoded.exp || 0) - nowSeconds;
+    const remainingDays = Math.floor(remainingSeconds / 86400);
+
+    // Chỉ gia hạn nếu còn ít hơn ngưỡng cho phép
+    if (remainingDays > JWT_REFRESH_THRESHOLD_DAYS) {
+      return res.json({
+        success: true,
+        refreshed: false,
+        remainingDays,
+        message: `Token vẫn còn hiệu lực ${remainingDays} ngày, chưa cần gia hạn.`
+      });
+    }
+
+    // Cấp token mới 90 ngày
+    const newToken = jwt.sign(
+      { role: "admin", user: decoded.user || "admin", issuedAt: Date.now() },
+      JWT_SECRET,
+      { expiresIn: JWT_EXPIRES_IN }
+    );
+
+    return res.json({
+      success: true,
+      refreshed: true,
+      token: newToken,
+      expiresIn: JWT_EXPIRES_IN,
+      message: `Đã gia hạn thành công! Token mới có hiệu lực 90 ngày.`
+    });
+  } catch {
+    return res.status(500).json({ success: false, message: "Lỗi server khi gia hạn token." });
   }
 });
 

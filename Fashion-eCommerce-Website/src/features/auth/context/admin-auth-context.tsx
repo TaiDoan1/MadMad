@@ -22,27 +22,45 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
   });
 
   // Khi app khởi động, kiểm tra token đang lưu có còn hợp lệ không
-  // Nếu token cũ (từ hệ thống cũ hoặc server đã đổi secret), tự động đăng xuất
+  // Nếu token gần hết hạn (dưới 14 ngày), tự động gửi request gia hạn (refresh) token
   useEffect(() => {
     const storedAuth = safeLocalStorage.getItem(ADMIN_AUTH_STORAGE_KEY);
     const storedToken = safeLocalStorage.getItem(ADMIN_TOKEN_STORAGE_KEY);
 
     if (storedAuth !== "true" || !storedToken) return;
 
-    // Validate token bằng cách thử gọi API settings (endpoint nhẹ nhất)
-    // Nếu trả về 401 tức token đã hết hạn/vô hiệu → tự động đăng xuất
-    fetch(`${API_URL}/settings`, {
-      headers: { "x-admin-key": storedToken }
-    }).then(res => {
-      if (res.status === 401) {
-        // Token không hợp lệ → clear localStorage và bắt đăng nhập lại
-        safeLocalStorage.removeItem(ADMIN_AUTH_STORAGE_KEY);
-        safeLocalStorage.removeItem(ADMIN_TOKEN_STORAGE_KEY);
-        setIsAdminAuthenticated(false);
+    const checkAndRefresh = async () => {
+      try {
+        // Gửi yêu cầu gia hạn token lên server
+        const response = await fetch(`${API_URL}/auth/admin-refresh`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-admin-key": storedToken
+          }
+        });
+
+        if (response.status === 401 || response.status === 403) {
+          // Token không hợp lệ hoặc đã quá hạn hoàn toàn → yêu cầu đăng nhập lại
+          safeLocalStorage.removeItem(ADMIN_AUTH_STORAGE_KEY);
+          safeLocalStorage.removeItem(ADMIN_TOKEN_STORAGE_KEY);
+          setIsAdminAuthenticated(false);
+          return;
+        }
+
+        if (response.ok) {
+          const data = await response.json();
+          // Nếu server quyết định cấp token mới (do token cũ sắp hết hạn)
+          if (data.success && data.refreshed && data.token) {
+            safeLocalStorage.setItem(ADMIN_TOKEN_STORAGE_KEY, data.token);
+          }
+        }
+      } catch {
+        // Bỏ qua lỗi kết nối mạng tạm thời để không đá user ra khi đang offline
       }
-    }).catch(() => {
-      // Nếu mất mạng hoàn toàn, giữ nguyên trạng thái (không logout khi offline)
-    });
+    };
+
+    checkAndRefresh();
   }, []);
 
   const value = useMemo<AdminAuthContextValue>(
