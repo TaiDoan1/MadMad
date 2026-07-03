@@ -377,9 +377,32 @@ router.put("/:id", async (req, res, next) => {
         }
       }
 
-      return tx.product.update({
-      where: { id },
-      data: {
+        // Auto-sync inStock từ tổng tồn kho thực tế sau khi patch inventory
+        // Đây là fix cho bug: nhập thêm hàng nhưng inStock vẫn còn false (hết hàng)
+        let autoComputedInStock: boolean | undefined = undefined;
+        if (inventoryPatch.stock !== undefined || inventoryPatch.variantStock !== undefined) {
+          const newStock = inventoryPatch.stock !== undefined ? inventoryPatch.stock : existing.stock;
+          const newVariantStockRaw = inventoryPatch.variantStock ?? existing.variantStock;
+          const newVariantStockParsed = newVariantStockRaw ? (() => {
+            try { return JSON.parse(newVariantStockRaw) as Record<string, number>; } catch { return {}; }
+          })() : {};
+          const hasVariants = Object.keys(newVariantStockParsed).length > 0;
+          let newTotal = 0;
+          if (hasVariants) {
+            newTotal = Object.values(newVariantStockParsed).reduce((sum, v) => sum + Number(v || 0), 0);
+          } else {
+            newTotal = Number(newStock ?? 0);
+          }
+          autoComputedInStock = newTotal > 0;
+        }
+
+        const resolvedInStock = autoComputedInStock !== undefined
+          ? autoComputedInStock
+          : (inStock !== undefined ? !!inStock : undefined);
+
+        return tx.product.update({
+          where: { id },
+          data: {
         name,
         sku,
         price: price ? Number(price) : undefined,
@@ -416,7 +439,7 @@ router.put("/:id", async (req, res, next) => {
             : undefined),
         receivedStock: inventoryPatch.receivedStock,
         receivedVariantStock: inventoryPatch.receivedVariantStock,
-        inStock: inStock !== undefined ? !!inStock : undefined,
+        inStock: resolvedInStock,
         originalPrice: originalPrice !== undefined ? (originalPrice !== null ? Number(originalPrice) : null) : undefined,
         discountPercent: discountPercent !== undefined ? (discountPercent !== null ? Number(discountPercent) : null) : undefined,
         showDiscountPercent: showDiscountPercent !== undefined ? !!showDiscountPercent : undefined,

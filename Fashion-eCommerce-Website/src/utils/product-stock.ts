@@ -64,8 +64,12 @@ export function isProductSoldOut(product: Product): boolean {
 
 export function syncProductStock<T extends Product>(product: T): T {
   const totalStock = getProductTotalStock(product);
-  if (totalStock !== null && totalStock <= 0) {
-    return { ...product, inStock: false };
+  if (totalStock !== null) {
+    // Always sync inStock with the actual computed totalStock value
+    // This fixes both:
+    //   - inStock=true but stock=0 (false positive → mark as sold out)
+    //   - inStock=false but stock>0 (false negative → unblock the product!)
+    return { ...product, inStock: totalStock > 0 };
   }
   return product;
 }
