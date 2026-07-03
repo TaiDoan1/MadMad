@@ -184,10 +184,16 @@ const LOCAL_ORDERS_KEY = "madmad_orders_fallback";
   };
 
   useEffect(() => {
+    // Chỉ tải dữ liệu và bắt đầu polling khi trình duyệt có token admin hợp lệ
+    const adminKey = getAdminKey();
+    if (!adminKey) return;
+
     loadOrders();
     // 🔄 Tự động cập nhật ngầm mỗi 3 giây (Real-time polling cho Admin không cần F5)
     const interval = setInterval(() => {
-      loadOrders(true);
+      if (getAdminKey()) {
+        loadOrders(true);
+      }
     }, 3000);
     return () => clearInterval(interval);
   }, []);
