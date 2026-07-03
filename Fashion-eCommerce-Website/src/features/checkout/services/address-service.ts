@@ -1,66 +1,86 @@
+/**
+ * address-service.ts
+ * Dùng API provinces.open-api.vn v2 — chuẩn hành chính 2 cấp mới của Việt Nam (từ 01/07/2025)
+ * Cấu trúc: Tỉnh / Thành phố → Phường / Xã (đã bỏ cấp Quận / Huyện)
+ */
+
 export type AddressOption = { code: string; name: string };
 
-type Province = { code: string; name: string; unit: string };
-type District = { code: string; name: string; unit: string; province_code: string };
-type Ward = { code: string; name: string; unit: string; district_code: string; province_code: string };
+const API_BASE = "https://provinces.open-api.vn/api/v2";
 
-type PcVnModule = {
-  getProvinces: () => Province[];
-  getDistricts: () => District[];
-  getWards: () => Ward[];
-  getDistrictsByProvinceCode: (provinceCode: string) => District[];
-  getWardsByDistrictCode: (districtCode: string) => Ward[];
-};
+// ── Cache ──────────────────────────────────────────────────────────────────────
+let provincesCache: AddressOption[] | null = null;
+// Lưu danh sách phường theo code tỉnh: { "79": [...], "1": [...] }
+const wardsCache: Record<string, AddressOption[]> = {};
 
-let pcVnPromise: Promise<PcVnModule> | null = null;
-let provincesCache: Province[] | null = null;
-let districtsCache: District[] | null = null;
-let wardsCache: Ward[] | null = null;
+// ── Helper: loại bỏ prefix "Tỉnh ", "Thành phố ", "Phường ", "Xã " ... để giao diện gọn hơn ──
+// Không rút gọn vì muốn giữ nguyên tên chính thức để giao hàng chính xác.
 
-async function loadPcVn(): Promise<PcVnModule> {
-  if (!pcVnPromise) {
-    pcVnPromise = import("pc-vn").then((mod) => (mod.default ?? mod) as PcVnModule);
-  }
-  return pcVnPromise;
-}
-
-async function ensureCaches() {
-  const pcVn = await loadPcVn();
-  if (!provincesCache) provincesCache = pcVn.getProvinces();
-  if (!districtsCache) districtsCache = pcVn.getDistricts();
-  if (!wardsCache) wardsCache = pcVn.getWards();
-  return { pcVn, PROVINCES: provincesCache, DISTRICTS: districtsCache, WARDS: wardsCache };
-}
-
+// ── Provinces ─────────────────────────────────────────────────────────────────
 export async function getProvinces(): Promise<AddressOption[]> {
-  const { PROVINCES } = await ensureCaches();
-  return PROVINCES.map((p) => ({ code: p.code, name: p.name }));
+  if (provincesCache) return provincesCache;
+  try {
+    const res = await fetch(`${API_BASE}/p`, { cache: "force-cache" });
+    if (!res.ok) throw new Error("provinces fetch failed");
+    const data: { code: number; name: string }[] = await res.json();
+    provincesCache = data.map((p) => ({ code: String(p.code), name: p.name }));
+    return provincesCache;
+  } catch (err) {
+    console.error("[address-service] getProvinces error:", err);
+    return [];
+  }
 }
 
-export async function getDistrictsByProvinceCode(provinceCode: string): Promise<AddressOption[]> {
+// ── Wards by Province ─────────────────────────────────────────────────────────
+export async function getWardsByProvinceCode(provinceCode: string): Promise<AddressOption[]> {
   if (!provinceCode) return [];
-  const { pcVn } = await ensureCaches();
-  return pcVn.getDistrictsByProvinceCode(provinceCode).map((d) => ({ code: d.code, name: d.name }));
+  if (wardsCache[provinceCode]) return wardsCache[provinceCode];
+  try {
+    const res = await fetch(`${API_BASE}/p/${provinceCode}?depth=2`, { cache: "force-cache" });
+    if (!res.ok) throw new Error("wards fetch failed");
+    const data: { wards: { code: number; name: string }[] } = await res.json();
+    const wards = (data.wards ?? []).map((w) => ({ code: String(w.code), name: w.name }));
+    wardsCache[provinceCode] = wards;
+    return wards;
+  } catch (err) {
+    console.error("[address-service] getWardsByProvinceCode error:", err);
+    return [];
+  }
 }
 
-export async function getWardsByDistrictCode(districtCode: string): Promise<AddressOption[]> {
-  if (!districtCode) return [];
-  const { pcVn } = await ensureCaches();
-  return pcVn.getWardsByDistrictCode(districtCode).map((w) => ({ code: w.code, name: w.name }));
+// ── Name resolvers ─────────────────────────────────────────────────────────────
+export async function getProvinceNameByCode(code: string): Promise<string> {
+  const list = await getProvinces();
+  return list.find((p) => p.code === code)?.name ?? "";
 }
 
-export async function getProvinceNameByCode(code: string) {
-  const { PROVINCES } = await ensureCaches();
-  return PROVINCES.find((p) => p.code === code)?.name ?? "";
+export async function getWardNameByCode(code: string, provinceCode?: string): Promise<string> {
+  // Nếu biết provinceCode thì tìm nhanh từ cache
+  if (provinceCode) {
+    const list = await getWardsByProvinceCode(provinceCode);
+    const found = list.find((w) => w.code === code);
+    if (found) return found.name;
+  }
+  // Tìm trong toàn bộ cache đang có
+  for (const wards of Object.values(wardsCache)) {
+    const found = wards.find((w) => w.code === code);
+    if (found) return found.name;
+  }
+  return "";
 }
 
-export async function getDistrictNameByCode(code: string) {
-  const { DISTRICTS } = await ensureCaches();
-  return DISTRICTS.find((d) => d.code === code)?.name ?? "";
+// ── Backward-compat: hàm cũ (dùng district) — giờ trả về rỗng để tránh lỗi build ──
+/** @deprecated Không còn cấp huyện từ 01/07/2025 */
+export async function getDistrictsByProvinceCode(_provinceCode: string): Promise<AddressOption[]> {
+  return [];
 }
 
-export async function getWardNameByCode(code: string) {
-  const { WARDS } = await ensureCaches();
-  return WARDS.find((w) => w.code === code)?.name ?? "";
+/** @deprecated Không còn cấp huyện từ 01/07/2025 */
+export async function getWardsByDistrictCode(_districtCode: string): Promise<AddressOption[]> {
+  return [];
 }
 
+/** @deprecated Không còn cấp huyện từ 01/07/2025 */
+export async function getDistrictNameByCode(_code: string): Promise<string> {
+  return "";
+}

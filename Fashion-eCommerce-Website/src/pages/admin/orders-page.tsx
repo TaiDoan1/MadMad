@@ -52,7 +52,7 @@ import { getProductStockSummary } from "@/utils/product-stock";
 import { isGiftProduct } from "@/utils/gift-eligibility";
 
 import { useToast } from "@/components/common/toast";
-import { getProvinces, getDistrictsByProvinceCode, getWardsByDistrictCode } from "@/features/checkout/services/address-service";
+import { getProvinces, getWardsByProvinceCode } from "@/features/checkout/services/address-service";
 
 export function AdminOrdersPage() {
   const { showToast } = useToast();
@@ -189,15 +189,12 @@ export function AdminOrdersPage() {
   // Manual Address
   const [manualStreet, setManualStreet] = useState("");
   const [manualWard, setManualWard] = useState("");
-  const [manualDistrict, setManualDistrict] = useState("");
   const [manualProvince, setManualProvince] = useState("");
 
   // Address selection codes & lists
   const [provincesList, setProvincesList] = useState<{ code: string; name: string }[]>([]);
-  const [districtsList, setDistrictsList] = useState<{ code: string; name: string }[]>([]);
   const [wardsList, setWardsList] = useState<{ code: string; name: string }[]>([]);
   const [provinceCode, setProvinceCode] = useState("");
-  const [districtCode, setDistrictCode] = useState("");
   const [wardCode, setWardCode] = useState("");
 
   // Internal Packing Note
@@ -219,23 +216,14 @@ export function AdminOrdersPage() {
     getProvinces().then((data) => setProvincesList(data));
   }, []);
 
-  // Fetch districts when provinceCode changes
+  // Fetch wards when provinceCode changes
   useEffect(() => {
     if (!provinceCode) {
-      setDistrictsList([]);
-      return;
-    }
-    getDistrictsByProvinceCode(provinceCode).then((data) => setDistrictsList(data));
-  }, [provinceCode]);
-
-  // Fetch wards when districtCode changes
-  useEffect(() => {
-    if (!districtCode) {
       setWardsList([]);
       return;
     }
-    getWardsByDistrictCode(districtCode).then((data) => setWardsList(data));
-  }, [districtCode]);
+    getWardsByProvinceCode(provinceCode).then((data) => setWardsList(data));
+  }, [provinceCode]);
 
   // Membership VIP Check States
   const [checkedMember, setCheckedMember] = useState<any | null>(null);
@@ -669,7 +657,7 @@ export function AdminOrdersPage() {
       shippingAddress: {
         street: manualStreet.trim() || "Mua trực tiếp tại Shop",
         ward: manualWard.trim() || "",
-        district: manualDistrict.trim() || "",
+        district: "",
         province: manualProvince.trim() || "",
       },
       items: manualItems,
@@ -727,10 +715,8 @@ export function AdminOrdersPage() {
     setManualNotes("");
     setManualStreet("");
     setManualWard("");
-    setManualDistrict("");
     setManualProvince("");
     setProvinceCode("");
-    setDistrictCode("");
     setWardCode("");
     setManualItems([]);
     setManualDiscount(0);
@@ -1232,10 +1218,8 @@ export function AdminOrdersPage() {
                   setManualCustomerEmail("");
                   setManualStreet("");
                   setManualWard("");
-                  setManualDistrict("");
                   setManualProvince("");
                   setProvinceCode("");
-                  setDistrictCode("");
                   setWardCode("");
                   setShowCreateModal(false);
                 }}
@@ -1603,7 +1587,7 @@ export function AdminOrdersPage() {
                       placeholder="Số nhà, Tên đường..."
                       className="w-full rounded-xl border border-black/10 bg-white px-3 py-2 focus:border-black/60 transition-all text-xs"
                     />
-                    <div className="grid grid-cols-3 gap-2">
+                    <div className="grid grid-cols-2 gap-2">
                       <select
                         required
                         value={provinceCode}
@@ -1612,8 +1596,6 @@ export function AdminOrdersPage() {
                           setProvinceCode(code);
                           const name = provincesList.find((p) => p.code === code)?.name || "";
                           setManualProvince(name);
-                          setDistrictCode("");
-                          setManualDistrict("");
                           setWardCode("");
                           setManualWard("");
                         }}
@@ -1621,37 +1603,15 @@ export function AdminOrdersPage() {
                       >
                         <option value="">Chọn Tỉnh/Thành</option>
                         {provincesList.map((p) => (
-                          <option key={p.code} value={p.code}>
-                            {p.name}
-                          </option>
+                           <option key={p.code} value={p.code}>
+                             {p.name}
+                           </option>
                         ))}
                       </select>
 
                       <select
                         required
                         disabled={!provinceCode}
-                        value={districtCode}
-                        onChange={(e) => {
-                          const code = e.target.value;
-                          setDistrictCode(code);
-                          const name = districtsList.find((d) => d.code === code)?.name || "";
-                          setManualDistrict(name);
-                          setWardCode("");
-                          setManualWard("");
-                        }}
-                        className="w-full rounded-xl border border-black/10 bg-white px-2 py-2 focus:border-black/60 transition-all text-xs disabled:opacity-50"
-                      >
-                        <option value="">Chọn Quận/Huyện</option>
-                        {districtsList.map((d) => (
-                          <option key={d.code} value={d.code}>
-                            {d.name}
-                          </option>
-                        ))}
-                      </select>
-
-                      <select
-                        required
-                        disabled={!districtCode}
                         value={wardCode}
                         onChange={(e) => {
                           const code = e.target.value;

@@ -9,12 +9,10 @@ import { useTransitionTo } from "@/components/common/page-transition";
 import { useMembership } from "@/features/membership/context/membership-context";
 import { useCart } from "@/features/cart/context/cart-context";
 import {
-  getDistrictNameByCode,
-  getDistrictsByProvinceCode,
   getProvinceNameByCode,
   getProvinces,
   getWardNameByCode,
-  getWardsByDistrictCode,
+  getWardsByProvinceCode,
   type AddressOption,
 } from "@/features/checkout/services/address-service";
 import { useOrders } from "@/features/orders/context/order-context";
@@ -191,7 +189,6 @@ export function CheckoutPage() {
       phone: currentMember?.phone || savedInfo.phone || "",
       address: savedInfo.address || "",
       provinceCode: savedInfo.provinceCode || "",
-      districtCode: savedInfo.districtCode || "",
       wardCode: savedInfo.wardCode || "",
       notes: "",
       paymentMethod: (settings.enableCod ?? true) ? "cod" : ((settings.enableBank ?? true) ? "bank" : ((settings.enableMomo ?? true) ? "momo" : "paypal")),
@@ -199,7 +196,6 @@ export function CheckoutPage() {
     };
   });
   const [provinces, setProvinces] = useState<AddressOption[]>([]);
-  const [districts, setDistricts] = useState<AddressOption[]>([]);
   const [wards, setWards] = useState<AddressOption[]>([]);
 
   // Tự động điền dữ liệu nếu thành viên đăng nhập sau khi vào trang
@@ -254,17 +250,13 @@ export function CheckoutPage() {
     return () => { alive = false; };
   }, []);
 
+  // Tải phường/xã trực tiếp theo tỉnh/thành phố (không qua cấp quận từ 01/07/2025)
   useEffect(() => {
     let alive = true;
-    getDistrictsByProvinceCode(formData.provinceCode).then((data) => { if (alive) setDistricts(data); });
+    setWards([]);
+    getWardsByProvinceCode(formData.provinceCode).then((data) => { if (alive) setWards(data); });
     return () => { alive = false; };
   }, [formData.provinceCode]);
-
-  useEffect(() => {
-    let alive = true;
-    getWardsByDistrictCode(formData.districtCode).then((data) => { if (alive) setWards(data); });
-    return () => { alive = false; };
-  }, [formData.districtCode]);
 
   const checkStockBeforeCheckout = async (): Promise<boolean> => {
     try {
@@ -317,7 +309,7 @@ export function CheckoutPage() {
   const handleSubmit = async (event?: FormEvent) => {
     event?.preventDefault();
     if (resolvedItems.length === 0) { showToast(t("Giỏ hàng đang trống.", "Your cart is empty."), "warning"); return; }
-    if (!formData.fullName || !formData.phone || !formData.email || !formData.address || !formData.wardCode) {
+    if (!formData.fullName || !formData.phone || !formData.email || !formData.address || !formData.provinceCode || !formData.wardCode) {
       showToast(t("Vui lòng điền đầy đủ thông tin giao hàng!", "Please complete all shipping details!"), "warning"); return;
     }
 
@@ -341,7 +333,6 @@ export function CheckoutPage() {
       phone: formData.phone,
       address: formData.address,
       provinceCode: formData.provinceCode,
-      districtCode: formData.districtCode,
       wardCode: formData.wardCode,
     };
     try {
@@ -370,7 +361,7 @@ export function CheckoutPage() {
 
     const newOrder: Order = {
       id: 0, orderNumber, customerName: formData.fullName, customerEmail: formData.email,
-      customerPhone: formData.phone, shippingAddress: { street: formData.address, ward: "", district: "", province: "" },
+      customerPhone: formData.phone, shippingAddress: { street: formData.address, ward: "", district: "", province: "" }, // ward/province filled below
       items: orderItems, subtotal, discount: totalDiscount,
       couponCode: appliedCoupon?.code
         ? `${appliedCoupon.code} + VIP ${currentMember?.tier || ""}`
@@ -380,9 +371,9 @@ export function CheckoutPage() {
       createdAt: now.toISOString(), notes: formData.notes,
     };
 
-    Promise.all([getWardNameByCode(formData.wardCode), getDistrictNameByCode(formData.districtCode), getProvinceNameByCode(formData.provinceCode)])
-      .then(([wardName, districtName, provinceName]) => {
-        addOrder({ ...newOrder, shippingAddress: { street: formData.address, ward: wardName, district: districtName, province: provinceName } });
+    Promise.all([getWardNameByCode(formData.wardCode, formData.provinceCode), getProvinceNameByCode(formData.provinceCode)])
+      .then(([wardName, provinceName]) => {
+        addOrder({ ...newOrder, shippingAddress: { street: formData.address, ward: wardName, district: "", province: provinceName } });
         
         // Hoàn điểm thành viên VIP dựa trên giá trị chi tiêu thực tế (1 điểm = 10.000 VNĐ)
         if (currentMember) {
@@ -547,18 +538,14 @@ export function CheckoutPage() {
                     onChange={(e) => setFormData({ ...formData, address: e.target.value })}
                     className={inputCls} placeholder={t("Địa chỉ (số nhà, tên đường)", "Address (Street, Number)")} />
 
-                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                  {/* Địa chỉ 2 cấp: Tỉnh/TP → Phường/Xã (bỏ Quận/Huyện từ 01/07/2025) */}
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                     <SearchableDropdown value={formData.provinceCode} options={provinces}
                       placeholder={t("Tỉnh/Thành phố", "Province/City")} searchPlaceholder={t("Tìm tỉnh/thành...", "Search province...")}
-                      onChange={(v) => setFormData({ ...formData, provinceCode: v, districtCode: "", wardCode: "" })} />
-                    <SearchableDropdown value={formData.districtCode} options={districts}
-                      disabled={!formData.provinceCode}
-                      placeholder={formData.provinceCode ? t("Quận/Huyện", "District") : t("Chọn tỉnh trước", "Select province first")}
-                      searchPlaceholder={t("Tìm quận/huyện...", "Search district...")}
-                      onChange={(v) => setFormData({ ...formData, districtCode: v, wardCode: "" })} />
+                      onChange={(v) => setFormData({ ...formData, provinceCode: v, wardCode: "" })} />
                     <SearchableDropdown value={formData.wardCode} options={wards}
-                      disabled={!formData.districtCode}
-                      placeholder={formData.districtCode ? t("Phường/Xã", "Ward/Commune") : t("Chọn quận trước", "Select district first")}
+                      disabled={!formData.provinceCode}
+                      placeholder={formData.provinceCode ? t("Phường/Xã", "Ward/Commune") : t("Chọn tỉnh trước", "Select province first")}
                       searchPlaceholder={t("Tìm phường/xã...", "Search ward...")}
                       onChange={(v) => setFormData({ ...formData, wardCode: v })} />
                   </div>
