@@ -12,6 +12,7 @@ import { useCart } from "@/features/cart/context/cart-context";
 import { useStorefrontSettings } from "@/features/settings/context/storefront-settings-context";
 import { useMembership } from "@/features/membership/context/membership-context";
 import { useLanguage } from "@/features/settings/context/language-context";
+import { API_URL } from "@/config/api";
 
 export function MainLayout() {
   const { settings } = useStorefrontSettings();
@@ -66,6 +67,38 @@ export function MainLayout() {
   useEffect(() => {
     setMobileMenuOpen(false);
   }, [location]);
+
+  // 📈 Ghi nhận lượt truy cập (Page View Tracking)
+  useEffect(() => {
+    // Không ghi nhận lượt truy cập vào các trang admin để tránh làm nhiễu dữ liệu khách hàng
+    if (location.pathname.startsWith("/admin")) {
+      return;
+    }
+
+    const trackPageView = async () => {
+      try {
+        await fetch(`${API_URL}/logs`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            level: "visit",
+            source: "frontend",
+            message: `Page view: ${location.pathname}`,
+            url: window.location.href,
+            userAgent: navigator.userAgent,
+          }),
+        });
+      } catch (error) {
+        // Bỏ qua lỗi ngầm nếu kết nối API tracking thất bại
+      }
+    };
+
+    // Đợi 300ms sau khi đổi route để đảm bảo trang đã render xong
+    const timer = setTimeout(trackPageView, 300);
+    return () => clearTimeout(timer);
+  }, [location.pathname]);
 
   useEffect(() => {
     document.body.style.overflow = mobileMenuOpen ? "hidden" : "unset";

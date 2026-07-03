@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import { Link } from "react-router";
 import {
   DollarSign,
@@ -22,16 +22,50 @@ import { useOrders } from "@/features/orders/context/order-context";
 import { useProducts } from "@/features/products/context/product-context";
 import type { Order } from "@/types/order";
 import { useToast } from "@/components/common/toast";
+import { API_URL, getAdminKey } from "@/config/api";
+import { Eye } from "lucide-react";
 
 export function AdminDashboardPage() {
   const { showToast } = useToast();
   const { products } = useProducts();
   const { orders, updateOrderStatus, updateOrderPaymentStatus } = useOrders();
 
-  // Date Filters State
+  // Traffic Analytics State
+  const [visitStats, setVisitStats] = useState<{
+    totalViews: number;
+    uniqueVisitors: number;
+    chartData: { date: string; views: number; visitors: number }[];
+    topPages: { page: string; count: number }[];
+  } | null>(null);
+  const [isLoadingVisits, setIsLoadingVisits] = useState(false);
+
   const [dateRange, setDateRange] = useState<"all" | "today" | "7days" | "30days" | "custom">("30days");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
+
+  // Fetch visitor statistics on dateRange change
+  useEffect(() => {
+    const fetchVisitStats = async () => {
+      setIsLoadingVisits(true);
+      try {
+        const response = await fetch(`${API_URL}/logs/visits?range=${dateRange}`, {
+          headers: {
+            "x-admin-key": getAdminKey()
+          }
+        });
+        if (response.ok) {
+          const data = await response.json();
+          setVisitStats(data);
+        }
+      } catch (error) {
+        console.error("Lỗi tải thống kê truy cập:", error);
+      } finally {
+        setIsLoadingVisits(false);
+      }
+    };
+
+    fetchVisitStats();
+  }, [dateRange]);
 
   // 1. Filter orders based on chosen date range
   const filteredOrders = useMemo(() => {
@@ -224,7 +258,7 @@ export function AdminDashboardPage() {
       </div>
 
       {/* CORE PERFORMANCE CARDS */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
         {/* DOANH THU */}
         <div className="rounded-2xl border border-border bg-white p-5 shadow-xs space-y-2">
           <div className="flex justify-between items-center text-muted-foreground">
@@ -278,6 +312,34 @@ export function AdminDashboardPage() {
               {averageOrderValue.toLocaleString("vi-VN")}₫
             </p>
             <p className="text-[10px] text-green-600 font-bold mt-1">Sức mua trung bình mỗi đơn</p>
+          </div>
+        </div>
+
+        {/* LƯỢT XEM TRANG */}
+        <div className="rounded-2xl border border-border bg-white p-5 shadow-xs space-y-2">
+          <div className="flex justify-between items-center text-muted-foreground">
+            <span className="text-[10px] font-extrabold tracking-wider uppercase">Lượt xem trang (Pageviews)</span>
+            <div className="rounded-md bg-stone-100 p-1.5"><Eye className="h-4 w-4 text-black" /></div>
+          </div>
+          <div>
+            <p className="text-2xl font-black text-black tracking-tight font-mono">
+              {isLoadingVisits ? "..." : visitStats?.totalViews ?? 0}
+            </p>
+            <p className="text-[10px] text-muted-foreground mt-1">Tổng số lượt tải trang công khai</p>
+          </div>
+        </div>
+
+        {/* KHÁCH TRUY CẬP DUY NHẤT */}
+        <div className="rounded-2xl border border-border bg-white p-5 shadow-xs space-y-2">
+          <div className="flex justify-between items-center text-muted-foreground">
+            <span className="text-[10px] font-extrabold tracking-wider uppercase">Khách truy cập (Visitors)</span>
+            <div className="rounded-md bg-stone-100 p-1.5"><Users className="h-4 w-4 text-black" /></div>
+          </div>
+          <div>
+            <p className="text-2xl font-black text-black tracking-tight font-mono">
+              {isLoadingVisits ? "..." : visitStats?.uniqueVisitors ?? 0}
+            </p>
+            <p className="text-[10px] text-muted-foreground mt-1">Số lượng khách truy cập (theo IP)</p>
           </div>
         </div>
       </div>
@@ -471,6 +533,78 @@ export function AdminDashboardPage() {
 
         </div>
 
+      </div>
+
+      {/* TRAFFIC & PAGES ANALYTICS */}
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 mt-6">
+        {/* Biến động truy cập theo ngày */}
+        <div className="lg:col-span-3 rounded-2xl border border-border bg-white p-5 shadow-xs space-y-4">
+          <div>
+            <h3 className="font-black text-xs uppercase tracking-wider text-black flex items-center gap-1.5">
+              <Activity className="h-4 w-4" />
+              Biến động lượt truy cập theo ngày
+            </h3>
+            <p className="text-[10px] text-muted-foreground mt-0.5">Số lượt xem trang và số khách truy cập duy nhất theo từng ngày.</p>
+          </div>
+
+          <div className="overflow-x-auto">
+            {isLoadingVisits ? (
+              <div className="text-center py-12 text-xs text-muted-foreground animate-pulse">Đang tải số liệu...</div>
+            ) : !visitStats || visitStats.chartData.length === 0 ? (
+              <div className="text-center py-12 text-xs text-muted-foreground italic">Chưa ghi nhận lượt truy cập nào.</div>
+            ) : (
+              <table className="w-full text-left border-collapse text-xs">
+                <thead>
+                  <tr className="border-b border-border text-muted-foreground uppercase tracking-wider text-[9px] font-extrabold bg-stone-50">
+                    <th className="py-2.5 px-3">Ngày</th>
+                    <th className="py-2.5 px-3 text-right">Lượt xem trang (Pageviews)</th>
+                    <th className="py-2.5 px-3 text-right">Khách truy cập (Visitors)</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {[...visitStats.chartData].reverse().map((row) => (
+                    <tr key={row.date} className="hover:bg-stone-50/50">
+                      <td className="py-2 px-3 font-bold text-black">{row.date}</td>
+                      <td className="py-2 px-3 text-right font-mono font-bold text-black">{row.views}</td>
+                      <td className="py-2 px-3 text-right font-mono font-bold text-neutral-500">{row.visitors}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+        </div>
+
+        {/* Các trang truy cập nhiều nhất */}
+        <div className="lg:col-span-2 rounded-2xl border border-border bg-white p-5 shadow-xs space-y-4">
+          <div>
+            <h3 className="font-black text-xs uppercase tracking-wider text-black flex items-center gap-1.5">
+              <TrendingUp className="h-4 w-4" />
+              Trang được xem nhiều nhất
+            </h3>
+            <p className="text-[10px] text-muted-foreground mt-0.5">Danh sách các đường dẫn được khách hàng click nhiều nhất.</p>
+          </div>
+
+          <div className="divide-y divide-border max-h-80 overflow-y-auto">
+            {isLoadingVisits ? (
+              <div className="text-center py-12 text-xs text-muted-foreground animate-pulse">Đang tải số liệu...</div>
+            ) : !visitStats || visitStats.topPages.length === 0 ? (
+              <div className="text-center py-12 text-xs text-muted-foreground italic">Chưa có số liệu trang truy cập.</div>
+            ) : (
+              visitStats.topPages.map((item, idx) => (
+                <div key={item.page} className="py-2.5 flex items-center justify-between text-xs hover:bg-stone-50/50 px-1 rounded transition-colors">
+                  <div className="flex items-center gap-2 truncate pr-4">
+                    <span className="font-mono font-black text-[10px] text-muted-foreground w-4">{idx + 1}</span>
+                    <span className="font-mono font-bold text-black truncate" title={item.page}>{item.page}</span>
+                  </div>
+                  <span className="font-mono font-bold text-black bg-stone-100 px-2 py-0.5 rounded text-[10px] shrink-0">
+                    {item.count} views
+                  </span>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );
