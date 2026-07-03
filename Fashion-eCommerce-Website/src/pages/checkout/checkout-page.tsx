@@ -46,19 +46,24 @@ const SearchableDropdown = ({
   value: string; options: AddressOption[]; onChange: (v: string) => void;
   placeholder: string; disabled?: boolean; searchPlaceholder: string;
 }) => {
-  const { t, translate } = useLanguage();
+  const { t } = useLanguage();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const dropdownRef = useRef<HTMLDivElement | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
   const touchMoved = useRef(false);
 
   useEffect(() => {
     if (!open) return;
-    
-    // Chỉ tự động focus ô tìm kiếm trên Desktop để tránh tự động hiện bàn phím ảo (bung bàn phím) trên Mobile
+
+    // Scroll dropdown into view on mobile so it's not hidden behind keyboard
     const isMobile = window.matchMedia("(pointer: coarse)").matches || window.innerWidth < 1024;
-    if (!isMobile) {
+    if (isMobile) {
+      setTimeout(() => {
+        dropdownRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      }, 80);
+    } else {
       inputRef.current?.focus();
     }
 
@@ -77,19 +82,10 @@ const SearchableDropdown = ({
     return q ? options.filter((o) => normalizeText(o.name).includes(q)) : options;
   }, [options, query]);
 
-  const handleTouchStart = () => {
-    touchMoved.current = false;
-  };
-
-  const handleTouchMove = () => {
-    touchMoved.current = true;
-  };
-
+  const handleTouchStart = () => { touchMoved.current = false; };
+  const handleTouchMove = () => { touchMoved.current = true; };
   const handleButtonClick = () => {
-    if (touchMoved.current) {
-      touchMoved.current = false;
-      return;
-    }
+    if (touchMoved.current) { touchMoved.current = false; return; }
     setOpen((c) => !c);
   };
 
@@ -101,25 +97,38 @@ const SearchableDropdown = ({
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onClick={handleButtonClick}
-        className={`${inputCls} flex items-center justify-between text-left disabled:opacity-50`}
+        className={`${inputCls} flex items-center justify-between text-left disabled:opacity-50 ${open ? "border-black/80" : ""}`}
       >
-        <span className={selectedLabel ? "" : "text-black/35"}>{selectedLabel || placeholder}</span>
-        <span className="text-black/40">▾</span>
+        <span className={selectedLabel ? "font-semibold text-black" : "text-black/35"}>{selectedLabel || placeholder}</span>
+        <span className={`transition-transform duration-200 text-black/40 ${open ? "rotate-180" : ""}`}>▾</span>
       </button>
       {open && !disabled && (
-        <div className="absolute left-0 right-0 z-50 mt-1 rounded-xl border-2 border-black/15 bg-white shadow-lg">
+        <div
+          ref={dropdownRef}
+          className="absolute left-0 right-0 z-50 mt-1 rounded-xl border-2 border-black/80 bg-white shadow-xl overflow-hidden"
+          style={{ scrollMarginBottom: "16px" }}
+        >
           <div className="border-b border-black/10 p-2">
-            <input ref={inputRef} value={query} onChange={(e) => setQuery(e.target.value)}
-              className="w-full border border-black/20 px-3 py-2 text-sm focus:outline-none"
-              placeholder={searchPlaceholder} />
+            <input
+              ref={inputRef}
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              className="w-full rounded-lg border border-black/20 px-3 py-2 text-sm focus:outline-none focus:border-black/60"
+              placeholder={searchPlaceholder}
+            />
           </div>
-          <div className="max-h-56 overflow-auto">
+          <div className="max-h-56 overflow-auto overscroll-contain">
             {filtered.length === 0
               ? <div className="px-4 py-3 text-sm text-black/40">{t("Không tìm thấy.", "Not found.")}</div>
               : filtered.map((o) => (
-                <button key={o.code} type="button"
+                <button
+                  key={o.code}
+                  type="button"
                   onClick={() => { onChange(o.code); setOpen(false); setQuery(""); }}
-                  className={`w-full px-4 py-2.5 text-left text-sm transition-colors hover:bg-black/5 ${o.code === value ? "font-semibold" : ""}`}>
+                  className={`w-full px-4 py-3 text-left text-sm transition-colors hover:bg-black/5 active:bg-black/10 ${
+                    o.code === value ? "font-bold bg-black/5" : ""
+                  }`}
+                >
                   {o.name}
                 </button>
               ))
@@ -127,6 +136,43 @@ const SearchableDropdown = ({
           </div>
         </div>
       )}
+    </div>
+  );
+};
+
+/* ── Progress Steps ── */
+const CheckoutProgressBar = ({ step }: { step: 1 | 2 | 3 }) => {
+  const steps = ["Giỏ hàng", "Thanh toán", "Hoàn tất"];
+  return (
+    <div className="hidden sm:flex items-center gap-0 justify-center">
+      {steps.map((label, i) => {
+        const stepNum = i + 1;
+        const isActive = stepNum === step;
+        const isDone = stepNum < step;
+        return (
+          <div key={label} className="flex items-center">
+            <div className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider transition-all ${
+              isActive
+                ? "bg-black text-white"
+                : isDone
+                ? "text-black/40"
+                : "text-black/25"
+            }`}>
+              {isDone ? (
+                <svg className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+              ) : (
+                <span className={`h-3.5 w-3.5 rounded-full flex items-center justify-center text-[8px] font-black border ${
+                  isActive ? "bg-white text-black border-transparent" : "border-black/20 text-black/30"
+                }`}>{stepNum}</span>
+              )}
+              {label}
+            </div>
+            {i < steps.length - 1 && (
+              <div className={`w-8 h-px mx-1 ${ isDone ? "bg-black/30" : "bg-black/10" }`} />
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 };
@@ -414,19 +460,24 @@ export function CheckoutPage() {
       />
 
       {/* ── Top bar ────────────────────────────────────────────────── */}
-      <div className="border-b border-black/10 px-10 py-4">
-        <div className="flex items-center justify-between">
+      <div className="border-b border-black/10 px-6 py-4">
+        <div className="flex items-center justify-between gap-4">
           {/* Back to cart */}
-          <Link to="/cart" className="flex items-center gap-1.5 text-xs text-black/50 uppercase tracking-widest hover:text-black transition-colors">
+          <Link to="/cart" className="flex items-center gap-1.5 text-xs text-black/50 uppercase tracking-widest hover:text-black transition-colors shrink-0">
             <ArrowLeft className="h-3.5 w-3.5" />
-            {t("Giỏ hàng", "Cart")}
+            <span className="hidden sm:inline">{t("Giỏ hàng", "Cart")}</span>
           </Link>
-          {/* Logo (centered) */}
-          <Link to="/">
-            <img src={brandLogo} alt="MADMAD" className="h-7 w-auto" />
-          </Link>
+
+          {/* Center: Logo + Progress bar stacked */}
+          <div className="flex flex-col items-center gap-2 flex-1">
+            <Link to="/">
+              <img src={brandLogo} alt="MADMAD" className="h-6 w-auto" />
+            </Link>
+            <CheckoutProgressBar step={2} />
+          </div>
+
           {/* Cart icon (right) */}
-          <Link to="/cart" className="flex items-center gap-1 text-black/50 hover:text-black transition-colors" aria-label={t("Giỏ hàng", "Shopping Cart")}>
+          <Link to="/cart" className="flex items-center gap-1 text-black/50 hover:text-black transition-colors shrink-0" aria-label={t("Giỏ hàng", "Shopping Cart")}>
             <ShoppingBag className="h-5 w-5" />
             {cartItems.length > 0 && (
               <span className="text-xs font-semibold text-black">{cartItems.length}</span>
@@ -741,47 +792,65 @@ export function CheckoutPage() {
 
                         <div className="space-y-1">
                           <p className="text-black/60 text-[9px]">{t("Số tài khoản:", "Account Number:")}</p>
-                          <div className="flex items-center justify-between gap-2 bg-white rounded-lg border border-black/5 px-2.5 py-1.5">
+                          <button
+                            type="button"
+                            onClick={() => handleCopy(settings.bankAccount || "0999999999", "bankAccount")}
+                            className={`w-full flex items-center justify-between gap-2 rounded-lg border px-2.5 py-2 transition-all duration-200 hover:scale-[1.01] active:scale-[0.99] ${
+                              copiedField === "bankAccount"
+                                ? "bg-green-50 border-green-300"
+                                : "bg-white border-black/8 hover:border-black/20"
+                            }`}
+                          >
                             <span className="font-mono font-bold text-black text-xs">{settings.bankAccount || "0999999999"}</span>
-                            <button
-                              type="button"
-                              onClick={() => handleCopy(settings.bankAccount || "0999999999", "bankAccount")}
-                              className="text-stone-400 hover:text-black transition-colors"
-                            >
-                              {copiedField === "bankAccount" ? <Check className="h-3.5 w-3.5 text-green-600" /> : <Copy className="h-3.5 w-3.5" />}
-                            </button>
-                          </div>
+                            <span className={`flex items-center gap-1 text-[9px] font-black uppercase tracking-wider transition-colors ${
+                              copiedField === "bankAccount" ? "text-green-600" : "text-black/30"
+                            }`}>
+                              {copiedField === "bankAccount" ? <><Check className="h-3 w-3" />Đã copy</> : <><Copy className="h-3 w-3" />Copy</>}
+                            </span>
+                          </button>
                         </div>
 
                         <div className="space-y-1">
                           <p className="text-black/60 text-[9px]">{t("Nội dung chuyển khoản:", "Transfer Memo:")}</p>
-                          <div className="flex items-center justify-between gap-2 bg-white rounded-lg border border-black/5 px-2.5 py-1.5">
+                          <button
+                            type="button"
+                            onClick={() => handleCopy(`MADMAD ${orderNumber}`, "bankMemo")}
+                            className={`w-full flex items-center justify-between gap-2 rounded-lg border px-2.5 py-2 transition-all duration-200 hover:scale-[1.01] active:scale-[0.99] ${
+                              copiedField === "bankMemo"
+                                ? "bg-green-50 border-green-300"
+                                : "bg-white border-black/8 hover:border-black/20"
+                            }`}
+                          >
                             <span className="font-mono font-black text-black tracking-wider text-xs uppercase">{`MADMAD ${orderNumber}`}</span>
-                            <button
-                              type="button"
-                              onClick={() => handleCopy(`MADMAD ${orderNumber}`, "bankMemo")}
-                              className="text-stone-400 hover:text-black transition-colors"
-                            >
-                              {copiedField === "bankMemo" ? <Check className="h-3.5 w-3.5 text-green-600" /> : <Copy className="h-3.5 w-3.5" />}
-                            </button>
-                          </div>
+                            <span className={`flex items-center gap-1 text-[9px] font-black uppercase tracking-wider transition-colors ${
+                              copiedField === "bankMemo" ? "text-green-600" : "text-black/30"
+                            }`}>
+                              {copiedField === "bankMemo" ? <><Check className="h-3 w-3" />Đã copy</> : <><Copy className="h-3 w-3" />Copy</>}
+                            </span>
+                          </button>
                         </div>
 
                         <div className="space-y-1">
                           <p className="text-black/60 text-[9px]">{t("Số tiền:", "Amount:")}</p>
-                          <div className="flex items-center justify-between gap-2 bg-white rounded-lg border border-black/5 px-2.5 py-1.5">
+                          <button
+                            type="button"
+                            onClick={() => handleCopy(String(total), "bankTotal")}
+                            className={`w-full flex items-center justify-between gap-2 rounded-lg border px-2.5 py-2 transition-all duration-200 hover:scale-[1.01] active:scale-[0.99] ${
+                              copiedField === "bankTotal"
+                                ? "bg-green-50 border-green-300"
+                                : "bg-white border-black/8 hover:border-black/20"
+                            }`}
+                          >
                             <span className="font-bold text-red-600 text-xs">{formatPrice(total)}</span>
-                            <button
-                              type="button"
-                              onClick={() => handleCopy(String(total), "bankTotal")}
-                              className="text-stone-400 hover:text-black transition-colors"
-                            >
-                              {copiedField === "bankTotal" ? <Check className="h-3.5 w-3.5 text-green-600" /> : <Copy className="h-3.5 w-3.5" />}
-                            </button>
-                          </div>
+                            <span className={`flex items-center gap-1 text-[9px] font-black uppercase tracking-wider transition-colors ${
+                              copiedField === "bankTotal" ? "text-green-600" : "text-black/30"
+                            }`}>
+                              {copiedField === "bankTotal" ? <><Check className="h-3 w-3" />Đã copy</> : <><Copy className="h-3 w-3" />Copy</>}
+                            </span>
+                          </button>
                         </div>
 
-                        <p className="text-[10px] text-green-700 font-bold pt-1">{t("✓ Quét VietQR để điền tự động 100% hoặc sao chép nhanh ở trên.", "✓ Scan VietQR to autofill or copy the details above.")}</p>
+                        <p className="text-[10px] text-green-700 font-bold pt-1">{t("✓ Quét VietQR để điền tự động 100% hoặc bấm Copy để sao chép nhanh.", "✓ Scan VietQR to autofill or tap Copy to copy details.")}</p>
                       </div>
                     </div>
                   </div>
@@ -806,44 +875,56 @@ export function CheckoutPage() {
 
                         <div className="space-y-1">
                           <p className="text-black/60 text-[9px]">{t("Số điện thoại MoMo:", "MoMo Phone Number:")}</p>
-                          <div className="flex items-center justify-between gap-2 bg-white rounded-lg border border-black/5 px-2.5 py-1.5">
+                          <button
+                            type="button"
+                            onClick={() => handleCopy(settings.momoPhone || "0999999999", "momoPhone")}
+                            className={`w-full flex items-center justify-between gap-2 rounded-lg border px-2.5 py-2 transition-all duration-200 hover:scale-[1.01] active:scale-[0.99] ${
+                              copiedField === "momoPhone" ? "bg-green-50 border-green-300" : "bg-white border-black/8 hover:border-black/20"
+                            }`}
+                          >
                             <span className="font-mono font-bold text-black text-xs">{settings.momoPhone || "0999999999"}</span>
-                            <button
-                              type="button"
-                              onClick={() => handleCopy(settings.momoPhone || "0999999999", "momoPhone")}
-                              className="text-stone-400 hover:text-black transition-colors"
-                            >
-                              {copiedField === "momoPhone" ? <Check className="h-3.5 w-3.5 text-green-600" /> : <Copy className="h-3.5 w-3.5" />}
-                            </button>
-                          </div>
+                            <span className={`flex items-center gap-1 text-[9px] font-black uppercase tracking-wider ${
+                              copiedField === "momoPhone" ? "text-green-600" : "text-black/30"
+                            }`}>
+                              {copiedField === "momoPhone" ? <><Check className="h-3 w-3" />Đã copy</> : <><Copy className="h-3 w-3" />Copy</>}
+                            </span>
+                          </button>
                         </div>
 
                         <div className="space-y-1">
                           <p className="text-black/60 text-[9px]">{t("Nội dung chuyển tiền:", "Transfer Memo:")}</p>
-                          <div className="flex items-center justify-between gap-2 bg-white rounded-lg border border-black/5 px-2.5 py-1.5">
+                          <button
+                            type="button"
+                            onClick={() => handleCopy(`MADMAD ${orderNumber}`, "momoMemo")}
+                            className={`w-full flex items-center justify-between gap-2 rounded-lg border px-2.5 py-2 transition-all duration-200 hover:scale-[1.01] active:scale-[0.99] ${
+                              copiedField === "momoMemo" ? "bg-green-50 border-green-300" : "bg-white border-black/8 hover:border-black/20"
+                            }`}
+                          >
                             <span className="font-mono font-black text-black tracking-wider text-xs uppercase">{`MADMAD ${orderNumber}`}</span>
-                            <button
-                              type="button"
-                              onClick={() => handleCopy(`MADMAD ${orderNumber}`, "momoMemo")}
-                              className="text-stone-400 hover:text-black transition-colors"
-                            >
-                              {copiedField === "momoMemo" ? <Check className="h-3.5 w-3.5 text-green-600" /> : <Copy className="h-3.5 w-3.5" />}
-                            </button>
-                          </div>
+                            <span className={`flex items-center gap-1 text-[9px] font-black uppercase tracking-wider ${
+                              copiedField === "momoMemo" ? "text-green-600" : "text-black/30"
+                            }`}>
+                              {copiedField === "momoMemo" ? <><Check className="h-3 w-3" />Đã copy</> : <><Copy className="h-3 w-3" />Copy</>}
+                            </span>
+                          </button>
                         </div>
 
                         <div className="space-y-1">
                           <p className="text-black/60 text-[9px]">{t("Số tiền:", "Amount:")}</p>
-                          <div className="flex items-center justify-between gap-2 bg-white rounded-lg border border-black/5 px-2.5 py-1.5">
+                          <button
+                            type="button"
+                            onClick={() => handleCopy(String(total), "momoTotal")}
+                            className={`w-full flex items-center justify-between gap-2 rounded-lg border px-2.5 py-2 transition-all duration-200 hover:scale-[1.01] active:scale-[0.99] ${
+                              copiedField === "momoTotal" ? "bg-green-50 border-green-300" : "bg-white border-black/8 hover:border-black/20"
+                            }`}
+                          >
                             <span className="font-bold text-red-600 text-xs">{formatPrice(total)}</span>
-                            <button
-                              type="button"
-                              onClick={() => handleCopy(String(total), "momoTotal")}
-                              className="text-stone-400 hover:text-black transition-colors"
-                            >
-                              {copiedField === "momoTotal" ? <Check className="h-3.5 w-3.5 text-green-600" /> : <Copy className="h-3.5 w-3.5" />}
-                            </button>
-                          </div>
+                            <span className={`flex items-center gap-1 text-[9px] font-black uppercase tracking-wider ${
+                              copiedField === "momoTotal" ? "text-green-600" : "text-black/30"
+                            }`}>
+                              {copiedField === "momoTotal" ? <><Check className="h-3 w-3" />Đã copy</> : <><Copy className="h-3 w-3" />Copy</>}
+                            </span>
+                          </button>
                         </div>
 
                         <p className="text-[10px] text-red-600 font-bold pt-1">{t("✓ Chuyển khoản đúng số tiền và nội dung để hệ thống duyệt tự động.", "✓ Please transfer the exact amount and memo for automatic approval.")}</p>
