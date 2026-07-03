@@ -75,8 +75,8 @@ export function MarketingProvider({ children }: { children: ReactNode }) {
         const statsData = await statsRes.json();
         setStats({ ...defaultStats, ...statsData });
       }
-    } catch (error) {
-      console.error("Failed to load marketing data", error);
+    } catch {
+      // ignore fetch errors silently
     } finally {
       setIsLoading(false);
     }

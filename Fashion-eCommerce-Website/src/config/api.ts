@@ -23,10 +23,8 @@ export function markLocalBackendOffline(offline: boolean) {
   if (typeof window !== "undefined") {
     if (offline) {
       safeLocalStorage.setItem("madmad.local-backend-offline", "true");
-      console.warn("⚠️ [MADMAD SDK] Đã đánh dấu Local Backend offline. Tự động chuyển hướng sang Production live!");
     } else {
       safeLocalStorage.removeItem("madmad.local-backend-offline");
-      console.log("🔌 [MADMAD SDK] Khôi phục kết nối tới Local Backend.");
     }
   }
 }

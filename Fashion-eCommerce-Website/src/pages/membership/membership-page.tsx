@@ -93,7 +93,7 @@ export function MembershipPage() {
             setMyOrders(data);
           }
         })
-        .catch(err => console.error("Error loading member orders:", err))
+        .catch(() => { /* ignore fetch errors silently */ })
         .finally(() => setLoadingOrders(false));
     }
   }, [currentMember]);

@@ -411,8 +411,7 @@ export function AdminSettingsPage() {
       memberLink.click();
 
       showToast("Đã tải xuống thành công bản sao lưu Dữ liệu Đơn hàng và Thành viên VIP!", "success");
-    } catch (error) {
-      console.error(error);
+    } catch {
       showToast("Lỗi khi tải bản sao lưu. Vui lòng kiểm tra lại kết nối mạng!", "error");
     }
   };

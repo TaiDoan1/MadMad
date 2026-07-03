@@ -335,15 +335,11 @@ export function StorefrontSettingsProvider({ children }: { children: ReactNode }
   useEffect(() => {
     const fetchSettings = async () => {
       try {
-        const response = await fetch(`${API_URL}/settings`);
+        const response = await fetch(`${API_URL}/settings`, {
+          headers: { "x-admin-key": getAdminKey() }
+        });
         if (response.ok) {
           const cloudSettings = (await response.json()) as CloudSettings;
-          console.log("⚙️ [Frontend Context] Synced settings from Cloud:", {
-            enableCod: cloudSettings.enableCod,
-            enableBank: cloudSettings.enableBank,
-            enableMomo: cloudSettings.enableMomo,
-            enablePaypal: cloudSettings.enablePaypal,
-          });
           setSettings((current) => ({
             ...current,
             ...mapCloudToLocal(cloudSettings),
@@ -353,8 +349,8 @@ export function StorefrontSettingsProvider({ children }: { children: ReactNode }
           // If we have offline changes queued, try to flush now
           flushSettingsQueue();
         }
-      } catch (err) {
-        console.warn("⚠️ Không đồng bộ được cấu hình từ Postgres Cloud:", err);
+      } catch {
+        // ignore sync errors silently
       }
     };
     fetchSettings();
@@ -372,7 +368,6 @@ export function StorefrontSettingsProvider({ children }: { children: ReactNode }
     () => ({
       settings,
       updateSettings: (payload) => {
-        console.log("📤 [Frontend Context] Updating settings locally & syncing to Cloud:", payload);
         setSettings((currentSettings) => {
           const nextSettings = { ...currentSettings, ...payload };
           safeLocalStorage.setItem(STOREFRONT_SETTINGS_STORAGE_KEY, JSON.stringify(nextSettings));
@@ -394,8 +389,7 @@ export function StorefrontSettingsProvider({ children }: { children: ReactNode }
               }
               enqueue(SETTINGS_OFFLINE_QUEUE_KEY, payload);
             })
-            .catch((err) => {
-              console.warn("⚠️ Lỗi đồng bộ cài đặt lên Postgres:", err);
+            .catch(() => {
               enqueue(SETTINGS_OFFLINE_QUEUE_KEY, payload);
             });
 

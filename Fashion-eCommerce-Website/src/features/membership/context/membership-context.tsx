@@ -105,8 +105,7 @@ export function MembershipProvider({ children }: { children: ReactNode }) {
       } else {
         throw new Error("API response not ok");
       }
-    } catch (error) {
-      console.warn("⚠️ Không lấy được danh sách hội viên từ API, dùng dữ liệu local:", error);
+    } catch {
       const localData = safeLocalStorage.getItem("madmad_members");
       if (localData) {
         setMembers(JSON.parse(localData));

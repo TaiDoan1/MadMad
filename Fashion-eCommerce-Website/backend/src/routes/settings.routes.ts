@@ -57,14 +57,64 @@ router.get("/", async (req, res, next) => {
     console.log(`- bankAccount: ${setting.bankAccount}`);
 
     // Parse mảng ảnh Instagram dạng JSON String trước khi trả về
-    res.json({
-      ...setting,
-      instagramImages: setting.instagramImages ? JSON.parse(setting.instagramImages) : [],
-      coupons: setting.couponsJson ? JSON.parse(setting.couponsJson) : [],
-      productOptions: setting.productOptionsJson ? JSON.parse(setting.productOptionsJson) : {},
-      membershipTiers: setting.membershipTiersJson ? JSON.parse(setting.membershipTiersJson) : [],
-      sizeGuide: setting.sizeGuideJson ? JSON.parse(setting.sizeGuideJson) : {},
-    });
+    const coupons = setting.couponsJson ? JSON.parse(setting.couponsJson) : [];
+    const productOptions = setting.productOptionsJson ? JSON.parse(setting.productOptionsJson) : {};
+    const membershipTiers = setting.membershipTiersJson ? JSON.parse(setting.membershipTiersJson) : [];
+    const sizeGuide = setting.sizeGuideJson ? JSON.parse(setting.sizeGuideJson) : {};
+    const instagramImages = setting.instagramImages ? JSON.parse(setting.instagramImages) : [];
+
+    // Kiểm tra quyền Admin. Nếu có header x-admin-key hợp lệ, cho phép trả về đầy đủ.
+    // Nếu là client công khai thông thường (khách mua hàng), ẩn toàn bộ các trường nhạy cảm.
+    const adminKey = req.headers["x-admin-key"] as string;
+    const { verifyAdminToken } = require("./auth.routes");
+    const isAdmin = adminKey && typeof verifyAdminToken === "function" && verifyAdminToken(adminKey);
+
+    if (isAdmin) {
+      res.json({
+        ...setting,
+        instagramImages,
+        coupons,
+        productOptions,
+        membershipTiers,
+        sizeGuide,
+      });
+    } else {
+      // Ẩn đi: smtpHost, smtpPort, smtpUser, smtpPass, smtpSenderName, 
+      // bankAccount, bankAccountName, bankId, momoPhone, momoAccountName, 
+      // printInvoiceBankAccount, printInvoiceAccountName, printInvoiceBankId,
+      // couponsJson, coupons (vì coupon chứa mã code/giảm giá ẩn không muốn đối thủ crawl hoặc biết trước các mã bí mật)
+      const publicSetting = {
+        id: setting.id,
+        brandName: setting.brandName,
+        logoUrl: setting.logoUrl,
+        manifestoSlogan: setting.manifestoSlogan,
+        facebookUrl: setting.facebookUrl,
+        instagramUrl: setting.instagramUrl,
+        tiktokUrl: setting.tiktokUrl,
+        shopeeUrl: setting.shopeeUrl,
+        instagramImages,
+        storeEmail: setting.storeEmail,
+        storePhone: setting.storePhone,
+        storeAddress: setting.storeAddress,
+        enableCod: setting.enableCod,
+        enableBank: setting.enableBank,
+        enableMomo: setting.enableMomo,
+        enablePaypal: setting.enablePaypal,
+        shippingFeeStandard: setting.shippingFeeStandard,
+        shippingFeeExpress: setting.shippingFeeExpress,
+        shippingFreeThreshold: setting.shippingFreeThreshold,
+        shippingExpressCities: setting.shippingExpressCities,
+        currencyMode: setting.currencyMode,
+        exchangeRate: setting.exchangeRate,
+        intlConversionFeePercent: setting.intlConversionFeePercent,
+        intlShippingFee: setting.intlShippingFee,
+        intlMarkupPercent: setting.intlMarkupPercent,
+        productOptions,
+        membershipTiers,
+        sizeGuide,
+      };
+      res.json(publicSetting);
+    }
   } catch (error) {
     next(error);
   }

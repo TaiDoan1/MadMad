@@ -46,8 +46,7 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
             return true;
           }
           return false;
-        } catch (error) {
-          console.error("❌ Admin login API error:", error);
+        } catch {
           return false;
         }
       },

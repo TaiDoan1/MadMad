@@ -121,8 +121,8 @@ export function AdminMembershipPage() {
           },
           body: JSON.stringify(updatedData),
         });
-      } catch (err) {
-        console.warn("⚠️ Lỗi cập nhật lên server, đã lưu local", err);
+      } catch {
+        // Fallback: đã lưu local
       }
 
       showToast("Đã cập nhật thông tin thành viên thành công!", "success");
@@ -167,8 +167,8 @@ export function AdminMembershipPage() {
           },
           body: JSON.stringify(newMem),
         });
-      } catch (err) {
-        console.warn("⚠️ Lỗi lưu thành viên lên server, đã lưu local", err);
+      } catch {
+        // Fallback: đã lưu local
       }
 
       showToast(`Đăng ký thành viên VIP thành công! Thẻ: ${memberCardId}`, "success");
@@ -186,8 +186,8 @@ export function AdminMembershipPage() {
           method: "DELETE",
           headers: { "x-admin-key": getAdminKey() }
         });
-      } catch (err) {
-        console.warn("⚠️ Lỗi xóa trên server, đã xóa local", err);
+      } catch {
+        // Fallback: đã xóa local
       }
       showToast("Đã xóa thành viên VIP thành công.", "success");
     }

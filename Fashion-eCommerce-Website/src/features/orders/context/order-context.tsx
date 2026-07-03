@@ -170,8 +170,7 @@ const LOCAL_ORDERS_KEY = "madmad_orders_fallback";
       } else {
         throw new Error("API response not ok");
       }
-    } catch (error) {
-      console.warn("⚠️ Không lấy được danh sách đơn hàng từ API, dùng dữ liệu local:", error);
+    } catch {
       const localData = safeLocalStorage.getItem(LOCAL_ORDERS_KEY);
       if (localData) {
         setOrders(JSON.parse(localData));
@@ -229,10 +228,6 @@ const LOCAL_ORDERS_KEY = "madmad_orders_fallback";
           province: shippingAddress?.province || "",
         };
 
-        console.log("%c🌐 [BROWSER CALL] Bắt đầu gửi API đặt hàng...", "color: #00ffff; font-weight: bold; font-size: 13px;");
-        console.log(`- API URL Đích: "${API_URL}/orders"`);
-        console.log("- Dữ liệu (Payload) gửi đi:", payload);
-
         try {
           const response = await fetch(`${API_URL}/orders`, {
             method: "POST",
@@ -243,21 +238,15 @@ const LOCAL_ORDERS_KEY = "madmad_orders_fallback";
             body: JSON.stringify(payload),
           });
 
-          console.log(`- Response HTTP Status: ${response.status} (${response.statusText})`);
-
           if (response.ok) {
             const newOrder = await response.json();
-            console.log("%c✅ [API SUCCESS] Tạo đơn hàng thành công trên máy chủ!", "color: #00ff00; font-weight: bold;", newOrder);
             await loadOrders(); // Reload để Admin thấy đơn mới
             return newOrder;
           } else {
             const errText = await response.text();
-            console.error(`%c❌ [API ERROR] Máy chủ trả về lỗi (Status ${response.status}):`, "color: #ff0000; font-weight: bold;", errText);
             throw new Error(`Lỗi từ máy chủ khi tạo đơn hàng: ${errText}`);
           }
         } catch (error) {
-          console.error("%c❌ [CONNECTION ERROR] Không kết nối được tới server API:", "color: #ff0000; font-weight: bold;", error);
-          console.warn("%c⚠️ [FALLBACK OFFLINE] Đã kích hoạt cơ chế lưu trữ cục bộ tạm thời (Local Backup) để tránh gián đoạn trải nghiệm của Khách hàng!", "color: #ffaa00;");
           // Queue for later sync
           enqueue(ORDERS_OFFLINE_QUEUE_KEY, payload, payload.orderNumber);
           
@@ -289,8 +278,7 @@ const LOCAL_ORDERS_KEY = "madmad_orders_fallback";
           } else {
             throw new Error("Lỗi khi cập nhật trạng thái đơn hàng");
           }
-        } catch (error) {
-          console.error("Lỗi gọi API updateOrderStatus:", error);
+        } catch {
           setOrders((current) =>
             current.map((order) => (order.id === id ? { ...order, status } : order)),
           );
@@ -325,8 +313,7 @@ const LOCAL_ORDERS_KEY = "madmad_orders_fallback";
               throw new Error("Không thể cập nhật thanh toán đơn hàng trên server");
             }
           }
-        } catch (error) {
-          console.error("Lỗi gọi API updateOrderPaymentStatus, cập nhật local:", error);
+        } catch {
           // Fallback cập nhật state local để UI phản hồi ngay lập tức
           setOrders((current) =>
             current.map((order) => (order.id === id ? { ...order, isPaid } : order)),
@@ -349,8 +336,7 @@ const LOCAL_ORDERS_KEY = "madmad_orders_fallback";
           } else {
             throw new Error("Không thể cập nhật ghi chú nội bộ trên server");
           }
-        } catch (error) {
-          console.error("Lỗi gọi API updateOrderInternalNote, cập nhật local:", error);
+        } catch {
           enqueue(ORDER_INTERNAL_NOTE_QUEUE_KEY, { orderId: id, internalNote }, `${id}`);
           setOrders((current) =>
             current.map((order) => (order.id === id ? { ...order, internalNote } : order)),

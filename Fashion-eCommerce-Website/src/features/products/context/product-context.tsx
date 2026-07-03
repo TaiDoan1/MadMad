@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
-import { API_URL, markLocalBackendOffline } from "@/config/api";
+import { API_URL, markLocalBackendOffline, getAdminKey } from "@/config/api";
 
 import { products as initialProducts } from "@/features/products/data/products";
 import type { Product } from "@/types/product";
@@ -56,12 +56,12 @@ export function ProductProvider({ children }: { children: ReactNode }) {
     try {
       // Thêm tham số _cb=timestamp để vượt qua mọi tầng cache trình duyệt/CDN một cách triệt để
       const url = `${API_URL}/products?_cb=${Date.now()}`;
-      console.log("📡 [MADMAD SDK] Đang gửi yêu cầu GET tới API:", url);
-      const response = await fetch(url);
+      const response = await fetch(url, {
+        headers: { "x-admin-key": getAdminKey() }
+      });
       
       if (response.ok) {
         const data = await response.json();
-        console.log("📡 [MADMAD SDK] API trả về dữ liệu thành công. Số lượng sản phẩm:", data.length);
         if (Array.isArray(data)) {
           setProducts(data.map((product: Product) => syncProductStock(product)));
           setIsLoading(false);
@@ -71,15 +71,11 @@ export function ProductProvider({ children }: { children: ReactNode }) {
         }
       } else {
         const errText = await response.text().catch(() => "");
-        console.error(`🔴 [MADMAD SDK] API trả về mã lỗi HTTP ${response.status}:`, errText);
         setApiError(`Lỗi máy chủ HTTP ${response.status}: ${response.statusText || ""}. Chi tiết: ${errText.substring(0, 100)}`);
       }
     } catch (error: any) {
-      console.error("🔴 [MADMAD SDK] Lỗi kết nối API:", error);
-      
       // Tự động chuyển hướng sang Production live nếu local bị kết nối lỗi (Offline)
       if (API_URL.includes("localhost")) {
-        console.warn("⚠️ [MADMAD SDK] Phát hiện local backend offline. Đang tự động chuyển hướng kết nối sang Live Production!");
         markLocalBackendOffline(true);
         setTimeout(() => {
           window.location.reload();
@@ -159,8 +155,7 @@ export function ProductProvider({ children }: { children: ReactNode }) {
         setProducts(oldProducts);
         showToast(errMsg, "error");
       }
-    } catch (e) {
-      console.warn("⚠️ Lỗi cập nhật sản phẩm lên server, đã lưu local", e);
+    } catch {
       showToast("Lỗi kết nối máy chủ khi cập nhật!", "error");
     }
   };
@@ -201,7 +196,6 @@ export function ProductProvider({ children }: { children: ReactNode }) {
             showToast("Thêm sản phẩm thành công!", "success");
           } else {
             const errText = await response.text();
-            console.error("Lỗi khi thêm sản phẩm lên API:", errText);
             setProducts((currentProducts) => currentProducts.filter((p) => p.id !== tempId));
             let errMsg = "Không thể lưu sản phẩm lên server!";
             try {
@@ -210,8 +204,7 @@ export function ProductProvider({ children }: { children: ReactNode }) {
             } catch {}
             showToast(errMsg, "error");
           }
-        } catch (e) {
-          console.warn("⚠️ Lỗi lưu sản phẩm lên server, đã lưu local", e);
+        } catch {
           showToast("Có lỗi xảy ra khi kết nối máy chủ!", "error");
         }
       },
@@ -227,8 +220,7 @@ export function ProductProvider({ children }: { children: ReactNode }) {
             setProducts(oldProducts);
             showToast("Không thể xóa sản phẩm trên server!", "error");
           }
-        } catch (e) {
-          console.warn("⚠️ Lỗi xóa sản phẩm trên server, đã xóa local", e);
+        } catch {
           showToast("Lỗi kết nối máy chủ khi xóa sản phẩm!", "error");
         }
       },

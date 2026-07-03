@@ -25,8 +25,7 @@ export async function getProvinces(): Promise<AddressOption[]> {
     const data: { code: number; name: string }[] = await res.json();
     provincesCache = data.map((p) => ({ code: String(p.code), name: p.name }));
     return provincesCache;
-  } catch (err) {
-    console.error("[address-service] getProvinces error:", err);
+  } catch {
     return [];
   }
 }
@@ -42,8 +41,7 @@ export async function getWardsByProvinceCode(provinceCode: string): Promise<Addr
     const wards = (data.wards ?? []).map((w) => ({ code: String(w.code), name: w.name }));
     wardsCache[provinceCode] = wards;
     return wards;
-  } catch (err) {
-    console.error("[address-service] getWardsByProvinceCode error:", err);
+  } catch {
     return [];
   }
 }

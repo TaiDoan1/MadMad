@@ -163,7 +163,21 @@ router.get("/", async (req, res, next) => {
       orderBy: [{ orderIndex: "asc" }, { createdAt: "desc" }]
     });
 
-    res.json(products.map(parseProduct));
+    const adminKey = req.headers["x-admin-key"] as string;
+    const { verifyAdminToken } = require("./auth.routes");
+    const isAdmin = adminKey && typeof verifyAdminToken === "function" && verifyAdminToken(adminKey);
+
+    const parsed = products.map(parseProduct);
+    if (isAdmin) {
+      res.json(parsed);
+    } else {
+      // Ẩn thông tin tồn kho chi tiết đối với user công khai
+      res.json(parsed.map(({ stock, variantStock, receivedStock, receivedVariantStock, ...rest }) => ({
+        ...rest,
+        // Chỉ trả về trạng thái inStock đơn giản cho client
+        inStock: rest.inStock
+      })));
+    }
   } catch (error) {
     next(error);
   }
@@ -175,7 +189,21 @@ router.get("/:id", async (req, res, next) => {
     const { id } = req.params;
     const product = await prisma.product.findUnique({ where: { id } });
     if (!product) return res.status(404).json({ message: "Không tìm thấy sản phẩm" });
-    res.json(parseProduct(product));
+
+    const adminKey = req.headers["x-admin-key"] as string;
+    const { verifyAdminToken } = require("./auth.routes");
+    const isAdmin = adminKey && typeof verifyAdminToken === "function" && verifyAdminToken(adminKey);
+
+    const parsed = parseProduct(product);
+    if (isAdmin) {
+      res.json(parsed);
+    } else {
+      const { stock, variantStock, receivedStock, receivedVariantStock, ...rest } = parsed;
+      res.json({
+        ...rest,
+        inStock: rest.inStock
+      });
+    }
   } catch (error) {
     next(error);
   }

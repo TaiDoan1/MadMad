@@ -225,8 +225,8 @@ export function CheckoutPage() {
       if (stored) {
         savedInfo = JSON.parse(stored);
       }
-    } catch (e) {
-      console.error("Error reading madmad_last_delivery_info", e);
+    } catch {
+      // ignore read error
     }
 
     return {
@@ -346,8 +346,7 @@ export function CheckoutPage() {
         }
       }
       return true;
-    } catch (err) {
-      console.error("Error during stock validation:", err);
+    } catch {
       return true;
     }
   };
@@ -383,8 +382,8 @@ export function CheckoutPage() {
     };
     try {
       safeLocalStorage.setItem("madmad_last_delivery_info", JSON.stringify(lastDeliveryInfo));
-    } catch (e) {
-      console.error("Error saving last delivery info", e);
+    } catch {
+      // ignore write error
     }
 
     const orderItems: OrderItem[] = resolvedItems.map(({ item, product }) => {
