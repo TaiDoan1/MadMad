@@ -433,13 +433,17 @@ const LOCAL_ORDERS_KEY = "madmad_orders_fallback";
       },
 
       applyOrderCoupon: async (orderId, couponCode) => {
+        // If couponCode contains commas, split it, else if it is a single code, send it as array
+        const couponCodes = couponCode
+          ? couponCode.split(",").map((c) => c.trim().toUpperCase()).filter(Boolean)
+          : [];
         const response = await fetch(`${API_URL}/orders/${orderId}/coupon`, {
           method: "PUT",
           headers: { 
             "Content-Type": "application/json",
             "x-admin-key": getAdminKey()
           },
-          body: JSON.stringify({ couponCode }),
+          body: JSON.stringify({ couponCode, couponCodes }),
         });
 
         if (!response.ok) {

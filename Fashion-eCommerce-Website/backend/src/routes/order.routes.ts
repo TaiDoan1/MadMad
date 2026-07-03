@@ -836,11 +836,16 @@ router.delete("/:id/items/:itemId", requireAdminAuth, async (req, res, next) => 
   }
 });
 
-// 10. PUT /api/orders/:id/coupon - Áp dụng voucher giảm giá vào đơn hàng (Admin)
+// 10. PUT /api/orders/:id/coupon - Áp dụng một hoặc nhiều voucher giảm giá vào đơn hàng (Admin)
 router.put("/:id/coupon", requireAdminAuth, async (req, res, next) => {
   try {
     const orderId = Number(req.params.id);
-    const { couponCode } = req.body;
+    // Hỗ trợ cả mảng couponCodes[] lẫn string couponCode đơn lẻ (backward compat)
+    const rawCodes: string[] = Array.isArray(req.body.couponCodes)
+      ? req.body.couponCodes
+      : req.body.couponCode
+        ? [String(req.body.couponCode)]
+        : [];
 
     const order = await prisma.order.findUnique({
       where: { id: orderId },
@@ -859,29 +864,42 @@ router.put("/:id/coupon", requireAdminAuth, async (req, res, next) => {
     const settings = await prisma.storefrontSetting.findUnique({ where: { id: 1 } });
     const couponsList = settings?.couponsJson ? JSON.parse(settings.couponsJson) : [];
 
-    let discount = 0;
+    let totalDiscount = 0;
+    const appliedCodes: string[] = [];
+    const invalidCodes: string[] = [];
 
-    if (couponCode && String(couponCode).trim()) {
+    for (const rawCode of rawCodes) {
+      const code = String(rawCode).trim().toUpperCase();
+      if (!code) continue;
+
       const targetCoupon = couponsList.find(
-        (c: any) => String(c.code).trim().toUpperCase() === String(couponCode).trim().toUpperCase()
+        (c: any) => String(c.code).trim().toUpperCase() === code
       );
 
       if (!targetCoupon) {
-        return res.status(404).json({ message: "Mã giảm giá không tồn tại!" });
+        invalidCodes.push(code);
+        continue;
       }
 
-      // Tính số tiền giảm giá
-      discount = Number(targetCoupon.discountAmount || 0);
+      totalDiscount += Number(targetCoupon.discountAmount || 0);
+      appliedCodes.push(code);
+    }
+
+    if (invalidCodes.length > 0 && appliedCodes.length === 0) {
+      return res.status(404).json({
+        message: `Mã giảm giá không tồn tại: ${invalidCodes.join(", ")}`,
+      });
     }
 
     // Cập nhật lại tổng tiền đơn hàng
     const subtotal = order.subtotal;
-    const total = Math.max(0, subtotal - discount + order.shipping);
+    const total = Math.max(0, subtotal - totalDiscount + order.shipping);
 
     const updatedOrder = await prisma.order.update({
       where: { id: orderId },
       data: {
-        discount,
+        discount: totalDiscount,
+        couponCode: appliedCodes.length > 0 ? appliedCodes.join(",") : null,
         total,
         isEdited: true,
         editedAt: new Date(),
@@ -889,10 +907,15 @@ router.put("/:id/coupon", requireAdminAuth, async (req, res, next) => {
       include: { items: true },
     });
 
-    res.json(updatedOrder);
+    res.json({
+      ...updatedOrder,
+      appliedCodes,
+      invalidCodes,
+    });
   } catch (error) {
     next(error);
   }
 });
 
 export default router;
+

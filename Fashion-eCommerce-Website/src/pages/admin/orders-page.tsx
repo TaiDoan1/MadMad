@@ -389,14 +389,28 @@ export function AdminOrdersPage() {
 
   const handleApplyCouponToDetail = async () => {
     if (!selectedOrder) return;
-    
+    const newCode = detailCouponCode.trim().toUpperCase();
+    if (!newCode) return;
+
+    // Get current coupons list
+    const currentCodes = selectedOrder.couponCode
+      ? selectedOrder.couponCode.split(",").map((c) => c.trim().toUpperCase()).filter(Boolean)
+      : [];
+
+    if (currentCodes.includes(newCode)) {
+      showToast("Mã giảm giá này đã được áp dụng!", "warning");
+      return;
+    }
+
+    const updatedCodes = [...currentCodes, newCode];
+
     try {
-      const updated = await applyOrderCoupon(selectedOrder.id, detailCouponCode);
+      const updated = await applyOrderCoupon(selectedOrder.id, updatedCodes.join(","));
       setSelectedOrder(updated);
       setDetailCouponCode("");
-      showToast("Áp dụng mã giảm giá thành công!", "success");
+      showToast("Đã thêm mã giảm giá thành công!", "success");
     } catch (error: any) {
-      showToast(error?.message || "Mã giảm giá không hợp lệ", "error");
+      showToast(error?.message || "Mã giảm giá không hợp lệ hoặc không tồn tại", "error");
     }
   };
 
@@ -2396,25 +2410,71 @@ export function AdminOrdersPage() {
                         </button>
                       </div>
 
+                      {/* Hiển thị các vouchers đang được áp dụng */}
+                      {selectedOrder.couponCode && (
+                        <div className="space-y-2">
+                          <p className="text-[8px] font-bold text-black/40 uppercase tracking-wider">Mã đã áp dụng:</p>
+                          <div className="flex flex-wrap gap-1.5">
+                            {selectedOrder.couponCode.split(",").map((code) => {
+                              const cleanCode = code.trim().toUpperCase();
+                              if (!cleanCode) return null;
+                              return (
+                                <span
+                                  key={cleanCode}
+                                  className="inline-flex items-center gap-1 rounded bg-stone-100 border border-stone-200 pl-2 pr-1 py-0.5 text-[9px] font-bold font-mono text-stone-850"
+                                >
+                                  {cleanCode}
+                                  <button
+                                    type="button"
+                                    onClick={async () => {
+                                      try {
+                                        const remainingCodes = selectedOrder.couponCode
+                                          ? selectedOrder.couponCode
+                                              .split(",")
+                                              .map((c) => c.trim().toUpperCase())
+                                              .filter((c) => c !== cleanCode && c !== "")
+                                          : [];
+                                        const updated = await applyOrderCoupon(
+                                          selectedOrder.id,
+                                          remainingCodes.join(",")
+                                        );
+                                        setSelectedOrder(updated);
+                                        showToast(`Đã gỡ mã ${cleanCode}!`, "info");
+                                      } catch {
+                                        showToast("Không thể gỡ mã giảm giá", "error");
+                                      }
+                                    }}
+                                    className="text-stone-400 hover:text-red-500 font-sans text-xs px-0.5"
+                                  >
+                                    ×
+                                  </button>
+                                </span>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+
                       {selectedOrder.discount > 0 && (
                         <div className="flex items-center justify-between rounded-lg bg-red-50 border border-red-100 px-3 py-2">
                           <span className="text-[9px] font-extrabold text-red-700 uppercase tracking-wider">
-                            🏷️ Đang giảm: -{selectedOrder.discount.toLocaleString("vi-VN")}₫
+                            🏷️ Tổng giảm giá: -{selectedOrder.discount.toLocaleString("vi-VN")}₫
                           </span>
                           <button
                             type="button"
                             onClick={async () => {
+                              if (!window.confirm("Bạn có chắc muốn gỡ toàn bộ voucher?")) return;
                               try {
                                 const updated = await applyOrderCoupon(selectedOrder.id, "");
                                 setSelectedOrder(updated);
-                                showToast("Đã hủy mã giảm giá!", "info");
+                                showToast("Đã hủy toàn bộ mã giảm giá!", "info");
                               } catch {
                                 showToast("Không thể gỡ mã giảm giá", "error");
                               }
                             }}
                             className="text-[8px] font-black text-red-500 uppercase hover:underline ml-2 shrink-0"
                           >
-                            Gỡ bỏ
+                            Gỡ hết
                           </button>
                         </div>
                       )}
