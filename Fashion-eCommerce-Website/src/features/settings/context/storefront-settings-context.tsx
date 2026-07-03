@@ -3,7 +3,7 @@ import { createContext, useContext, useMemo, useState, useEffect, type ReactNode
 import { brandLogo } from "@/assets/images";
 import type { StorefrontSettings } from "@/types/storefront-settings";
 import { DEFAULT_SIZE_GUIDE_CONFIG, normalizeSizeGuideConfig } from "@/utils/size-recommendation";
-import { API_URL } from "@/config/api";
+import { API_URL, API_ADMIN_KEY } from "@/config/api";
 import { safeLocalStorage } from "@/utils/safe-storage";
 import { enqueue, peekQueue, removeFromQueue } from "@/utils/offline-queue";
 
@@ -317,7 +317,10 @@ export function StorefrontSettingsProvider({ children }: { children: ReactNode }
     try {
       const res = await fetch(`${API_URL}/settings`, {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          "x-admin-key": API_ADMIN_KEY
+        },
         body: JSON.stringify(cloudPayload),
       });
       if (res.ok) {
@@ -378,7 +381,10 @@ export function StorefrontSettingsProvider({ children }: { children: ReactNode }
           const cloudPayload = mapLocalPayloadToCloud(payload);
           fetch(`${API_URL}/settings`, {
             method: "PUT",
-            headers: { "Content-Type": "application/json" },
+            headers: { 
+              "Content-Type": "application/json",
+              "x-admin-key": API_ADMIN_KEY
+            },
             body: JSON.stringify(cloudPayload),
           })
             .then((res) => {

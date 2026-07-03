@@ -16,7 +16,7 @@ import type { SizeGuideRow } from "@/types/size-guide";
 import type { Product } from "@/types/product";
 import type { StockMovement } from "@/types/stock-movement";
 import { STOCK_MOVEMENT_REASON_LABELS } from "@/types/stock-movement";
-import { API_URL } from "@/config/api";
+import { API_URL, API_ADMIN_KEY } from "@/config/api";
 import {
   formatStockRatio,
   getForceSoldOutFromProduct,
@@ -192,7 +192,10 @@ export function AdminProductsPage() {
     if (products.length === 0 || receivedBackfillStarted.current) return;
     receivedBackfillStarted.current = true;
 
-    void fetch(`${API_URL}/inventory/backfill-received`, { method: "POST" })
+    void fetch(`${API_URL}/inventory/backfill-received`, { 
+      method: "POST",
+      headers: { "x-admin-key": API_ADMIN_KEY }
+    })
       .then((response) => (response.ok ? response.json() : null))
       .then(async (result) => {
         if (result?.updated > 0) {
@@ -213,7 +216,9 @@ export function AdminProductsPage() {
         productId: String(product.id),
         month: "all",
       });
-      const response = await fetch(`${API_URL}/inventory/movements?${params.toString()}`);
+      const response = await fetch(`${API_URL}/inventory/movements?${params.toString()}`, {
+        headers: { "x-admin-key": API_ADMIN_KEY }
+      });
       if (response.ok) {
         const data = await response.json();
         setStockHistoryMovements(Array.isArray(data) ? data : []);

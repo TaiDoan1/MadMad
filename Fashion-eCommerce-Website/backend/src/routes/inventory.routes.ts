@@ -11,6 +11,8 @@ import { syncAllOutboundStockDeductions } from "../services/stock-outbound.servi
 import { ensureDatabaseMigrations } from "../services/database-migrate.service";
 import { resetInventoryToFreshBaseline } from "../services/inventory-reset.service";
 
+import { requireAdminAuth } from "../utils/auth.middleware";
+
 const router = Router();
 
 const VALID_REASONS: StockMovementReason[] = [
@@ -46,7 +48,7 @@ function buildMonthWhere(month?: string) {
   };
 }
 
-router.get("/movements", async (req, res, next) => {
+router.get("/movements", requireAdminAuth, async (req, res, next) => {
   try {
     const month = typeof req.query.month === "string" ? req.query.month : undefined;
     const reason = typeof req.query.reason === "string" ? req.query.reason : undefined;
@@ -97,7 +99,7 @@ router.get("/movements", async (req, res, next) => {
   }
 });
 
-router.get("/movements/:id", async (req, res, next) => {
+router.get("/movements/:id", requireAdminAuth, async (req, res, next) => {
   try {
     const movement = await prisma.stockMovement.findUnique({
       where: { id: req.params.id },
@@ -128,7 +130,7 @@ router.get("/movements/:id", async (req, res, next) => {
   }
 });
 
-router.get("/stats", async (req, res, next) => {
+router.get("/stats", requireAdminAuth, async (req, res, next) => {
   try {
     const month = typeof req.query.month === "string" ? req.query.month : undefined;
     const productId = typeof req.query.productId === "string" ? req.query.productId : undefined;
@@ -174,7 +176,7 @@ router.get("/stats", async (req, res, next) => {
   }
 });
 
-router.post("/returns", async (req, res, next) => {
+router.post("/returns", requireAdminAuth, async (req, res, next) => {
   try {
     const {
       productId,
@@ -225,7 +227,7 @@ router.post("/returns", async (req, res, next) => {
   }
 });
 
-router.post("/backfill-received", async (_req, res, next) => {
+router.post("/backfill-received", requireAdminAuth, async (_req, res, next) => {
   try {
     const products = await prisma.product.findMany();
     let updated = 0;
@@ -253,7 +255,7 @@ router.post("/backfill-received", async (_req, res, next) => {
   }
 });
 
-router.post("/sync-outbound", async (_req, res, next) => {
+router.post("/sync-outbound", requireAdminAuth, async (_req, res, next) => {
   try {
     await ensureDatabaseMigrations();
     const result = await syncAllOutboundStockDeductions();
@@ -263,7 +265,7 @@ router.post("/sync-outbound", async (_req, res, next) => {
   }
 });
 
-router.post("/reset-baseline", async (_req, res, next) => {
+router.post("/reset-baseline", requireAdminAuth, async (_req, res, next) => {
   try {
     const result = await resetInventoryToFreshBaseline();
     res.json({
@@ -275,7 +277,7 @@ router.post("/reset-baseline", async (_req, res, next) => {
   }
 });
 
-router.post("/migrate-db", async (_req, res, next) => {
+router.post("/migrate-db", requireAdminAuth, async (_req, res, next) => {
   try {
     const result = await ensureDatabaseMigrations();
     res.json(result);

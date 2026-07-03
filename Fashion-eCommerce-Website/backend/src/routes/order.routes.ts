@@ -15,7 +15,11 @@ import {
   syncMissingOrderOutboundDeductions,
 } from "../services/stock-outbound.service";
 
+import { requireAdminAuth } from "../utils/auth.middleware";
+
 const router = Router();
+
+// Hàm hỗ trợ tự động tính toán thăng hạng VIP
 
 // Hàm hỗ trợ tự động tính toán thăng hạng VIP
 async function processVipPoints(phone: string, email: string, orderTotal: number) {
@@ -63,7 +67,7 @@ async function processVipPoints(phone: string, email: string, orderTotal: number
 }
 
 // 1. GET /api/orders - Lấy danh sách tất cả đơn hàng (có bộ lọc)
-router.get("/", async (req, res, next) => {
+router.get("/", requireAdminAuth, async (req, res, next) => {
   try {
     const { status, source } = req.query;
 
@@ -101,7 +105,7 @@ router.get("/", async (req, res, next) => {
 });
 
 // POST /api/orders/sync-item-images - Đồng bộ ảnh sản phẩm theo màu cho các dòng đơn hàng cũ
-router.post("/sync-item-images", async (_req, res, next) => {
+router.post("/sync-item-images", requireAdminAuth, async (_req, res, next) => {
   try {
     const orderItems = await prisma.orderItem.findMany({
       where: {
@@ -137,7 +141,7 @@ router.post("/sync-item-images", async (_req, res, next) => {
 });
 
 // POST /api/orders/sync-stock-deductions - Trừ kho cho các dòng đơn hàng chưa có nhật ký tồn kho
-router.post("/sync-stock-deductions", async (_req, res, next) => {
+router.post("/sync-stock-deductions", requireAdminAuth, async (_req, res, next) => {
   try {
     const result = await syncMissingOrderOutboundDeductions();
     const reconciled = await reconcileEditedOrderStockAdjustments();
@@ -148,7 +152,7 @@ router.post("/sync-stock-deductions", async (_req, res, next) => {
 });
 
 // 2. GET /api/orders/:id - Chi tiết đơn hàng
-router.get("/:id", async (req, res, next) => {
+router.get("/:id", requireAdminAuth, async (req, res, next) => {
   try {
     const orderId = Number(req.params.id);
     const order = await prisma.order.findUnique({

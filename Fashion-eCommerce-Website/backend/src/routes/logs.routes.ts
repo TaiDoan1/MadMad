@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { prisma } from "../config/prisma";
+import { requireAdminAuth } from "../utils/auth.middleware";
 
 const router = Router();
 
@@ -39,7 +40,7 @@ router.post("/", async (req, res) => {
 
 // ─── GET /api/logs ────────────────────────────────────────────────────────────
 // Lấy danh sách log để xem trên Terminal hoặc Admin Dashboard
-router.get("/", async (req, res) => {
+router.get("/", requireAdminAuth, async (req, res) => {
   try {
     const limit  = Math.min(Number(req.query.limit)  || 50, 200);
     const level  = req.query.level  as string | undefined;
@@ -64,7 +65,7 @@ router.get("/", async (req, res) => {
 
 // ─── DELETE /api/logs ─────────────────────────────────────────────────────────
 // Xóa toàn bộ log cũ (dọn dẹp)
-router.delete("/", async (req, res) => {
+router.delete("/", requireAdminAuth, async (req, res) => {
   try {
     const { count } = await prisma.systemLog.deleteMany({});
     res.json({ ok: true, deleted: count });
@@ -75,7 +76,7 @@ router.delete("/", async (req, res) => {
 
 // ─── GET /api/logs/summary ────────────────────────────────────────────────────
 // Tóm tắt số lỗi theo mức độ trong 24 giờ qua
-router.get("/summary", async (req, res) => {
+router.get("/summary", requireAdminAuth, async (req, res) => {
   try {
     const since24h = new Date(Date.now() - 24 * 60 * 60 * 1000);
 

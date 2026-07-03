@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { prisma } from "../config/prisma";
 import { sendManualCustomEmail } from "../services/email.service";
+import { requireAdminAuth } from "../utils/auth.middleware";
 
 const router = Router();
 
@@ -70,7 +71,7 @@ router.get("/", async (req, res, next) => {
 });
 
 // 2. PUT /api/settings - Cập nhật cấu hình Storefront (Admin) bao gồm SMTP
-router.put("/", async (req, res, next) => {
+router.put("/", requireAdminAuth, async (req, res, next) => {
   try {
     const {
       brandName,
@@ -334,7 +335,7 @@ router.put("/", async (req, res, next) => {
 });
 
 // 3. POST /api/settings/send-test-email - Gửi email thủ công trực tiếp từ Admin Form
-router.post("/send-test-email", async (req, res, next) => {
+router.post("/send-test-email", requireAdminAuth, async (req, res, next) => {
   try {
     const { to, subject, body } = req.body;
 

@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { mockOrders } from "@/features/orders/data/mock-orders";
 import type { Order, OrderItem } from "@/types/order";
-import { API_URL } from "@/config/api";
+import { API_URL, API_ADMIN_KEY } from "@/config/api";
 import { safeLocalStorage } from "@/utils/safe-storage";
 import { enqueue, peekQueue, removeFromQueue } from "@/utils/offline-queue";
 import { parseOrderItemEditMeta } from "@/utils/order-edit";
@@ -99,7 +99,10 @@ const LOCAL_ORDERS_KEY = "madmad_orders_fallback";
       try {
         const res = await fetch(`${API_URL}/orders`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: { 
+            "Content-Type": "application/json",
+            "x-admin-key": API_ADMIN_KEY
+          },
           body: JSON.stringify(q.payload),
         });
         if (res.ok) {
@@ -130,7 +133,10 @@ const LOCAL_ORDERS_KEY = "madmad_orders_fallback";
       try {
         const res = await fetch(`${API_URL}/orders/${q.payload.orderId}/internal-note`, {
           method: "PUT",
-          headers: { "Content-Type": "application/json" },
+          headers: { 
+            "Content-Type": "application/json",
+            "x-admin-key": API_ADMIN_KEY
+          },
           body: JSON.stringify({ internalNote: q.payload.internalNote }),
         });
         if (res.ok) succeeded.push(q.id);
@@ -148,7 +154,9 @@ const LOCAL_ORDERS_KEY = "madmad_orders_fallback";
   const loadOrders = async (silent = false) => {
     try {
       if (!silent) setLoading(true);
-      const response = await fetch(`${API_URL}/orders`);
+      const response = await fetch(`${API_URL}/orders`, {
+        headers: { "x-admin-key": API_ADMIN_KEY }
+      });
       if (response.ok) {
         const data = await response.json();
         // Sắp xếp đơn hàng mới nhất lên đầu
@@ -222,7 +230,10 @@ const LOCAL_ORDERS_KEY = "madmad_orders_fallback";
         try {
           const response = await fetch(`${API_URL}/orders`, {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: { 
+              "Content-Type": "application/json",
+              "x-admin-key": API_ADMIN_KEY
+            },
             body: JSON.stringify(payload),
           });
 
@@ -260,7 +271,10 @@ const LOCAL_ORDERS_KEY = "madmad_orders_fallback";
         try {
           const response = await fetch(`${API_URL}/orders/${id}/status`, {
             method: "PUT",
-            headers: { "Content-Type": "application/json" },
+            headers: { 
+              "Content-Type": "application/json",
+              "x-admin-key": API_ADMIN_KEY
+            },
             body: JSON.stringify({ status }),
           });
 
@@ -293,7 +307,10 @@ const LOCAL_ORDERS_KEY = "madmad_orders_fallback";
             // Thử endpoint dự phòng khác (ví dụ: gửi body chung cho cả order)
             const responseBackup = await fetch(`${API_URL}/orders/${id}`, {
               method: "PUT",
-              headers: { "Content-Type": "application/json" },
+              headers: { 
+                "Content-Type": "application/json",
+                "x-admin-key": API_ADMIN_KEY
+              },
               body: JSON.stringify({ isPaid }),
             });
             if (responseBackup.ok) {
@@ -315,7 +332,10 @@ const LOCAL_ORDERS_KEY = "madmad_orders_fallback";
         try {
           const response = await fetch(`${API_URL}/orders/${id}/internal-note`, {
             method: "PUT",
-            headers: { "Content-Type": "application/json" },
+            headers: { 
+              "Content-Type": "application/json",
+              "x-admin-key": API_ADMIN_KEY
+            },
             body: JSON.stringify({ internalNote }),
           });
           if (response.ok) {
@@ -335,7 +355,10 @@ const LOCAL_ORDERS_KEY = "madmad_orders_fallback";
       updateOrderItem: async (orderId, itemId, input) => {
         const response = await fetch(`${API_URL}/orders/${orderId}/items/${itemId}`, {
           method: "PUT",
-          headers: { "Content-Type": "application/json" },
+          headers: { 
+            "Content-Type": "application/json",
+            "x-admin-key": API_ADMIN_KEY
+          },
           body: JSON.stringify(input),
         });
 
@@ -361,6 +384,7 @@ const LOCAL_ORDERS_KEY = "madmad_orders_fallback";
       syncOrderItemImages: async () => {
         const response = await fetch(`${API_URL}/orders/sync-item-images`, {
           method: "POST",
+          headers: { "x-admin-key": API_ADMIN_KEY },
         });
 
         if (!response.ok) {
@@ -377,6 +401,7 @@ const LOCAL_ORDERS_KEY = "madmad_orders_fallback";
       syncOrderStockDeductions: async () => {
         const response = await fetch(`${API_URL}/orders/sync-stock-deductions`, {
           method: "POST",
+          headers: { "x-admin-key": API_ADMIN_KEY },
         });
 
         if (!response.ok) {
@@ -393,6 +418,7 @@ const LOCAL_ORDERS_KEY = "madmad_orders_fallback";
       syncOutboundStockDeductions: async () => {
         const response = await fetch(`${API_URL}/inventory/sync-outbound`, {
           method: "POST",
+          headers: { "x-admin-key": API_ADMIN_KEY },
         });
 
         if (!response.ok) {

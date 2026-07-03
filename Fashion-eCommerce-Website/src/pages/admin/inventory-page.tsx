@@ -17,7 +17,7 @@ import {
 import { ImageWithFallback } from "@/components/common/image-with-fallback";
 import { useProducts } from "@/features/products/context/product-context";
 import { useToast } from "@/components/common/toast";
-import { API_URL } from "@/config/api";
+import { API_URL, API_ADMIN_KEY } from "@/config/api";
 import type { StockMovement, StockMovementReason, StockMovementStats } from "@/types/stock-movement";
 import {
   STOCK_MOVEMENT_REASON_LABELS,
@@ -92,8 +92,8 @@ export function AdminInventoryPage() {
       if (selectedProductId !== "all") statsParams.set("productId", selectedProductId);
 
       const [movementsRes, statsRes] = await Promise.all([
-        fetch(`${API_URL}/inventory/movements?${params.toString()}`),
-        fetch(`${API_URL}/inventory/stats?${statsParams.toString()}`),
+        fetch(`${API_URL}/inventory/movements?${params.toString()}`, { headers: { "x-admin-key": API_ADMIN_KEY } }),
+        fetch(`${API_URL}/inventory/stats?${statsParams.toString()}`, { headers: { "x-admin-key": API_ADMIN_KEY } }),
       ]);
 
       if (movementsRes.ok) {
@@ -121,7 +121,7 @@ export function AdminInventoryPage() {
   const syncOutboundStock = useCallback(async () => {
     setIsSyncingOutbound(true);
     try {
-      const response = await fetch(`${API_URL}/inventory/sync-outbound`, { method: "POST" });
+      const response = await fetch(`${API_URL}/inventory/sync-outbound`, { method: "POST", headers: { "x-admin-key": API_ADMIN_KEY } });
       if (!response.ok) {
         throw new Error("Không thể đồng bộ trừ kho");
       }
@@ -198,7 +198,7 @@ export function AdminInventoryPage() {
     try {
       const response = await fetch(`${API_URL}/inventory/returns`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "x-admin-key": API_ADMIN_KEY },
         body: JSON.stringify({
           productId: returnProduct.id,
           color: returnColor,
@@ -242,7 +242,7 @@ export function AdminInventoryPage() {
     setRelatedMovements([]);
     setDetailLoading(true);
     try {
-      const response = await fetch(`${API_URL}/inventory/movements/${row.id}`);
+      const response = await fetch(`${API_URL}/inventory/movements/${row.id}`, { headers: { "x-admin-key": API_ADMIN_KEY } });
       if (response.ok) {
         const data = (await response.json()) as {
           movement: StockMovement;

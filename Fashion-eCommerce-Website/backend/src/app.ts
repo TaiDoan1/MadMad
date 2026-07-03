@@ -21,7 +21,7 @@ const PORT = process.env.PORT || 5000;
 app.use(cors({
   origin: "*", // Trong thực tế, bạn sẽ cấu hình domain cụ thể của Frontend
   methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization", "x-member-email"]
+  allowedHeaders: ["Content-Type", "Authorization", "x-member-email", "x-admin-key"]
 }));
 
 app.use(express.json({ limit: "10mb" }));

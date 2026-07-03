@@ -34,3 +34,7 @@ export function markLocalBackendOffline(offline: boolean) {
 // 🔑 Nhập Google Client ID của bạn ở đây để đồng bộ hóa cho toàn bộ website
 export const GOOGLE_CLIENT_ID = "510445218979-m81v10hm2hj8kuj3egjiip9ieft8a27k.apps.googleusercontent.com";
 
+// 🔑 Khóa bí mật giao tiếp API Admin (Được bảo vệ bằng header x-admin-key)
+export const API_ADMIN_KEY = "MADMAD_DEFAULT_SECRET_KEY_2026";
+
+

@@ -7,7 +7,7 @@ import { brandLogo } from "@/assets/images";
 import { useStorefrontSettings } from "@/features/settings/context/storefront-settings-context";
 import { readStoredCoupons, saveCoupons } from "@/features/promotions/services/coupon-service";
 import type { Coupon } from "@/types/coupon";
-import { API_URL } from "@/config/api";
+import { API_URL, API_ADMIN_KEY } from "@/config/api";
 import { useToast } from "@/components/common/toast";
 
 export function AdminSettingsPage() {
@@ -167,7 +167,10 @@ export function AdminSettingsPage() {
     try {
       await fetch(`${API_URL}/settings`, {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          "x-admin-key": API_ADMIN_KEY
+        },
         body: JSON.stringify({ coupons: nextCoupons }),
       });
     } catch {
@@ -274,6 +277,7 @@ export function AdminSettingsPage() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          "x-admin-key": API_ADMIN_KEY,
         },
         body: JSON.stringify({
           to: testEmailTo,
@@ -358,10 +362,14 @@ export function AdminSettingsPage() {
   // 💾 Backup Dữ liệu (Export CSV)
   const handleExportBackup = async () => {
     try {
-      const ordersRes = await fetch(`${API_URL}/orders`);
+      const ordersRes = await fetch(`${API_URL}/orders`, {
+        headers: { "x-admin-key": API_ADMIN_KEY }
+      });
       const orders = await ordersRes.json();
       
-      const membersRes = await fetch(`${API_URL}/members`);
+      const membersRes = await fetch(`${API_URL}/members`, {
+        headers: { "x-admin-key": API_ADMIN_KEY }
+      });
       const members = await membersRes.json();
 
       const ordersCsv = [
