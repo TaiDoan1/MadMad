@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { Award, Gift, Percent, Plus, Search, ShieldCheck, Sparkles, Trash2, User, UserPlus, X } from "lucide-react";
 
 import { useMembership, type Member, type MembershipTierConfig } from "@/features/membership/context/membership-context";
-import { API_URL } from "@/config/api";
+import { API_URL, getAdminKey } from "@/config/api";
 import { useToast } from "@/components/common/toast";
 
 export function AdminMembershipPage() {
@@ -115,7 +115,10 @@ export function AdminMembershipPage() {
       try {
         await fetch(`${API_URL}/members/${selectedMember.id}`, {
           method: "PUT",
-          headers: { "Content-Type": "application/json" },
+          headers: { 
+            "Content-Type": "application/json",
+            "x-admin-key": getAdminKey()
+          },
           body: JSON.stringify(updatedData),
         });
       } catch (err) {
@@ -158,7 +161,10 @@ export function AdminMembershipPage() {
       try {
         await fetch(`${API_URL}/members`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: { 
+            "Content-Type": "application/json",
+            "x-admin-key": getAdminKey()
+          },
           body: JSON.stringify(newMem),
         });
       } catch (err) {
@@ -176,7 +182,10 @@ export function AdminMembershipPage() {
     if (window.confirm(`Bạn có chắc chắn muốn xóa thành viên VIP "${name}" khỏi hệ thống?`)) {
       setMembers((prev) => prev.filter((m) => m.id !== id));
       try {
-        await fetch(`${API_URL}/members/${id}`, { method: "DELETE" });
+        await fetch(`${API_URL}/members/${id}`, { 
+          method: "DELETE",
+          headers: { "x-admin-key": getAdminKey() }
+        });
       } catch (err) {
         console.warn("⚠️ Lỗi xóa trên server, đã xóa local", err);
       }

@@ -1,10 +1,11 @@
 import { Router } from "express";
 import { prisma } from "../config/prisma";
+import { requireAdminAuth } from "../utils/auth.middleware";
 
 const router = Router();
 
-// 1. GET /api/members - Danh sách thành viên VIP
-router.get("/", async (req, res, next) => {
+// 1. GET /api/members - Danh sách thành viên VIP (Yêu cầu quyền Admin)
+router.get("/", requireAdminAuth, async (req, res, next) => {
   try {
     const members = await prisma.vIPMember.findMany({
       orderBy: { points: "desc" }
@@ -45,8 +46,8 @@ router.get("/check", async (req, res, next) => {
   }
 });
 
-// 3. POST /api/members - Thêm thành viên VIP mới
-router.post("/", async (req, res, next) => {
+// 3. POST /api/members - Thêm thành viên VIP mới (Yêu cầu quyền Admin)
+router.post("/", requireAdminAuth, async (req, res, next) => {
   try {
     const { fullName, phone, email, points, tier } = req.body;
 
@@ -76,8 +77,8 @@ router.post("/", async (req, res, next) => {
   }
 });
 
-// 4. PUT /api/members/:id - Cập nhật thông tin thành viên VIP thủ công (Admin)
-router.put("/:id", async (req, res, next) => {
+// 4. PUT /api/members/:id - Cập nhật thông tin thành viên VIP thủ công (Admin - Yêu cầu quyền Admin)
+router.put("/:id", requireAdminAuth, async (req, res, next) => {
   try {
     const memberId = Number(req.params.id);
     const { fullName, phone, email, points, tier } = req.body;
@@ -102,8 +103,8 @@ router.put("/:id", async (req, res, next) => {
   }
 });
 
-// 5. DELETE /api/members/:id - Xóa thành viên VIP (Admin)
-router.delete("/:id", async (req, res, next) => {
+// 5. DELETE /api/members/:id - Xóa thành viên VIP (Admin - Yêu cầu quyền Admin)
+router.delete("/:id", requireAdminAuth, async (req, res, next) => {
   try {
     const memberId = Number(req.params.id);
     await prisma.vIPMember.delete({

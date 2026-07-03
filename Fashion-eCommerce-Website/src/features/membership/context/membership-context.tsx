@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
-import { API_URL } from "@/config/api";
+import { API_URL, getAdminKey } from "@/config/api";
 import { safeLocalStorage } from "@/utils/safe-storage";
 import { useStorefrontSettings } from "@/features/settings/context/storefront-settings-context";
 
@@ -86,7 +86,9 @@ export function MembershipProvider({ children }: { children: ReactNode }) {
   // 📥 Tải danh sách hội viên VIP từ máy chủ (Database Neon Postgres) để đồng bộ cho Admin
   const loadMembers = async () => {
     try {
-      const response = await fetch(`${API_URL}/members`);
+      const response = await fetch(`${API_URL}/members`, {
+        headers: { "x-admin-key": getAdminKey() }
+      });
       if (response.ok) {
         const data = await response.json();
         const sorted = data.sort(
