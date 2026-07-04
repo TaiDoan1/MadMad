@@ -839,7 +839,7 @@ router.post("/:id/items", requireAdminAuth, async (req, res, next) => {
           color: nextColor,
           size: nextSize,
           quantity: nextQuantity,
-          reason: isGift ? "GIFT_OUT" : "ORDER_EDIT_OUT",
+          reason: isGift ? "MARKETING_GIFT_EDIT_OUT" : "ORDER_EDIT_OUT",
           referenceType: "order",
           referenceId: String(orderId),
           referenceLabel: order.orderNumber,

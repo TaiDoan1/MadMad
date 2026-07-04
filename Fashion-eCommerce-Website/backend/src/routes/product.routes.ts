@@ -214,27 +214,6 @@ router.get("/:id", async (req, res, next) => {
 router.post("/", requireAdminAuth, async (req, res, next) => {
   try {
     const { name, sku, price, image, category, sizeGuideProfile, sizeGuideOverride, description, sizes, colors, colorImages, images, isFeatured, stock, variantStock, inStock, originalPrice, discountPercent, showDiscountPercent, isPreOrder, preOrderDays, isGiftProduct, giftConditions } = req.body;
-// ... (code unchanged) ...
-// 4. PUT /api/products/:id - Cập nhật sản phẩm (Admin)
-router.put("/:id", requireAdminAuth, async (req, res, next) => {
-  try {
-    const { id } = req.params;
-// ... (code unchanged) ...
-// 5. DELETE /api/products/:id - Xóa sản phẩm (Admin)
-router.delete("/:id", requireAdminAuth, async (req, res, next) => {
-  try {
-    const { id } = req.params;
-    await prisma.product.delete({ where: { id } });
-    res.json({ success: true, message: "Xóa sản phẩm thành công" });
-  } catch (error) {
-    next(error);
-  }
-});
-
-// 6. PUT /api/products/reorder - Sắp xếp lại thứ tự sản phẩm (Chỉ Admin)
-router.put("/reorder", requireAdminAuth, async (req, res, next) => {
-  try {
-    const { items } = req.body;
 
     if (!name || !sku || !price || !image || !category) {
       return res.status(400).json({ message: "Vui lòng nhập đầy đủ thông tin bắt buộc!" });
@@ -487,7 +466,7 @@ router.put("/:id", requireAdminAuth, async (req, res, next) => {
 });
 
 // 5. DELETE /api/products/:id - Xóa sản phẩm (Admin)
-router.delete("/:id", async (req, res, next) => {
+router.delete("/:id", requireAdminAuth, async (req, res, next) => {
   try {
     const { id } = req.params;
     await prisma.product.delete({ where: { id } });
@@ -498,7 +477,7 @@ router.delete("/:id", async (req, res, next) => {
 });
 
 // 6. PUT /api/products/reorder - Sắp xếp lại thứ tự sản phẩm
-router.put("/reorder", async (req, res, next) => {
+router.put("/reorder", requireAdminAuth, async (req, res, next) => {
   try {
     const { items } = req.body;
     if (!Array.isArray(items)) return res.status(400).json({ message: "Dữ liệu không hợp lệ" });

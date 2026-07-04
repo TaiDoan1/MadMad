@@ -130,7 +130,7 @@ router.post("/google-login", async (req, res, next) => {
       return res.status(401).json({ message: "Xác thực tài khoản Google thất bại hoặc Token đã hết hạn!" });
     }
 
-    const payload = await verifyResponse.json();
+    const payload = await verifyResponse.json() as any;
     const { sub: googleId, email, name: googleName, picture: avatarUrl } = payload;
 
     if (!email) {
