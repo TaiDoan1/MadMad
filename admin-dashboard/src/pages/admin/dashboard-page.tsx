@@ -39,7 +39,7 @@ export function AdminDashboardPage() {
   } | null>(null);
   const [isLoadingVisits, setIsLoadingVisits] = useState(false);
 
-  const [dateRange, setDateRange] = useState<"all" | "today" | "7days" | "30days" | "custom">("30days");
+  const [dateRange, setDateRange] = useState<"all" | "today" | "7days" | "30days" | "custom">("all");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
 
@@ -121,7 +121,7 @@ export function AdminDashboardPage() {
   const totalItemsSold = useMemo(() => {
     return filteredOrders
       .filter((o) => o.status !== "cancelled" && o.status !== "returned")
-      .reduce((sum, o) => sum + o.items.reduce((itemSum, item) => itemSum + item.quantity, 0), 0);
+      .reduce((sum, o) => sum + (o.items || []).reduce((itemSum, item) => itemSum + Number(item.quantity || 1), 0), 0);
   }, [filteredOrders]);
 
   // 3. Size breakdown calculation
@@ -157,7 +157,7 @@ export function AdminDashboardPage() {
 
   // 5. Top-selling products
   const topProducts = useMemo(() => {
-    const stats: Record<number, { name: string; image: string; price: number; quantity: number; revenue: number }> = {};
+    const stats: Record<string, { name: string; image: string; price: number; quantity: number; revenue: number }> = {};
     
     filteredOrders
       .filter((o) => o.status !== "cancelled" && o.status !== "returned")
@@ -174,8 +174,10 @@ export function AdminDashboardPage() {
               revenue: 0
             };
           }
-          stats[pid].quantity += item.quantity;
-          stats[pid].revenue += item.price * item.quantity;
+          const qty = Number(item.quantity || 1);
+          const price = Number(item.price || 0);
+          stats[pid].quantity += qty;
+          stats[pid].revenue += price * qty;
         });
       });
 
