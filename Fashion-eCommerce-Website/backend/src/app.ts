@@ -17,9 +17,25 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Enable CORS for Frontend Vite development
+// Enable CORS for Frontend development and production domains
+const allowedOrigins = [
+  "http://localhost:5173",
+  "http://localhost:3000",
+  "https://madmadstudio.com",
+  "https://www.madmadstudio.com",
+  "https://madmadstudio-admin.vercel.app" // Nếu admin deploy riêng
+];
+
 app.use(cors({
-  origin: "*", // Trong thực tế, bạn sẽ cấu hình domain cụ thể của Frontend
+  origin: (origin, callback) => {
+    // Cho phép requests không có origin (ví dụ: mobile apps, postman, curl)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.indexOf(origin) !== -1 || origin.endsWith(".vercel.app")) {
+      callback(null, true);
+    } else {
+      callback(new Error("Không được phép truy cập từ origin này (CORS Blocked)"));
+    }
+  },
   methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization", "x-member-email", "x-admin-key"]
 }));

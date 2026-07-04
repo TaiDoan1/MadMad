@@ -4,8 +4,17 @@ import jwt from "jsonwebtoken";
 
 const router = Router();
 
-// JWT secret: dùng env var nếu có, fallback về giá trị mặc định
-const JWT_SECRET = process.env.ADMIN_JWT_SECRET || process.env.ADMIN_SECRET_KEY || "MADMAD_DEFAULT_SECRET_KEY_2026";
+// JWT secret: dùng env var nếu có, fallback về giá trị mặc định kèm cảnh báo
+const getJwtSecret = (): string => {
+  const secret = process.env.ADMIN_JWT_SECRET || process.env.ADMIN_SECRET_KEY;
+  if (!secret) {
+    console.warn("⚠️  [SECURITY WARNING] Không tìm thấy ADMIN_JWT_SECRET hay ADMIN_SECRET_KEY trong .env. Sử dụng mã bí mật dự phòng mặc định (Không an toàn trong môi trường Production!)");
+    return "MADMAD_DEFAULT_SECRET_KEY_2026";
+  }
+  return secret;
+};
+
+const JWT_SECRET = getJwtSecret();
 const JWT_EXPIRES_IN = "90d"; // Token có hiệu lực 90 ngày
 const JWT_REFRESH_THRESHOLD_DAYS = 14; // Tự động gia hạn khi còn ít hơn 14 ngày
 
@@ -179,10 +188,16 @@ router.post("/google-login", async (req, res, next) => {
       console.log(`🔐 [MEMBER SYSTEM] Thành viên đăng nhập thành công: ${member.fullName} (${cleanEmail})`);
     }
 
-    // Trả về dữ liệu thành viên cùng một token giả định an toàn
+    // Sinh JWT token cho VIP Member
+    const memberToken = jwt.sign(
+      { role: "member", email: member.email, memberId: member.id },
+      JWT_SECRET,
+      { expiresIn: "30d" }
+    );
+
     res.json({
       member,
-      sessionToken: `MADMAD_VIP_SECURE_SESSION_${member.id}_${Date.now()}`
+      sessionToken: memberToken
     });
 
   } catch (error) {
@@ -190,16 +205,27 @@ router.post("/google-login", async (req, res, next) => {
   }
 });
 
-// 2. GET /api/auth/my-orders - Tra cứu toàn bộ lịch sử đơn hàng của Member đang đăng nhập
+// 2. GET /api/auth/my-orders - Tra cứu toàn bộ lịch sử đơn hàng của Member đang đăng nhập (Sử dụng JWT thực tế)
 router.get("/my-orders", async (req, res, next) => {
   try {
-    const email = req.headers["x-member-email"];
-
-    if (!email) {
-      return res.status(401).json({ message: "Vui lòng đăng nhập để xem đơn hàng!" });
+    const authHeader = req.headers["authorization"];
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      return res.status(401).json({ message: "Vui lòng cung cấp token xác thực!" });
     }
 
-    const cleanEmail = String(email).trim().toLowerCase();
+    const token = authHeader.split(" ")[1];
+    let decoded: any;
+    try {
+      decoded = jwt.verify(token, JWT_SECRET);
+    } catch {
+      return res.status(401).json({ message: "Token không hợp lệ hoặc đã hết hạn!" });
+    }
+
+    if (decoded.role !== "member" || !decoded.email) {
+      return res.status(403).json({ message: "Quyền truy cập không hợp lệ!" });
+    }
+
+    const cleanEmail = String(decoded.email).trim().toLowerCase();
 
     // Lấy toàn bộ danh sách đơn hàng mua bằng Gmail này, kèm chi tiết sản phẩm
     const orders = await prisma.order.findMany({
@@ -217,14 +243,26 @@ router.get("/my-orders", async (req, res, next) => {
 // 3. PUT /api/auth/update-profile - Thành viên tự cập nhật Họ tên / Số điện thoại của mình
 router.put("/update-profile", async (req, res, next) => {
   try {
-    const email = req.headers["x-member-email"];
-    const { fullName, phone } = req.body;
-
-    if (!email) {
-      return res.status(401).json({ message: "Vui lòng đăng nhập để cập nhật hồ sơ!" });
+    const authHeader = req.headers["authorization"];
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      return res.status(401).json({ message: "Vui lòng cung cấp token xác thực!" });
     }
 
-    const cleanEmail = String(email).trim().toLowerCase();
+    const token = authHeader.split(" ")[1];
+    let decoded: any;
+    try {
+      decoded = jwt.verify(token, JWT_SECRET);
+    } catch {
+      return res.status(401).json({ message: "Token không hợp lệ hoặc đã hết hạn!" });
+    }
+
+    if (decoded.role !== "member" || !decoded.email) {
+      return res.status(403).json({ message: "Quyền truy cập không hợp lệ!" });
+    }
+
+    const cleanEmail = String(decoded.email).trim().toLowerCase();
+    const { fullName, phone } = req.body;
+
     const cleanPhone = phone ? phone.trim().replace(/\s+/g, "") : undefined;
 
     // Tìm thành viên cần cập nhật

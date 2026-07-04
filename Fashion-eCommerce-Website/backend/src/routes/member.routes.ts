@@ -40,7 +40,18 @@ router.get("/check", async (req, res, next) => {
       return res.status(404).json({ message: "Không tìm thấy thông tin thành viên VIP." });
     }
 
-    res.json(member);
+    // 🛡️ Chỉ trả về thông tin tối thiểu cần thiết để checkout (ẩn email, sđt hoàn chỉnh, googleId để tránh thu thập PII)
+    const secureMember = {
+      id: member.id,
+      fullName: member.fullName,
+      points: member.points,
+      tier: member.tier,
+      avatarUrl: member.avatarUrl,
+      // Chỉ để lộ 3 chữ số cuối sđt để đối chiếu
+      phoneMasked: member.phone ? `*${member.phone.slice(-3)}` : null
+    };
+
+    res.json(secureMember);
   } catch (error) {
     next(error);
   }

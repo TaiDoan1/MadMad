@@ -4,19 +4,40 @@ import { requireAdminAuth } from "../utils/auth.middleware";
 
 const router = Router();
 
-// ─── POST /api/logs ───────────────────────────────────────────────────────────
-// Nhận lỗi bắn về từ Frontend (trình duyệt của khách hàng)
+// 🛡️ InMemory Rate Limiter cho việc nhận logs nhằm tránh spam bộ nhớ và DB
+const ipLogCounts = new Map<string, { count: number; resetTime: number }>();
+const LIMIT_WINDOW_MS = 60 * 1000; // 1 phút
+const MAX_LOGS_PER_WINDOW = 30;   // Tối đa 30 logs/phút/IP
+
 router.post("/", async (req, res) => {
   try {
+    const ip = req.headers["x-forwarded-for"]?.toString().split(",")[0].trim()
+      || req.socket.remoteAddress
+      || "unknown";
+
+    // Kiểm tra Rate Limit
+    const now = Date.now();
+    const ipRecord = ipLogCounts.get(ip);
+
+    if (ipRecord) {
+      if (now > ipRecord.resetTime) {
+        // Hết chu kỳ giới hạn, reset bộ đếm
+        ipLogCounts.set(ip, { count: 1, resetTime: now + LIMIT_WINDOW_MS });
+      } else if (ipRecord.count >= MAX_LOGS_PER_WINDOW) {
+        // Vượt quá giới hạn
+        return res.status(429).json({ error: "Too many logs sent. Please wait before retrying." });
+      } else {
+        ipRecord.count += 1;
+      }
+    } else {
+      ipLogCounts.set(ip, { count: 1, resetTime: now + LIMIT_WINDOW_MS });
+    }
+
     const { level, source, message, details, url, userAgent } = req.body;
 
     if (!message) {
       return res.status(400).json({ error: "message is required" });
     }
-
-    const ip = req.headers["x-forwarded-for"]?.toString().split(",")[0].trim()
-      || req.socket.remoteAddress
-      || "unknown";
 
     const log = await prisma.systemLog.create({
       data: {

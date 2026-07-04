@@ -169,9 +169,149 @@ router.get("/:id", requireAdminAuth, async (req, res, next) => {
     next(error);
   }
 });
-
-// 3. POST /api/orders - Tạo đơn hàng mới (từ Storefront Checkout hoặc tạo tay POS)
+// 3a. POST /api/orders - Tạo đơn hàng mới công khai từ khách hàng (Storefront)
+// Chặn giả mạo Admin params để đảm bảo an toàn tuyệt đối
 router.post("/", async (req, res, next) => {
+  try {
+    const {
+      orderNumber,
+      customerName,
+      customerEmail,
+      customerPhone,
+      street,
+      ward,
+      district,
+      province,
+      subtotal,
+      discount,
+      shipping,
+      total,
+      paymentMethod,
+      shippingMethod,
+      notes,
+      couponCode,
+      containsPreOrder,
+      items
+    } = req.body;
+
+    if (!customerName || !customerPhone || !items || items.length === 0) {
+      return res.status(400).json({ message: "Thiếu thông tin đặt hàng bắt buộc!" });
+    }
+
+    // Luôn kiểm tra xem mã đơn hàng có giả mạo các nguồn đặc quyền của Admin (POS, Social) không
+    const finalOrderNumber = orderNumber || `DH${Date.now()}`;
+    if (finalOrderNumber.startsWith("DH-POS") || finalOrderNumber.startsWith("DH-FB") || finalOrderNumber.startsWith("DH-IG")) {
+      return res.status(403).json({ message: "Mã đơn hàng không hợp lệ cho khách hàng công khai!" });
+    }
+
+    const normalizedItems = Array.isArray(items) ? items : [];
+    const computedContainsPreOrder =
+      typeof containsPreOrder === "boolean"
+        ? containsPreOrder
+        : normalizedItems.some((item: any) => !!item?.isPreOrder);
+
+    const productIds = [
+      ...new Set(
+        normalizedItems
+          .map((item: any) => String(item.productId || item.product?.id || ""))
+          .filter(Boolean),
+      ),
+    ];
+    const products = productIds.length
+      ? await prisma.product.findMany({ where: { id: { in: productIds } } })
+      : [];
+    const productMap = new Map(products.map((product) => [product.id, product]));
+
+    const itemsForCreate = normalizedItems.map((item: any) => {
+      const productId = String(item.productId || item.product?.id || "");
+      const product = productMap.get(productId);
+      const color = String(item.color || "");
+      let productImage = String(item.productImage || item.product?.image || "");
+      if (product && color) {
+        const resolvedImage = getProductImageForColorFromDb(product, color);
+        if (resolvedImage) productImage = resolvedImage;
+      }
+
+      return {
+        productId,
+        productName: String(item.productName || item.product?.name || ""),
+        productImage,
+        isPreOrder: !!item.isPreOrder,
+        preOrderDays:
+          item.preOrderDays !== undefined && item.preOrderDays !== null
+            ? Number(item.preOrderDays)
+            : null,
+        quantity: Number(item.quantity),
+        size: item.size,
+        color: item.color,
+        price: Number(item.price),
+      };
+    });
+
+    const newOrder = await prisma.$transaction(async (tx) => {
+      const created = await tx.order.create({
+        data: {
+          orderNumber: finalOrderNumber,
+          customerName,
+          customerEmail: customerEmail || "",
+          customerPhone,
+          street: street || "Mua trực tiếp tại Shop",
+          ward: ward || "",
+          district: district || "",
+          province: province || "",
+          subtotal: Number(subtotal),
+          discount: Number(discount || 0),
+          shipping: Number(shipping || 0),
+          total: Number(total),
+          paymentMethod: paymentMethod || "cod",
+          shippingMethod: shippingMethod || "standard",
+          status: "pending", // Khách hàng công khai chỉ được tạo đơn ở trạng thái pending
+          isPaid: false,      // Khách hàng công khai không được phép tự duyệt đã thanh toán
+          containsPreOrder: computedContainsPreOrder,
+          notes: notes || "",
+          couponCode: couponCode || "",
+          items: {
+            create: itemsForCreate,
+          },
+        },
+        include: { items: true },
+      });
+
+      // Trừ kho khi đặt hàng thành công
+      await deductOrderItemsIfNeeded(
+        tx,
+        {
+          id: created.id,
+          orderNumber: finalOrderNumber,
+          status: "pending",
+          items: created.items.map((item) => ({
+            productId: item.productId,
+            productName: item.productName,
+            color: item.color,
+            size: item.size,
+            quantity: item.quantity,
+            isPreOrder: item.isPreOrder,
+            price: item.price,
+          })),
+        },
+        "Trừ kho khi khách hàng đặt hàng công khai",
+      );
+
+      return created;
+    });
+
+    sendOrderConfirmationEmail(newOrder).catch((err) => {
+      console.error("❌ Lỗi gửi email xác nhận đơn hàng:", err);
+    });
+
+    res.status(201).json(newOrder);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// 3b. POST /api/orders/admin-create - Tạo đơn hàng mới từ Admin Dashboard (Ví dụ đơn POS hoặc đơn ghi tay từ Social)
+router.post("/admin-create", requireAdminAuth, async (req, res, next) => {
   try {
     const {
       orderNumber,
@@ -200,9 +340,7 @@ router.post("/", async (req, res, next) => {
       return res.status(400).json({ message: "Thiếu thông tin đặt hàng bắt buộc!" });
     }
 
-    // Tự sinh mã đơn hàng nếu chưa có
-    const finalOrderNumber = orderNumber || `DH${Date.now()}`;
-
+    const finalOrderNumber = orderNumber || `DH-POS${Date.now()}`;
     const normalizedItems = Array.isArray(items) ? items : [];
     const computedContainsPreOrder =
       typeof containsPreOrder === "boolean"
@@ -294,19 +432,17 @@ router.post("/", async (req, res, next) => {
               price: item.price,
             })),
           },
-          "Trừ kho khi đặt hàng thành công",
+          "Trừ kho khi Admin tạo đơn thành công",
         );
       }
 
       return created;
     });
 
-    // Nếu đơn hàng tạo ra đã Thành công ngay (ví dụ POS/Cửa hàng đã thanh toán và giao trực tiếp), tự tích điểm VIP
     if (newOrder.status === "completed") {
       await processVipPoints(newOrder.customerPhone, newOrder.customerEmail, newOrder.total);
     }
 
-    // Gửi email tự động thông báo đặt hàng thành công! (Tự động gửi cho cả Khách hàng và Admin Gmail)
     sendOrderConfirmationEmail(newOrder).catch((err) => {
       console.error("❌ Lỗi gửi email xác nhận đơn hàng:", err);
     });
@@ -317,8 +453,8 @@ router.post("/", async (req, res, next) => {
   }
 });
 
-// 4. PUT /api/orders/:id/status - Cập nhật trạng thái vận hành đơn
-router.put("/:id/status", async (req, res, next) => {
+// 4. PUT /api/orders/:id/status - Cập nhật trạng thái vận hành đơn (Chỉ Admin)
+router.put("/:id/status", requireAdminAuth, async (req, res, next) => {
   try {
     const orderId = Number(req.params.id);
     const { status } = req.body;
@@ -392,7 +528,6 @@ router.put("/:id/status", async (req, res, next) => {
       });
     });
 
-    // Tự động tích lũy điểm VIP nếu trạng thái chuyển sang Completed (Đã thành công)
     if (status === "completed") {
       await processVipPoints(updatedOrder.customerPhone, updatedOrder.customerEmail, updatedOrder.total);
     }
@@ -406,8 +541,8 @@ router.put("/:id/status", async (req, res, next) => {
   }
 });
 
-// 5. PUT /api/orders/:id/payment - Xác nhận hoặc hủy thanh toán (Xác nhận chuyển khoản / thu COD)
-router.put("/:id/payment", async (req, res, next) => {
+// 5. PUT /api/orders/:id/payment - Xác nhận hoặc hủy thanh toán (Chỉ Admin)
+router.put("/:id/payment", requireAdminAuth, async (req, res, next) => {
   try {
     const orderId = Number(req.params.id);
     const { isPaid } = req.body;
@@ -427,8 +562,8 @@ router.put("/:id/payment", async (req, res, next) => {
   }
 });
 
-// 6. PUT /api/orders/:id/internal-note - Ghi chú nội bộ (đóng gói/vận hành)
-router.put("/:id/internal-note", async (req, res, next) => {
+// 6. PUT /api/orders/:id/internal-note - Ghi chú nội bộ (Chỉ Admin)
+router.put("/:id/internal-note", requireAdminAuth, async (req, res, next) => {
   try {
     const orderId = Number(req.params.id);
     const { internalNote } = req.body;
