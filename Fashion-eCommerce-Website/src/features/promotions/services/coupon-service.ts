@@ -30,7 +30,9 @@ export async function fetchCouponsFromServer(): Promise<Coupon[]> {
   }
 
   try {
-    const res = await fetch(`${API_URL}/settings`);
+    // Cache buster: Add timestamp to force fresh fetch from server
+    const timestamp = Date.now();
+    const res = await fetch(`${API_URL}/settings?t=${timestamp}`);
     if (!res.ok) return [];
     const response = (await res.json()) as { encryptedPayload?: string };
 

@@ -336,7 +336,9 @@ export function StorefrontSettingsProvider({ children }: { children: ReactNode }
   useEffect(() => {
     const fetchSettings = async () => {
       try {
-        const response = await fetch(`${API_URL}/settings`, {
+        // Cache buster: Add timestamp to force fresh fetch (bypass browser cache)
+        const timestamp = Date.now();
+        const response = await fetch(`${API_URL}/settings?t=${timestamp}`, {
           headers: { "x-admin-key": getAdminKey() }
         });
         if (response.ok) {
