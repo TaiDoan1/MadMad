@@ -58,6 +58,7 @@ const parseProduct = (p: any) => ({
       return undefined;
     }
   })(),
+  sizeChartImage: p.sizeChartImage ? String(p.sizeChartImage) : undefined,
 });
 
 // Helper: Tiền xử lý tất cả các trường ảnh của sản phẩm (Tải lên Cloudinary nếu là Base64)
@@ -213,7 +214,7 @@ router.get("/:id", async (req, res, next) => {
 // 3. POST /api/products - Tạo sản phẩm mới (Admin)
 router.post("/", requireAdminAuth, async (req, res, next) => {
   try {
-    const { name, sku, price, image, category, sizeGuideProfile, sizeGuideOverride, description, sizes, colors, colorImages, images, isFeatured, stock, variantStock, inStock, originalPrice, discountPercent, showDiscountPercent, isPreOrder, preOrderDays, isGiftProduct, giftConditions } = req.body;
+    const { name, sku, price, image, category, sizeGuideProfile, sizeGuideOverride, description, sizes, colors, colorImages, images, sizeChartImage, isFeatured, stock, variantStock, inStock, originalPrice, discountPercent, showDiscountPercent, isPreOrder, preOrderDays, isGiftProduct, giftConditions } = req.body;
 
     if (!name || !sku || !price || !image || !category) {
       return res.status(400).json({ message: "Vui lòng nhập đầy đủ thông tin bắt buộc!" });
@@ -227,6 +228,13 @@ router.post("/", requireAdminAuth, async (req, res, next) => {
     // Tự động đẩy toàn bộ ảnh Base64 lên Cloudinary trước khi lưu
     console.log(`📥 [PRODUCT CREATE] Admin đang tạo sản phẩm mới: "${name}"`);
     const cleanData = await processProductImages(name, image, images, colorImages);
+
+    // Xử lý upload ảnh bảng size nếu là Base64
+    let uploadedSizeChartImage = sizeChartImage;
+    if (sizeChartImage) {
+      console.log(`📐 [PRODUCT CREATE] Admin đang upload ảnh bảng size: "${name}"`);
+      uploadedSizeChartImage = await uploadToCloudinary(sizeChartImage);
+    }
 
     const sizesStr = Array.isArray(sizes) ? sizes.join(",") : String(sizes || "S,M,L");
     const colorsStr = Array.isArray(colors) ? colors.join(",") : String(colors || "Black");
@@ -264,6 +272,7 @@ router.post("/", requireAdminAuth, async (req, res, next) => {
         sizeGuideProfile:
           sizeGuideOverrideJson ? null : sizeGuideProfile ? String(sizeGuideProfile).trim() || null : null,
         sizeGuideOverrideJson,
+        sizeChartImage: uploadedSizeChartImage || null,
         description: description || "",
         sizes: sizesStr,
         colors: colorsStr,
@@ -302,7 +311,7 @@ router.post("/", requireAdminAuth, async (req, res, next) => {
 router.put("/:id", requireAdminAuth, async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { name, sku, price, image, category, sizeGuideProfile, sizeGuideOverride, description, sizes, colors, colorImages, images, isFeatured, stock, variantStock, inStock, originalPrice, discountPercent, showDiscountPercent, isPreOrder, preOrderDays, isGiftProduct, giftConditions } = req.body;
+    const { name, sku, price, image, category, sizeGuideProfile, sizeGuideOverride, description, sizes, colors, colorImages, images, sizeChartImage, isFeatured, stock, variantStock, inStock, originalPrice, discountPercent, showDiscountPercent, isPreOrder, preOrderDays, isGiftProduct, giftConditions } = req.body;
 
     const sizeGuideOverrideJson =
       sizeGuideOverride !== undefined
@@ -315,6 +324,7 @@ router.put("/:id", requireAdminAuth, async (req, res, next) => {
     let finalImage = image;
     let finalImages = images;
     let finalColorImages = colorImages;
+    let finalSizeChartImage = sizeChartImage;
 
     if (image !== undefined || images !== undefined || colorImages !== undefined) {
       console.log(`✏️  [PRODUCT UPDATE] Admin đang cập nhật ảnh sản phẩm: "${name || id}"`);
@@ -327,6 +337,12 @@ router.put("/:id", requireAdminAuth, async (req, res, next) => {
       if (image !== undefined) finalImage = cleanData.image;
       if (images !== undefined) finalImages = cleanData.images;
       if (colorImages !== undefined) finalColorImages = cleanData.colorImages;
+    }
+
+    // Xử lý upload ảnh bảng size nếu là Base64
+    if (sizeChartImage !== undefined && sizeChartImage) {
+      console.log(`📐 [PRODUCT UPDATE] Admin đang cập nhật ảnh bảng size: "${name || id}"`);
+      finalSizeChartImage = await uploadToCloudinary(sizeChartImage);
     }
 
     const sizesStr = Array.isArray(sizes) ? sizes.join(",") : String(sizes || "");
@@ -424,6 +440,7 @@ router.put("/:id", requireAdminAuth, async (req, res, next) => {
                 : null
               : undefined,
         sizeGuideOverrideJson,
+        sizeChartImage: finalSizeChartImage,
         description,
         sizes: sizesStr || undefined,
         colors: colorsStr || undefined,
