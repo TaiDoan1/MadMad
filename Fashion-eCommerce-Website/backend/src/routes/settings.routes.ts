@@ -421,4 +421,28 @@ router.post("/send-test-email", requireAdminAuth, async (req, res, next) => {
   }
 });
 
+// 11. POST /api/settings/invalidate-cache - Admin trigger cache invalidation
+router.post("/invalidate-cache", requireAdminAuth, async (req, res) => {
+  try {
+    // Increment cache version in database to force clients to refetch
+    const setting = await prisma.storefrontSetting.update({
+      where: { id: 1 },
+      data: {
+        // Lưu timestamp invalidation để client check
+        updatedAt: new Date(),
+      }
+    });
+
+    console.log("🗑️ [CACHE INVALIDATE] Admin cleared settings cache at", new Date().toISOString());
+
+    res.json({
+      success: true,
+      message: "Cache invalidated successfully. Clients will refetch data on next load.",
+      timestamp: setting.updatedAt
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Failed to invalidate cache" });
+  }
+});
+
 export default router;

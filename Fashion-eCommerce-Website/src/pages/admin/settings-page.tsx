@@ -170,6 +170,26 @@ export function AdminSettingsPage() {
     reader.readAsDataURL(file);
   };
 
+  // 🗑️ Clear cache - force clients to refetch data
+  const handleInvalidateCache = async () => {
+    if (!window.confirm("Bạn có chắc muốn clear cache? Khách hàng sẽ tự động lấy dữ liệu mới.")) {
+      return;
+    }
+    try {
+      const res = await fetch(`${API_URL}/settings/invalidate-cache`, {
+        method: "POST",
+        headers: { "x-admin-key": getAdminKey() }
+      });
+      if (res.ok) {
+        showToast("✅ Cache cleared! Khách hàng sẽ lấy dữ liệu mới tự động.", "success");
+      } else {
+        showToast("❌ Lỗi khi clear cache", "error");
+      }
+    } catch (error) {
+      showToast("❌ Không thể kết nối server", "error");
+    }
+  };
+
   const handleSaveBranding = () => {
     const nextLogo = previewLogo || currentLogo;
     if (previewLogo) {
@@ -406,6 +426,13 @@ export function AdminSettingsPage() {
           <p className="text-xs text-black/50">Quản lý nhận diện thương hiệu MADMAD và các chương trình khuyến mãi VIP</p>
         </div>
         <div className="flex items-center gap-3">
+          <button
+            onClick={handleInvalidateCache}
+            className="rounded-xl border border-red-200 bg-red-50 px-4 py-2.5 text-xs font-bold tracking-widest uppercase transition-colors hover:bg-red-100 text-red-700"
+            title="Clear cache & force clients to refetch data"
+          >
+            🗑️ Clear Cache
+          </button>
           <Link to="/admin/storefront" className="rounded-xl border border-black/15 bg-white px-4 py-2.5 text-xs font-bold tracking-widest uppercase transition-colors hover:bg-stone-50">
             Storefront Settings
           </Link>
