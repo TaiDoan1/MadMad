@@ -421,6 +421,24 @@ router.post("/send-test-email", requireAdminAuth, async (req, res, next) => {
   }
 });
 
+// 10.5. POST /api/settings/invalidate-cache-test - Test endpoint (debug)
+router.post("/invalidate-cache-test", async (req, res) => {
+  try {
+    console.log("🧪 [TEST] Headers:", req.headers);
+    const adminKey = req.headers["x-admin-key"];
+    console.log("🧪 [TEST] Admin key:", adminKey ? "✓ Present" : "✗ Missing");
+
+    res.json({
+      success: true,
+      message: "Test endpoint working",
+      adminKeyPresent: !!adminKey
+    });
+  } catch (error) {
+    console.error("❌ [TEST] Error:", error);
+    res.status(500).json({ success: false, message: "Test failed" });
+  }
+});
+
 // 11. POST /api/settings/invalidate-cache - Admin trigger cache invalidation
 router.post("/invalidate-cache", requireAdminAuth, async (req, res) => {
   try {
