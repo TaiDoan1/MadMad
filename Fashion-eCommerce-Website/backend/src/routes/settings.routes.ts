@@ -421,17 +421,16 @@ router.post("/send-test-email", requireAdminAuth, async (req, res, next) => {
   }
 });
 
-// 10.5 POST /api/settings/test-upsert - Test upsert logic (no auth)
-router.post("/test-upsert", async (req, res) => {
+// 10.5 GET /api/settings/test-db - Test database connection
+router.get("/test-db", async (req, res) => {
   try {
-    const result = await prisma.storefrontSetting.upsert({
-      where: { id: 1 },
-      update: { updatedAt: new Date() },
-      create: { id: 1 }
+    const result = await prisma.storefrontSetting.findUnique({ where: { id: 1 } });
+    res.json({
+      success: true,
+      message: result ? "Record found" : "Record not found",
+      record: result ? { id: result.id, brandName: result.brandName } : null
     });
-    res.json({ success: true, result });
   } catch (error) {
-    console.error("❌ [TEST UPSERT] Error:", error);
     res.status(500).json({ success: false, error: String(error) });
   }
 });
