@@ -421,72 +421,44 @@ router.post("/send-test-email", requireAdminAuth, async (req, res, next) => {
   }
 });
 
-// 10.5. POST /api/settings/invalidate-cache-test - Test endpoint (debug)
-router.post("/invalidate-cache-test", async (req, res) => {
-  try {
-    console.log("🧪 [TEST] Headers:", req.headers);
-    const adminKey = req.headers["x-admin-key"];
-    console.log("🧪 [TEST] Admin key:", adminKey ? "✓ Present" : "✗ Missing");
-
-    res.json({
-      success: true,
-      message: "Test endpoint working",
-      adminKeyPresent: !!adminKey
-    });
-  } catch (error) {
-    console.error("❌ [TEST] Error:", error);
-    res.status(500).json({ success: false, message: "Test failed" });
-  }
-});
-
 // 11. POST /api/settings/invalidate-cache - Admin trigger cache invalidation
 router.post("/invalidate-cache", requireAdminAuth, async (req, res) => {
   try {
-    // Ensure record exists, create default if not
-    let setting = await prisma.storefrontSetting.findUnique({
-      where: { id: 1 }
-    });
-
-    if (!setting) {
-      setting = await prisma.storefrontSetting.create({
-        data: {
-          id: 1,
-          brandName: "MADMAD STUDIO",
-          logoUrl: "",
-          manifestoSlogan: "NOIR NO DESIGN STANDARD . TỐI GIẢN . ĐỘC BẢN . CAO CẤP",
-          facebookUrl: "https://facebook.com/madmad.studio",
-          instagramUrl: "https://instagram.com/madmad.studio",
-          tiktokUrl: "https://tiktok.com/@madmad.studio",
-          shopeeUrl: "https://shopee.vn/madmad.studio",
-          instagramImages: JSON.stringify([]),
-          printInvoiceTitle: "HÓA ĐƠN VẬN CHUYỂN & GÓI HÀNG",
-          printInvoiceAddress: "Showroom: 254 Nguyễn Trãi, Q.5, TP.HCM",
-          printInvoicePhone: "Hotline: 099.999.9999",
-          printInvoiceFooterSlogan: "CẢM ƠN QUÝ KHÁCH ĐÃ CHỌN MADMAD STUDIO!",
-          printInvoicePolicy: "* Quý khách vui lòng kiểm tra kỹ sản phẩm khi nhận hàng. Đối với các yêu cầu đổi trả sản phẩm nguyên tag mác, xin hãy nhắn tin trực tiếp fanpage Facebook/Instagram của MADMAD Studio trong vòng 3 ngày kể từ ngày nhận hàng.",
-          storeEmail: "mmadmadstudio@gmail.com",
-          storePhone: "+84 123 456 789",
-          storeAddress: "123 Fashion Street, Ho Chi Minh City",
-          customerEmailSubject: "[{{brandName}}] ĐẶT HÀNG THÀNH CÔNG - ĐƠN HÀNG {{orderNumber}}",
-          customerEmailTemplate: "Chào bạn <strong>{{customerName}}</strong>,<br><br>Cám ơn bạn đã lựa chọn nổi loạn và khẳng định cá tính cùng <strong>{{brandName}}</strong>. Chúng tôi xác nhận đã nhận được đơn hàng của bạn và đang tiến hành đóng gói siêu tốc!",
-          smtpHost: "smtp.gmail.com",
-          smtpPort: 587,
-          smtpUser: "mmadmadstudio@gmail.com",
-          smtpPass: "yxmbctjhsxkyeznx",
-          smtpSenderName: "MADMAD STUDIO",
-          couponsJson: "[]",
-          productOptionsJson: "{}",
-          membershipTiersJson: "[]",
-          sizeGuideJson: "{}",
-        }
-      });
-    }
-
-    // Update timestamp to invalidate cache
-    const updated = await prisma.storefrontSetting.update({
+    // Use upsert: update if exists, create if not
+    const updated = await prisma.storefrontSetting.upsert({
       where: { id: 1 },
-      data: {
+      update: {
         updatedAt: new Date(),
+      },
+      create: {
+        id: 1,
+        brandName: "MADMAD STUDIO",
+        logoUrl: "",
+        manifestoSlogan: "NOIR NO DESIGN STANDARD . TỐI GIẢN . ĐỘC BẢN . CAO CẤP",
+        facebookUrl: "https://facebook.com/madmad.studio",
+        instagramUrl: "https://instagram.com/madmad.studio",
+        tiktokUrl: "https://tiktok.com/@madmad.studio",
+        shopeeUrl: "https://shopee.vn/madmad.studio",
+        instagramImages: JSON.stringify([]),
+        printInvoiceTitle: "HÓA ĐƠN VẬN CHUYỂN & GÓI HÀNG",
+        printInvoiceAddress: "Showroom: 254 Nguyễn Trãi, Q.5, TP.HCM",
+        printInvoicePhone: "Hotline: 099.999.9999",
+        printInvoiceFooterSlogan: "CẢM ƠN QUÝ KHÁCH ĐÃ CHỌN MADMAD STUDIO!",
+        printInvoicePolicy: "* Quý khách vui lòng kiểm tra kỹ sản phẩm khi nhận hàng. Đối với các yêu cầu đổi trả sản phẩm nguyên tag mác, xin hãy nhắn tin trực tiếp fanpage Facebook/Instagram của MADMAD Studio trong vòng 3 ngày kể từ ngày nhận hàng.",
+        storeEmail: "mmadmadstudio@gmail.com",
+        storePhone: "+84 123 456 789",
+        storeAddress: "123 Fashion Street, Ho Chi Minh City",
+        customerEmailSubject: "[{{brandName}}] ĐẶT HÀNG THÀNH CÔNG - ĐƠN HÀNG {{orderNumber}}",
+        customerEmailTemplate: "Chào bạn <strong>{{customerName}}</strong>,<br><br>Cám ơn bạn đã lựa chọn nổi loạn và khẳng định cá tính cùng <strong>{{brandName}}</strong>. Chúng tôi xác nhận đã nhận được đơn hàng của bạn và đang tiến hành đóng gói siêu tốc!",
+        smtpHost: "smtp.gmail.com",
+        smtpPort: 587,
+        smtpUser: "mmadmadstudio@gmail.com",
+        smtpPass: "yxmbctjhsxkyeznx",
+        smtpSenderName: "MADMAD STUDIO",
+        couponsJson: "[]",
+        productOptionsJson: "{}",
+        membershipTiersJson: "[]",
+        sizeGuideJson: "{}",
       }
     });
 
@@ -499,7 +471,7 @@ router.post("/invalidate-cache", requireAdminAuth, async (req, res) => {
     });
   } catch (error) {
     console.error("❌ [CACHE INVALIDATE] Error:", error);
-    res.status(500).json({ success: false, message: "Failed to invalidate cache" });
+    res.status(500).json({ success: false, message: String(error) });
   }
 });
 
