@@ -332,7 +332,7 @@ export function StorefrontSettingsProvider({ children }: { children: ReactNode }
     }
   };
 
-  // 📥 Tải đồng bộ cấu hình từ Postgres Cloud khi load app
+  // 📥 Tải đồng bộ cấu hình từ Postgres Cloud khi load app + auto-refresh mỗi 10 phút
   useEffect(() => {
     const fetchSettings = async () => {
       try {
@@ -359,8 +359,22 @@ export function StorefrontSettingsProvider({ children }: { children: ReactNode }
         // ignore sync errors silently
       }
     };
+
+    // Fetch immediately on mount
     fetchSettings();
-  }, []);
+
+    // Auto-refresh every 10 minutes to get latest settings from server
+    const interval = setInterval(fetchSettings, 10 * 60 * 1000);
+
+    // Also refresh when user returns to tab (page focus)
+    const handleFocus = () => fetchSettings();
+    window.addEventListener("focus", handleFocus);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener("focus", handleFocus);
+    };
+  }, [flushSettingsQueue]);
 
   useEffect(() => {
     const onOnline = () => {
