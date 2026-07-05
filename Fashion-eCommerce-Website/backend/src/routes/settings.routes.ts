@@ -436,46 +436,13 @@ router.get("/test-db", async (req, res) => {
 });
 
 // 11. POST /api/settings/invalidate-cache - Admin trigger cache invalidation
-router.post("/invalidate-cache", async (req, res) => {
-  // Temporarily disabled auth for debugging
-  // requireAdminAuth middleware
+router.post("/invalidate-cache", requireAdminAuth, async (req, res) => {
   try {
-    // Use upsert: update if exists, create if not
-    const updated = await prisma.storefrontSetting.upsert({
+    // Just update updatedAt to force client refresh
+    // Note: Record must exist via GET /settings first (auto-creates)
+    const updated = await prisma.storefrontSetting.update({
       where: { id: 1 },
-      update: {
-        updatedAt: new Date(),
-      },
-      create: {
-        id: 1,
-        brandName: "MADMAD STUDIO",
-        logoUrl: "",
-        manifestoSlogan: "NOIR NO DESIGN STANDARD . TỐI GIẢN . ĐỘC BẢN . CAO CẤP",
-        facebookUrl: "https://facebook.com/madmad.studio",
-        instagramUrl: "https://instagram.com/madmad.studio",
-        tiktokUrl: "https://tiktok.com/@madmad.studio",
-        shopeeUrl: "https://shopee.vn/madmad.studio",
-        instagramImages: JSON.stringify([]),
-        printInvoiceTitle: "HÓA ĐƠN VẬN CHUYỂN & GÓI HÀNG",
-        printInvoiceAddress: "Showroom: 254 Nguyễn Trãi, Q.5, TP.HCM",
-        printInvoicePhone: "Hotline: 099.999.9999",
-        printInvoiceFooterSlogan: "CẢM ƠN QUÝ KHÁCH ĐÃ CHỌN MADMAD STUDIO!",
-        printInvoicePolicy: "* Quý khách vui lòng kiểm tra kỹ sản phẩm khi nhận hàng. Đối với các yêu cầu đổi trả sản phẩm nguyên tag mác, xin hãy nhắn tin trực tiếp fanpage Facebook/Instagram của MADMAD Studio trong vòng 3 ngày kể từ ngày nhận hàng.",
-        storeEmail: "mmadmadstudio@gmail.com",
-        storePhone: "+84 123 456 789",
-        storeAddress: "123 Fashion Street, Ho Chi Minh City",
-        customerEmailSubject: "[{{brandName}}] ĐẶT HÀNG THÀNH CÔNG - ĐƠN HÀNG {{orderNumber}}",
-        customerEmailTemplate: "Chào bạn <strong>{{customerName}}</strong>,<br><br>Cám ơn bạn đã lựa chọn nổi loạn và khẳng định cá tính cùng <strong>{{brandName}}</strong>. Chúng tôi xác nhận đã nhận được đơn hàng của bạn và đang tiến hành đóng gói siêu tốc!",
-        smtpHost: "smtp.gmail.com",
-        smtpPort: 587,
-        smtpUser: "mmadmadstudio@gmail.com",
-        smtpPass: "yxmbctjhsxkyeznx",
-        smtpSenderName: "MADMAD STUDIO",
-        couponsJson: "[]",
-        productOptionsJson: "{}",
-        membershipTiersJson: "[]",
-        sizeGuideJson: "{}",
-      }
+      data: { updatedAt: new Date() }
     });
 
     console.log("🗑️ [CACHE INVALIDATE] Admin cleared settings cache at", new Date().toISOString());
