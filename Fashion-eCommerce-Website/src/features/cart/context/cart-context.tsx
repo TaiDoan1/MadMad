@@ -4,8 +4,6 @@ import { useProducts } from "@/features/products/context/product-context";
 import {
   fetchCouponsFromServer,
   getAllCouponsSnapshot,
-  readStoredCoupons,
-  saveCoupons,
 } from "@/features/promotions/services/coupon-service";
 import type { Coupon } from "@/types/coupon";
 import type { CartItem } from "@/types/cart";
@@ -150,17 +148,13 @@ export function CartProvider({ children }: { children: ReactNode }) {
     }
   }, [cartItems, products]);
 
-  // Sync coupons từ server để khách hàng dùng được (khác thiết bị/trình duyệt vẫn có).
+  // Fetch coupons từ server (không dùng localStorage nữa - luôn lấy data mới nhất từ database)
   useEffect(() => {
-    setAvailableCoupons(getAllCouponsSnapshot());
     let cancelled = false;
     (async () => {
       const serverCoupons = await fetchCouponsFromServer();
       if (cancelled) return;
-      if (serverCoupons.length > 0) {
-        saveCoupons(serverCoupons);
-      }
-      setAvailableCoupons(getAllCouponsSnapshot());
+      setAvailableCoupons(serverCoupons);
     })();
     return () => {
       cancelled = true;

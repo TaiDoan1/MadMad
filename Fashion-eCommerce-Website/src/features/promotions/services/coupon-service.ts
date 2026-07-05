@@ -1,52 +1,10 @@
 import type { Coupon } from "@/types/coupon";
-import { safeLocalStorage } from "@/utils/safe-storage";
 import { API_URL } from "@/config/api";
 
-export const COUPONS_STORAGE_KEY = "fashion-ecommerce.coupons";
-
-export function readStoredCoupons(): Coupon[] {
-  if (typeof window === "undefined") return [];
-  const raw = safeLocalStorage.getItem(COUPONS_STORAGE_KEY);
-  if (!raw) return [];
-  try {
-    const parsed = JSON.parse(raw) as Coupon[];
-    if (!Array.isArray(parsed) || parsed.length === 0) return [];
-    const normalized = parsed
-      .map((coupon) => ({
-        ...coupon,
-        code: (coupon.code || "").toUpperCase(),
-        discountAmount: Math.max(
-          0,
-          Number(
-            "discountAmount" in coupon
-              ? coupon.discountAmount
-              : (coupon as unknown as { value?: number }).value,
-          ),
-        ),
-        applyToSaleItems: coupon.applyToSaleItems ?? true, // Default to true
-      }))
-      .filter((coupon) => coupon.code && coupon.discountAmount > 0);
-    return normalized;
-  } catch {
-    return [];
-  }
-}
-
-export function saveCoupons(coupons: Coupon[]) {
-  if (typeof window === "undefined") return;
-  safeLocalStorage.setItem(COUPONS_STORAGE_KEY, JSON.stringify(coupons));
-}
-
-export function incrementCouponUsage(code: string) {
-  if (typeof window === "undefined") return;
-  const coupons = readStoredCoupons();
-  const updated = coupons.map(c => 
-    c.code === code 
-      ? { ...c, usageCount: (c.usageCount || 0) + 1 } 
-      : c
-  );
-  saveCoupons(updated);
-}
+// In-memory cache (not localStorage) - refreshes on every page load, always fresh from API
+let cachedCoupons: Coupon[] | null = null;
+let cacheTimestamp = 0;
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
 function normalizeCoupons(input: unknown): Coupon[] {
   if (!Array.isArray(input)) return [];
@@ -65,24 +23,31 @@ function normalizeCoupons(input: unknown): Coupon[] {
 
 export async function fetchCouponsFromServer(): Promise<Coupon[]> {
   if (typeof window === "undefined") return [];
+
+  // Return cached if still valid (5 min TTL)
+  if (cachedCoupons && Date.now() - cacheTimestamp < CACHE_TTL) {
+    return cachedCoupons;
+  }
+
   try {
     const res = await fetch(`${API_URL}/settings`);
     if (!res.ok) return [];
     const response = (await res.json()) as { encryptedPayload?: string };
 
-    // Decrypt encrypted payload if present
     if (response.encryptedPayload) {
       try {
         const CryptoJS = require("crypto-js");
         const key = "MADMAD_SECURE_PAYLOAD_KEY_2026";
         const decrypted = CryptoJS.AES.decrypt(response.encryptedPayload, key).toString(CryptoJS.enc.Utf8);
         const data = JSON.parse(decrypted);
-        return normalizeCoupons(data?.coupons);
+        const coupons = normalizeCoupons(data?.coupons);
+        cachedCoupons = coupons;
+        cacheTimestamp = Date.now();
+        return coupons;
       } catch {
         return [];
       }
     }
-
     return [];
   } catch {
     return [];
@@ -90,12 +55,6 @@ export async function fetchCouponsFromServer(): Promise<Coupon[]> {
 }
 
 export function getAllCouponsSnapshot(): Coupon[] {
-  const merged = readStoredCoupons();
-  const byCode = new Map<string, Coupon>();
-  for (const c of merged) {
-    if (!c?.code) continue;
-    byCode.set(c.code.toUpperCase(), { ...c, code: c.code.toUpperCase() });
-  }
-  return Array.from(byCode.values());
+  return cachedCoupons || [];
 }
 
