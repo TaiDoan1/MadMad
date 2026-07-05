@@ -68,8 +68,22 @@ export async function fetchCouponsFromServer(): Promise<Coupon[]> {
   try {
     const res = await fetch(`${API_URL}/settings`);
     if (!res.ok) return [];
-    const data = (await res.json()) as { coupons?: unknown };
-    return normalizeCoupons(data?.coupons);
+    const response = (await res.json()) as { encryptedPayload?: string };
+
+    // Decrypt encrypted payload if present
+    if (response.encryptedPayload) {
+      try {
+        const CryptoJS = require("crypto-js");
+        const key = "MADMAD_SECURE_PAYLOAD_KEY_2026";
+        const decrypted = CryptoJS.AES.decrypt(response.encryptedPayload, key).toString(CryptoJS.enc.Utf8);
+        const data = JSON.parse(decrypted);
+        return normalizeCoupons(data?.coupons);
+      } catch {
+        return [];
+      }
+    }
+
+    return [];
   } catch {
     return [];
   }
