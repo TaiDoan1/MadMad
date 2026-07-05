@@ -441,6 +441,7 @@ router.post("/invalidate-cache", requireAdminAuth, async (req, res) => {
       timestamp: setting.updatedAt
     });
   } catch (error) {
+    console.error("❌ [CACHE INVALIDATE] Error:", error);
     res.status(500).json({ success: false, message: "Failed to invalidate cache" });
   }
 });
