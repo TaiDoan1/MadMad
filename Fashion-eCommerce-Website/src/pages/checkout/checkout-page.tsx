@@ -17,7 +17,6 @@ import {
 } from "@/features/checkout/services/address-service";
 import { useOrders } from "@/features/orders/context/order-context";
 import { useProducts } from "@/features/products/context/product-context";
-import { incrementCouponUsage } from "@/features/promotions/services/coupon-service";
 import { useStorefrontSettings } from "@/features/settings/context/storefront-settings-context";
 import { useLanguage } from "@/features/settings/context/language-context";
 import { useToast } from "@/components/common/toast";
@@ -426,11 +425,6 @@ export function CheckoutPage() {
           if (pointsEarned > 0) {
             addPointsToCurrentMember(pointsEarned);
           }
-        }
-
-        // Tăng số lượt sử dụng voucher
-        if (appliedCoupon?.code) {
-          incrementCouponUsage(appliedCoupon.code);
         }
 
         refreshProducts();

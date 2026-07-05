@@ -5,7 +5,6 @@ import { Link } from "react-router";
 
 import { brandLogo } from "@/assets/images";
 import { useStorefrontSettings } from "@/features/settings/context/storefront-settings-context";
-import { readStoredCoupons, saveCoupons } from "@/features/promotions/services/coupon-service";
 import type { Coupon } from "@/types/coupon";
 import { API_URL, getAdminKey } from "@/config/api";
 import { useToast } from "@/components/common/toast";
@@ -143,24 +142,8 @@ export function AdminSettingsPage() {
     setIntlShippingFee(String(settings.intlShippingFee ?? 250000));
     setIntlMarkupPercent(String(settings.intlMarkupPercent ?? 10));
 
-    // Đọc danh sách coupon từ service
-    const storedCoupons = readStoredCoupons();
-    setCoupons(storedCoupons);
-
-    // Đồng bộ từ server về (nếu có) để admin/khách cùng thấy 1 danh sách
-    (async () => {
-      try {
-        const res = await fetch(`${API_URL}/settings`);
-        if (!res.ok) return;
-        const data = await res.json();
-        if (Array.isArray(data?.coupons)) {
-          saveCoupons(data.coupons);
-          setCoupons(readStoredCoupons());
-        }
-      } catch {
-        // ignore
-      }
-    })();
+    // Load coupons từ settings context (đã fetch từ API)
+    setCoupons(settings.coupons ?? []);
   }, [settings]);
 
   const syncCouponsToServer = async (nextCoupons: Coupon[]) => {
@@ -335,9 +318,8 @@ export function AdminSettingsPage() {
       applyToSaleItems: newApplyToSaleItems
     };
     const updatedCoupons = [...coupons, newCoupon];
-    
+
     setCoupons(updatedCoupons);
-    saveCoupons(updatedCoupons); // Lưu đồng bộ xuống localStorage
     syncCouponsToServer(updatedCoupons);
 
     // Reset Form
@@ -354,7 +336,6 @@ export function AdminSettingsPage() {
     if (window.confirm(`Bạn có chắc chắn muốn xóa mã giảm giá ${code} không?`)) {
       const updatedCoupons = coupons.filter((c) => c.code !== code);
       setCoupons(updatedCoupons);
-      saveCoupons(updatedCoupons); // Lưu đồng bộ xuống localStorage
       syncCouponsToServer(updatedCoupons);
     }
   };

@@ -116,8 +116,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
   // Tự động hủy coupon nếu giỏ hàng phát sinh sản phẩm giảm giá và coupon đó cấu hình KHÔNG áp dụng cho sale items
   useEffect(() => {
     if (!appliedCouponCode || products.length === 0) return;
-    const coupons = readStoredCoupons();
-    const activeCoupon = coupons.find((c) => c.code === appliedCouponCode);
+    const activeCoupon = availableCoupons.find((c) => c.code === appliedCouponCode);
     if (!activeCoupon) return;
 
     if (activeCoupon.applyToSaleItems === false) {
