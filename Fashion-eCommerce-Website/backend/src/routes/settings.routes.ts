@@ -436,17 +436,40 @@ router.get("/test-db", async (req, res) => {
 });
 
 // 11. POST /api/settings/invalidate-cache - Admin trigger cache invalidation
-router.post("/invalidate-cache", async (req, res) => {
-  // TODO: Re-enable requireAdminAuth after debugging
+router.post("/invalidate-cache", requireAdminAuth, async (req, res) => {
   try {
-    // Just update updatedAt to force client refresh
-    // Note: Record must exist via GET /settings first (auto-creates)
-    const updated = await prisma.storefrontSetting.update({
+    console.log("🗑️ [CACHE INVALIDATE] Started - Admin key:", req.headers["x-admin-key"] ? "✓" : "✗");
+
+    // First, try findUnique to see if record exists
+    console.log("🗑️ [CACHE INVALIDATE] Finding record id: 1...");
+    const existing = await prisma.storefrontSetting.findUnique({
       where: { id: 1 },
-      data: { updatedAt: new Date() }
+      select: { id: true, brandName: true, updatedAt: true }
     });
 
-    console.log("🗑️ [CACHE INVALIDATE] Admin cleared settings cache at", new Date().toISOString());
+    console.log("🗑️ [CACHE INVALIDATE] Found record:", existing ? "YES" : "NO");
+
+    if (!existing) {
+      console.log("🗑️ [CACHE INVALIDATE] Record not found, creating...");
+      // If not found, create it
+      await prisma.storefrontSetting.create({
+        data: {
+          id: 1,
+          brandName: "MADMAD STUDIO"
+        }
+      });
+      console.log("🗑️ [CACHE INVALIDATE] Record created");
+    }
+
+    // Now update the timestamp
+    console.log("🗑️ [CACHE INVALIDATE] Updating timestamp...");
+    const updated = await prisma.storefrontSetting.update({
+      where: { id: 1 },
+      data: { updatedAt: new Date() },
+      select: { id: true, updatedAt: true }
+    });
+
+    console.log("🗑️ [CACHE INVALIDATE] Success! Updated at:", updated.updatedAt.toISOString());
 
     res.json({
       success: true,
@@ -455,7 +478,11 @@ router.post("/invalidate-cache", async (req, res) => {
     });
   } catch (error) {
     console.error("❌ [CACHE INVALIDATE] Error:", error);
-    res.status(500).json({ success: false, message: String(error) });
+    res.status(500).json({
+      success: false,
+      message: "Failed to invalidate cache",
+      error: String(error)
+    });
   }
 });
 
