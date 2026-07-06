@@ -333,6 +333,8 @@ export function StorefrontSettingsProvider({ children }: { children: ReactNode }
   };
 
   // 📥 Tải đồng bộ cấu hình từ Postgres Cloud khi load app + auto-refresh mỗi 10 phút
+  const [lastCacheVersion, setLastCacheVersion] = useState<number>(Date.now());
+
   useEffect(() => {
     const fetchSettings = async () => {
       try {
@@ -362,21 +364,46 @@ export function StorefrontSettingsProvider({ children }: { children: ReactNode }
       }
     };
 
+    // 🗑️ Check if admin cleared cache (admin control)
+    const checkCacheVersion = async () => {
+      try {
+        const res = await fetch(`${API_URL}/settings/cache-version`);
+        if (res.ok) {
+          const data = (await res.json()) as { timestamp: number };
+          // If server cache version changed, refetch settings
+          if (data.timestamp > lastCacheVersion) {
+            setLastCacheVersion(data.timestamp);
+            await fetchSettings();
+          }
+        }
+      } catch {
+        // ignore
+      }
+    };
+
     // Fetch immediately on mount
     fetchSettings();
+    checkCacheVersion();
 
     // Auto-refresh every 10 minutes to get latest settings from server
     const interval = setInterval(fetchSettings, 10 * 60 * 1000);
 
+    // Check cache version every 30 seconds (fast invalidation detection)
+    const cacheVersionInterval = setInterval(checkCacheVersion, 30 * 1000);
+
     // Also refresh when user returns to tab (page focus)
-    const handleFocus = () => fetchSettings();
+    const handleFocus = () => {
+      fetchSettings();
+      checkCacheVersion();
+    };
     window.addEventListener("focus", handleFocus);
 
     return () => {
       clearInterval(interval);
+      clearInterval(cacheVersionInterval);
       window.removeEventListener("focus", handleFocus);
     };
-  }, [flushSettingsQueue]);
+  }, [flushSettingsQueue, lastCacheVersion]);
 
   useEffect(() => {
     const onOnline = () => {
