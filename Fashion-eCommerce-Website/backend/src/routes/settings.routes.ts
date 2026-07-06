@@ -8,6 +8,14 @@ const router = Router();
 // 🗑️ In-memory cache invalidation timestamp (no database needed)
 let cacheInvalidationTimestamp = Date.now();
 
+// 🚫 Prevent browser caching for dynamic data (settings, cache-version)
+router.use((req, res, next) => {
+  res.set("Cache-Control", "no-cache, no-store, must-revalidate, max-age=0");
+  res.set("Pragma", "no-cache");
+  res.set("Expires", "0");
+  next();
+});
+
 // 1. GET /api/settings - Lấy cấu hình Storefront (Tự tạo dòng 1 nếu chưa tồn tại)
 router.get("/", async (req, res, next) => {
   try {
