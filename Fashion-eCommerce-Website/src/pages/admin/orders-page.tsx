@@ -2562,12 +2562,10 @@ export function AdminOrdersPage() {
               }
               .invoice-page {
                 width: 100mm !important;
-                height: 150mm !important;
-                max-height: 150mm !important;
-                padding: 6mm 8mm !important;
+                min-height: 150mm !important;
+                padding: 5mm 6mm !important;
                 margin: 0 !important;
                 box-sizing: border-box !important;
-                overflow: hidden !important;
                 page-break-inside: avoid !important;
               }
             }
@@ -2586,7 +2584,7 @@ export function AdminOrdersPage() {
               }}
             >
               {/* Phần nội dung chính */}
-              <div className="space-y-2.5 overflow-hidden">
+              <div className="space-y-1.5">
                 
                 {/* Header */}
                 <div className="text-center space-y-1 mb-2 pb-2 border-b-2 border-dashed border-black">
@@ -2680,8 +2678,8 @@ export function AdminOrdersPage() {
                 </table>
 
                 {/* Tổng kết chi phí */}
-                <div className="mb-2 pb-2 border-b border-black">
-                  <div className="w-full space-y-1 font-bold text-[10px]">
+                <div className="mb-1 pb-1 border-b border-black">
+                  <div className="w-full space-y-0.5 font-bold text-[10px]">
                     <div className="flex justify-between text-black">
                       <span>Tạm tính:</span>
                       <span className="font-black">{printOrder.subtotal.toLocaleString("vi-VN")}₫</span>
