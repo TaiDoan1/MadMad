@@ -5,6 +5,9 @@ import { requireAdminAuth } from "../utils/auth.middleware";
 
 const router = Router();
 
+// 🗑️ In-memory cache invalidation timestamp (no database needed)
+let cacheInvalidationTimestamp = Date.now();
+
 // 1. GET /api/settings - Lấy cấu hình Storefront (Tự tạo dòng 1 nếu chưa tồn tại)
 router.get("/", async (req, res, next) => {
   try {
@@ -435,56 +438,28 @@ router.get("/test-db", async (req, res) => {
   }
 });
 
-// 11. POST /api/settings/invalidate-cache - Admin trigger cache invalidation
-router.post("/invalidate-cache", async (req, res) => {
-  // Temporarily disabled auth - will re-enable after testing
+// 11. POST /api/settings/invalidate-cache - Admin trigger cache invalidation (no database!)
+router.post("/invalidate-cache", requireAdminAuth, async (req, res) => {
   try {
-    console.log("🗑️ [CACHE INVALIDATE] Started - Admin key:", req.headers["x-admin-key"] ? "✓" : "✗");
+    // Update in-memory timestamp - clients will detect change and refetch
+    cacheInvalidationTimestamp = Date.now();
 
-    // First, try findUnique to see if record exists
-    console.log("🗑️ [CACHE INVALIDATE] Finding record id: 1...");
-    const existing = await prisma.storefrontSetting.findUnique({
-      where: { id: 1 },
-      select: { id: true, brandName: true, updatedAt: true }
-    });
-
-    console.log("🗑️ [CACHE INVALIDATE] Found record:", existing ? "YES" : "NO");
-
-    if (!existing) {
-      console.log("🗑️ [CACHE INVALIDATE] Record not found, creating...");
-      // If not found, create it
-      await prisma.storefrontSetting.create({
-        data: {
-          id: 1,
-          brandName: "MADMAD STUDIO"
-        }
-      });
-      console.log("🗑️ [CACHE INVALIDATE] Record created");
-    }
-
-    // Now update the timestamp
-    console.log("🗑️ [CACHE INVALIDATE] Updating timestamp...");
-    const updated = await prisma.storefrontSetting.update({
-      where: { id: 1 },
-      data: { updatedAt: new Date() },
-      select: { id: true, updatedAt: true }
-    });
-
-    console.log("🗑️ [CACHE INVALIDATE] Success! Updated at:", updated.updatedAt.toISOString());
+    console.log("🗑️ [CACHE INVALIDATE] Admin cleared cache at", new Date().toISOString());
 
     res.json({
       success: true,
-      message: "Cache invalidated successfully. Clients will refetch data on next load.",
-      timestamp: updated.updatedAt
+      message: "Cache invalidated! Clients will refetch data on next check.",
+      timestamp: cacheInvalidationTimestamp
     });
   } catch (error) {
     console.error("❌ [CACHE INVALIDATE] Error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to invalidate cache",
-      error: String(error)
-    });
+    res.status(500).json({ success: false, message: String(error) });
   }
+});
+
+// 11b. GET /api/settings/cache-version - Client checks if cache invalidated
+router.get("/cache-version", async (req, res) => {
+  res.json({ timestamp: cacheInvalidationTimestamp });
 });
 
 export default router;
