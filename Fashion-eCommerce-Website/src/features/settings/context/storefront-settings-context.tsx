@@ -388,8 +388,8 @@ export function StorefrontSettingsProvider({ children }: { children: ReactNode }
     // Auto-refresh every 10 minutes to get latest settings from server
     const interval = setInterval(fetchSettings, 10 * 60 * 1000);
 
-    // Check cache version every 30 seconds (fast invalidation detection)
-    const cacheVersionInterval = setInterval(checkCacheVersion, 30 * 1000);
+    // Check cache version every 2 seconds (realtime invalidation detection)
+    const cacheVersionInterval = setInterval(checkCacheVersion, 2 * 1000);
 
     // Also refresh when user returns to tab (page focus)
     const handleFocus = () => {
