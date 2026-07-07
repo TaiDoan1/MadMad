@@ -1,0 +1,410 @@
+================================================================================
+                    MADMAD STUDIO - KỸ THUẬT HỮU ÍCH & BEST PRACTICE
+================================================================================
+
+📅 Cập nhật: 2026-07-06
+👨‍💻 Dành cho: Team Backend/Frontend
+🎯 Mục đích: Tránh những lỗi stale data, cache không đồng bộ, khách phàn nàn clear cache
+
+
+================================================================================
+1. NGUYÊN TẮC VÀNG: API as Single Source of Truth
+================================================================================
+
+❌ WRONG PATTERN (Dẫn tới vấn đề stale data):
+   - Lưu data vào localStorage
+   - Admin change data → localStorage cũ không update
+   - Khách vẫn thấy dữ liệu cũ
+   - Khách phàn nàn → "Tại sao lại xem cũ?"
+   - Khách phải clear cache → phàn nàn về UX
+
+✅ RIGHT PATTERN:
+   - API/Database = Source of Truth (nguồn dữ liệu duy nhất)
+   - Frontend chỉ cache dữ liệu tạm thời
+   - Admin change database → API trả về dữ liệu mới
+   - Frontend auto-refresh → khách thấy mới ngay
+
+
+================================================================================
+2. CÁC CHIẾN LƯỢC CACHING
+================================================================================
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+A. IN-MEMORY CACHE + TTL (Time To Live)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Khái niệm: Lưu data trong memory (React state), sau N phút tự động xóa → refetch
+
+Code example:
+  // Service
+  let cachedData = null;
+  let cacheTime = 0;
+  const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
+  export async function fetchWithCache() {
+    // Return cache nếu còn hạn
+    if (cachedData && Date.now() - cacheTime < CACHE_TTL) {
+      return cachedData;
+    }
+
+    // Refetch từ API khi hết hạn
+    const data = await fetch('/api/settings');
+    cachedData = data;
+    cacheTime = Date.now();
+    return data;
+  }
+
+Khi nào dùng:
+  ✅ Settings, Coupon, Promotions (thay đổi không thường xuyên)
+  ✅ Product list (update chậm)
+  ❌ Real-time data (stock, price thay đổi nhanh)
+
+Pros:
+  + Nhanh (cache lưu trong memory)
+  + Tự động expire (TTL)
+  + Không cần localStorage
+
+Cons:
+  - Data mất khi refresh page (tuy nhiên đây không phải vấn đề vì fetch ngay lần đầu)
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+B. AUTO-REFRESH / POLLING
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Khái niệm: Tự động fetch data định kỳ (mỗi N phút) từ server
+
+Code example:
+  useEffect(() => {
+    // Fetch ngay lúc mount
+    fetchSettings();
+
+    // Fetch lại mỗi 10 phút
+    const interval = setInterval(() => fetchSettings(), 10 * 60 * 1000);
+
+    return () => clearInterval(interval);
+  }, []);
+
+Khi nào dùng:
+  ✅ Settings (account number, email config)
+  ✅ Coupon/Promotions
+  ✅ News feed, announcements
+
+TTL recommend:
+  - Settings/Config: 5-10 phút
+  - Coupon: 10 phút
+  - Products: 15 phút
+  - Real-time stock: 30 giây
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+C. EVENT-DRIVEN CACHE REFRESH
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Khái niệm: Fetch lại data khi có sự kiện (page focus, online, user action)
+
+Code example:
+  useEffect(() => {
+    // Fetch khi user quay lại tab
+    const handleFocus = () => fetchSettings();
+    window.addEventListener("focus", handleFocus);
+
+    // Fetch khi internet trở lại
+    const handleOnline = () => syncData();
+    window.addEventListener("online", handleOnline);
+
+    return () => {
+      window.removeEventListener("focus", handleFocus);
+      window.removeEventListener("online", handleOnline);
+    };
+  }, []);
+
+Events thường dùng:
+  - "focus" - User quay lại tab
+  - "online" - Internet trở lại
+  - "visibilitychange" - Tab trở nên visible
+  - User click "Refresh" button
+  - Admin change data (via WebSocket / Server Push)
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+D. STALE-WHILE-REVALIDATE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Khái niệm: Show cache ngay, fetch bản mới ở background (user không chờ)
+
+Code example:
+  async function fetchSettings() {
+    // Show cache ngay (fast)
+    if (cachedData) {
+      setSettings(cachedData);
+    }
+
+    // Fetch mới silently
+    try {
+      const newData = await fetch('/api/settings');
+      setSettings(newData); // Update UI nếu có thay đổi
+      cachedData = newData; // Update cache
+    } catch (e) {
+      // Nếu fetch fail, vẫn có cache để show
+    }
+  }
+
+Khi nào dùng:
+  ✅ Settings (user không cần chờ)
+  ✅ Inventory (show cache, update background)
+
+Pros:
+  + User experience nhanh
+  + Fail gracefully (có cache fallback)
+
+Cons:
+  - Có thể show dữ liệu cũ (tuy nhiên sẽ update ngay)
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+E. ADMIN-TRIGGERED CACHE INVALIDATION (PROACTIVE)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Khái niệm: Admin chủ động nhấn "Clear Cache" → phát tín hiệu cho tất cả clients refetch ngay
+
+Code flow:
+
+Backend (Express):
+  router.post("/settings/invalidate-cache", requireAdminAuth, async (req, res) => {
+    const setting = await prisma.storefrontSetting.update({
+      where: { id: 1 },
+      data: { updatedAt: new Date() } // Signal invalidation
+    });
+    res.json({ success: true, timestamp: setting.updatedAt });
+  });
+
+Frontend (React):
+  const handleInvalidateCache = async () => {
+    if (!window.confirm("Clear cache?")) return;
+
+    const res = await fetch(`${API_URL}/settings/invalidate-cache`, {
+      method: "POST",
+      headers: { "x-admin-key": getAdminKey() }
+    });
+
+    if (res.ok) {
+      showToast("✅ Cache cleared!", "success");
+      // Clients will auto-refetch on next check via TTL/auto-refresh
+    }
+  };
+
+Khi nào dùng:
+  ✅ Khi admin vừa thay đổi setting quan trọng (account, coupon)
+  ✅ Muốn clients thấy mới ngay (không chờ 10 phút)
+  ✅ Emergency push: "Phải thay đổi ngay lập tức"
+
+Pros:
+  + Tức thì: Admin control thời điểm clients refetch
+  + Giao tiếp rõ: Admin biết cache đã clear
+  + Graceful: TTL/auto-refresh vẫn chạy (backup)
+
+Cons:
+  - Thêm complexity (thêm endpoint, thêm button)
+
+
+================================================================================
+3. KHI NÀO DÙNG CÁI NÀO - DECISION MATRIX
+================================================================================
+
+┌─────────────────────┬───────────────┬─────────────┬─────────────────────┐
+│ Data Type           │ TTL/Interval  │ Event       │ Strategy            │
+├─────────────────────┼───────────────┼─────────────┼─────────────────────┤
+│ Settings/Config     │ 10 minutes    │ focus       │ Auto-refresh+Event  │
+│ Coupon/Promo        │ 10 minutes    │ focus       │ Auto-refresh+Event  │
+│ Products            │ 15 minutes    │ focus       │ Auto-refresh+Event  │
+│ Stock/Inventory     │ 1-2 minutes   │ -           │ Auto-refresh        │
+│ Orders              │ On-demand     │ click       │ Event-driven        │
+│ Cart                │ localStorage  │ -           │ Local state OK      │
+│ User Profile        │ 30 minutes    │ focus       │ Auto-refresh+Event  │
+│ News Feed           │ 5 minutes     │ -           │ Auto-refresh        │
+│ Real-time Chat      │ WebSocket     │ -           │ WebSocket (không cache) │
+└─────────────────────┴───────────────┴─────────────┴─────────────────────┘
+
+
+================================================================================
+4. NHỮNG SAI LẦM THƯỜNG GẶP (Anti-Patterns)
+================================================================================
+
+❌ SAI LẦM 1: Dùng localStorage cho data thay đổi thường xuyên
+   Problem: Admin change → localStorage cũ không update → khách thấy dữ liệu cũ
+   Fix: Bỏ localStorage, luôn fetch từ API
+
+❌ SAI LẦM 2: Chỉ fetch 1 lần khi mount (không refresh)
+   Problem: Admin change sau khi khách vào trang → khách không thấy
+   Fix: Thêm auto-refresh interval + event listener
+
+❌ SAI LẦM 3: Fetch quá thường xuyên (mỗi giây)
+   Problem: Nhiều request → server chậm → user experience tệ
+   Fix: Dùng TTL hợp lý (5-15 phút tùy data)
+
+❌ SAI LẦM 4: Không handle offline
+   Problem: Không kết nối internet → cache cũ không update
+   Fix: Thêm "online" event listener để sync khi internet trở lại
+
+❌ SAI LẦM 5: Cache in memory không có TTL
+   Problem: Data không bao giờ expire → khách thấy cũ mãi
+   Fix: Luôn set TTL cho cache
+
+
+================================================================================
+5. MADMAD STUDIO - APPLIED PATTERNS
+================================================================================
+
+Project: Fashion E-Commerce Website
+
+🎯 Settings (Account Number, Coupon, Promotions):
+   Strategy: In-Memory Cache (5min TTL) + Auto-refresh (10min) + Event (focus) + Admin Control
+   File: src/features/settings/context/storefront-settings-context.tsx
+          src/pages/admin/settings-page.tsx
+          backend/src/routes/settings.routes.ts
+
+   Implementation:
+   - Load settings từ API /settings khi mount
+   - Auto-refresh mỗi 10 phút
+   - Refetch khi user quay lại tab (focus event)
+   - Dùng CryptoJS để decrypt encrypted payload
+   - Admin có button "Clear Cache" để force clients refetch ngay (POST /api/settings/invalidate-cache)
+
+🛒 Cart:
+   Strategy: localStorage OK (client-side state, không server-sync)
+   Reason: Cart là user's local choice, không cần server sync
+
+🛍️ Products:
+   Strategy: In-Memory Cache + API fetch
+   TTL: 15 phút
+   File: src/features/products/context/product-context.tsx
+
+🎟️ Coupons:
+   Strategy: In-Memory Cache + TTL (5min) + Auto-fetch
+   File: src/features/promotions/services/coupon-service.ts
+   Fix: Loại bỏ localStorage, luôn fetch từ API
+
+
+================================================================================
+6. CODE CHECKLIST - CÓ NÊN CÒN DỮ LIỆU STALE?
+================================================================================
+
+When adding new data/feature, ask:
+
+□ API được update có bao lâu? Là data nên auto-refresh?
+□ Có dùng localStorage không? (nếu có → replace với in-memory cache)
+□ Có auto-refresh / polling không?
+□ Có event listener (focus/online) không?
+□ Có TTL setup không?
+□ Backend có trả về fresh data không?
+□ Frontend có handle offline không?
+□ Test: Admin change → khách thấy mới trong bao lâu?
+
+
+================================================================================
+7. PERFORMANCE TIPS
+================================================================================
+
+✅ Avoid:
+   - Fetch quá thường xuyên (mỗi request = chi phí network)
+   - Lưu data quá lâu (cache stale)
+   - Không có TTL (data lâu lắm)
+
+✅ Optimize:
+   - Batch requests (fetch 1 lần với toàn bộ settings)
+   - Compress data (gzip, etc)
+   - Cache policy: 304 Not Modified (server return no data, use cache)
+   - Progressive loading: Show cache → load new data → update UI
+
+✅ Monitor:
+   - Theo dõi cache hit rate
+   - Measure refresh latency
+   - Alert nếu data stale quá lâu
+
+
+================================================================================
+8. CHEATSHEET - CÁCH IMPLEMENT NHANH
+================================================================================
+
+Bước 1: Remove localStorage dependency
+   export async function fetchData() {
+     const response = await fetch('/api/data');
+     return response.json();
+   }
+
+Bước 2: Add in-memory cache with TTL
+   let cache = null;
+   let cacheTime = 0;
+   const TTL = 10 * 60 * 1000;
+
+   export async function fetchData() {
+     if (cache && Date.now() - cacheTime < TTL) return cache;
+     const data = await fetch('/api/data');
+     cache = data;
+     cacheTime = Date.now();
+     return data;
+   }
+
+Bước 3: Add auto-refresh
+   useEffect(() => {
+     const interval = setInterval(fetchData, 10 * 60 * 1000);
+     return () => clearInterval(interval);
+   }, []);
+
+Bước 4: Add event listener
+   useEffect(() => {
+     window.addEventListener("focus", fetchData);
+     return () => window.removeEventListener("focus", fetchData);
+   }, []);
+
+Done! Data sẽ luôn fresh 🎉
+
+
+================================================================================
+9. REFERENCES & LINKS
+================================================================================
+
+HTTP Caching:
+  - https://developer.mozilla.org/en-US/docs/Web/HTTP/Caching
+  - https://developer.mozilla.org/en-US/docs/Web/API/Cache
+
+Browser Events:
+  - https://developer.mozilla.org/en-US/docs/Web/API/Window/focus_event
+  - https://developer.mozilla.org/en-US/docs/Web/API/Document/visibilitychange_event
+
+React Patterns:
+  - https://reactjs.org/docs/context.html
+  - https://swr.vercel.app/ (React hook for data fetching with caching)
+
+Best Practice:
+  - Stale-While-Revalidate: https://tools.ietf.org/html/rfc5861
+
+
+================================================================================
+10. QUICK SUMMARY
+================================================================================
+
+❌ Never:
+   - localStorage cho data thay đổi
+   - Fetch 1 lần khi mount
+   - Không có TTL
+
+✅ Always:
+   - API as source of truth
+   - In-memory cache với TTL
+   - Auto-refresh interval
+   - Event listeners (focus/online)
+   - Handle offline gracefully
+   - Admin control (Optional): Button "Clear Cache" để force refetch ngay
+
+🎯 Result:
+   Admin change data → Khách thấy mới tự động trong 10 phút (hoặc ngay nếu admin click "Clear Cache")
+   Khách không cần clear cache → Happy customer 😊
+   Admin không cần chờ → Proactive management 🎯
+
+
+================================================================================
+Last Updated: 2026-07-06
+Made with ❤️ for MADMAD Studio Team
+================================================================================
