@@ -5,7 +5,7 @@
   "main": "dist/app.js",
   "scripts": {
     "dev": "ts-node-dev --respawn --transpile-only src/app.ts",
-    "build": "prisma generate && tsc",
+    "build": "prisma generate && tsc && echo '--- DIST CONTENTS ---' && ls -la dist/ && echo '--- END DIST ---'",
     "start": "node dist/app.js",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
