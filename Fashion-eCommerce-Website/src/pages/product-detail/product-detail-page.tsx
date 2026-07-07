@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from "react";
 import { Link, useParams, useNavigate } from "react-router";
-import { Search, ShoppingCart, User, Share2, ArrowLeft } from "lucide-react";
+import { Search, ShoppingCart, User, Share2, ArrowLeft, X } from "lucide-react";
 
 import { ImageWithFallback } from "@/components/common/image-with-fallback";
 import { SizeRecommendationModal } from "@/components/product/size-recommendation-panel";
@@ -97,6 +97,7 @@ export function ProductDetailPage() {
   const [selectedColor, setSelectedColor] = useState("");
   const [quantity, setQuantity] = useState(1);
   const [expandedAccordion, setExpandedAccordion] = useState<string | null>(null);
+  const [sizeChartZoomOpen, setSizeChartZoomOpen] = useState(false);
   const productImages = product?.images && product.images.length > 0 ? product.images : product ? [product.image] : [];
   const [currentImage, setCurrentImage] = useState(productImages[0] || product?.image || "");
 
@@ -745,60 +746,18 @@ export function ProductDetailPage() {
                 <div className={`overflow-hidden transition-all duration-300 ${expandedAccordion === "sizeguide" ? "max-h-[800px] pb-4 opacity-100" : "max-h-0 opacity-0"}`}>
                   <div className="text-xs text-muted-foreground space-y-4 pt-2">
                     {product.sizeChartImage && (
-                      <div className="rounded-xl border border-black/10 dark:border-white/10 overflow-hidden bg-white dark:bg-neutral-950">
+                      <button
+                        type="button"
+                        onClick={() => setSizeChartZoomOpen(true)}
+                        className="block w-full rounded-xl border border-black/10 dark:border-white/10 overflow-hidden bg-white dark:bg-neutral-950 cursor-zoom-in"
+                      >
                         <ImageWithFallback
                           src={product.sizeChartImage}
                           alt={t("Bảng size sản phẩm", "Product size chart")}
                           className="w-full h-auto object-contain"
                         />
-                      </div>
+                      </button>
                     )}
-                    <p className="font-bold uppercase tracking-wider text-[10px] text-neutral-400">{t("THÔNG TIN SỐ ĐO MẪU:", "MODEL MEASUREMENTS:")}</p>
-                    <ul className="list-disc list-inside space-y-1 uppercase tracking-wider text-[9px] font-semibold text-neutral-500">
-                      <li>{t("Mẫu nam cao 1m85 mặc size LARGE (L)", "Male model is 1m85 wearing size LARGE (L)")}</li>
-                      <li>{t("Mẫu nữ cao 1m73 mặc size SMALL (S)", "Female model is 1m73 wearing size SMALL (S)")}</li>
-                    </ul>
-                    <div className="grid grid-cols-2 gap-4 pt-2 items-center">
-                      <div className="border border-black/10 dark:border-white/10 rounded-xl overflow-hidden text-center text-[9px]">
-                        <div className="grid grid-cols-3 bg-neutral-50 dark:bg-neutral-900/50 font-bold border-b border-black/10 dark:border-white/10 py-1.5 uppercase tracking-wide">
-                          <div>Size</div>
-                          <div>Waist (A)</div>
-                          <div>Outseam (B)</div>
-                        </div>
-                        {[
-                          { s: "XS", a: "26-28", b: "39" },
-                          { s: "S", a: "29-30", b: "40" },
-                          { s: "M", a: "31-32", b: "42" },
-                          { s: "L", a: "33-34", b: "44" },
-                          { s: "XL", a: "35-36", b: "46" },
-                          { s: "2XL", a: "37-38", b: "47" }
-                        ].map((row, i) => (
-                          <div key={i} className={`grid grid-cols-3 py-1.5 border-b border-black/10 dark:border-white/10 font-medium ${i % 2 === 1 ? "bg-neutral-50/50 dark:bg-neutral-900/20" : ""}`}>
-                            <div className="font-bold">{row.s}</div>
-                            <div>{row.a}</div>
-                            <div>{row.b}</div>
-                          </div>
-                        ))}
-                        <div className="py-1 text-[8px] opacity-50 italic border-t border-black/10 dark:border-white/10">{"ĐƠN VỊ: INCHES (1 INCH = 2.54 CM)"}</div>
-                      </div>
-
-                      <div className="flex justify-center">
-                        <svg viewBox="0 0 100 120" className="w-20 h-auto stroke-current text-foreground opacity-85" fill="none" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M25,20 L75,20 L80,105 L62,105 L50,55 L38,105 L20,105 Z" fill="none" />
-                          <path d="M28,32 C33,35 40,32 40,32" />
-                          <path d="M72,32 C67,35 60,32 60,32" />
-                          <path d="M50,20 L50,42 C50,45 46,47 46,47" strokeDasharray="2,2" />
-                          
-                          <line x1="25" y1="12" x2="75" y2="12" stroke="#aa1e22" strokeWidth="1" />
-                          <path d="M28,9 L25,12 L28,15 M72,9 L75,12 L72,15" stroke="#aa1e22" strokeWidth="1" />
-                          <text x="50" y="8" textAnchor="middle" fill="#aa1e22" fontSize="8" fontWeight="bold">A</text>
-
-                          <line x1="84" y1="20" x2="84" y2="105" stroke="#aa1e22" strokeWidth="1" />
-                          <path d="M81,23 L84,20 L87,23 M81,102 L84,105 L87,102" stroke="#aa1e22" strokeWidth="1" />
-                          <text x="91" y="65" textAnchor="middle" fill="#aa1e22" fontSize="8" fontWeight="bold">B</text>
-                        </svg>
-                      </div>
-                    </div>
                   </div>
                 </div>
               </div>
@@ -846,6 +805,29 @@ export function ProductDetailPage() {
         </div>
 
       </div>
+
+      {/* Size Chart Zoom Modal */}
+      {sizeChartZoomOpen && product?.sizeChartImage && (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 p-4"
+          onClick={() => setSizeChartZoomOpen(false)}
+        >
+          <button
+            type="button"
+            onClick={() => setSizeChartZoomOpen(false)}
+            className="absolute top-4 right-4 flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20 transition-colors"
+            aria-label={t("Đóng", "Close")}
+          >
+            <X className="h-5 w-5" />
+          </button>
+          <img
+            src={product.sizeChartImage}
+            alt={t("Bảng size sản phẩm", "Product size chart")}
+            className="max-h-full max-w-full w-auto h-auto object-contain rounded-lg"
+            onClick={(e) => e.stopPropagation()}
+          />
+        </div>
+      )}
     </div>
   );
 }
