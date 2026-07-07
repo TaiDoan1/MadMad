@@ -101,7 +101,8 @@ router.get("/", async (req, res, next) => {
         sizeGuide,
       };
     } else {
-      // Ẩn đi các trường nhạy cảm
+      // Ẩn đi các trường nhạy cảm (SMTP, API keys...) nhưng vẫn giữ thông tin thanh toán
+      // vì khách hàng cần số tài khoản/momo để thực hiện chuyển khoản khi checkout
       rawData = {
         id: setting.id,
         brandName: setting.brandName,
@@ -119,6 +120,12 @@ router.get("/", async (req, res, next) => {
         enableBank: setting.enableBank,
         enableMomo: setting.enableMomo,
         enablePaypal: setting.enablePaypal,
+        // 💳 Thông tin thanh toán - khách hàng cần thấy để chuyển khoản
+        bankId: setting.bankId,
+        bankAccount: setting.bankAccount,
+        bankAccountName: setting.bankAccountName,
+        momoPhone: setting.momoPhone,
+        momoAccountName: setting.momoAccountName,
         shippingFeeStandard: setting.shippingFeeStandard,
         shippingFeeExpress: setting.shippingFeeExpress,
         shippingFreeThreshold: setting.shippingFreeThreshold,
