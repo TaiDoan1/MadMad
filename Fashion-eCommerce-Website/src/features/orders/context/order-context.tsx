@@ -6,6 +6,7 @@ import { safeLocalStorage } from "@/utils/safe-storage";
 import { enqueue, peekQueue, removeFromQueue } from "@/utils/offline-queue";
 import { parseOrderItemEditMeta } from "@/utils/order-edit";
 import { useAdminAuth } from "@/features/auth/context/admin-auth-context";
+import { useToast } from "@/components/common/toast";
 
 interface UpdateOrderItemInput {
   productId: string;
@@ -59,6 +60,7 @@ const ORDER_INTERNAL_NOTE_QUEUE_KEY = "madmad.offline.queue.order-internal-notes
 
 export function OrderProvider({ children }: { children: ReactNode }) {
   const { isAdminAuthenticated } = useAdminAuth();
+  const { showToast } = useToast();
   const [orders, setOrdersState] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -304,36 +306,20 @@ const LOCAL_ORDERS_KEY = "madmad_orders_fallback";
       // 💳 Cập nhật trạng thái thanh toán đơn hàng (Đã thu tiền / Chờ CK)
       updateOrderPaymentStatus: async (id, isPaid) => {
         try {
-          // Thử cập nhật qua endpoint chuẩn
           const response = await fetch(`${API_URL}/orders/${id}/payment`, {
             method: "PUT",
-            headers: { "Content-Type": "application/json" },
+            headers: { "Content-Type": "application/json", "x-admin-key": getAdminKey() },
             body: JSON.stringify({ isPaid }),
           });
 
           if (response.ok) {
             await loadOrders();
           } else {
-            // Thử endpoint dự phòng khác (ví dụ: gửi body chung cho cả order)
-            const responseBackup = await fetch(`${API_URL}/orders/${id}`, {
-              method: "PUT",
-              headers: { 
-                "Content-Type": "application/json",
-                "x-admin-key": getAdminKey()
-              },
-              body: JSON.stringify({ isPaid }),
-            });
-            if (responseBackup.ok) {
-              await loadOrders();
-            } else {
-              throw new Error("Không thể cập nhật thanh toán đơn hàng trên server");
-            }
+            const errText = await response.text().catch(() => "");
+            showToast(`Không thể cập nhật thanh toán đơn hàng: ${errText || response.status}`, "error");
           }
         } catch {
-          // Fallback cập nhật state local để UI phản hồi ngay lập tức
-          setOrders((current) =>
-            current.map((order) => (order.id === id ? { ...order, isPaid } : order)),
-          );
+          showToast("Lỗi kết nối máy chủ khi cập nhật thanh toán!", "error");
         }
       },
 
