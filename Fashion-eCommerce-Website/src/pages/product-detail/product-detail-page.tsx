@@ -672,7 +672,7 @@ export function ProductDetailPage() {
                   }
                   return (
                     <div className="text-xs font-bold uppercase tracking-widest text-black dark:text-white">
-                      {t(`Số lượng: ${availableStock}`, `Quantity: ${availableStock}`)}
+                      {t("Còn hàng", "In stock")}
                     </div>
                   );
                 }
