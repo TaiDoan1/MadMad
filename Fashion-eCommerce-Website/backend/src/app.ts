@@ -30,7 +30,11 @@ app.use(cors({
   origin: (origin, callback) => {
     // Cho phép requests không có origin (ví dụ: mobile apps, postman, curl)
     if (!origin) return callback(null, true);
-    if (allowedOrigins.indexOf(origin) !== -1 || origin.endsWith(".vercel.app")) {
+    if (
+      allowedOrigins.indexOf(origin) !== -1 ||
+      origin.endsWith(".vercel.app") ||
+      origin.endsWith(".up.railway.app")
+    ) {
       callback(null, true);
     } else {
       callback(new Error("Không được phép truy cập từ origin này (CORS Blocked)"));
