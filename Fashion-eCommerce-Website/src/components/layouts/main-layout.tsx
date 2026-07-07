@@ -266,7 +266,6 @@ export function MainLayout() {
                   { path: "/shop",        label: t("CỬA HÀNG", "SHOP") },
                   { path: "/membership",  label: t("THÀNH VIÊN", "MEMBERSHIP") },
                   { path: "/track-order",  label: t("TRA CỨU ĐƠN HÀNG", "TRACK ORDER") },
-                  { path: "/about",       label: t("GIỚI THIỆU", "ABOUT") },
                   { path: "/contact",     label: t("LIÊN HỆ", "CONTACT") },
                 ].map((item) => (
                   <Link
@@ -297,22 +296,6 @@ export function MainLayout() {
                       </span>
                     )}
                   </Link>
-                  <button className="flex w-full items-center gap-3 rounded-lg px-4 py-3 transition-bounce hover:bg-muted hover:scale-105 active:scale-105 active:bg-muted" onClick={handleOpenAdmin}>
-                    <User className="h-5 w-5" />
-                    <span className="font-medium text-xs">{isAdminAuthenticated ? t("Vào Admin", "Admin Panel") : t("Đăng nhập Admin", "Admin Login")}</span>
-                  </button>
-                  {isAdminAuthenticated && (
-                    <button
-                      className="flex w-full items-center gap-3 rounded-lg px-4 py-3 text-red-600 transition-bounce hover:bg-red-50 hover:scale-105 active:scale-105 active:bg-red-50"
-                      onClick={() => {
-                        logoutAdmin();
-                        setMobileMenuOpen(false);
-                      }}
-                    >
-                      <X className="h-5 w-5" />
-                      <span className="font-medium text-xs">{t("Đăng xuất Admin", "Admin Logout")}</span>
-                    </button>
-                  )}
                 </div>
               </div>
             </nav>
