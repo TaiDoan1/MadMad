@@ -6,6 +6,7 @@ import type { Product } from "@/types/product";
 import { useToast } from "@/components/common/toast";
 import { safeLocalStorage } from "@/utils/safe-storage";
 import { syncProductStock } from "@/utils/product-stock";
+import { useAdminAuth } from "@/features/auth/context/admin-auth-context";
 
 interface ProductContextValue {
   products: Product[];
@@ -25,6 +26,7 @@ const PRODUCTS_STORAGE_KEY = "fashion-ecommerce.products-v7";
 
 export function ProductProvider({ children }: { children: ReactNode }) {
   const { showToast } = useToast();
+  const { isAdminAuthenticated } = useAdminAuth();
   const [isLoading, setIsLoading] = useState(true);
   const [apiError, setApiError] = useState<string | null>(null);
   const [products, setProducts] = useState<Product[]>(() => {
@@ -89,9 +91,11 @@ export function ProductProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  // Fetch lại danh sách sản phẩm mỗi khi trạng thái đăng nhập Admin thay đổi,
+  // để không phải reload trang mới thấy đủ dữ liệu (tồn kho thật, v.v.) sau khi login/logout
   useEffect(() => {
     loadProducts();
-  }, []);
+  }, [isAdminAuthenticated]);
 
 
   useEffect(() => {

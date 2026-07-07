@@ -5,6 +5,7 @@ import { API_URL, getAdminKey } from "@/config/api";
 import { safeLocalStorage } from "@/utils/safe-storage";
 import { enqueue, peekQueue, removeFromQueue } from "@/utils/offline-queue";
 import { parseOrderItemEditMeta } from "@/utils/order-edit";
+import { useAdminAuth } from "@/features/auth/context/admin-auth-context";
 
 interface UpdateOrderItemInput {
   productId: string;
@@ -57,6 +58,7 @@ const ORDERS_OFFLINE_QUEUE_KEY = "madmad.offline.queue.orders";
 const ORDER_INTERNAL_NOTE_QUEUE_KEY = "madmad.offline.queue.order-internal-notes";
 
 export function OrderProvider({ children }: { children: ReactNode }) {
+  const { isAdminAuthenticated } = useAdminAuth();
   const [orders, setOrdersState] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -193,6 +195,8 @@ const LOCAL_ORDERS_KEY = "madmad_orders_fallback";
 
   useEffect(() => {
     // Chỉ tải dữ liệu và bắt đầu polling khi trình duyệt có token admin hợp lệ
+    // Phụ thuộc vào isAdminAuthenticated để tự fetch lại ngay khi vừa đăng nhập,
+    // không cần F5 mới thấy dữ liệu
     const adminKey = getAdminKey();
     if (!adminKey) return;
 
@@ -204,7 +208,7 @@ const LOCAL_ORDERS_KEY = "madmad_orders_fallback";
       }
     }, 3000);
     return () => clearInterval(interval);
-  }, []);
+  }, [isAdminAuthenticated]);
 
   useEffect(() => {
     const onOnline = () => {
