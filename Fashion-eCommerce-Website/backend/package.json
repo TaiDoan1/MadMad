@@ -1,6 +1,6 @@
 {
   "name": "madmad-backend",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Backend API for MADMAD Studio Fashion Store",
   "main": "dist/app.js",
   "scripts": {
