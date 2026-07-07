@@ -1,4 +1,4 @@
-import { createContext, useContext, useMemo, useState, useEffect, type ReactNode } from "react";
+import { createContext, useContext, useMemo, useState, useEffect, useCallback, useRef, type ReactNode } from "react";
 import CryptoJS from "crypto-js";
 
 import { brandLogo } from "@/assets/images";
@@ -309,7 +309,7 @@ function readStoredSettings(): StorefrontSettings {
 export function StorefrontSettingsProvider({ children }: { children: ReactNode }) {
   const [settings, setSettings] = useState<StorefrontSettings>(readStoredSettings);
 
-  const flushSettingsQueue = async () => {
+  const flushSettingsQueue = useCallback(async () => {
     const items = peekQueue<Partial<StorefrontSettings>>(SETTINGS_OFFLINE_QUEUE_KEY);
     if (items.length === 0) return;
     // Merge payloads in order; last-write-wins
@@ -318,7 +318,7 @@ export function StorefrontSettingsProvider({ children }: { children: ReactNode }
     try {
       const res = await fetch(`${API_URL}/settings`, {
         method: "PUT",
-        headers: { 
+        headers: {
           "Content-Type": "application/json",
           "x-admin-key": getAdminKey()
         },
@@ -330,10 +330,11 @@ export function StorefrontSettingsProvider({ children }: { children: ReactNode }
     } catch {
       // keep queue
     }
-  };
+  }, []);
 
   // 📥 Tải đồng bộ cấu hình từ Postgres Cloud khi load app + auto-refresh mỗi 10 phút
-  const [lastCacheVersion, setLastCacheVersion] = useState<number>(Date.now());
+  // Dùng ref (không phải state) để tránh effect tự kích hoạt lại chính nó liên tục
+  const lastCacheVersionRef = useRef<number>(Date.now());
 
   useEffect(() => {
     const fetchSettings = async () => {
@@ -371,8 +372,8 @@ export function StorefrontSettingsProvider({ children }: { children: ReactNode }
         if (res.ok) {
           const data = (await res.json()) as { timestamp: number };
           // If server cache version changed, refetch settings
-          if (data.timestamp > lastCacheVersion) {
-            setLastCacheVersion(data.timestamp);
+          if (data.timestamp > lastCacheVersionRef.current) {
+            lastCacheVersionRef.current = data.timestamp;
             await fetchSettings();
           }
         }
@@ -403,7 +404,7 @@ export function StorefrontSettingsProvider({ children }: { children: ReactNode }
       clearInterval(cacheVersionInterval);
       window.removeEventListener("focus", handleFocus);
     };
-  }, [flushSettingsQueue, lastCacheVersion]);
+  }, [flushSettingsQueue]);
 
   useEffect(() => {
     const onOnline = () => {
