@@ -33,4 +33,10 @@ export default defineConfig({
 
   // File types to support raw imports. Never add .css, .tsx, or .ts files to this.
   assetsInclude: ['**/*.svg', '**/*.csv'],
+
+  // Cho phép Railway/domain custom truy cập preview server (chặn 403 Host lạ)
+  preview: {
+    host: true,
+    allowedHosts: true,
+  },
 })
