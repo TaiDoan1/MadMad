@@ -126,7 +126,7 @@ export function ProductProvider({ children }: { children: ReactNode }) {
     try {
       const response = await fetch(`${API_URL}/products/${id}`, {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "x-admin-key": getAdminKey() },
         body: JSON.stringify(normalizedProduct),
       });
       if (response.ok) {
@@ -175,7 +175,7 @@ export function ProductProvider({ children }: { children: ReactNode }) {
         try {
           const response = await fetch(`${API_URL}/products`, {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: { "Content-Type": "application/json", "x-admin-key": getAdminKey() },
             body: JSON.stringify(newProduct),
           });
           if (response.ok) {
@@ -213,7 +213,10 @@ export function ProductProvider({ children }: { children: ReactNode }) {
         const oldProducts = [...products];
         setProducts((currentProducts) => currentProducts.filter((product) => product.id !== id));
         try {
-          const response = await fetch(`${API_URL}/products/${id}`, { method: "DELETE" });
+          const response = await fetch(`${API_URL}/products/${id}`, {
+            method: "DELETE",
+            headers: { "x-admin-key": getAdminKey() },
+          });
           if (response.ok) {
             showToast("Đã xóa sản phẩm thành công!", "success");
           } else {
