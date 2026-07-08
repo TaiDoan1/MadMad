@@ -21,11 +21,12 @@ function normalizeCoupons(input: unknown): Coupon[] {
     .filter((c) => c.code && c.discountAmount > 0);
 }
 
-export async function fetchCouponsFromServer(): Promise<Coupon[]> {
+export async function fetchCouponsFromServer(forceRefresh = false): Promise<Coupon[]> {
   if (typeof window === "undefined") return [];
 
-  // Return cached if still valid (5 min TTL)
-  if (cachedCoupons && Date.now() - cacheTimestamp < CACHE_TTL) {
+  // Return cached if still valid (5 min TTL) - bỏ qua cache nếu forceRefresh=true
+  // (vd: khi khách nhập mã không tìm thấy, luôn thử fetch mới trước khi báo "không hợp lệ")
+  if (!forceRefresh && cachedCoupons && Date.now() - cacheTimestamp < CACHE_TTL) {
     return cachedCoupons;
   }
 

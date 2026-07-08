@@ -36,7 +36,7 @@ interface CartContextValue {
   addToCart: (payload: AddCartItemPayload) => AddToCartResult;
   updateItemQuantity: (itemId: string, quantity: number) => void;
   removeFromCart: (itemId: string) => void;
-  applyCoupon: (code: string) => { success: boolean; message: string };
+  applyCoupon: (code: string) => Promise<{ success: boolean; message: string }>;
   clearCoupon: () => void;
   clearCart: () => void;
 }
@@ -262,12 +262,22 @@ export function CartProvider({ children }: { children: ReactNode }) {
       removeFromCart: (itemId) => {
         persist(cartItems.filter((item) => item.id !== itemId));
       },
-      applyCoupon: (code) => {
+      applyCoupon: async (code) => {
         const normalized = code.trim().toUpperCase();
         if (!normalized) return { success: false, message: "Vui lòng nhập mã giảm giá." };
-        const coupon = availableCoupons.find((item) => item.code === normalized);
+
+        let coupon = availableCoupons.find((item) => item.code === normalized);
+
+        // Nếu không thấy mã trong danh sách đang có (có thể do cache cũ/phiên mở lâu),
+        // thử fetch lại danh sách mới nhất từ server trước khi kết luận mã không hợp lệ
+        if (!coupon) {
+          const freshCoupons = await fetchCouponsFromServer(true);
+          setAvailableCoupons(freshCoupons);
+          coupon = freshCoupons.find((item) => item.code === normalized);
+        }
+
         if (!coupon) return { success: false, message: "Mã giảm giá không hợp lệ." };
-        
+
         if (coupon.usageLimit !== undefined && (coupon.usageCount ?? 0) >= coupon.usageLimit) {
           return { success: false, message: "Rất tiếc, mã giảm giá này đã hết lượt sử dụng." };
         }

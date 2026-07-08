@@ -192,8 +192,8 @@ export function CartPage() {
                         <button
                           key={coupon.code}
                           type="button"
-                          onClick={() => {
-                            const result = applyCoupon(coupon.code);
+                          onClick={async () => {
+                            const result = await applyCoupon(coupon.code);
                             showToast(result.message, result.success ? "success" : "error");
                           }}
                           className={`border px-3 py-1.5 text-xs font-bold uppercase tracking-wide transition-colors ${

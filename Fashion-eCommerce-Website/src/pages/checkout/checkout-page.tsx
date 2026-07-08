@@ -686,12 +686,12 @@ export function CheckoutPage() {
                       />
                       <button
                         type="button"
-                        onClick={() => {
+                        onClick={async () => {
                           if (!typedCoupon.trim()) {
                             showToast(t("Vui lòng nhập mã giảm giá!", "Please enter discount code!"), "warning");
                             return;
                           }
-                          const r = applyCoupon(typedCoupon.trim().toUpperCase());
+                          const r = await applyCoupon(typedCoupon.trim().toUpperCase());
                           showToast(r.message, r.success ? "success" : "error");
                           if (r.success) {
                             setTypedCoupon("");
@@ -712,8 +712,8 @@ export function CheckoutPage() {
                             <button
                                 key={coupon.code}
                                 type="button"
-                                onClick={() => {
-                                  const r = applyCoupon(coupon.code);
+                                onClick={async () => {
+                                  const r = await applyCoupon(coupon.code);
                                   showToast(r.message, r.success ? "success" : "error");
                                 }}
                                 className={`rounded-lg border px-2.5 py-1.5 text-[10px] font-black uppercase tracking-wider transition-all hover:scale-[1.02] active:scale-[0.98] ${
