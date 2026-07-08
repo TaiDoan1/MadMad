@@ -27,7 +27,7 @@ export function ImageUploadInput({
   className = "",
   disabled = false,
   acceptVideo = false,
-  maxDimension = 1200,
+  maxDimension = 1800,
 }: ImageUploadInputProps) {
   const { showToast } = useToast();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -103,8 +103,8 @@ export function ImageUploadInput({
 
         ctx.drawImage(img, 0, 0, width, height);
 
-        // Nén thành WebP (hoặc JPEG) với chất lượng 80% để giảm thiểu dung lượng tối đa
-        const compressedDataUrl = canvas.toDataURL("image/webp", 0.8);
+        // Nén thành WebP chất lượng cao (92%) - giữ chi tiết vải/đường may, vẫn nhẹ hơn ảnh gốc nhiều
+        const compressedDataUrl = canvas.toDataURL("image/webp", 0.92);
         onChange(compressedDataUrl);
       };
       img.src = e.target?.result as string;
