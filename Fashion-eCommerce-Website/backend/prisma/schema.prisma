@@ -131,6 +131,7 @@ model StorefrontSetting {
   heroContentAlign         String? @default("center")
   heroFontStyle            String? @default("default")
   popularCategoryImagesJson      String? @default("[]")
+  topBannerImagesJson            String? @default("[]")
   bestSellerProductIdsJson       String? @default("[]")
   bestSellerImageOverridesJson   String? @default("{}")
   colorHexMapJson                String? @default("{}")

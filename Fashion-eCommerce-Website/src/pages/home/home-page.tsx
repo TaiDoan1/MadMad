@@ -83,6 +83,12 @@ export function HomePage() {
     [settings.popularCategoryImages],
   );
 
+  // ── Top banner images (ngay dưới Marquee) ──────────────────────────────────
+  const topBannerImages = useMemo(
+    () => (settings.topBannerImages ?? []).map((v) => v.trim()).filter(Boolean),
+    [settings.topBannerImages],
+  );
+
   // ── Countdown ─────────────────────────────────────────────────────────────
   const dropDate = useMemo(() => new Date("2026-07-01T00:00:00").getTime(), []);
   const timeLeft = useCountdown(dropDate);
@@ -201,14 +207,14 @@ export function HomePage() {
         ))}
       </div>
 
-      {/* ═══ POPULAR CATEGORY IMAGES (admin-configurable banner, ngay dưới Marquee) ═══ */}
-      {popularCategoryImages.length > 0 && (
+      {/* ═══ TOP BANNER IMAGES (admin-configurable, ngay dưới Marquee) ═══════ */}
+      {topBannerImages.length > 0 && (
         <section className="bg-background">
-          {popularCategoryImages.map((imageUrl, index) => (
+          {topBannerImages.map((imageUrl, index) => (
             <ScrollReveal key={`${imageUrl}-${index}`} className="w-full">
               <ImageWithFallback
                 src={imageUrl}
-                alt={`Featured ${index + 1}`}
+                alt={`Banner ${index + 1}`}
                 className="h-auto w-full object-contain"
               />
             </ScrollReveal>
@@ -253,6 +259,21 @@ export function HomePage() {
           </div>
         </div>
       </section>
+
+      {/* ═══ POPULAR CATEGORY IMAGES (admin-configurable banner, sau Nổi Bật) ═══ */}
+      {popularCategoryImages.length > 0 && (
+        <section className="bg-background">
+          {popularCategoryImages.map((imageUrl, index) => (
+            <ScrollReveal key={`${imageUrl}-${index}`} className="w-full">
+              <ImageWithFallback
+                src={imageUrl}
+                alt={`Featured ${index + 1}`}
+                className="h-auto w-full object-contain"
+              />
+            </ScrollReveal>
+          ))}
+        </section>
+      )}
 
       {/* ═══ SLOGAN ═════════════════════════════════════════════════════════ */}
       <section className="flex min-h-[22vh] items-center justify-center bg-white py-10">

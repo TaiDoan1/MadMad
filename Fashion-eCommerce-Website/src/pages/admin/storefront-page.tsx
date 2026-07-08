@@ -32,6 +32,7 @@ export function AdminStorefrontPage() {
   
   const heroImageDrafts = settings.heroImages ?? [];
   const popularCategoryImageDrafts = settings.popularCategoryImages ?? [];
+  const topBannerImageDrafts = settings.topBannerImages ?? [];
   const instagramImageDrafts = settings.instagramImages ?? [];
   
   const heroImages = heroImageDrafts.map((value) => value.trim()).filter(Boolean);
@@ -442,47 +443,95 @@ export function AdminStorefrontPage() {
 
           {/* HOME GALLERY SETTINGS */}
           {activeTab === "gallery" && (
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="font-bold text-lg text-foreground">Ảnh Gallery Trang Chủ</h3>
-                <button 
-                  type="button" 
-                  onClick={() => updateSettings({ popularCategoryImages: [...popularCategoryImageDrafts, ""] })} 
-                  className="text-xs border border-border rounded px-2.5 py-1 bg-white hover:bg-muted transition-colors"
-                >
-                  + Thêm ảnh Gallery
-                </button>
-              </div>
-              <p className="text-xs text-muted-foreground">Các ảnh banner lớn toàn màn hình hiển thị giữa trang chủ. Khuyến nghị tỷ lệ 16:9 (1600×900px).</p>
-              
-              <div className="space-y-3 max-h-96 overflow-y-auto pr-1">
-                {popularCategoryImageDrafts.map((url, i) => (
-                  <div key={i} className="flex gap-2 items-start border border-border rounded-lg p-2 bg-stone-50">
-                    <div className="flex-shrink-0 w-12 h-8 rounded border border-border overflow-hidden bg-muted">
-                      {url.trim() && <img src={url.trim()} alt="" className="w-full h-full object-cover" />}
+            <div className="space-y-8">
+              {/* Banner trên - ngay dưới Marquee */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="font-bold text-lg text-foreground">Banner Trên (dưới dòng chạy Marquee)</h3>
+                  <button
+                    type="button"
+                    onClick={() => updateSettings({ topBannerImages: [...topBannerImageDrafts, ""] })}
+                    className="text-xs border border-border rounded px-2.5 py-1 bg-white hover:bg-muted transition-colors"
+                  >
+                    + Thêm ảnh
+                  </button>
+                </div>
+                <p className="text-xs text-muted-foreground">Ảnh banner hiển thị ngay sau dòng chữ chạy "MADMAD MAKE YOUR MARK", trước phần Nổi Bật. Khuyến nghị tỷ lệ 16:9 (1600×900px).</p>
+
+                <div className="space-y-3 max-h-96 overflow-y-auto pr-1">
+                  {topBannerImageDrafts.map((url, i) => (
+                    <div key={i} className="flex gap-2 items-start border border-border rounded-lg p-2 bg-stone-50">
+                      <div className="flex-shrink-0 w-12 h-8 rounded border border-border overflow-hidden bg-muted">
+                        {url.trim() && <img src={url.trim()} alt="" className="w-full h-full object-cover" />}
+                      </div>
+                      <ImageUploadInput
+                        value={url}
+                        onChange={(v) => {
+                          const n = [...topBannerImageDrafts];
+                          n[i] = v;
+                          updateSettings({ topBannerImages: n });
+                        }}
+                        className="flex-1"
+                        placeholder={`Đường dẫn ảnh banner trên #${i + 1}`}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => updateSettings({ topBannerImages: topBannerImageDrafts.filter((_, j) => j !== i) })}
+                        className="px-2 py-1.5 text-sm text-red-500 hover:text-red-700 transition-colors"
+                      >
+                        ✕
+                      </button>
                     </div>
-                    <ImageUploadInput 
-                      value={url} 
-                      onChange={(v) => {
-                        const n = [...popularCategoryImageDrafts];
-                        n[i] = v;
-                        updateSettings({ popularCategoryImages: n });
-                      }} 
-                      className="flex-1" 
-                      placeholder={`Đường dẫn ảnh gallery #${i + 1}`} 
-                    />
-                    <button 
-                      type="button" 
-                      onClick={() => updateSettings({ popularCategoryImages: popularCategoryImageDrafts.filter((_, j) => j !== i) })} 
-                      className="px-2 py-1.5 text-sm text-red-500 hover:text-red-700 transition-colors"
-                    >
-                      ✕
-                    </button>
-                  </div>
-                ))}
-                {popularCategoryImageDrafts.length === 0 && (
-                  <p className="text-xs text-muted-foreground italic text-center py-6">Chưa có ảnh gallery nào được định cấu hình.</p>
-                )}
+                  ))}
+                  {topBannerImageDrafts.length === 0 && (
+                    <p className="text-xs text-muted-foreground italic text-center py-6">Chưa có ảnh banner trên nào được định cấu hình.</p>
+                  )}
+                </div>
+              </div>
+
+              {/* Banner dưới - sau phần Nổi Bật (Gallery gốc) */}
+              <div className="space-y-4 border-t border-border pt-6">
+                <div className="flex items-center justify-between">
+                  <h3 className="font-bold text-lg text-foreground">Banner Dưới (sau phần Nổi Bật)</h3>
+                  <button
+                    type="button"
+                    onClick={() => updateSettings({ popularCategoryImages: [...popularCategoryImageDrafts, ""] })}
+                    className="text-xs border border-border rounded px-2.5 py-1 bg-white hover:bg-muted transition-colors"
+                  >
+                    + Thêm ảnh Gallery
+                  </button>
+                </div>
+                <p className="text-xs text-muted-foreground">Các ảnh banner lớn toàn màn hình hiển thị giữa trang chủ, sau phần sản phẩm Nổi Bật. Khuyến nghị tỷ lệ 16:9 (1600×900px).</p>
+
+                <div className="space-y-3 max-h-96 overflow-y-auto pr-1">
+                  {popularCategoryImageDrafts.map((url, i) => (
+                    <div key={i} className="flex gap-2 items-start border border-border rounded-lg p-2 bg-stone-50">
+                      <div className="flex-shrink-0 w-12 h-8 rounded border border-border overflow-hidden bg-muted">
+                        {url.trim() && <img src={url.trim()} alt="" className="w-full h-full object-cover" />}
+                      </div>
+                      <ImageUploadInput
+                        value={url}
+                        onChange={(v) => {
+                          const n = [...popularCategoryImageDrafts];
+                          n[i] = v;
+                          updateSettings({ popularCategoryImages: n });
+                        }}
+                        className="flex-1"
+                        placeholder={`Đường dẫn ảnh gallery #${i + 1}`}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => updateSettings({ popularCategoryImages: popularCategoryImageDrafts.filter((_, j) => j !== i) })}
+                        className="px-2 py-1.5 text-sm text-red-500 hover:text-red-700 transition-colors"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ))}
+                  {popularCategoryImageDrafts.length === 0 && (
+                    <p className="text-xs text-muted-foreground italic text-center py-6">Chưa có ảnh gallery nào được định cấu hình.</p>
+                  )}
+                </div>
               </div>
             </div>
           )}

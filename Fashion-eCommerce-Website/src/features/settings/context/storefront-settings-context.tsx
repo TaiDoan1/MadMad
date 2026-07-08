@@ -35,6 +35,7 @@ export const DEFAULT_STOREFRONT_SETTINGS: StorefrontSettings = {
   popularCategoryImages: [
     "/assets/categories/anh-pho-bien.jpg",
   ],
+  topBannerImages: [],
   bestSellerProductIds: [1, 2, 3, 4],
   bestSellerImageOverrides: {},
   productOptions: {
@@ -210,6 +211,10 @@ function readStoredSettings(): StorefrontSettings {
         Array.isArray(parsed.popularCategoryImages)
           ? parsed.popularCategoryImages.map((value) => String(value).trim()).filter(Boolean)
           : DEFAULT_STOREFRONT_SETTINGS.popularCategoryImages,
+      topBannerImages:
+        Array.isArray(parsed.topBannerImages)
+          ? parsed.topBannerImages.map((value) => String(value).trim()).filter(Boolean)
+          : DEFAULT_STOREFRONT_SETTINGS.topBannerImages,
       instagramImages:
         Array.isArray(parsed.instagramImages)
           ? parsed.instagramImages.map((value) => String(value).trim()).filter(Boolean)

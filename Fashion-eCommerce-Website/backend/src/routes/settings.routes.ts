@@ -78,6 +78,7 @@ router.get("/", async (req, res, next) => {
     // 🖼️ Parse hero banner + danh mục phổ biến + best seller (khách hàng cũng cần thấy)
     const heroImages = setting.heroImagesJson ? JSON.parse(setting.heroImagesJson) : [];
     const popularCategoryImages = setting.popularCategoryImagesJson ? JSON.parse(setting.popularCategoryImagesJson) : [];
+    const topBannerImages = setting.topBannerImagesJson ? JSON.parse(setting.topBannerImagesJson) : [];
     const bestSellerProductIds = setting.bestSellerProductIdsJson ? JSON.parse(setting.bestSellerProductIdsJson) : [];
     const bestSellerImageOverrides = setting.bestSellerImageOverridesJson ? JSON.parse(setting.bestSellerImageOverridesJson) : {};
     const colorHexMap = setting.colorHexMapJson ? JSON.parse(setting.colorHexMapJson) : {};
@@ -109,6 +110,7 @@ router.get("/", async (req, res, next) => {
         sizeGuide,
         heroImages,
         popularCategoryImages,
+        topBannerImages,
         bestSellerProductIds,
         bestSellerImageOverrides,
         colorHexMap,
@@ -152,6 +154,7 @@ router.get("/", async (req, res, next) => {
         heroContentAlign: setting.heroContentAlign,
         heroFontStyle: setting.heroFontStyle,
         popularCategoryImages,
+        topBannerImages,
         bestSellerProductIds,
         bestSellerImageOverrides,
         colorHexMap,
@@ -223,6 +226,7 @@ router.put("/", requireAdminAuth, async (req, res, next) => {
       heroContentAlign,
       heroFontStyle,
       popularCategoryImages,
+      topBannerImages,
       bestSellerProductIds,
       bestSellerImageOverrides,
       colorHexMap,
@@ -315,6 +319,8 @@ router.put("/", requireAdminAuth, async (req, res, next) => {
       uploadedHeroImages !== undefined ? JSON.stringify(uploadedHeroImages) : undefined;
     const popularCategoryImagesJson =
       popularCategoryImages !== undefined ? JSON.stringify(Array.isArray(popularCategoryImages) ? popularCategoryImages : []) : undefined;
+    const topBannerImagesJson =
+      topBannerImages !== undefined ? JSON.stringify(Array.isArray(topBannerImages) ? topBannerImages : []) : undefined;
     const bestSellerProductIdsJson =
       bestSellerProductIds !== undefined ? JSON.stringify(Array.isArray(bestSellerProductIds) ? bestSellerProductIds : []) : undefined;
     const bestSellerImageOverridesJson =
@@ -363,6 +369,7 @@ router.put("/", requireAdminAuth, async (req, res, next) => {
         heroContentAlign,
         heroFontStyle,
         popularCategoryImagesJson,
+        topBannerImagesJson,
         bestSellerProductIdsJson,
         bestSellerImageOverridesJson,
         colorHexMapJson,
@@ -458,6 +465,7 @@ router.put("/", requireAdminAuth, async (req, res, next) => {
         heroContentAlign: heroContentAlign || "center",
         heroFontStyle: heroFontStyle || "default",
         popularCategoryImagesJson: popularCategoryImagesJson ?? "[]",
+        topBannerImagesJson: topBannerImagesJson ?? "[]",
         bestSellerProductIdsJson: bestSellerProductIdsJson ?? "[]",
         bestSellerImageOverridesJson: bestSellerImageOverridesJson ?? "{}",
         colorHexMapJson: colorHexMapJson ?? "{}",
@@ -536,6 +544,7 @@ router.put("/", requireAdminAuth, async (req, res, next) => {
       sizeGuide: updatedSetting.sizeGuideJson ? JSON.parse(updatedSetting.sizeGuideJson) : {},
       heroImages: updatedSetting.heroImagesJson ? JSON.parse(updatedSetting.heroImagesJson) : [],
       popularCategoryImages: updatedSetting.popularCategoryImagesJson ? JSON.parse(updatedSetting.popularCategoryImagesJson) : [],
+      topBannerImages: updatedSetting.topBannerImagesJson ? JSON.parse(updatedSetting.topBannerImagesJson) : [],
       bestSellerProductIds: updatedSetting.bestSellerProductIdsJson ? JSON.parse(updatedSetting.bestSellerProductIdsJson) : [],
       bestSellerImageOverrides: updatedSetting.bestSellerImageOverridesJson ? JSON.parse(updatedSetting.bestSellerImageOverridesJson) : {},
       colorHexMap: updatedSetting.colorHexMapJson ? JSON.parse(updatedSetting.colorHexMapJson) : {},
