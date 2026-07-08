@@ -181,6 +181,7 @@ router.get("/", async (req, res, next) => {
         productOptions,
         membershipTiers,
         sizeGuide,
+        coupons,
       };
     }
 
