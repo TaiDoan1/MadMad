@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useOrders } from "@/features/orders/context/order-context";
 import { useProducts } from "@/features/products/context/product-context";
-import { Search, MapPin, Truck, ShieldCheck, DollarSign, Calendar, Clock, Lock, XCircle, MessageCircle, Mail, AlertTriangle } from "lucide-react";
+import { Search, MapPin, Truck, ShieldCheck, DollarSign, Calendar, Clock, Lock, MessageCircle, Mail, AlertTriangle } from "lucide-react";
 import { API_URL, GOOGLE_CLIENT_ID } from "@/config/api";
 import { useLanguage } from "@/features/settings/context/language-context";
 import { resolveColorCodedItemImage } from "@/utils/product-image";
@@ -155,30 +155,6 @@ export function TrackOrderPage() {
     }
   };
 
-  // Thực hiện hủy đơn hàng vãng lai (endpoint public riêng, xác thực bằng SĐT đơn hàng)
-  const handleCancelOrder = (orderId: number, customerPhone: string) => {
-    if (window.confirm(t("Bạn có chắc chắn muốn hủy đơn hàng này không? Hành động này không thể hoàn tác!", "Are you sure you want to cancel this order? This action cannot be undone!"))) {
-      fetch(`${API_URL}/orders/${orderId}/customer-cancel`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ customerPhone }),
-      })
-        .then(res => {
-          if (res.ok) {
-            alert(t("Đã gửi yêu cầu hủy đơn hàng thành công!", "Cancellation request submitted successfully!"));
-            if (googleUser) {
-              setGoogleOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: "cancelled" } : o));
-            } else {
-              setResults(prev => prev.map(o => o.id === orderId ? { ...o, status: "cancelled" } : o));
-            }
-          } else {
-            alert(t("Sự cố xảy ra khi gửi yêu cầu hủy đơn.", "Failed to submit cancellation request."));
-          }
-        })
-        .catch(() => alert(t("Lỗi kết nối máy chủ.", "Server connection error.")));
-    }
-  };
-
   // Determine which list to render
   const renderedOrders = googleUser ? googleOrders : results;
 
@@ -309,10 +285,6 @@ export function TrackOrderPage() {
               const currentStep = getStatusStep(order.status);
               const progressWidth = `${((currentStep - 1) / 3) * 100}%`;
 
-              // Đơn hàng trong vòng 5 phút đầu
-              const createdTime = new Date(order.createdAt).getTime();
-              const diffMs = Date.now() - createdTime;
-              const isWithin5Min = diffMs >= 0 && diffMs <= 5 * 60 * 1000;
               const isCancelled = order.status === "cancelled";
               const isCompletedOrCancelled = order.status === "completed" || order.status === "cancelled";
 
@@ -483,19 +455,6 @@ export function TrackOrderPage() {
                           <div className="text-[10px] text-center font-bold text-green-700 uppercase py-2 bg-green-50 border border-green-200 rounded-lg">
                             {t("Đơn hàng đã giao thành công", "Order has been delivered successfully")}
                           </div>
-                        ) : isWithin5Min ? (
-                          <div className="space-y-2">
-                            <button
-                              onClick={() => handleCancelOrder(order.id, order.customerPhone)}
-                              className="w-full bg-red-600 text-white hover:bg-red-700 py-3 text-[10px] font-extrabold tracking-widest uppercase rounded-lg transition-all flex items-center justify-center gap-1.5 shadow-md shadow-red-600/10"
-                            >
-                              <XCircle className="h-3.5 w-3.5" />
-                              {t("Hủy Đơn Hàng Tự Động (Còn 5 Phút)", "Cancel Order Automatically (5 Mins Remaining)")}
-                            </button>
-                            <p className="text-[9px] text-black/40 text-center leading-relaxed">
-                              {t("* Bạn có thể tự hủy đơn hàng trong vòng 5 phút đầu kể từ khi đặt để điều chỉnh lại thông tin hoặc đặt đơn mới.", "* You can cancel the order within the first 5 minutes to adjust info or place a new one.")}
-                            </p>
-                          </div>
                         ) : (
                           <div className="space-y-2">
                             <div className="flex gap-2">
@@ -519,7 +478,7 @@ export function TrackOrderPage() {
                               </a>
                             </div>
                             <p className="text-[9px] text-red-600/85 font-bold text-center leading-relaxed">
-                              {t("* Đã quá 5 phút để tự hủy. Vui lòng liên hệ CSKH của MADMAD để được hỗ trợ điều chỉnh/hủy đơn.", "* Limit of 5 minutes exceeded. Please contact MADMAD Support for assistance.")}
+                              {t("* Vui lòng liên hệ CSKH của MADMAD để được hỗ trợ điều chỉnh/hủy đơn.", "* Please contact MADMAD Support for order adjustment/cancellation assistance.")}
                             </p>
                           </div>
                         )}
