@@ -201,6 +201,21 @@ export function HomePage() {
         ))}
       </div>
 
+      {/* ═══ POPULAR CATEGORY IMAGES (admin-configurable banner, ngay dưới Marquee) ═══ */}
+      {popularCategoryImages.length > 0 && (
+        <section className="bg-background">
+          {popularCategoryImages.map((imageUrl, index) => (
+            <ScrollReveal key={`${imageUrl}-${index}`} className="w-full">
+              <ImageWithFallback
+                src={imageUrl}
+                alt={`Featured ${index + 1}`}
+                className="h-auto w-full object-contain"
+              />
+            </ScrollReveal>
+          ))}
+        </section>
+      )}
+
       {/* ═══ FEATURED PRODUCTS — 3-col Protect.LDN grid ════════════════════ */}
       <section className="bg-white py-14 sm:py-20">
         <div className="px-6 sm:px-10 lg:px-16">
@@ -238,21 +253,6 @@ export function HomePage() {
           </div>
         </div>
       </section>
-
-      {/* ═══ POPULAR CATEGORY IMAGES (admin-configurable) ═══════════════════ */}
-      {popularCategoryImages.length > 0 && (
-        <section className="bg-background">
-          {popularCategoryImages.map((imageUrl, index) => (
-            <ScrollReveal key={`${imageUrl}-${index}`} className="w-full">
-              <ImageWithFallback
-                src={imageUrl}
-                alt={`Featured ${index + 1}`}
-                className="h-auto w-full object-contain"
-              />
-            </ScrollReveal>
-          ))}
-        </section>
-      )}
 
       {/* ═══ SLOGAN ═════════════════════════════════════════════════════════ */}
       <section className="flex min-h-[22vh] items-center justify-center bg-white py-10">
