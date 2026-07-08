@@ -110,6 +110,10 @@ export const DEFAULT_STOREFRONT_SETTINGS: StorefrontSettings = {
   intlConversionFeePercent: 3.5,
   intlShippingFee: 250000,
   intlMarkupPercent: 10,
+
+  // 🐭 Logo chạy vòng quanh viền màn hình (easter egg)
+  borderRunnerHintText: "Hãy chạm vào tôi đi nè.",
+  borderRunnerHintIntervalSec: 5,
 };
 
 interface StorefrontSettingsContextValue {
@@ -305,6 +309,11 @@ function readStoredSettings(): StorefrontSettings {
       membershipTiers:
         Array.isArray(parsed.membershipTiers) ? parsed.membershipTiers : DEFAULT_STOREFRONT_SETTINGS.membershipTiers,
       sizeGuide: normalizeSizeGuideConfig(parsed.sizeGuide ?? DEFAULT_STOREFRONT_SETTINGS.sizeGuide),
+
+      borderRunnerHintText:
+        typeof parsed.borderRunnerHintText === "string" ? parsed.borderRunnerHintText : DEFAULT_STOREFRONT_SETTINGS.borderRunnerHintText,
+      borderRunnerHintIntervalSec:
+        typeof parsed.borderRunnerHintIntervalSec === "number" ? parsed.borderRunnerHintIntervalSec : DEFAULT_STOREFRONT_SETTINGS.borderRunnerHintIntervalSec,
     };
   } catch {
     return DEFAULT_STOREFRONT_SETTINGS;

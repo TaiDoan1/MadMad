@@ -86,4 +86,8 @@ export interface StorefrontSettings {
   intlConversionFeePercent?: number;
   intlShippingFee?: number;
   intlMarkupPercent?: number;
+
+  // 🐭 Logo chạy vòng quanh viền màn hình (easter egg)
+  borderRunnerHintText?: string;
+  borderRunnerHintIntervalSec?: number;
 }

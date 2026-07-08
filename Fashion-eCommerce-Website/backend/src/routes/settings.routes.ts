@@ -185,6 +185,10 @@ router.get("/", async (req, res, next) => {
         membershipTiers,
         sizeGuide,
         coupons,
+
+        // 🐭 Logo chạy vòng quanh viền màn hình (easter egg)
+        borderRunnerHintText: setting.borderRunnerHintText ?? undefined,
+        borderRunnerHintIntervalSec: setting.borderRunnerHintIntervalSec,
       };
     }
 
@@ -293,6 +297,10 @@ router.put("/", requireAdminAuth, async (req, res, next) => {
 
       // 📏 Size guide (gợi ý size)
       sizeGuide,
+
+      // 🐭 Logo chạy vòng quanh viền màn hình (easter egg)
+      borderRunnerHintText,
+      borderRunnerHintIntervalSec,
     } = req.body;
 
     console.log("📥 [PUT /settings] Received request to update settings:");
@@ -436,6 +444,10 @@ router.put("/", requireAdminAuth, async (req, res, next) => {
 
         // 📏 Size guide
         sizeGuideJson,
+
+        // 🐭 Logo chạy vòng quanh viền màn hình (easter egg)
+        borderRunnerHintText,
+        borderRunnerHintIntervalSec: borderRunnerHintIntervalSec !== undefined ? Number(borderRunnerHintIntervalSec) : undefined,
       },
       create: {
         id: 1,
@@ -532,6 +544,10 @@ router.put("/", requireAdminAuth, async (req, res, next) => {
 
         // 📏 Size guide
         sizeGuideJson: sizeGuideJson ?? "{}",
+
+        // 🐭 Logo chạy vòng quanh viền màn hình (easter egg)
+        borderRunnerHintText: borderRunnerHintText || "Hãy chạm vào tôi đi nè.",
+        borderRunnerHintIntervalSec: borderRunnerHintIntervalSec !== undefined ? Number(borderRunnerHintIntervalSec) : 5,
       }
     });
 

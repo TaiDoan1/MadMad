@@ -38,7 +38,7 @@ export function AdminStorefrontPage() {
   const heroImages = heroImageDrafts.map((value) => value.trim()).filter(Boolean);
   const previewHeroImages = [settings.heroImage.trim(), ...heroImages].filter(Boolean);
   const [previewHeroIndex, setPreviewHeroIndex] = useState(0);
-  const [activeTab, setActiveTab] = useState<"hero" | "bestsellers" | "gallery" | "instagram">("hero");
+  const [activeTab, setActiveTab] = useState<"hero" | "bestsellers" | "gallery" | "instagram" | "easter-egg">("hero");
   
   const goToPrevPreviewHero = () => {
     if (previewHeroImages.length <= 1) return;
@@ -170,17 +170,17 @@ export function AdminStorefrontPage() {
 
       <div className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
         <div className="flex min-w-max gap-1 border-b border-border">
-        {(["hero", "bestsellers", "gallery", "instagram"] as const).map((tab) => (
-          <button 
-            key={tab} 
-            onClick={() => setActiveTab(tab)} 
+        {(["hero", "bestsellers", "gallery", "instagram", "easter-egg"] as const).map((tab) => (
+          <button
+            key={tab}
+            onClick={() => setActiveTab(tab)}
             className={`shrink-0 px-3 py-2.5 text-sm capitalize transition-all duration-200 border-b-2 sm:px-4 ${
-              activeTab === tab 
-                ? "border-black font-bold text-black" 
+              activeTab === tab
+                ? "border-black font-bold text-black"
                 : "border-transparent text-muted-foreground hover:text-foreground"
             }`}
           >
-            {tab === "hero" ? "🖼 Banner" : tab === "bestsellers" ? "⭐ Nổi bật" : tab === "gallery" ? "🗂 Gallery" : "📷 Instagram"}
+            {tab === "hero" ? "🖼 Banner" : tab === "bestsellers" ? "⭐ Nổi bật" : tab === "gallery" ? "🗂 Gallery" : tab === "instagram" ? "📷 Instagram" : "🐭 Easter Egg"}
           </button>
         ))}
         </div>
@@ -582,6 +582,43 @@ export function AdminStorefrontPage() {
                 {instagramImageDrafts.length === 0 && (
                   <p className="text-xs text-muted-foreground italic text-center py-6">Đang sử dụng luồng 5 ảnh mặc định của MADMAD Studio.</p>
                 )}
+              </div>
+            </div>
+          )}
+
+          {/* BORDER RUNNER EASTER EGG SETTINGS */}
+          {activeTab === "easter-egg" && (
+            <div className="space-y-4">
+              <div>
+                <h3 className="font-bold text-lg text-foreground">🐭 Logo chạy vòng quanh màn hình</h3>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Khi chưa có khách nào chạm vào logo, nó sẽ tự gõ chữ mời gọi bên dưới, lặp lại theo chu kỳ cho đến khi có người bấm.
+                </p>
+              </div>
+
+              <div>
+                <label className="mb-1 block text-xs font-bold uppercase tracking-wider text-muted-foreground">Nội dung chữ mời gọi</label>
+                <input
+                  value={settings.borderRunnerHintText ?? ""}
+                  onChange={(e) => updateSettings({ borderRunnerHintText: e.target.value })}
+                  placeholder="Hãy chạm vào tôi đi nè."
+                  className="w-full rounded border border-border px-3 py-1.5 text-sm focus:ring-1 focus:ring-black outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="mb-1 block text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                  Chu kỳ nhắc lại (giây) — hiện tại: {settings.borderRunnerHintIntervalSec ?? 5}s
+                </label>
+                <input
+                  type="number"
+                  min={2}
+                  max={60}
+                  value={settings.borderRunnerHintIntervalSec ?? 5}
+                  onChange={(e) => updateSettings({ borderRunnerHintIntervalSec: Math.max(2, Number(e.target.value) || 5) })}
+                  className="w-full rounded border border-border px-3 py-1.5 text-sm focus:ring-1 focus:ring-black outline-none"
+                />
+                <p className="mt-1 text-[11px] text-muted-foreground">Thời gian nghỉ giữa các lần nhắc (có dao động ngẫu nhiên ±1 giây cho tự nhiên).</p>
               </div>
             </div>
           )}

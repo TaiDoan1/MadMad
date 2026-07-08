@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 
 import runnerIcon from "@/imports/logo-m-drip.png";
+import { useStorefrontSettings } from "@/features/settings/context/storefront-settings-context";
 
 const PHRASES = [
   "Ê, mua đồ chưa? 👀",
@@ -11,22 +12,22 @@ const PHRASES = [
   "Đẹp trai như mình nè 😎",
 ];
 
-const HINT_TEXT = "Hãy chạm vào tôi đi nè.";
+const DEFAULT_HINT_TEXT = "Hãy chạm vào tôi đi nè.";
+const DEFAULT_HINT_INTERVAL_SEC = 5;
 const HINT_DELAY_MS = 1800;
 const HINT_TYPE_SPEED_MS = 60;
 const HINT_HOLD_MS = 3000;
-const HINT_REPEAT_MIN_MS = 4000;
-const HINT_REPEAT_MAX_MS = 6000;
-
-function randomRepeatGap() {
-  return HINT_REPEAT_MIN_MS + Math.random() * (HINT_REPEAT_MAX_MS - HINT_REPEAT_MIN_MS);
-}
 
 function playChime() {
   try {
     const AudioContextClass =
       window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
     const ctx = new AudioContextClass();
+    // iOS Safari (và một số trình duyệt di động) tạo AudioContext ở trạng thái "suspended" —
+    // phải resume() tường minh trong cùng lượt chạm thì mới thực sự phát được âm thanh.
+    if (ctx.state === "suspended") {
+      void ctx.resume();
+    }
     const notes = [523.25, 659.25, 783.99];
 
     notes.forEach((freq, i) => {
@@ -67,9 +68,16 @@ function computePlacement(rect: DOMRect): BubblePlacement {
 /**
  * Logo MADMAD nhỏ chạy vòng quanh viền màn hình cho vui mắt 🐱
  * Cố định theo viewport (không cuộn theo trang). Nhấn/chạm vào sẽ phát tiếng chime + hiện bong bóng thoại.
- * Khi chưa ai tương tác, tự gõ chữ mời gọi "Hãy chạm vào tôi đi nè." một lần.
+ * Khi chưa ai tương tác, tự gõ chữ mời gọi (cấu hình được trong Admin) lặp lại theo chu kỳ.
  */
 export function BorderRunner() {
+  const { settings } = useStorefrontSettings();
+  const hintText = settings.borderRunnerHintText?.trim() || DEFAULT_HINT_TEXT;
+  const intervalSec =
+    settings.borderRunnerHintIntervalSec && settings.borderRunnerHintIntervalSec > 0
+      ? settings.borderRunnerHintIntervalSec
+      : DEFAULT_HINT_INTERVAL_SEC;
+
   const buttonRef = useRef<HTMLButtonElement>(null);
   const [bubble, setBubble] = useState<string | null>(null);
   const [placement, setPlacement] = useState<BubblePlacement>({ vertical: "above", horizontal: "left" });
@@ -81,6 +89,11 @@ export function BorderRunner() {
   const hintTypeIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
+    const repeatBaseMs = Math.max(1, intervalSec) * 1000;
+    const repeatMinMs = Math.max(1000, repeatBaseMs - 1000);
+    const repeatMaxMs = repeatBaseMs + 1000;
+    const randomRepeatGap = () => repeatMinMs + Math.random() * (repeatMaxMs - repeatMinMs);
+
     const clearHintTimers = () => {
       if (hintTimerRef.current) clearTimeout(hintTimerRef.current);
       if (hintTypeIntervalRef.current) clearInterval(hintTypeIntervalRef.current);
@@ -98,8 +111,8 @@ export function BorderRunner() {
         let charIndex = 0;
         hintTypeIntervalRef.current = setInterval(() => {
           charIndex += 1;
-          setHintTyped(HINT_TEXT.slice(0, charIndex));
-          if (charIndex >= HINT_TEXT.length) {
+          setHintTyped(hintText.slice(0, charIndex));
+          if (charIndex >= hintText.length) {
             if (hintTypeIntervalRef.current) clearInterval(hintTypeIntervalRef.current);
             hintTimerRef.current = setTimeout(() => {
               if (hasInteractedRef.current) return;
@@ -114,7 +127,7 @@ export function BorderRunner() {
     scheduleHintCycle(HINT_DELAY_MS);
 
     return clearHintTimers;
-  }, []);
+  }, [hintText, intervalSec]);
 
   const handleActivate = (event: React.MouseEvent<HTMLButtonElement>) => {
     hasInteractedRef.current = true;

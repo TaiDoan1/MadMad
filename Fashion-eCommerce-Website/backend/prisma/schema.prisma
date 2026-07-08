@@ -201,6 +201,10 @@ model StorefrontSetting {
 
   // 🏪 Thông tin cửa hàng bổ sung
   storeName                String? @default("MADMAD Studio")
+
+  // 🐭 Logo chạy vòng quanh viền màn hình (easter egg) — nội dung + nhịp nhắc
+  borderRunnerHintText         String? @default("Hãy chạm vào tôi đi nè.")
+  borderRunnerHintIntervalSec  Int?    @default(5)
 }
 
 // 🎁 Bảng Tặng KOL/KOC (Marketing Gift)
