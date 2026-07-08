@@ -18,6 +18,18 @@ const HINT_DELAY_MS = 1800;
 const HINT_TYPE_SPEED_MS = 60;
 const HINT_HOLD_MS = 3000;
 
+// Bấm dồn dập liên tục (trong STREAK_RESET_MS) sẽ leo thang qua các câu phản ứng này,
+// thay vì random đều — càng bấm nhanh càng "cà khịa" hơn.
+const STREAK_RESET_MS = 1200;
+const ESCALATING_PHRASES = [
+  "Nữa hả? 😳",
+  "Bấm gì dữ vậy 😅",
+  "Từ từ thôi mà!!",
+  "Thôi nha!! 😩",
+  "Được rồi được rồi 😆",
+  "Tay bạn khỏe thiệt đó 💪",
+];
+
 // Safari (đặc biệt iOS) giới hạn số lượng AudioContext cùng lúc và xử lý close() không ổn định —
 // tạo mới + đóng liên tục mỗi lần bấm dễ khiến các lần bấm sau bị câm tiếng. Dùng chung 1 context,
 // không bao giờ đóng, chỉ resume() lại mỗi lần cần phát.
@@ -35,7 +47,7 @@ function getSharedAudioContext(): AudioContext | null {
   }
 }
 
-function playChime() {
+function playChime(pitchMultiplier = 1) {
   const ctx = getSharedAudioContext();
   if (!ctx) return;
 
@@ -46,7 +58,7 @@ function playChime() {
       void ctx.resume();
     }
 
-    const notes = [523.25, 659.25, 783.99];
+    const notes = [523.25 * pitchMultiplier, 659.25 * pitchMultiplier, 783.99 * pitchMultiplier];
 
     notes.forEach((freq, i) => {
       const osc = ctx.createOscillator();
@@ -106,6 +118,7 @@ export function BorderRunner() {
   const hasInteractedRef = useRef(false);
   const hintTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const hintTypeIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const streakRef = useRef({ count: 0, lastClickAt: 0 });
 
   useEffect(() => {
     const repeatBaseMs = Math.max(1, intervalSec) * 1000;
@@ -153,11 +166,21 @@ export function BorderRunner() {
     if (hintTimerRef.current) clearTimeout(hintTimerRef.current);
     if (hintTypeIntervalRef.current) clearInterval(hintTypeIntervalRef.current);
     setShowHint(false);
-    playChime();
+
+    const now = Date.now();
+    const streak = streakRef.current;
+    streak.count = now - streak.lastClickAt < STREAK_RESET_MS ? streak.count + 1 : 1;
+    streak.lastClickAt = now;
+
+    const pitchMultiplier = 1 + Math.min(streak.count - 1, 6) * 0.06;
+    playChime(pitchMultiplier);
 
     setPlacement(computePlacement(event.currentTarget.getBoundingClientRect()));
 
-    const phrase = phrases[Math.floor(Math.random() * phrases.length)];
+    const phrase =
+      streak.count >= 2
+        ? ESCALATING_PHRASES[Math.min(streak.count - 2, ESCALATING_PHRASES.length - 1)]
+        : phrases[Math.floor(Math.random() * phrases.length)];
     setBubble(phrase);
     if (bubbleTimeoutRef.current) clearTimeout(bubbleTimeoutRef.current);
     bubbleTimeoutRef.current = setTimeout(() => setBubble(null), 2200);
