@@ -1,3 +1,4 @@
+import CryptoJS from "crypto-js";
 import type { Coupon } from "@/types/coupon";
 import { API_URL } from "@/config/api";
 
@@ -39,7 +40,6 @@ export async function fetchCouponsFromServer(forceRefresh = false): Promise<Coup
 
     if (response.encryptedPayload) {
       try {
-        const CryptoJS = require("crypto-js");
         const key = "MADMAD_SECURE_PAYLOAD_KEY_2026";
         const decrypted = CryptoJS.AES.decrypt(response.encryptedPayload, key).toString(CryptoJS.enc.Utf8);
         const data = JSON.parse(decrypted);
