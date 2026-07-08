@@ -43,10 +43,11 @@ export function HomePage() {
 
   // ── Hero slideshow ─────────────────────────────────────────────────────────
   const heroImages = useMemo(() => {
-    const main = "/assets/categories/banner.png";
+    const fallback = "/assets/categories/banner.png";
+    const main = settings.heroImage?.trim() || fallback;
     const extras = (settings.heroImages ?? []).map((v) => v.trim()).filter(Boolean);
     return [main, ...extras.filter((v) => v !== main)].filter(Boolean);
-  }, [settings.heroImages]);
+  }, [settings.heroImage, settings.heroImages]);
 
   const [heroIndex, setHeroIndex] = useState(0);
   const heroScale    = Math.min(200, Math.max(60,  settings.heroImageScalePercent    ?? 100)) / 100;
