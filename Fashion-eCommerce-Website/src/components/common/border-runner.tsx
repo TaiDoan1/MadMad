@@ -15,6 +15,12 @@ const HINT_TEXT = "Hãy chạm vào tôi đi nè.";
 const HINT_DELAY_MS = 1800;
 const HINT_TYPE_SPEED_MS = 60;
 const HINT_HOLD_MS = 3000;
+const HINT_REPEAT_MIN_MS = 4000;
+const HINT_REPEAT_MAX_MS = 6000;
+
+function randomRepeatGap() {
+  return HINT_REPEAT_MIN_MS + Math.random() * (HINT_REPEAT_MAX_MS - HINT_REPEAT_MIN_MS);
+}
 
 function playChime() {
   try {
@@ -71,38 +77,49 @@ export function BorderRunner() {
   const [showHint, setShowHint] = useState(false);
   const bubbleTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const hasInteractedRef = useRef(false);
+  const hintTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const hintTypeIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
-    const timers: ReturnType<typeof setTimeout>[] = [];
-    let typeInterval: ReturnType<typeof setInterval> | null = null;
-
-    const showTimer = setTimeout(() => {
-      if (hasInteractedRef.current || !buttonRef.current) return;
-
-      setPlacement(computePlacement(buttonRef.current.getBoundingClientRect()));
-      setShowHint(true);
-
-      let charIndex = 0;
-      typeInterval = setInterval(() => {
-        charIndex += 1;
-        setHintTyped(HINT_TEXT.slice(0, charIndex));
-        if (charIndex >= HINT_TEXT.length && typeInterval) {
-          clearInterval(typeInterval);
-          const hideTimer = setTimeout(() => setShowHint(false), HINT_HOLD_MS);
-          timers.push(hideTimer);
-        }
-      }, HINT_TYPE_SPEED_MS);
-    }, HINT_DELAY_MS);
-    timers.push(showTimer);
-
-    return () => {
-      timers.forEach(clearTimeout);
-      if (typeInterval) clearInterval(typeInterval);
+    const clearHintTimers = () => {
+      if (hintTimerRef.current) clearTimeout(hintTimerRef.current);
+      if (hintTypeIntervalRef.current) clearInterval(hintTypeIntervalRef.current);
     };
+
+    const scheduleHintCycle = (delay: number) => {
+      clearHintTimers();
+      hintTimerRef.current = setTimeout(() => {
+        if (hasInteractedRef.current || !buttonRef.current) return;
+
+        setPlacement(computePlacement(buttonRef.current.getBoundingClientRect()));
+        setShowHint(true);
+        setHintTyped("");
+
+        let charIndex = 0;
+        hintTypeIntervalRef.current = setInterval(() => {
+          charIndex += 1;
+          setHintTyped(HINT_TEXT.slice(0, charIndex));
+          if (charIndex >= HINT_TEXT.length) {
+            if (hintTypeIntervalRef.current) clearInterval(hintTypeIntervalRef.current);
+            hintTimerRef.current = setTimeout(() => {
+              if (hasInteractedRef.current) return;
+              setShowHint(false);
+              scheduleHintCycle(randomRepeatGap());
+            }, HINT_HOLD_MS);
+          }
+        }, HINT_TYPE_SPEED_MS);
+      }, delay);
+    };
+
+    scheduleHintCycle(HINT_DELAY_MS);
+
+    return clearHintTimers;
   }, []);
 
   const handleActivate = (event: React.MouseEvent<HTMLButtonElement>) => {
     hasInteractedRef.current = true;
+    if (hintTimerRef.current) clearTimeout(hintTimerRef.current);
+    if (hintTypeIntervalRef.current) clearInterval(hintTypeIntervalRef.current);
     setShowHint(false);
     playChime();
 
