@@ -111,13 +111,15 @@ export function HomePage() {
   return (
     <div>
       {/* ═══ HERO ════════════════════════════════════════════════════════════ */}
-      <section className="relative h-[75svh] sm:h-[100svh] overflow-hidden">
+      <section className="relative h-[75svh] sm:h-[100svh] overflow-hidden bg-black">
         {/* Slides */}
         <div className="absolute inset-0">
           {heroImages.map((mediaUrl, index) => {
             const isActive = index === Math.min(heroIndex, heroImages.length - 1);
             const isVideo  = /\.(mp4|webm|ogg)$/i.test(mediaUrl);
-            const cls      = `absolute inset-0 h-full w-full object-cover transition-all duration-700 ease-in-out ${isActive ? "opacity-100" : "opacity-0"}`;
+            // Mobile: object-contain để không cắt mất ảnh (banner thường được thiết kế theo tỉ lệ desktop).
+            // Desktop (sm+): giữ object-cover full-bleed như cũ.
+            const cls      = `absolute inset-0 h-full w-full object-contain sm:object-cover transition-all duration-700 ease-in-out ${isActive ? "opacity-100" : "opacity-0"}`;
             const scale    = isActive ? heroScale : heroScale + 0.05;
 
             return isVideo ? (
