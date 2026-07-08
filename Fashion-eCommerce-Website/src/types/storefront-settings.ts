@@ -21,6 +21,12 @@ export interface StorefrontSettings {
   heroContentAlign: "left" | "center" | "right";
   heroFontStyle: "default" | "serif" | "mono";
   popularCategoryImages: string[];
+  testimonials: Array<{
+    customerName: string;
+    quote: string;
+    photo?: string;
+    rating?: number;
+  }>;
   bestSellerProductIds: (string | number)[];
   bestSellerImageOverrides: Record<string | number, string>;
   colorHexMap: Record<string, string>;

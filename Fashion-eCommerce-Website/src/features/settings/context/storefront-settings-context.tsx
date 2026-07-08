@@ -35,6 +35,7 @@ export const DEFAULT_STOREFRONT_SETTINGS: StorefrontSettings = {
   popularCategoryImages: [
     "/assets/categories/anh-pho-bien.jpg",
   ],
+  testimonials: [],
   bestSellerProductIds: [1, 2, 3, 4],
   bestSellerImageOverrides: {},
   productOptions: {
@@ -166,6 +167,9 @@ function readStoredSettings(): StorefrontSettings {
       bestSellerProductIds: Array.isArray(parsed.bestSellerProductIds)
         ? parsed.bestSellerProductIds
         : DEFAULT_STOREFRONT_SETTINGS.bestSellerProductIds,
+      testimonials: Array.isArray(parsed.testimonials)
+        ? parsed.testimonials
+        : DEFAULT_STOREFRONT_SETTINGS.testimonials,
       bestSellerImageOverrides:
         parsed.bestSellerImageOverrides && typeof parsed.bestSellerImageOverrides === "object"
           ? (parsed.bestSellerImageOverrides as Record<number, string>)

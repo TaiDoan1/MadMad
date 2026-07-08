@@ -81,6 +81,7 @@ router.get("/", async (req, res, next) => {
     const bestSellerProductIds = setting.bestSellerProductIdsJson ? JSON.parse(setting.bestSellerProductIdsJson) : [];
     const bestSellerImageOverrides = setting.bestSellerImageOverridesJson ? JSON.parse(setting.bestSellerImageOverridesJson) : {};
     const colorHexMap = setting.colorHexMapJson ? JSON.parse(setting.colorHexMapJson) : {};
+    const testimonials = setting.testimonialsJson ? JSON.parse(setting.testimonialsJson) : [];
 
     // Kiểm tra quyền Admin. Nếu có header x-admin-key hợp lệ, cho phép trả về đầy đủ.
     // Nếu là client công khai thông thường (khách mua hàng), ẩn toàn bộ các trường nhạy cảm.
@@ -112,6 +113,7 @@ router.get("/", async (req, res, next) => {
         bestSellerProductIds,
         bestSellerImageOverrides,
         colorHexMap,
+        testimonials,
         // Các field text chưa từng có giá trị (record cũ) sẽ là null trong DB -> bỏ qua (undefined)
         // để không đè mất giá trị mặc định đẹp phía frontend
         heroImage: setting.heroImage ?? undefined,
@@ -155,6 +157,7 @@ router.get("/", async (req, res, next) => {
         bestSellerProductIds,
         bestSellerImageOverrides,
         colorHexMap,
+        testimonials,
 
         storeEmail: setting.storeEmail,
         storePhone: setting.storePhone,
@@ -225,6 +228,7 @@ router.put("/", requireAdminAuth, async (req, res, next) => {
       bestSellerProductIds,
       bestSellerImageOverrides,
       colorHexMap,
+      testimonials,
 
       printInvoiceTitle,
       printInvoiceAddress,
@@ -321,6 +325,21 @@ router.put("/", requireAdminAuth, async (req, res, next) => {
     const colorHexMapJson =
       colorHexMap !== undefined ? JSON.stringify(typeof colorHexMap === "object" && colorHexMap ? colorHexMap : {}) : undefined;
 
+    // 💬 Testimonials: tải ảnh khách hàng (nếu có Base64) lên Cloudinary trước khi lưu
+    const testimonialsJson =
+      testimonials !== undefined && Array.isArray(testimonials)
+        ? JSON.stringify(
+            await Promise.all(
+              testimonials.map(async (item: any) => ({
+                customerName: item?.customerName || "",
+                quote: item?.quote || "",
+                rating: item?.rating !== undefined ? Number(item.rating) : undefined,
+                photo: item?.photo ? await uploadToCloudinary(item.photo) : undefined,
+              }))
+            )
+          )
+        : undefined;
+
     const couponsJson =
       coupons !== undefined ? JSON.stringify(Array.isArray(coupons) ? coupons : []) : undefined;
 
@@ -365,6 +384,7 @@ router.put("/", requireAdminAuth, async (req, res, next) => {
         bestSellerProductIdsJson,
         bestSellerImageOverridesJson,
         colorHexMapJson,
+        testimonialsJson,
 
         printInvoiceTitle,
         printInvoiceAddress,
@@ -460,6 +480,7 @@ router.put("/", requireAdminAuth, async (req, res, next) => {
         bestSellerProductIdsJson: bestSellerProductIdsJson ?? "[]",
         bestSellerImageOverridesJson: bestSellerImageOverridesJson ?? "{}",
         colorHexMapJson: colorHexMapJson ?? "{}",
+        testimonialsJson: testimonialsJson ?? "[]",
 
         printInvoiceTitle,
         printInvoiceAddress,
@@ -538,6 +559,7 @@ router.put("/", requireAdminAuth, async (req, res, next) => {
       bestSellerProductIds: updatedSetting.bestSellerProductIdsJson ? JSON.parse(updatedSetting.bestSellerProductIdsJson) : [],
       bestSellerImageOverrides: updatedSetting.bestSellerImageOverridesJson ? JSON.parse(updatedSetting.bestSellerImageOverridesJson) : {},
       colorHexMap: updatedSetting.colorHexMapJson ? JSON.parse(updatedSetting.colorHexMapJson) : {},
+      testimonials: updatedSetting.testimonialsJson ? JSON.parse(updatedSetting.testimonialsJson) : [],
     });
   } catch (error) {
     next(error);

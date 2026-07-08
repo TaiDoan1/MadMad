@@ -33,11 +33,12 @@ export function AdminStorefrontPage() {
   const heroImageDrafts = settings.heroImages ?? [];
   const popularCategoryImageDrafts = settings.popularCategoryImages ?? [];
   const instagramImageDrafts = settings.instagramImages ?? [];
-  
+  const testimonialDrafts = settings.testimonials ?? [];
+
   const heroImages = heroImageDrafts.map((value) => value.trim()).filter(Boolean);
   const previewHeroImages = [settings.heroImage.trim(), ...heroImages].filter(Boolean);
   const [previewHeroIndex, setPreviewHeroIndex] = useState(0);
-  const [activeTab, setActiveTab] = useState<"hero" | "bestsellers" | "gallery" | "instagram">("hero");
+  const [activeTab, setActiveTab] = useState<"hero" | "bestsellers" | "gallery" | "instagram" | "reviews">("hero");
   
   const goToPrevPreviewHero = () => {
     if (previewHeroImages.length <= 1) return;
@@ -169,17 +170,17 @@ export function AdminStorefrontPage() {
 
       <div className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
         <div className="flex min-w-max gap-1 border-b border-border">
-        {(["hero", "bestsellers", "gallery", "instagram"] as const).map((tab) => (
-          <button 
-            key={tab} 
-            onClick={() => setActiveTab(tab)} 
+        {(["hero", "bestsellers", "gallery", "instagram", "reviews"] as const).map((tab) => (
+          <button
+            key={tab}
+            onClick={() => setActiveTab(tab)}
             className={`shrink-0 px-3 py-2.5 text-sm capitalize transition-all duration-200 border-b-2 sm:px-4 ${
-              activeTab === tab 
-                ? "border-black font-bold text-black" 
+              activeTab === tab
+                ? "border-black font-bold text-black"
                 : "border-transparent text-muted-foreground hover:text-foreground"
             }`}
           >
-            {tab === "hero" ? "🖼 Banner" : tab === "bestsellers" ? "⭐ Nổi bật" : tab === "gallery" ? "🗂 Gallery" : "📷 Instagram"}
+            {tab === "hero" ? "🖼 Banner" : tab === "bestsellers" ? "⭐ Nổi bật" : tab === "gallery" ? "🗂 Gallery" : tab === "instagram" ? "📷 Instagram" : "💬 Đánh giá"}
           </button>
         ))}
         </div>
@@ -532,6 +533,92 @@ export function AdminStorefrontPage() {
                 ))}
                 {instagramImageDrafts.length === 0 && (
                   <p className="text-xs text-muted-foreground italic text-center py-6">Đang sử dụng luồng 5 ảnh mặc định của MADMAD Studio.</p>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* CUSTOMER TESTIMONIALS SETTINGS */}
+          {activeTab === "reviews" && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="font-bold text-lg text-foreground">Đánh Giá Khách Hàng</h3>
+                <button
+                  type="button"
+                  onClick={() =>
+                    updateSettings({
+                      testimonials: [...testimonialDrafts, { customerName: "", quote: "", rating: 5, photo: "" }],
+                    })
+                  }
+                  className="text-xs font-bold border border-border rounded px-2.5 py-1 bg-white hover:bg-muted transition-colors"
+                >
+                  + Thêm đánh giá
+                </button>
+              </div>
+              <p className="text-xs text-muted-foreground">Hiển thị trên trang chủ để tăng độ tin cậy. Nên dùng ảnh khách thật (nếu có) và trích lời đánh giá ngắn gọn.</p>
+
+              <div className="space-y-3 max-h-[32rem] overflow-y-auto pr-1">
+                {testimonialDrafts.map((item, i) => (
+                  <div key={i} className="space-y-2 border border-border rounded-lg p-3 bg-stone-50">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Đánh giá #{i + 1}</span>
+                      <button
+                        type="button"
+                        onClick={() => updateSettings({ testimonials: testimonialDrafts.filter((_, j) => j !== i) })}
+                        className="px-2 py-1 text-sm text-red-500 hover:text-red-700 transition-colors"
+                      >
+                        ✕ Xóa
+                      </button>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      <input
+                        value={item.customerName}
+                        onChange={(e) => {
+                          const n = [...testimonialDrafts];
+                          n[i] = { ...n[i], customerName: e.target.value };
+                          updateSettings({ testimonials: n });
+                        }}
+                        placeholder="Tên khách hàng"
+                        className="rounded border border-border bg-white px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-black"
+                      />
+                      <select
+                        value={item.rating ?? 5}
+                        onChange={(e) => {
+                          const n = [...testimonialDrafts];
+                          n[i] = { ...n[i], rating: Number(e.target.value) };
+                          updateSettings({ testimonials: n });
+                        }}
+                        className="rounded border border-border bg-white px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-black"
+                      >
+                        {[5, 4, 3, 2, 1].map((star) => (
+                          <option key={star} value={star}>{"⭐".repeat(star)} ({star})</option>
+                        ))}
+                      </select>
+                    </div>
+                    <textarea
+                      value={item.quote}
+                      onChange={(e) => {
+                        const n = [...testimonialDrafts];
+                        n[i] = { ...n[i], quote: e.target.value };
+                        updateSettings({ testimonials: n });
+                      }}
+                      placeholder="Nội dung đánh giá của khách..."
+                      rows={2}
+                      className="w-full rounded border border-border bg-white px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-black"
+                    />
+                    <ImageUploadInput
+                      value={item.photo ?? ""}
+                      onChange={(v) => {
+                        const n = [...testimonialDrafts];
+                        n[i] = { ...n[i], photo: v };
+                        updateSettings({ testimonials: n });
+                      }}
+                      placeholder="Ảnh khách hàng (tùy chọn)..."
+                    />
+                  </div>
+                ))}
+                {testimonialDrafts.length === 0 && (
+                  <p className="text-xs text-muted-foreground italic text-center py-6">Chưa có đánh giá nào. Thêm đánh giá để hiển thị trên trang chủ.</p>
                 )}
               </div>
             </div>

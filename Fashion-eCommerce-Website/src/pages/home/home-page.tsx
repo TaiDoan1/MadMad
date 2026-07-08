@@ -82,6 +82,12 @@ export function HomePage() {
     [settings.popularCategoryImages],
   );
 
+  // ── Customer testimonials ────────────────────────────────────────────────
+  const testimonials = useMemo(
+    () => (settings.testimonials ?? []).filter((item) => item.customerName?.trim() && item.quote?.trim()),
+    [settings.testimonials],
+  );
+
   // ── Countdown ─────────────────────────────────────────────────────────────
   const dropDate = useMemo(() => new Date("2026-07-01T00:00:00").getTime(), []);
   const timeLeft = useCountdown(dropDate);
@@ -250,6 +256,42 @@ export function HomePage() {
               />
             </div>
           ))}
+        </section>
+      )}
+
+      {/* ═══ CUSTOMER TESTIMONIALS (admin-configurable) ═════════════════════ */}
+      {testimonials.length > 0 && (
+        <section className="bg-white py-14 sm:py-20">
+          <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
+            <div className="mb-10 text-center">
+              <p className="text-xs font-bold uppercase tracking-[0.3em] text-black/40">Khách Hàng Nói Gì</p>
+              <h2 className="mt-2 font-black uppercase text-3xl tracking-tight text-black">Voices of MADMAD</h2>
+            </div>
+            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+              {testimonials.map((item, index) => (
+                <div key={index} className="flex flex-col gap-4 rounded-2xl border border-black/10 bg-stone-50 p-6">
+                  {item.rating ? (
+                    <div className="text-amber-500 text-sm">{"★".repeat(Math.max(0, Math.min(5, item.rating)))}</div>
+                  ) : null}
+                  <p className="flex-1 text-sm leading-relaxed text-black/70">"{item.quote}"</p>
+                  <div className="flex items-center gap-3">
+                    {item.photo ? (
+                      <ImageWithFallback
+                        src={item.photo}
+                        alt={item.customerName}
+                        className="h-10 w-10 rounded-full object-cover"
+                      />
+                    ) : (
+                      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-black text-xs font-bold uppercase text-white">
+                        {item.customerName.trim().charAt(0)}
+                      </div>
+                    )}
+                    <p className="text-xs font-bold uppercase tracking-wider text-black">{item.customerName}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
         </section>
       )}
 
