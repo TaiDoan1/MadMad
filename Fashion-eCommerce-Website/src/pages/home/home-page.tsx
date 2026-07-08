@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router";
 
 import { ImageWithFallback } from "@/components/common/image-with-fallback";
+import { ScrollReveal } from "@/components/common/scroll-reveal";
 import { ProductCard, ProductCardSkeleton } from "@/components/shared/product-card";
 import { useProducts } from "@/features/products/context/product-context";
 import { useStorefrontSettings } from "@/features/settings/context/storefront-settings-context";
@@ -229,9 +230,9 @@ export function HomePage() {
               ))
             ) : (
               featuredProducts.map((product, index) => (
-                <div key={product.id} className={`animate-fadeInUp stagger-${Math.min(index + 1, 6)}`}>
+                <ScrollReveal key={product.id} className={`stagger-${Math.min(index + 1, 6)}`}>
                   <ProductCard product={product} variant="home" />
-                </div>
+                </ScrollReveal>
               ))
             )}
           </div>
@@ -242,31 +243,31 @@ export function HomePage() {
       {popularCategoryImages.length > 0 && (
         <section className="bg-background">
           {popularCategoryImages.map((imageUrl, index) => (
-            <div key={`${imageUrl}-${index}`} className="w-full animate-fadeIn">
+            <ScrollReveal key={`${imageUrl}-${index}`} className="w-full">
               <ImageWithFallback
                 src={imageUrl}
                 alt={`Featured ${index + 1}`}
                 className="h-auto w-full object-contain"
               />
-            </div>
+            </ScrollReveal>
           ))}
         </section>
       )}
 
       {/* ═══ SLOGAN ═════════════════════════════════════════════════════════ */}
       <section className="flex min-h-[22vh] items-center justify-center bg-white py-10">
-        <div className="mx-auto max-w-4xl px-4 text-center">
+        <ScrollReveal className="mx-auto max-w-4xl px-4 text-center">
           <img
             src="/assets/marquee/slogan.png"
             alt="Slogan MADMAD"
-            className="mx-auto w-full animate-fadeIn object-contain"
+            className="mx-auto w-full object-contain"
           />
-        </div>
+        </ScrollReveal>
       </section>
 
       {/* ═══ DROP COUNTDOWN ═════════════════════════════════════════════════ */}
       <section className="bg-primary py-5">
-        <div className="mx-auto max-w-7xl px-6 sm:px-10 lg:px-16">
+        <ScrollReveal className="mx-auto max-w-7xl px-6 sm:px-10 lg:px-16">
           <div className="flex flex-col items-center justify-between gap-5 sm:flex-row">
             <div className="text-white text-center sm:text-left">
               <p className="text-xs uppercase tracking-[0.2em] opacity-70 mb-1">Next Drop</p>
@@ -301,13 +302,13 @@ export function HomePage() {
               {t("MUA NGAY", "SHOP NOW")}
             </Link>
           </div>
-        </div>
+        </ScrollReveal>
       </section>
 
       {/* ═══ EDITORIAL FEED — @MADMAD (MARQUEE SLIDER) ══════════════════════ */}
       <section className="bg-white pt-14 pb-0 overflow-hidden">
         {/* Feed header */}
-        <div className="px-6 sm:px-10 lg:px-16 mb-6 flex items-center justify-between">
+        <ScrollReveal className="px-6 sm:px-10 lg:px-16 mb-6 flex items-center justify-between">
           <p
             className="font-black uppercase text-black tracking-[0.15em]"
             style={{ fontSize: "clamp(0.85rem, 1.5vw, 1.1rem)" }}
@@ -322,7 +323,7 @@ export function HomePage() {
           >
             Follow us
           </a>
-        </div>
+        </ScrollReveal>
 
         {/* Photo grid sliding continuously */}
         <div className="relative flex w-full overflow-hidden border-t border-black/5 bg-stone-50/50 py-0.5 select-none">
