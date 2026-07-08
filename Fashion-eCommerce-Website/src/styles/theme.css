@@ -371,7 +371,7 @@
 }
 
 .border-runner {
-  animation: borderRun 32s ease-in-out infinite;
+  animation: borderRun 60s ease-in-out infinite;
 }
 
 .border-runner-spin {
