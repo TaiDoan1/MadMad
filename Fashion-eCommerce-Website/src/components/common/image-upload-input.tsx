@@ -13,6 +13,8 @@ type ImageUploadInputProps = {
   disabled?: boolean;
   /** Cho phép chọn thêm file video (dùng cho hero banner). Mặc định chỉ nhận ảnh. */
   acceptVideo?: boolean;
+  /** Kích thước tối đa (px) khi nén ảnh. Tăng lên cho ảnh banner full-width để tránh mờ. */
+  maxDimension?: number;
 };
 
 const BASE64_IMAGE_PREFIX = "data:image/";
@@ -25,6 +27,7 @@ export function ImageUploadInput({
   className = "",
   disabled = false,
   acceptVideo = false,
+  maxDimension = 1200,
 }: ImageUploadInputProps) {
   const { showToast } = useToast();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -71,8 +74,8 @@ export function ImageUploadInput({
       const img = new Image();
       img.onload = () => {
         // Cấu hình nén ảnh
-        const MAX_WIDTH = 1200;
-        const MAX_HEIGHT = 1200;
+        const MAX_WIDTH = maxDimension;
+        const MAX_HEIGHT = maxDimension;
         let width = img.width;
         let height = img.height;
 

@@ -218,6 +218,7 @@ export function AdminStorefrontPage() {
                   onChange={(v) => updateSettings({ heroImage: v })}
                   placeholder="URL ảnh hoặc video banner chính..."
                   acceptVideo
+                  maxDimension={2400}
                 />
               </div>
 
