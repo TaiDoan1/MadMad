@@ -74,6 +74,13 @@ router.get("/", async (req, res, next) => {
     const sizeGuide = setting.sizeGuideJson ? JSON.parse(setting.sizeGuideJson) : {};
     const instagramImages = setting.instagramImages ? JSON.parse(setting.instagramImages) : [];
 
+    // 🖼️ Parse hero banner + danh mục phổ biến + best seller (khách hàng cũng cần thấy)
+    const heroImages = setting.heroImagesJson ? JSON.parse(setting.heroImagesJson) : [];
+    const popularCategoryImages = setting.popularCategoryImagesJson ? JSON.parse(setting.popularCategoryImagesJson) : [];
+    const bestSellerProductIds = setting.bestSellerProductIdsJson ? JSON.parse(setting.bestSellerProductIdsJson) : [];
+    const bestSellerImageOverrides = setting.bestSellerImageOverridesJson ? JSON.parse(setting.bestSellerImageOverridesJson) : {};
+    const colorHexMap = setting.colorHexMapJson ? JSON.parse(setting.colorHexMapJson) : {};
+
     // Kiểm tra quyền Admin. Nếu có header x-admin-key hợp lệ, cho phép trả về đầy đủ.
     // Nếu là client công khai thông thường (khách mua hàng), ẩn toàn bộ các trường nhạy cảm.
     const adminKey = req.headers["x-admin-key"] as string;
@@ -99,6 +106,19 @@ router.get("/", async (req, res, next) => {
         productOptions,
         membershipTiers,
         sizeGuide,
+        heroImages,
+        popularCategoryImages,
+        bestSellerProductIds,
+        bestSellerImageOverrides,
+        colorHexMap,
+        // Các field text chưa từng có giá trị (record cũ) sẽ là null trong DB -> bỏ qua (undefined)
+        // để không đè mất giá trị mặc định đẹp phía frontend
+        heroImage: setting.heroImage ?? undefined,
+        heroBadgeText: setting.heroBadgeText ?? undefined,
+        heroTitleLine1: setting.heroTitleLine1 ?? undefined,
+        heroTitleLine2: setting.heroTitleLine2 ?? undefined,
+        heroDescription: setting.heroDescription ?? undefined,
+        heroButtonText: setting.heroButtonText ?? undefined,
       };
     } else {
       // Ẩn đi các trường nhạy cảm (SMTP, API keys...) nhưng vẫn giữ thông tin thanh toán
@@ -113,6 +133,28 @@ router.get("/", async (req, res, next) => {
         tiktokUrl: setting.tiktokUrl,
         shopeeUrl: setting.shopeeUrl,
         instagramImages,
+
+        // 🖼️ Hero banner + danh mục phổ biến + best seller (khách hàng cần thấy trên trang chủ/shop)
+        // Field text chưa từng set (record cũ) sẽ là null -> bỏ qua (undefined) để giữ default đẹp phía frontend
+        heroImage: setting.heroImage ?? undefined,
+        heroImages,
+        heroImageScalePercent: setting.heroImageScalePercent,
+        heroSlideIntervalMs: setting.heroSlideIntervalMs,
+        heroBadgeText: setting.heroBadgeText ?? undefined,
+        heroTitleLine1: setting.heroTitleLine1 ?? undefined,
+        heroTitleLine2: setting.heroTitleLine2 ?? undefined,
+        heroDescription: setting.heroDescription ?? undefined,
+        heroButtonText: setting.heroButtonText ?? undefined,
+        heroOverlayOpacityLeft: setting.heroOverlayOpacityLeft,
+        heroOverlayOpacityMiddle: setting.heroOverlayOpacityMiddle,
+        heroOverlayOpacityRight: setting.heroOverlayOpacityRight,
+        heroContentAlign: setting.heroContentAlign,
+        heroFontStyle: setting.heroFontStyle,
+        popularCategoryImages,
+        bestSellerProductIds,
+        bestSellerImageOverrides,
+        colorHexMap,
+
         storeEmail: setting.storeEmail,
         storePhone: setting.storePhone,
         storeAddress: setting.storeAddress,
@@ -162,6 +204,27 @@ router.put("/", requireAdminAuth, async (req, res, next) => {
       tiktokUrl,
       shopeeUrl,
       instagramImages,
+
+      // 🖼️ Hero banner + danh mục phổ biến + best seller
+      heroImage,
+      heroImages,
+      heroImageScalePercent,
+      heroSlideIntervalMs,
+      heroBadgeText,
+      heroTitleLine1,
+      heroTitleLine2,
+      heroDescription,
+      heroButtonText,
+      heroOverlayOpacityLeft,
+      heroOverlayOpacityMiddle,
+      heroOverlayOpacityRight,
+      heroContentAlign,
+      heroFontStyle,
+      popularCategoryImages,
+      bestSellerProductIds,
+      bestSellerImageOverrides,
+      colorHexMap,
+
       printInvoiceTitle,
       printInvoiceAddress,
       printInvoicePhone,
@@ -233,9 +296,21 @@ router.put("/", requireAdminAuth, async (req, res, next) => {
     console.log("- enablePaypal:", enablePaypal);
     console.log("- bankAccount:", bankAccount);
 
-    const instagramImagesStr = Array.isArray(instagramImages) 
-      ? JSON.stringify(instagramImages) 
+    const instagramImagesStr = Array.isArray(instagramImages)
+      ? JSON.stringify(instagramImages)
       : (typeof instagramImages === "string" ? instagramImages : undefined);
+
+    // 🖼️ Hero banner + danh mục phổ biến + best seller (lưu dạng JSON String)
+    const heroImagesJson =
+      heroImages !== undefined ? JSON.stringify(Array.isArray(heroImages) ? heroImages : []) : undefined;
+    const popularCategoryImagesJson =
+      popularCategoryImages !== undefined ? JSON.stringify(Array.isArray(popularCategoryImages) ? popularCategoryImages : []) : undefined;
+    const bestSellerProductIdsJson =
+      bestSellerProductIds !== undefined ? JSON.stringify(Array.isArray(bestSellerProductIds) ? bestSellerProductIds : []) : undefined;
+    const bestSellerImageOverridesJson =
+      bestSellerImageOverrides !== undefined ? JSON.stringify(typeof bestSellerImageOverrides === "object" && bestSellerImageOverrides ? bestSellerImageOverrides : {}) : undefined;
+    const colorHexMapJson =
+      colorHexMap !== undefined ? JSON.stringify(typeof colorHexMap === "object" && colorHexMap ? colorHexMap : {}) : undefined;
 
     const couponsJson =
       coupons !== undefined ? JSON.stringify(Array.isArray(coupons) ? coupons : []) : undefined;
@@ -261,12 +336,33 @@ router.put("/", requireAdminAuth, async (req, res, next) => {
         tiktokUrl,
         shopeeUrl,
         instagramImages: instagramImagesStr,
+
+        // 🖼️ Hero banner + danh mục phổ biến + best seller
+        heroImage,
+        heroImagesJson,
+        heroImageScalePercent: heroImageScalePercent !== undefined ? Number(heroImageScalePercent) : undefined,
+        heroSlideIntervalMs: heroSlideIntervalMs !== undefined ? Number(heroSlideIntervalMs) : undefined,
+        heroBadgeText,
+        heroTitleLine1,
+        heroTitleLine2,
+        heroDescription,
+        heroButtonText,
+        heroOverlayOpacityLeft: heroOverlayOpacityLeft !== undefined ? Number(heroOverlayOpacityLeft) : undefined,
+        heroOverlayOpacityMiddle: heroOverlayOpacityMiddle !== undefined ? Number(heroOverlayOpacityMiddle) : undefined,
+        heroOverlayOpacityRight: heroOverlayOpacityRight !== undefined ? Number(heroOverlayOpacityRight) : undefined,
+        heroContentAlign,
+        heroFontStyle,
+        popularCategoryImagesJson,
+        bestSellerProductIdsJson,
+        bestSellerImageOverridesJson,
+        colorHexMapJson,
+
         printInvoiceTitle,
         printInvoiceAddress,
         printInvoicePhone,
         printInvoiceFooterSlogan,
         printInvoicePolicy,
-        
+
         // Cập nhật cấu hình cửa hàng
         storeEmail,
         storePhone,
@@ -335,6 +431,27 @@ router.put("/", requireAdminAuth, async (req, res, next) => {
         tiktokUrl,
         shopeeUrl,
         instagramImages: instagramImagesStr || "[]",
+
+        // 🖼️ Hero banner + danh mục phổ biến + best seller
+        heroImage,
+        heroImagesJson: heroImagesJson ?? "[]",
+        heroImageScalePercent: heroImageScalePercent !== undefined ? Number(heroImageScalePercent) : 100,
+        heroSlideIntervalMs: heroSlideIntervalMs !== undefined ? Number(heroSlideIntervalMs) : 6000,
+        heroBadgeText,
+        heroTitleLine1,
+        heroTitleLine2,
+        heroDescription,
+        heroButtonText,
+        heroOverlayOpacityLeft: heroOverlayOpacityLeft !== undefined ? Number(heroOverlayOpacityLeft) : 60,
+        heroOverlayOpacityMiddle: heroOverlayOpacityMiddle !== undefined ? Number(heroOverlayOpacityMiddle) : 40,
+        heroOverlayOpacityRight: heroOverlayOpacityRight !== undefined ? Number(heroOverlayOpacityRight) : 60,
+        heroContentAlign: heroContentAlign || "center",
+        heroFontStyle: heroFontStyle || "default",
+        popularCategoryImagesJson: popularCategoryImagesJson ?? "[]",
+        bestSellerProductIdsJson: bestSellerProductIdsJson ?? "[]",
+        bestSellerImageOverridesJson: bestSellerImageOverridesJson ?? "{}",
+        colorHexMapJson: colorHexMapJson ?? "{}",
+
         printInvoiceTitle,
         printInvoiceAddress,
         printInvoicePhone,
@@ -407,6 +524,11 @@ router.put("/", requireAdminAuth, async (req, res, next) => {
       productOptions: updatedSetting.productOptionsJson ? JSON.parse(updatedSetting.productOptionsJson) : {},
       membershipTiers: updatedSetting.membershipTiersJson ? JSON.parse(updatedSetting.membershipTiersJson) : [],
       sizeGuide: updatedSetting.sizeGuideJson ? JSON.parse(updatedSetting.sizeGuideJson) : {},
+      heroImages: updatedSetting.heroImagesJson ? JSON.parse(updatedSetting.heroImagesJson) : [],
+      popularCategoryImages: updatedSetting.popularCategoryImagesJson ? JSON.parse(updatedSetting.popularCategoryImagesJson) : [],
+      bestSellerProductIds: updatedSetting.bestSellerProductIdsJson ? JSON.parse(updatedSetting.bestSellerProductIdsJson) : [],
+      bestSellerImageOverrides: updatedSetting.bestSellerImageOverridesJson ? JSON.parse(updatedSetting.bestSellerImageOverridesJson) : {},
+      colorHexMap: updatedSetting.colorHexMapJson ? JSON.parse(updatedSetting.colorHexMapJson) : {},
     });
   } catch (error) {
     next(error);

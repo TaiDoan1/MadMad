@@ -10,6 +10,7 @@ const MIGRATION_FILES = [
   "add_received_stock.sql",
   "add_preorder_fulfilled.sql",
   "add_sizeChartImage.sql",
+  "add_storefront_hero_fields.sql",
 ] as const;
 
 let migrationPromise: Promise<{ applied: string[] }> | null = null;

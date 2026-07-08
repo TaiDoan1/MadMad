@@ -114,6 +114,27 @@ model StorefrontSetting {
   tiktokUrl                String?
   shopeeUrl                String?
   instagramImages          String? // Lưu mảng các ảnh dạng JSON String
+
+  // 🖼️ Ảnh & nội dung Banner trang chủ (Hero) + Danh mục phổ biến + Best seller
+  heroImage                String?
+  heroImagesJson           String? @default("[]")
+  heroImageScalePercent    Int?    @default(100)
+  heroSlideIntervalMs      Int?    @default(6000)
+  heroBadgeText            String?
+  heroTitleLine1           String?
+  heroTitleLine2           String?
+  heroDescription          String?
+  heroButtonText           String?
+  heroOverlayOpacityLeft   Int?    @default(60)
+  heroOverlayOpacityMiddle Int?    @default(40)
+  heroOverlayOpacityRight  Int?    @default(60)
+  heroContentAlign         String? @default("center")
+  heroFontStyle            String? @default("default")
+  popularCategoryImagesJson      String? @default("[]")
+  bestSellerProductIdsJson       String? @default("[]")
+  bestSellerImageOverridesJson   String? @default("{}")
+  colorHexMapJson                String? @default("{}")
+
   printInvoiceTitle        String?
   printInvoiceAddress      String?
   printInvoicePhone        String?
