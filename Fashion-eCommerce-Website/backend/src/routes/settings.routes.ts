@@ -2,6 +2,7 @@ import { Router } from "express";
 import { prisma } from "../config/prisma";
 import { sendManualCustomEmail } from "../services/email.service";
 import { requireAdminAuth } from "../utils/auth.middleware";
+import { uploadToCloudinary } from "../utils/cloudinary";
 
 const router = Router();
 
@@ -300,9 +301,17 @@ router.put("/", requireAdminAuth, async (req, res, next) => {
       ? JSON.stringify(instagramImages)
       : (typeof instagramImages === "string" ? instagramImages : undefined);
 
+    // 🖼️ Hero banner (ảnh hoặc video): tải Base64 lên Cloudinary trước khi lưu URL vào DB
+    const uploadedHeroImage =
+      heroImage !== undefined ? await uploadToCloudinary(heroImage) : undefined;
+    const uploadedHeroImages =
+      heroImages !== undefined && Array.isArray(heroImages)
+        ? await Promise.all(heroImages.map((item: string) => uploadToCloudinary(item)))
+        : undefined;
+
     // 🖼️ Hero banner + danh mục phổ biến + best seller (lưu dạng JSON String)
     const heroImagesJson =
-      heroImages !== undefined ? JSON.stringify(Array.isArray(heroImages) ? heroImages : []) : undefined;
+      uploadedHeroImages !== undefined ? JSON.stringify(uploadedHeroImages) : undefined;
     const popularCategoryImagesJson =
       popularCategoryImages !== undefined ? JSON.stringify(Array.isArray(popularCategoryImages) ? popularCategoryImages : []) : undefined;
     const bestSellerProductIdsJson =
@@ -338,7 +347,7 @@ router.put("/", requireAdminAuth, async (req, res, next) => {
         instagramImages: instagramImagesStr,
 
         // 🖼️ Hero banner + danh mục phổ biến + best seller
-        heroImage,
+        heroImage: uploadedHeroImage,
         heroImagesJson,
         heroImageScalePercent: heroImageScalePercent !== undefined ? Number(heroImageScalePercent) : undefined,
         heroSlideIntervalMs: heroSlideIntervalMs !== undefined ? Number(heroSlideIntervalMs) : undefined,
@@ -433,7 +442,7 @@ router.put("/", requireAdminAuth, async (req, res, next) => {
         instagramImages: instagramImagesStr || "[]",
 
         // 🖼️ Hero banner + danh mục phổ biến + best seller
-        heroImage,
+        heroImage: uploadedHeroImage,
         heroImagesJson: heroImagesJson ?? "[]",
         heroImageScalePercent: heroImageScalePercent !== undefined ? Number(heroImageScalePercent) : 100,
         heroSlideIntervalMs: heroSlideIntervalMs !== undefined ? Number(heroSlideIntervalMs) : 6000,

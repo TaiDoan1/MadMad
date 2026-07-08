@@ -212,8 +212,13 @@ export function AdminStorefrontPage() {
               </div>
 
               <div>
-                <p className="mb-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Ảnh Banner Chính</p>
-                <ImageUploadInput value={settings.heroImage} onChange={(v) => updateSettings({ heroImage: v })} placeholder="URL ảnh banner chính..." />
+                <p className="mb-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Ảnh/Video Banner Chính</p>
+                <ImageUploadInput
+                  value={settings.heroImage}
+                  onChange={(v) => updateSettings({ heroImage: v })}
+                  placeholder="URL ảnh hoặc video banner chính..."
+                  acceptVideo
+                />
               </div>
 
               <div className="rounded-lg border border-border bg-muted/20 p-3 space-y-2">

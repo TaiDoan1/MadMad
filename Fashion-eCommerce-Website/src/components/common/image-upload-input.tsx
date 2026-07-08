@@ -11,9 +11,12 @@ type ImageUploadInputProps = {
   placeholder?: string;
   className?: string;
   disabled?: boolean;
+  /** Cho phép chọn thêm file video (dùng cho hero banner). Mặc định chỉ nhận ảnh. */
+  acceptVideo?: boolean;
 };
 
-const BASE64_PREFIX = "data:image/";
+const BASE64_IMAGE_PREFIX = "data:image/";
+const BASE64_VIDEO_PREFIX = "data:video/";
 
 export function ImageUploadInput({
   value,
@@ -21,18 +24,44 @@ export function ImageUploadInput({
   placeholder = "Nhập URL hình ảnh",
   className = "",
   disabled = false,
+  acceptVideo = false,
 }: ImageUploadInputProps) {
   const { showToast } = useToast();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const previewSrc = value.trim();
-  const isDataImage = useMemo(() => value.startsWith(BASE64_PREFIX), [value]);
+  const isDataImage = useMemo(() => value.startsWith(BASE64_IMAGE_PREFIX), [value]);
+  const isDataVideo = useMemo(() => value.startsWith(BASE64_VIDEO_PREFIX), [value]);
+  const isVideoUrl = useMemo(() => isDataVideo || /\.(mp4|webm|ogg)$/i.test(previewSrc), [isDataVideo, previewSrc]);
 
   const handleFileUpload = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
-    if (!file.type.startsWith("image/")) {
-      showToast("Vui lòng chọn file ảnh hợp lệ.", "warning");
+    const isVideoFile = file.type.startsWith("video/");
+    const isImageFile = file.type.startsWith("image/");
+
+    if (!isImageFile && !(acceptVideo && isVideoFile)) {
+      showToast(
+        acceptVideo ? "Vui lòng chọn file ảnh hoặc video hợp lệ." : "Vui lòng chọn file ảnh hợp lệ.",
+        "warning"
+      );
+      event.target.value = "";
+      return;
+    }
+
+    // Video: không nén qua canvas được, đọc thẳng Base64 rồi gửi lên (backend sẽ upload lên Cloudinary)
+    if (isVideoFile) {
+      const MAX_VIDEO_MB = 30;
+      if (file.size > MAX_VIDEO_MB * 1024 * 1024) {
+        showToast(`Video quá lớn (tối đa ${MAX_VIDEO_MB}MB). Vui lòng nén video trước khi upload.`, "warning");
+        event.target.value = "";
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        onChange(e.target?.result as string);
+      };
+      reader.readAsDataURL(file);
       event.target.value = "";
       return;
     }
@@ -96,7 +125,7 @@ export function ImageUploadInput({
         <div className="relative flex-1">
           <Link2 className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <input
-            value={isDataImage ? "" : value}
+            value={isDataImage || isDataVideo ? "" : value}
             onChange={(event) => onChange(event.target.value)}
             disabled={disabled}
             className="w-full rounded border border-border px-4 py-2 pl-9 text-sm focus:outline-none focus:ring-2 focus:ring-primary disabled:cursor-not-allowed disabled:opacity-60"
@@ -107,18 +136,28 @@ export function ImageUploadInput({
       <input
         ref={fileInputRef}
         type="file"
-        accept="image/*"
+        accept={acceptVideo ? "image/*,video/*" : "image/*"}
         onChange={handleFileUpload}
         className="hidden"
         disabled={disabled}
       />
       <p className="text-xs text-muted-foreground">
-        {isDataImage ? "Đang dùng ảnh upload từ máy." : "Bạn có thể upload ảnh hoặc dán URL trực tiếp."}
+        {isDataVideo
+          ? "Đang dùng video upload từ máy."
+          : isDataImage
+            ? "Đang dùng ảnh upload từ máy."
+            : acceptVideo
+              ? "Bạn có thể upload ảnh/video hoặc dán URL trực tiếp."
+              : "Bạn có thể upload ảnh hoặc dán URL trực tiếp."}
       </p>
       {previewSrc ? (
         <div className="flex justify-end">
           <div className="overflow-hidden rounded border border-border bg-muted/20 p-1.5">
-            <ImageWithFallback src={previewSrc} alt="Image preview" className="h-14 w-14 rounded object-cover" />
+            {isVideoUrl ? (
+              <video src={previewSrc} className="h-14 w-14 rounded object-cover" muted loop autoPlay playsInline />
+            ) : (
+              <ImageWithFallback src={previewSrc} alt="Image preview" className="h-14 w-14 rounded object-cover" />
+            )}
           </div>
         </div>
       ) : null}

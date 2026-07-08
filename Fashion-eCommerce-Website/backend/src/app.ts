@@ -44,8 +44,9 @@ app.use(cors({
   allowedHeaders: ["Content-Type", "Authorization", "x-member-email", "x-admin-key"]
 }));
 
-app.use(express.json({ limit: "10mb" }));
-app.use(express.urlencoded({ limit: "10mb", extended: true }));
+// Giới hạn 50mb để hỗ trợ upload video banner hero (Base64) qua Cloudinary
+app.use(express.json({ limit: "50mb" }));
+app.use(express.urlencoded({ limit: "50mb", extended: true }));
 
 // 📝 Middleware ghi nhận mọi yêu cầu HTTP để chuẩn đoán kết nối local
 app.use(async (req, res, next) => {

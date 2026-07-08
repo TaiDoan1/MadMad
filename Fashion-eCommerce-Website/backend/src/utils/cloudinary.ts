@@ -9,30 +9,33 @@ cloudinary.config({
 });
 
 /**
- * Tải ảnh (dạng Base64 hoặc URL trực tiếp) lên Cloudinary.
- * Trả về link URL ảnh bảo mật (secure_url) từ Cloudinary CDN.
- * Nếu ảnh đã là URL sẵn (bắt đầu bằng http/https), giữ nguyên.
+ * Tải ảnh hoặc video (dạng Base64 hoặc URL trực tiếp) lên Cloudinary.
+ * Trả về link URL bảo mật (secure_url) từ Cloudinary CDN.
+ * Nếu đã là URL sẵn (bắt đầu bằng http/https), giữ nguyên.
  */
 export async function uploadToCloudinary(imageStr: string): Promise<string> {
   if (!imageStr) return "";
 
   // Nếu đã là URL Cloudinary, trả về nguyên trạng
   if (imageStr.startsWith("http://") || imageStr.startsWith("https://")) {
-    console.log(`☁️  [CLOUDINARY] Ảnh đã là URL CDN, giữ nguyên.`);
+    console.log(`☁️  [CLOUDINARY] Media đã là URL CDN, giữ nguyên.`);
     return imageStr;
   }
 
-  // Nếu không phải dạng data URL Base64, giữ nguyên
-  if (!imageStr.startsWith("data:image/")) {
+  const isVideo = imageStr.startsWith("data:video/");
+
+  // Nếu không phải dạng data URL Base64 (ảnh hoặc video), giữ nguyên
+  if (!imageStr.startsWith("data:image/") && !isVideo) {
     return imageStr;
   }
 
   const originalKB = Math.round(imageStr.length / 1024);
-  console.log(`☁️  [CLOUDINARY] Phát hiện ảnh Base64 (~${originalKB} KB), đang upload lên CDN...`);
+  console.log(`☁️  [CLOUDINARY] Phát hiện ${isVideo ? "video" : "ảnh"} Base64 (~${originalKB} KB), đang upload lên CDN...`);
 
   try {
     const result = await cloudinary.uploader.upload(imageStr, {
-      folder: "madmad-products",
+      folder: isVideo ? "madmad-hero-videos" : "madmad-products",
+      resource_type: isVideo ? "video" : "image",
     });
     const savedKB = originalKB - Math.round((result.bytes || 0) / 1024);
     console.log(`✅ [CLOUDINARY] Upload thành công! URL: ${result.secure_url.substring(0, 60)}...`);
