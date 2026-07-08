@@ -10,7 +10,7 @@ export function BorderRunner() {
       src={runnerIcon}
       alt=""
       aria-hidden="true"
-      className="border-runner fixed z-[70] h-8 w-8 rounded-full bg-white object-contain p-1 shadow-md pointer-events-none select-none"
+      className="border-runner fixed z-[70] h-8 w-8 object-contain drop-shadow-md pointer-events-none select-none"
     />
   );
 }

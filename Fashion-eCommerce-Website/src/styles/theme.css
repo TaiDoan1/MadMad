@@ -349,28 +349,31 @@
 }
 
 @keyframes borderRunBounce {
-  0%,
-  100% {
-    transform: translateY(0) rotate(-8deg) scale(1);
+  0% {
+    transform: translateY(0) rotate(0deg);
   }
 
   25% {
-    transform: translateY(-10px) rotate(0deg) scale(1.08);
+    transform: translateY(-14px) rotate(-90deg);
   }
 
   50% {
-    transform: translateY(0) rotate(8deg) scale(1);
+    transform: translateY(0) rotate(-180deg);
   }
 
   75% {
-    transform: translateY(-10px) rotate(0deg) scale(1.08);
+    transform: translateY(-14px) rotate(-270deg);
+  }
+
+  100% {
+    transform: translateY(0) rotate(-360deg);
   }
 }
 
 .border-runner {
   animation:
     borderRun 32s ease-in-out infinite,
-    borderRunBounce 0.8s ease-in-out infinite;
+    borderRunBounce 1.6s linear infinite;
 }
 
 /* Button pulse animation */
