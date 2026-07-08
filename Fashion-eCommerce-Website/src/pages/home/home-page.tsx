@@ -104,7 +104,7 @@ export function HomePage() {
   return (
     <div>
       {/* ═══ HERO ════════════════════════════════════════════════════════════ */}
-      <section className="relative h-screen overflow-hidden">
+      <section className="relative h-[75svh] sm:h-[100svh] overflow-hidden">
         {/* Slides */}
         <div className="absolute inset-0">
           {heroImages.map((mediaUrl, index) => {

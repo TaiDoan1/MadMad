@@ -9,7 +9,7 @@ import { safeLocalStorage } from "@/utils/safe-storage";
 // 🌐 Đọc URL backend từ biến môi trường VITE_API_URL (set trên Railway/Vercel)
 const envApiUrl = import.meta.env.VITE_API_URL as string | undefined;
 
-let base = envApiUrl ? envApiUrl.replace(/\/api\/?$/, "") : "https://madmad-backend.vercel.app";
+let base = envApiUrl ? envApiUrl.replace(/\/api\/?$/, "") : "https://madmad-production.up.railway.app";
 
 if (import.meta.env.DEV) {
   const localOffline = typeof window !== "undefined" && safeLocalStorage.getItem("madmad.local-backend-offline") === "true";
