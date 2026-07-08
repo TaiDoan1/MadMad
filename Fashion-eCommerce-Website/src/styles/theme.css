@@ -371,9 +371,151 @@
 }
 
 .border-runner {
-  animation:
-    borderRun 32s ease-in-out infinite,
-    borderRunBounce 1.6s linear infinite;
+  animation: borderRun 32s ease-in-out infinite;
+}
+
+.border-runner-spin {
+  display: block;
+  animation: borderRunBounce 1.6s linear infinite;
+}
+
+/* Bong bóng suy nghĩ — không xoay/nhảy theo logo, luôn đứng thẳng.
+   Vị trí (trên/dưới, trái/phải) được tính động theo vị trí hiện tại của icon
+   trên viewport để không bao giờ bị tràn ra ngoài màn hình. */
+@keyframes thoughtPopIn {
+  0% {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+
+  60% {
+    opacity: 1;
+    transform: scale(1.05);
+  }
+
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.thought-bubble {
+  position: absolute;
+  max-width: min(60vw, 220px);
+  background: #ffffff;
+  color: #1a1a1a;
+  padding: 0.4rem 0.8rem;
+  border-radius: 16px;
+  border: 2px solid rgba(26, 26, 26, 0.85);
+  font-size: 0.7rem;
+  font-weight: 600;
+  white-space: normal;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+  pointer-events: none;
+  animation: thoughtPopIn 0.25s ease-out both;
+}
+
+.thought-bubble.tb-above {
+  bottom: 100%;
+  margin-bottom: 16px;
+}
+
+.thought-bubble.tb-below {
+  top: 100%;
+  margin-top: 16px;
+}
+
+.thought-bubble.tb-left {
+  left: 0;
+}
+
+.thought-bubble.tb-right {
+  right: 0;
+}
+
+.thought-bubble.tb-above.tb-left {
+  transform-origin: bottom left;
+}
+
+.thought-bubble.tb-above.tb-right {
+  transform-origin: bottom right;
+}
+
+.thought-bubble.tb-below.tb-left {
+  transform-origin: top left;
+}
+
+.thought-bubble.tb-below.tb-right {
+  transform-origin: top right;
+}
+
+.thought-bubble::before,
+.thought-bubble::after {
+  content: "";
+  position: absolute;
+  border-radius: 50%;
+  background: #ffffff;
+  border: 2px solid rgba(26, 26, 26, 0.85);
+}
+
+.thought-bubble::before {
+  width: 10px;
+  height: 10px;
+}
+
+.thought-bubble::after {
+  width: 6px;
+  height: 6px;
+}
+
+.thought-bubble.tb-above::before {
+  bottom: -14px;
+}
+
+.thought-bubble.tb-above::after {
+  bottom: -22px;
+}
+
+.thought-bubble.tb-below::before {
+  top: -14px;
+}
+
+.thought-bubble.tb-below::after {
+  top: -22px;
+}
+
+.thought-bubble.tb-left::before {
+  left: 14px;
+}
+
+.thought-bubble.tb-left::after {
+  left: 8px;
+}
+
+.thought-bubble.tb-right::before {
+  right: 14px;
+}
+
+.thought-bubble.tb-right::after {
+  right: 8px;
+}
+
+@keyframes thoughtCursorBlink {
+  0%,
+  50% {
+    opacity: 1;
+  }
+
+  51%,
+  100% {
+    opacity: 0;
+  }
+}
+
+.thought-bubble-cursor {
+  display: inline-block;
+  margin-left: 1px;
+  animation: thoughtCursorBlink 0.8s step-end infinite;
 }
 
 /* Button pulse animation */
