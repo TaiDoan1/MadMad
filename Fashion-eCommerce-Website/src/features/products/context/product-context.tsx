@@ -239,6 +239,14 @@ export function ProductProvider({ children }: { children: ReactNode }) {
       },
       reorderProducts: (newOrderedList) => {
         setProducts(newOrderedList);
+        const items = newOrderedList.map((product, index) => ({ id: product.id, orderIndex: index }));
+        fetch(`${API_URL}/products/reorder`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json", "x-admin-key": getAdminKey() },
+          body: JSON.stringify({ items }),
+        }).catch(() => {
+          showToast("Lỗi kết nối máy chủ khi lưu thứ tự sản phẩm!", "error");
+        });
       },
       reconnectLocalhost: () => {
         markLocalBackendOffline(false);

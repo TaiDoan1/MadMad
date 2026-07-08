@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Save, Search } from "lucide-react";
 
-import { API_URL } from "@/config/api";
+import { API_URL, getAdminKey } from "@/config/api";
 import { useProducts } from "@/features/products/context/product-context";
 import type { SizeGuideConfig, SizeGuideRow } from "@/types/size-guide";
 import type { Product } from "@/types/product";
@@ -133,7 +133,7 @@ export function SizeGuideProductAssignments({ sizeGuide }: { sizeGuide?: SizeGui
       try {
         const res = await fetch(`${API_URL}/products/${product.id}`, {
           method: "PUT",
-          headers: { "Content-Type": "application/json" },
+          headers: { "Content-Type": "application/json", "x-admin-key": getAdminKey() },
           body: JSON.stringify(updated),
         });
         if (res.ok) ok += 1;

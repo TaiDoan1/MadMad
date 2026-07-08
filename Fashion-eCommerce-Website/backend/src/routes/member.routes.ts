@@ -57,6 +57,39 @@ router.get("/check", async (req, res, next) => {
   }
 });
 
+// 2b. POST /api/members/register - Khách hàng tự đăng ký thành viên VIP (Public)
+// Luôn ép points=50 (quà chào mừng) và tier=BRONZE, bỏ qua mọi giá trị points/tier client gửi lên
+// để tránh bị lợi dụng tự set điểm/hạng cao khi endpoint là public.
+router.post("/register", async (req, res, next) => {
+  try {
+    const { fullName, phone, email } = req.body;
+
+    if (!fullName || !phone || !email) {
+      return res.status(400).json({ message: "Vui lòng nhập đầy đủ Tên, SĐT và Email!" });
+    }
+
+    const cleanPhone = phone.trim().replace(/\s+/g, "");
+    const cleanEmail = email.trim().toLowerCase();
+
+    const newMember = await prisma.vIPMember.create({
+      data: {
+        fullName,
+        phone: cleanPhone,
+        email: cleanEmail,
+        points: 50,
+        tier: "BRONZE",
+      }
+    });
+
+    res.status(201).json(newMember);
+  } catch (error: any) {
+    if (error.code === "P2002") {
+      return res.status(400).json({ message: "Số điện thoại hoặc Email này đã đăng ký VIP rồi!" });
+    }
+    next(error);
+  }
+});
+
 // 3. POST /api/members - Thêm thành viên VIP mới (Yêu cầu quyền Admin)
 router.post("/", requireAdminAuth, async (req, res, next) => {
   try {

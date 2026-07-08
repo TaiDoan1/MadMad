@@ -155,13 +155,13 @@ export function TrackOrderPage() {
     }
   };
 
-  // Thực hiện hủy đơn hàng vãng lai
-  const handleCancelOrder = (orderId: number) => {
+  // Thực hiện hủy đơn hàng vãng lai (endpoint public riêng, xác thực bằng SĐT đơn hàng)
+  const handleCancelOrder = (orderId: number, customerPhone: string) => {
     if (window.confirm(t("Bạn có chắc chắn muốn hủy đơn hàng này không? Hành động này không thể hoàn tác!", "Are you sure you want to cancel this order? This action cannot be undone!"))) {
-      fetch(`${API_URL}/orders/${orderId}/status`, {
+      fetch(`${API_URL}/orders/${orderId}/customer-cancel`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: "cancelled" }),
+        body: JSON.stringify({ customerPhone }),
       })
         .then(res => {
           if (res.ok) {
@@ -486,7 +486,7 @@ export function TrackOrderPage() {
                         ) : isWithin5Min ? (
                           <div className="space-y-2">
                             <button
-                              onClick={() => handleCancelOrder(order.id)}
+                              onClick={() => handleCancelOrder(order.id, order.customerPhone)}
                               className="w-full bg-red-600 text-white hover:bg-red-700 py-3 text-[10px] font-extrabold tracking-widest uppercase rounded-lg transition-all flex items-center justify-center gap-1.5 shadow-md shadow-red-600/10"
                             >
                               <XCircle className="h-3.5 w-3.5" />

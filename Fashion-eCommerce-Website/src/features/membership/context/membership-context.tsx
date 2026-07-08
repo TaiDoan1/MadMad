@@ -158,10 +158,10 @@ export function MembershipProvider({ children }: { children: ReactNode }) {
 
   const registerMember = async (fullName: string, email: string, phone: string, password?: string) => {
     try {
-      const response = await fetch(`${API_URL}/members`, {
+      const response = await fetch(`${API_URL}/members/register`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ fullName, email, phone, points: 50, tier: "BRONZE" }),
+        body: JSON.stringify({ fullName, email, phone }),
       });
       if (!response.ok) {
         const err = await response.json();
