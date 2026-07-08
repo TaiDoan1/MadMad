@@ -34,6 +34,7 @@ export function AdminStorefrontPage() {
   const popularCategoryImageDrafts = settings.popularCategoryImages ?? [];
   const topBannerImageDrafts = settings.topBannerImages ?? [];
   const instagramImageDrafts = settings.instagramImages ?? [];
+  const borderRunnerPhraseDrafts = settings.borderRunnerPhrases ?? [];
   
   const heroImages = heroImageDrafts.map((value) => value.trim()).filter(Boolean);
   const previewHeroImages = [settings.heroImage.trim(), ...heroImages].filter(Boolean);
@@ -619,6 +620,47 @@ export function AdminStorefrontPage() {
                   className="w-full rounded border border-border px-3 py-1.5 text-sm focus:ring-1 focus:ring-black outline-none"
                 />
                 <p className="mt-1 text-[11px] text-muted-foreground">Thời gian nghỉ giữa các lần nhắc (có dao động ngẫu nhiên ±1 giây cho tự nhiên).</p>
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between">
+                  <label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground">Câu nói khi bấm vào logo</label>
+                  <button
+                    type="button"
+                    onClick={() => updateSettings({ borderRunnerPhrases: [...borderRunnerPhraseDrafts, ""] })}
+                    className="text-xs font-bold border border-border rounded px-2.5 py-1 bg-white hover:bg-muted transition-colors"
+                  >
+                    + Thêm câu
+                  </button>
+                </div>
+                <p className="mt-1 text-[11px] text-muted-foreground">Mỗi lần khách bấm/chạm vào logo, một câu ngẫu nhiên trong danh sách sẽ hiện lên.</p>
+
+                <div className="mt-2 space-y-2 max-h-72 overflow-y-auto pr-1">
+                  {borderRunnerPhraseDrafts.map((phrase, i) => (
+                    <div key={i} className="flex gap-2 items-center">
+                      <input
+                        value={phrase}
+                        onChange={(e) => {
+                          const n = [...borderRunnerPhraseDrafts];
+                          n[i] = e.target.value;
+                          updateSettings({ borderRunnerPhrases: n });
+                        }}
+                        placeholder={`Câu nói #${i + 1}`}
+                        className="flex-1 rounded border border-border px-3 py-1.5 text-sm focus:ring-1 focus:ring-black outline-none"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => updateSettings({ borderRunnerPhrases: borderRunnerPhraseDrafts.filter((_, j) => j !== i) })}
+                        className="px-2 py-1.5 text-sm text-red-500 hover:text-red-700 transition-colors"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ))}
+                  {borderRunnerPhraseDrafts.length === 0 && (
+                    <p className="text-xs text-muted-foreground italic text-center py-4">Chưa có câu nào, đang dùng danh sách mặc định.</p>
+                  )}
+                </div>
               </div>
             </div>
           )}

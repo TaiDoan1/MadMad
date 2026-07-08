@@ -114,6 +114,14 @@ export const DEFAULT_STOREFRONT_SETTINGS: StorefrontSettings = {
   // 🐭 Logo chạy vòng quanh viền màn hình (easter egg)
   borderRunnerHintText: "Hãy chạm vào tôi đi nè.",
   borderRunnerHintIntervalSec: 5,
+  borderRunnerPhrases: [
+    "Ê, mua đồ chưa? 👀",
+    "MADMAD nè!",
+    "Stay Real 🔥",
+    "Chạm nhẹ tay thôi :))",
+    "Săn sale liền tay!",
+    "Đẹp trai như mình nè 😎",
+  ],
 };
 
 interface StorefrontSettingsContextValue {
@@ -314,6 +322,10 @@ function readStoredSettings(): StorefrontSettings {
         typeof parsed.borderRunnerHintText === "string" ? parsed.borderRunnerHintText : DEFAULT_STOREFRONT_SETTINGS.borderRunnerHintText,
       borderRunnerHintIntervalSec:
         typeof parsed.borderRunnerHintIntervalSec === "number" ? parsed.borderRunnerHintIntervalSec : DEFAULT_STOREFRONT_SETTINGS.borderRunnerHintIntervalSec,
+      borderRunnerPhrases:
+        Array.isArray(parsed.borderRunnerPhrases) && parsed.borderRunnerPhrases.length > 0
+          ? parsed.borderRunnerPhrases.map((value) => String(value))
+          : DEFAULT_STOREFRONT_SETTINGS.borderRunnerPhrases,
     };
   } catch {
     return DEFAULT_STOREFRONT_SETTINGS;

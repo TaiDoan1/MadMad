@@ -82,6 +82,7 @@ router.get("/", async (req, res, next) => {
     const bestSellerProductIds = setting.bestSellerProductIdsJson ? JSON.parse(setting.bestSellerProductIdsJson) : [];
     const bestSellerImageOverrides = setting.bestSellerImageOverridesJson ? JSON.parse(setting.bestSellerImageOverridesJson) : {};
     const colorHexMap = setting.colorHexMapJson ? JSON.parse(setting.colorHexMapJson) : {};
+    const borderRunnerPhrases = setting.borderRunnerPhrasesJson ? JSON.parse(setting.borderRunnerPhrasesJson) : [];
 
     // Kiểm tra quyền Admin. Nếu có header x-admin-key hợp lệ, cho phép trả về đầy đủ.
     // Nếu là client công khai thông thường (khách mua hàng), ẩn toàn bộ các trường nhạy cảm.
@@ -114,6 +115,7 @@ router.get("/", async (req, res, next) => {
         bestSellerProductIds,
         bestSellerImageOverrides,
         colorHexMap,
+        borderRunnerPhrases,
         // Các field text chưa từng có giá trị (record cũ) sẽ là null trong DB -> bỏ qua (undefined)
         // để không đè mất giá trị mặc định đẹp phía frontend
         heroImage: setting.heroImage ?? undefined,
@@ -189,6 +191,7 @@ router.get("/", async (req, res, next) => {
         // 🐭 Logo chạy vòng quanh viền màn hình (easter egg)
         borderRunnerHintText: setting.borderRunnerHintText ?? undefined,
         borderRunnerHintIntervalSec: setting.borderRunnerHintIntervalSec,
+        borderRunnerPhrases,
       };
     }
 
@@ -301,6 +304,7 @@ router.put("/", requireAdminAuth, async (req, res, next) => {
       // 🐭 Logo chạy vòng quanh viền màn hình (easter egg)
       borderRunnerHintText,
       borderRunnerHintIntervalSec,
+      borderRunnerPhrases,
     } = req.body;
 
     console.log("📥 [PUT /settings] Received request to update settings:");
@@ -347,6 +351,9 @@ router.put("/", requireAdminAuth, async (req, res, next) => {
 
     const sizeGuideJson =
       sizeGuide !== undefined ? JSON.stringify(typeof sizeGuide === "object" && sizeGuide ? sizeGuide : {}) : undefined;
+
+    const borderRunnerPhrasesJson =
+      borderRunnerPhrases !== undefined ? JSON.stringify(Array.isArray(borderRunnerPhrases) ? borderRunnerPhrases : []) : undefined;
 
     const updatedSetting = await prisma.storefrontSetting.upsert({
       where: { id: 1 },
@@ -448,6 +455,7 @@ router.put("/", requireAdminAuth, async (req, res, next) => {
         // 🐭 Logo chạy vòng quanh viền màn hình (easter egg)
         borderRunnerHintText,
         borderRunnerHintIntervalSec: borderRunnerHintIntervalSec !== undefined ? Number(borderRunnerHintIntervalSec) : undefined,
+        borderRunnerPhrasesJson,
       },
       create: {
         id: 1,
@@ -548,6 +556,7 @@ router.put("/", requireAdminAuth, async (req, res, next) => {
         // 🐭 Logo chạy vòng quanh viền màn hình (easter egg)
         borderRunnerHintText: borderRunnerHintText || "Hãy chạm vào tôi đi nè.",
         borderRunnerHintIntervalSec: borderRunnerHintIntervalSec !== undefined ? Number(borderRunnerHintIntervalSec) : 5,
+        borderRunnerPhrasesJson: borderRunnerPhrasesJson ?? "[]",
       }
     });
 

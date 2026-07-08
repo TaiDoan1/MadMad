@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import runnerIcon from "@/imports/logo-m-drip.png";
 import { useStorefrontSettings } from "@/features/settings/context/storefront-settings-context";
 
-const PHRASES = [
+const DEFAULT_PHRASES = [
   "Ê, mua đồ chưa? 👀",
   "MADMAD nè!",
   "Stay Real 🔥",
@@ -77,6 +77,9 @@ export function BorderRunner() {
     settings.borderRunnerHintIntervalSec && settings.borderRunnerHintIntervalSec > 0
       ? settings.borderRunnerHintIntervalSec
       : DEFAULT_HINT_INTERVAL_SEC;
+  const phrases = settings.borderRunnerPhrases?.filter((p) => p.trim()).length
+    ? settings.borderRunnerPhrases.filter((p) => p.trim())
+    : DEFAULT_PHRASES;
 
   const buttonRef = useRef<HTMLButtonElement>(null);
   const [bubble, setBubble] = useState<string | null>(null);
@@ -138,7 +141,7 @@ export function BorderRunner() {
 
     setPlacement(computePlacement(event.currentTarget.getBoundingClientRect()));
 
-    const phrase = PHRASES[Math.floor(Math.random() * PHRASES.length)];
+    const phrase = phrases[Math.floor(Math.random() * phrases.length)];
     setBubble(phrase);
     if (bubbleTimeoutRef.current) clearTimeout(bubbleTimeoutRef.current);
     bubbleTimeoutRef.current = setTimeout(() => setBubble(null), 2200);

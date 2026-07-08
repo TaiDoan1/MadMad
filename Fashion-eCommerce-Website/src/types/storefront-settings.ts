@@ -90,4 +90,5 @@ export interface StorefrontSettings {
   // 🐭 Logo chạy vòng quanh viền màn hình (easter egg)
   borderRunnerHintText?: string;
   borderRunnerHintIntervalSec?: number;
+  borderRunnerPhrases?: string[];
 }

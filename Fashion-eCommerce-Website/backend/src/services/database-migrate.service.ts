@@ -13,6 +13,7 @@ const MIGRATION_FILES = [
   "add_storefront_hero_fields.sql",
   "add_top_banner_images.sql",
   "add_border_runner_hint.sql",
+  "add_border_runner_phrases.sql",
 ] as const;
 
 let migrationPromise: Promise<{ applied: string[] }> | null = null;
