@@ -135,9 +135,6 @@ model StorefrontSetting {
   bestSellerImageOverridesJson   String? @default("{}")
   colorHexMapJson                String? @default("{}")
 
-  // 💬 Đánh giá / testimonial khách hàng (trang chủ)
-  testimonialsJson         String? @default("[]")
-
   printInvoiceTitle        String?
   printInvoiceAddress      String?
   printInvoicePhone        String?
