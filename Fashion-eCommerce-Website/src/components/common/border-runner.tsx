@@ -18,16 +18,34 @@ const HINT_DELAY_MS = 1800;
 const HINT_TYPE_SPEED_MS = 60;
 const HINT_HOLD_MS = 3000;
 
-function playChime() {
+// Safari (đặc biệt iOS) giới hạn số lượng AudioContext cùng lúc và xử lý close() không ổn định —
+// tạo mới + đóng liên tục mỗi lần bấm dễ khiến các lần bấm sau bị câm tiếng. Dùng chung 1 context,
+// không bao giờ đóng, chỉ resume() lại mỗi lần cần phát.
+let sharedAudioContext: AudioContext | null = null;
+
+function getSharedAudioContext(): AudioContext | null {
+  if (sharedAudioContext) return sharedAudioContext;
   try {
     const AudioContextClass =
       window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-    const ctx = new AudioContextClass();
-    // iOS Safari (và một số trình duyệt di động) tạo AudioContext ở trạng thái "suspended" —
-    // phải resume() tường minh trong cùng lượt chạm thì mới thực sự phát được âm thanh.
+    sharedAudioContext = new AudioContextClass();
+    return sharedAudioContext;
+  } catch {
+    return null;
+  }
+}
+
+function playChime() {
+  const ctx = getSharedAudioContext();
+  if (!ctx) return;
+
+  try {
+    // AudioContext có thể ở trạng thái "suspended" (Safari) — phải resume() tường minh
+    // trong cùng lượt chạm thì mới thực sự phát được âm thanh.
     if (ctx.state === "suspended") {
       void ctx.resume();
     }
+
     const notes = [523.25, 659.25, 783.99];
 
     notes.forEach((freq, i) => {
@@ -46,8 +64,6 @@ function playChime() {
       osc.start(startTime);
       osc.stop(startTime + 0.35);
     });
-
-    setTimeout(() => ctx.close(), 600);
   } catch {
     // Web Audio API không khả dụng — bỏ qua âm thanh, vẫn hiện bong bóng thoại
   }
