@@ -348,8 +348,29 @@
   }
 }
 
+@keyframes borderRunBounce {
+  0%,
+  100% {
+    transform: translateY(0) rotate(-8deg) scale(1);
+  }
+
+  25% {
+    transform: translateY(-10px) rotate(0deg) scale(1.08);
+  }
+
+  50% {
+    transform: translateY(0) rotate(8deg) scale(1);
+  }
+
+  75% {
+    transform: translateY(-10px) rotate(0deg) scale(1.08);
+  }
+}
+
 .border-runner {
-  animation: borderRun 18s linear infinite;
+  animation:
+    borderRun 18s ease-in-out infinite,
+    borderRunBounce 0.5s ease-in-out infinite;
 }
 
 /* Button pulse animation */
