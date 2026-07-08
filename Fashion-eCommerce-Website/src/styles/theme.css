@@ -369,8 +369,8 @@
 
 .border-runner {
   animation:
-    borderRun 18s ease-in-out infinite,
-    borderRunBounce 0.5s ease-in-out infinite;
+    borderRun 32s ease-in-out infinite,
+    borderRunBounce 0.8s ease-in-out infinite;
 }
 
 /* Button pulse animation */

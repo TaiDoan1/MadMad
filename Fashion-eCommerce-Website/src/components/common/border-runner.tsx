@@ -1,4 +1,4 @@
-import { brandLogo } from "@/assets/images";
+import runnerIcon from "@/imports/logo-m-drip.png";
 
 /**
  * Logo MADMAD nhỏ chạy vòng quanh viền màn hình cho vui mắt 🐱
@@ -7,7 +7,7 @@ import { brandLogo } from "@/assets/images";
 export function BorderRunner() {
   return (
     <img
-      src={brandLogo}
+      src={runnerIcon}
       alt=""
       aria-hidden="true"
       className="border-runner fixed z-[70] h-8 w-8 rounded-full bg-white object-contain p-1 shadow-md pointer-events-none select-none"
