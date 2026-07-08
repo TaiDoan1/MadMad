@@ -3,6 +3,7 @@ import { Heart, Menu, Search, ShoppingCart, User, X, Truck } from "lucide-react"
 import { Link, Outlet, useLocation } from "react-router";
 
 import { brandLogo } from "@/assets/images";
+import { BorderRunner } from "@/components/common/border-runner";
 import { CartDrawer } from "@/components/common/cart-drawer";
 import { LoadingBar } from "@/components/common/loading-bar";
 import { PageTransition, useTransitionTo } from "@/components/common/page-transition";
@@ -121,6 +122,7 @@ export function MainLayout() {
 
   return (
     <div className="min-h-screen bg-background">
+      <BorderRunner />
       <LoadingBar />
       {/* Header: fixed — overlay lên trên content, transparent ở top home page */}
       <header
