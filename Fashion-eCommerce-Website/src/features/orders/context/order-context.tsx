@@ -202,10 +202,19 @@ const LOCAL_ORDERS_KEY = "madmad_orders_fallback";
     const adminKey = getAdminKey();
     if (!adminKey) return;
 
-    loadOrders();
+    // Provider này bọc ngoài Router nên không dùng được useLocation() -
+    // đọc thẳng window.location mỗi lần tick để tránh polling nền khi khách
+    // đang xem trang thường (chỉ fetch khi thực sự đang ở /admin)
+    const isAdminRoute = () =>
+      typeof window !== "undefined" && window.location.pathname.startsWith("/admin");
+
+    if (isAdminRoute()) {
+      loadOrders();
+    }
+
     // 🔄 Tự động cập nhật ngầm mỗi 3 giây (Real-time polling cho Admin không cần F5)
     const interval = setInterval(() => {
-      if (getAdminKey()) {
+      if (getAdminKey() && isAdminRoute()) {
         loadOrders(true);
       }
     }, 3000);

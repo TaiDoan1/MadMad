@@ -118,10 +118,19 @@ export function MembershipProvider({ children }: { children: ReactNode }) {
     const adminKey = getAdminKey();
     if (!adminKey) return;
 
-    loadMembers();
+    // Provider này bọc ngoài Router nên không dùng được useLocation() -
+    // đọc thẳng window.location mỗi lần tick để tránh polling nền khi khách
+    // đang xem trang thường (chỉ fetch khi thực sự đang ở /admin)
+    const isAdminRoute = () =>
+      typeof window !== "undefined" && window.location.pathname.startsWith("/admin");
+
+    if (isAdminRoute()) {
+      loadMembers();
+    }
+
     // 🔄 Tự động cập nhật ngầm mỗi 3 giây (Real-time polling cho Admin không cần F5)
     const interval = setInterval(() => {
-      if (getAdminKey()) {
+      if (getAdminKey() && isAdminRoute()) {
         loadMembers();
       }
     }, 3000);
