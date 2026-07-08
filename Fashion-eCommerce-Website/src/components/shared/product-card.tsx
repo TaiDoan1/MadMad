@@ -18,7 +18,7 @@ export function ProductCard({ product, variant = "shop" }: ProductCardProps) {
   const { addToCart } = useCart();
   const { formatPrice, t, translate } = useLanguage();
   const [added, setAdded] = useState(false);
-  const [touchFlipped, setTouchFlipped] = useState(false);
+  const [touchActive, setTouchActive] = useState(false);
 
   const isHome = variant === "home";
   const imageFrameClass = "aspect-[3/4]";
@@ -52,30 +52,35 @@ export function ProductCard({ product, variant = "shop" }: ProductCardProps) {
 
   const secondaryImage = product.images && product.images.length > 1 ? product.images[1] : null;
 
-  // Trên thiết bị cảm ứng không có "hover" nên chạm lần 1 sẽ đổi ảnh (peek), chạm lần 2 mới vào trang sản phẩm
-  const handleImageTap = (e: React.MouseEvent) => {
-    if (!secondaryImage || touchFlipped) return;
-    const isTouchDevice = typeof window !== "undefined" && window.matchMedia("(hover: none)").matches;
-    if (isTouchDevice) {
-      e.preventDefault();
-      setTouchFlipped(true);
-    }
+  // Trên thiết bị cảm ứng không có "hover" chuột — giữ ngón tay chạm vào ảnh sẽ đổi ảnh ngay (như hover),
+  // nhấc tay ra thì nhấn (tap) vẫn chuyển trang sản phẩm bình thường.
+  const handleTouchStart = () => {
+    if (secondaryImage) setTouchActive(true);
+  };
+  const handleTouchEnd = () => {
+    setTouchActive(false);
   };
 
   return (
     <div className={`group relative flex h-full flex-col overflow-hidden ${cardBg} transition-all duration-300`}>
       {/* ── Image ─────────────────────────────────────────────────────────── */}
-      <Link to={`/product/${product.id}`} onClick={handleImageTap} className={`relative block overflow-hidden ${imageFrameClass}`}>
+      <Link
+        to={`/product/${product.id}`}
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
+        onTouchCancel={handleTouchEnd}
+        className={`relative block overflow-hidden ${imageFrameClass}`}
+      >
         <ImageWithFallback
           src={product.image}
           alt={translate(product.name)}
-          className={`h-full w-full object-cover transition-all duration-700 group-hover:scale-105 ${secondaryImage ? "group-hover:opacity-0" : ""} ${touchFlipped ? "!opacity-0 !scale-105" : ""}`}
+          className={`h-full w-full object-cover transition-all duration-700 group-hover:scale-105 ${secondaryImage ? "group-hover:opacity-0" : ""} ${touchActive ? "!opacity-0 !scale-105" : ""}`}
         />
         {secondaryImage && (
           <ImageWithFallback
             src={secondaryImage}
             alt={`${translate(product.name)} hover`}
-            className={`absolute inset-0 h-full w-full object-cover transition-all duration-700 opacity-0 group-hover:opacity-100 group-hover:scale-105 ${touchFlipped ? "!opacity-100 !scale-105" : ""}`}
+            className={`absolute inset-0 h-full w-full object-cover transition-all duration-700 opacity-0 group-hover:opacity-100 group-hover:scale-105 ${touchActive ? "!opacity-100 !scale-105" : ""}`}
           />
         )}
 
