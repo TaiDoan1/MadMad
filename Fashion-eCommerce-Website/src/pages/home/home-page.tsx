@@ -55,6 +55,8 @@ export function HomePage() {
   const overlayLeft  = Math.min(100, Math.max(0,   settings.heroOverlayOpacityLeft   ?? 55))  / 100;
   const overlayMid   = Math.min(100, Math.max(0,   settings.heroOverlayOpacityMiddle ?? 30))  / 100;
   const overlayRight = Math.min(100, Math.max(0,   settings.heroOverlayOpacityRight  ?? 55))  / 100;
+  const activeHeroMediaUrl = heroImages[Math.min(heroIndex, heroImages.length - 1)];
+  const activeHeroIsVideo  = activeHeroMediaUrl ? /\.(mp4|webm|ogg)$/i.test(activeHeroMediaUrl) : false;
 
   useEffect(() => { setHeroIndex(0); }, [heroImages.length]);
 
@@ -111,7 +113,31 @@ export function HomePage() {
   return (
     <div>
       {/* ═══ HERO ════════════════════════════════════════════════════════════ */}
-      <section className="relative h-[75svh] sm:h-[100svh] overflow-hidden bg-black">
+      <section className="relative min-h-[50vh] sm:h-[100svh] overflow-hidden bg-black">
+        {/* Sizer (chỉ mobile): render ảnh/video đang active ở normal flow (w-full h-auto) để
+            chiều cao section khớp đúng tỉ lệ gốc của ảnh — không crop, không còn vệt đen letterbox.
+            Desktop giữ nguyên h-[100svh] full-bleed nên không cần sizer (sm:hidden). */}
+        {isSettingsLoaded && activeHeroMediaUrl && (
+          activeHeroIsVideo ? (
+            <video
+              key={`sizer-${activeHeroMediaUrl}`}
+              src={activeHeroMediaUrl}
+              muted
+              playsInline
+              aria-hidden="true"
+              className="block w-full h-auto opacity-0 pointer-events-none sm:hidden"
+            />
+          ) : (
+            <img
+              key={`sizer-${activeHeroMediaUrl}`}
+              src={activeHeroMediaUrl}
+              alt=""
+              aria-hidden="true"
+              className="block w-full h-auto opacity-0 pointer-events-none sm:hidden"
+            />
+          )
+        )}
+
         {/* Slides */}
         <div className="absolute inset-0">
           {!isSettingsLoaded && (
