@@ -113,10 +113,9 @@ export function HomePage() {
   return (
     <div>
       {/* ═══ HERO ════════════════════════════════════════════════════════════ */}
-      <section className="relative min-h-[50vh] max-h-[90svh] sm:h-[100svh] sm:max-h-none overflow-hidden bg-black">
+      <section className="relative min-h-[50vh] sm:h-[100svh] overflow-hidden bg-black">
         {/* Sizer (chỉ mobile): render ảnh/video đang active ở normal flow (w-full h-auto) để
             chiều cao section khớp đúng tỉ lệ gốc của ảnh — không crop, không còn vệt đen letterbox.
-            max-h-[90svh] chặn trường hợp ảnh/video quá dọc làm banner cao vượt màn hình.
             Desktop giữ nguyên h-[100svh] full-bleed nên không cần sizer (sm:hidden). */}
         {isSettingsLoaded && activeHeroMediaUrl && (
           activeHeroIsVideo ? (
