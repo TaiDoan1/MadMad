@@ -55,8 +55,6 @@ export function HomePage() {
   const overlayLeft  = Math.min(100, Math.max(0,   settings.heroOverlayOpacityLeft   ?? 55))  / 100;
   const overlayMid   = Math.min(100, Math.max(0,   settings.heroOverlayOpacityMiddle ?? 30))  / 100;
   const overlayRight = Math.min(100, Math.max(0,   settings.heroOverlayOpacityRight  ?? 55))  / 100;
-  const activeHeroMediaUrl = heroImages[Math.min(heroIndex, heroImages.length - 1)];
-  const activeHeroIsVideo  = activeHeroMediaUrl ? /\.(mp4|webm|ogg)$/i.test(activeHeroMediaUrl) : false;
 
   useEffect(() => { setHeroIndex(0); }, [heroImages.length]);
 
@@ -113,32 +111,7 @@ export function HomePage() {
   return (
     <div>
       {/* ═══ HERO ════════════════════════════════════════════════════════════ */}
-      <section className="relative min-h-[50vh] max-h-[90svh] sm:h-[100svh] sm:max-h-none overflow-hidden bg-black">
-        {/* Sizer (chỉ mobile): render ảnh/video đang active ở normal flow (w-full h-auto) để
-            chiều cao section khớp đúng tỉ lệ gốc của ảnh — không crop, không còn vệt đen letterbox.
-            max-h-[90svh] chặn trường hợp ảnh/video quá dọc làm banner cao vượt màn hình.
-            Desktop giữ nguyên h-[100svh] full-bleed nên không cần sizer (sm:hidden). */}
-        {isSettingsLoaded && activeHeroMediaUrl && (
-          activeHeroIsVideo ? (
-            <video
-              key={`sizer-${activeHeroMediaUrl}`}
-              src={activeHeroMediaUrl}
-              muted
-              playsInline
-              aria-hidden="true"
-              className="block w-full h-auto opacity-0 pointer-events-none sm:hidden"
-            />
-          ) : (
-            <img
-              key={`sizer-${activeHeroMediaUrl}`}
-              src={activeHeroMediaUrl}
-              alt=""
-              aria-hidden="true"
-              className="block w-full h-auto opacity-0 pointer-events-none sm:hidden"
-            />
-          )
-        )}
-
+      <section className="relative h-[75svh] sm:h-[100svh] overflow-hidden">
         {/* Slides */}
         <div className="absolute inset-0">
           {!isSettingsLoaded && (
@@ -147,9 +120,7 @@ export function HomePage() {
           {isSettingsLoaded && heroImages.map((mediaUrl, index) => {
             const isActive = index === Math.min(heroIndex, heroImages.length - 1);
             const isVideo  = /\.(mp4|webm|ogg)$/i.test(mediaUrl);
-            // Mobile: object-contain để không cắt mất ảnh (banner thường được thiết kế theo tỉ lệ desktop).
-            // Desktop (sm+): giữ object-cover full-bleed như cũ.
-            const cls      = `absolute inset-0 h-full w-full object-contain sm:object-cover transition-all duration-700 ease-in-out ${isActive ? "opacity-100" : "opacity-0"}`;
+            const cls      = `absolute inset-0 h-full w-full object-cover transition-all duration-700 ease-in-out ${isActive ? "opacity-100" : "opacity-0"}`;
             const scale    = isActive ? heroScale : heroScale + 0.05;
 
             return isVideo ? (
