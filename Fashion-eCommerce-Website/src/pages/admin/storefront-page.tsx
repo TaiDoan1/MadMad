@@ -474,6 +474,7 @@ export function AdminStorefrontPage() {
                         }}
                         className="flex-1"
                         placeholder={`Đường dẫn ảnh banner trên #${i + 1}`}
+                        maxDimension={2400}
                       />
                       <button
                         type="button"
@@ -519,6 +520,7 @@ export function AdminStorefrontPage() {
                         }}
                         className="flex-1"
                         placeholder={`Đường dẫn ảnh gallery #${i + 1}`}
+                        maxDimension={2400}
                       />
                       <button
                         type="button"
