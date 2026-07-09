@@ -57,6 +57,9 @@ export function HomePage() {
   const overlayRight = Math.min(100, Math.max(0,   settings.heroOverlayOpacityRight  ?? 55))  / 100;
   const activeHeroMediaUrl = heroImages[Math.min(heroIndex, heroImages.length - 1)];
   const activeHeroIsVideo  = activeHeroMediaUrl ? /\.(mp4|webm|ogg)$/i.test(activeHeroMediaUrl) : false;
+  // Ảnh/video dọc (portrait) mà dùng object-cover full-bleed trên desktop sẽ bị phóng to/zoom quá mức
+  // để lấp đầy khung ngang. Phát hiện tỉ lệ qua sizer rồi chuyển desktop sang object-contain khi dọc.
+  const [activeHeroIsPortrait, setActiveHeroIsPortrait] = useState(false);
 
   useEffect(() => { setHeroIndex(0); }, [heroImages.length]);
 
@@ -113,9 +116,11 @@ export function HomePage() {
   return (
     <div>
       {/* ═══ HERO ════════════════════════════════════════════════════════════ */}
-      <section className="relative min-h-[50vh] sm:h-[100svh] overflow-hidden bg-black">
+      <section className="relative min-h-[50vh] max-h-[90svh] sm:h-[100svh] sm:max-h-none overflow-hidden bg-black">
         {/* Sizer (chỉ mobile): render ảnh/video đang active ở normal flow (w-full h-auto) để
             chiều cao section khớp đúng tỉ lệ gốc của ảnh — không crop, không còn vệt đen letterbox.
+            max-h-[90svh] chặn trường hợp ảnh/video quá dọc (như 9:16) làm banner cao vượt màn hình —
+            khi đó object-contain sẽ letterbox 2 bên thay vì để section phình cao bất thường.
             Desktop giữ nguyên h-[100svh] full-bleed nên không cần sizer (sm:hidden). */}
         {isSettingsLoaded && activeHeroMediaUrl && (
           activeHeroIsVideo ? (
@@ -146,9 +151,13 @@ export function HomePage() {
           {isSettingsLoaded && heroImages.map((mediaUrl, index) => {
             const isActive = index === Math.min(heroIndex, heroImages.length - 1);
             const isVideo  = /\.(mp4|webm|ogg)$/i.test(mediaUrl);
-            // Mobile: object-contain để không cắt mất ảnh (banner thường được thiết kế theo tỉ lệ desktop).
-            // Desktop (sm+): giữ object-cover full-bleed như cũ.
-            const cls      = `absolute inset-0 h-full w-full object-contain sm:object-cover transition-all duration-700 ease-in-out ${isActive ? "opacity-100" : "opacity-0"}`;
+            // Mobile: luôn object-contain để không cắt mất ảnh.
+            // Desktop (sm+): object-cover full-bleed cho ảnh/video ngang (như cũ) — nhưng nếu media
+            // đang active là dọc (portrait, ví dụ video quay dọc điện thoại) thì object-cover sẽ bị
+            // phóng to/zoom quá mức để lấp khung ngang, nên chuyển sang object-contain luôn.
+            const cls =
+              `absolute inset-0 h-full w-full object-contain transition-all duration-700 ease-in-out ` +
+              `${activeHeroIsPortrait ? "" : "sm:object-cover"} ${isActive ? "opacity-100" : "opacity-0"}`;
             const scale    = isActive ? heroScale : heroScale + 0.05;
 
             return isVideo ? (
@@ -158,6 +167,11 @@ export function HomePage() {
                 className={cls}
                 style={{ transform: `scale(${scale})` }}
                 autoPlay muted loop playsInline
+                onLoadedMetadata={
+                  isActive
+                    ? (e) => setActiveHeroIsPortrait(e.currentTarget.videoHeight > e.currentTarget.videoWidth)
+                    : undefined
+                }
               />
             ) : (
               <ImageWithFallback
@@ -166,6 +180,11 @@ export function HomePage() {
                 alt={`MADMAD ${index + 1}`}
                 className={cls}
                 style={{ transform: `scale(${scale})` }}
+                onLoad={
+                  isActive
+                    ? (e) => setActiveHeroIsPortrait(e.currentTarget.naturalHeight > e.currentTarget.naturalWidth)
+                    : undefined
+                }
               />
             );
           })}
