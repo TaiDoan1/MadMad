@@ -39,7 +39,7 @@ function useCountdown(targetMs: number) {
 // ─── HomePage ──────────────────────────────────────────────────────────────────
 export function HomePage() {
   const { products, isLoading } = useProducts();
-  const { settings } = useStorefrontSettings();
+  const { settings, isSettingsLoaded } = useStorefrontSettings();
   const { t } = useLanguage();
 
   // ── Hero slideshow ─────────────────────────────────────────────────────────
@@ -114,7 +114,10 @@ export function HomePage() {
       <section className="relative h-[75svh] sm:h-[100svh] overflow-hidden bg-black">
         {/* Slides */}
         <div className="absolute inset-0">
-          {heroImages.map((mediaUrl, index) => {
+          {!isSettingsLoaded && (
+            <div className="absolute inset-0 animate-pulse bg-gradient-to-br from-neutral-800 to-black" />
+          )}
+          {isSettingsLoaded && heroImages.map((mediaUrl, index) => {
             const isActive = index === Math.min(heroIndex, heroImages.length - 1);
             const isVideo  = /\.(mp4|webm|ogg)$/i.test(mediaUrl);
             // Mobile: object-contain để không cắt mất ảnh (banner thường được thiết kế theo tỉ lệ desktop).

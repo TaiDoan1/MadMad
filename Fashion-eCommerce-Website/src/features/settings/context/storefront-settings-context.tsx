@@ -17,8 +17,7 @@ export const DEFAULT_STOREFRONT_SETTINGS: StorefrontSettings = {
   storeEmail: "mmadmadstudio@gmail.com",
   storePhone: "+84 123 456 789",
   storeAddress: "123 Fashion Street, Ho Chi Minh City",
-  heroImage:
-    "https://i.pinimg.com/1200x/fb/f2/73/fbf2733c931be4e147263be4c26dc226.jpg",
+  heroImage: "",
   heroImages: [],
   heroImageScalePercent: 100,
   heroSlideIntervalMs: 6000,
@@ -126,6 +125,7 @@ export const DEFAULT_STOREFRONT_SETTINGS: StorefrontSettings = {
 
 interface StorefrontSettingsContextValue {
   settings: StorefrontSettings;
+  isSettingsLoaded: boolean;
   updateSettings: (payload: Partial<StorefrontSettings>) => void;
 }
 
@@ -334,6 +334,7 @@ function readStoredSettings(): StorefrontSettings {
 
 export function StorefrontSettingsProvider({ children }: { children: ReactNode }) {
   const [settings, setSettings] = useState<StorefrontSettings>(readStoredSettings);
+  const [isSettingsLoaded, setIsSettingsLoaded] = useState(false);
 
   const flushSettingsQueue = useCallback(async () => {
     const items = peekQueue<Partial<StorefrontSettings>>(SETTINGS_OFFLINE_QUEUE_KEY);
@@ -388,6 +389,8 @@ export function StorefrontSettingsProvider({ children }: { children: ReactNode }
         }
       } catch {
         // ignore sync errors silently
+      } finally {
+        setIsSettingsLoaded(true);
       }
     };
 
@@ -443,6 +446,7 @@ export function StorefrontSettingsProvider({ children }: { children: ReactNode }
   const value = useMemo<StorefrontSettingsContextValue>(
     () => ({
       settings,
+      isSettingsLoaded,
       updateSettings: (payload) => {
         setSettings((currentSettings) => {
           const nextSettings = { ...currentSettings, ...payload };
@@ -473,7 +477,7 @@ export function StorefrontSettingsProvider({ children }: { children: ReactNode }
         });
       },
     }),
-    [settings],
+    [settings, isSettingsLoaded],
   );
 
   return <StorefrontSettingsContext.Provider value={value}>{children}</StorefrontSettingsContext.Provider>;
