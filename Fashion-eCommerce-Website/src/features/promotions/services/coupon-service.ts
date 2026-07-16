@@ -10,16 +10,21 @@ const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 function normalizeCoupons(input: unknown): Coupon[] {
   if (!Array.isArray(input)) return [];
   return (input as Coupon[])
-    .map((coupon) => ({
-      ...coupon,
-      code: (coupon?.code || "").toUpperCase(),
-      discountAmount: Math.max(0, Number((coupon as any)?.discountAmount ?? (coupon as any)?.value ?? 0)),
-      usageLimit: (coupon as any)?.usageLimit !== undefined ? Number((coupon as any).usageLimit) : undefined,
-      usageCount: (coupon as any)?.usageCount !== undefined ? Number((coupon as any).usageCount) : undefined,
-      isExclusive: Boolean((coupon as any)?.isExclusive),
-      applyToSaleItems: (coupon as any)?.applyToSaleItems ?? true,
-    }))
-    .filter((c) => c.code && c.discountAmount > 0);
+    .map((coupon) => {
+      const discountType: Coupon["discountType"] = (coupon as any)?.discountType === "percent" ? "percent" : "amount";
+      return {
+        ...coupon,
+        code: (coupon?.code || "").toUpperCase(),
+        discountType,
+        discountAmount: Math.max(0, Number((coupon as any)?.discountAmount ?? (coupon as any)?.value ?? 0)),
+        discountPercent: Math.min(100, Math.max(0, Number((coupon as any)?.discountPercent ?? 0))),
+        usageLimit: (coupon as any)?.usageLimit !== undefined ? Number((coupon as any).usageLimit) : undefined,
+        usageCount: (coupon as any)?.usageCount !== undefined ? Number((coupon as any).usageCount) : undefined,
+        isExclusive: Boolean((coupon as any)?.isExclusive),
+        applyToSaleItems: (coupon as any)?.applyToSaleItems ?? true,
+      };
+    })
+    .filter((c) => c.code && (c.discountType === "percent" ? c.discountPercent > 0 : c.discountAmount > 0));
 }
 
 export async function fetchCouponsFromServer(forceRefresh = false): Promise<Coupon[]> {
@@ -59,5 +64,12 @@ export async function fetchCouponsFromServer(forceRefresh = false): Promise<Coup
 
 export function getAllCouponsSnapshot(): Coupon[] {
   return cachedCoupons || [];
+}
+
+// Nhãn hiển thị mức giảm của mã (vd: "20%" hoặc "50.000₫") — dùng chung cho mọi nơi liệt kê coupon.
+export function formatCouponDiscountLabel(coupon: Coupon): string {
+  return coupon.discountType === "percent"
+    ? `${coupon.discountPercent ?? 0}%`
+    : `${coupon.discountAmount.toLocaleString("vi-VN")}₫`;
 }
 

@@ -6,6 +6,7 @@ import { Link } from "react-router";
 import { brandLogo } from "@/assets/images";
 import { useStorefrontSettings } from "@/features/settings/context/storefront-settings-context";
 import type { Coupon } from "@/types/coupon";
+import { formatCouponDiscountLabel } from "@/features/promotions/services/coupon-service";
 import { API_URL, getAdminKey } from "@/config/api";
 import { useToast } from "@/components/common/toast";
 
@@ -69,7 +70,7 @@ export function AdminSettingsPage() {
   const [smtpHost, setSmtpHost] = useState(settings.smtpHost || "smtp.gmail.com");
   const [smtpPort, setSmtpPort] = useState(settings.smtpPort || 587);
   const [smtpUser, setSmtpUser] = useState(settings.smtpUser || "mmadmadstudio@gmail.com");
-  const [smtpPass, setSmtpPass] = useState(settings.smtpPass || "yxmbctjhsxkyeznx");
+  const [smtpPass, setSmtpPass] = useState(settings.smtpPass || "");
   const [smtpSenderName, setSmtpSenderName] = useState(settings.smtpSenderName || "MADMAD STUDIO");
 
   // Customer Auto-Email Content States
@@ -86,7 +87,9 @@ export function AdminSettingsPage() {
   // Coupons States
   const [coupons, setCoupons] = useState<Coupon[]>([]);
   const [newCouponCode, setNewCouponCode] = useState("");
+  const [newDiscountType, setNewDiscountType] = useState<"amount" | "percent">("amount");
   const [newDiscountAmount, setNewDiscountAmount] = useState("");
+  const [newDiscountPercent, setNewDiscountPercent] = useState("");
   const [newCouponExclusive, setNewCouponExclusive] = useState(false);
   const [newUsageLimit, setNewUsageLimit] = useState("");
   const [newApplyToSaleItems, setNewApplyToSaleItems] = useState(true);
@@ -116,7 +119,7 @@ export function AdminSettingsPage() {
     setSmtpHost(settings.smtpHost || "smtp.gmail.com");
     setSmtpPort(settings.smtpPort || 587);
     setSmtpUser(settings.smtpUser || "mmadmadstudio@gmail.com");
-    setSmtpPass(settings.smtpPass || "yxmbctjhsxkyeznx");
+    setSmtpPass(settings.smtpPass || "");
     setSmtpSenderName(settings.smtpSenderName || "MADMAD STUDIO");
     setCustomerEmailSubject(settings.customerEmailSubject || "");
     setCustomerEmailTemplate(settings.customerEmailTemplate || "");
@@ -311,15 +314,26 @@ export function AdminSettingsPage() {
     setCouponError("");
 
     const code = newCouponCode.trim().toUpperCase();
-    const amount = Number(newDiscountAmount);
 
     if (!code) {
       setCouponError("Vui lòng nhập mã giảm giá!");
       return;
     }
-    if (isNaN(amount) || amount <= 0) {
-      setCouponError("Số tiền giảm phải là một số lớn hơn 0!");
-      return;
+
+    let amount = 0;
+    let percent = 0;
+    if (newDiscountType === "percent") {
+      percent = Number(newDiscountPercent);
+      if (isNaN(percent) || percent <= 0 || percent > 100) {
+        setCouponError("Phần trăm giảm phải lớn hơn 0 và không quá 100!");
+        return;
+      }
+    } else {
+      amount = Number(newDiscountAmount);
+      if (isNaN(amount) || amount <= 0) {
+        setCouponError("Số tiền giảm phải là một số lớn hơn 0!");
+        return;
+      }
     }
 
     // Kiểm tra mã trùng
@@ -329,9 +343,11 @@ export function AdminSettingsPage() {
     }
 
     const limit = Number(newUsageLimit);
-    const newCoupon: Coupon = { 
-      code, 
-      discountAmount: amount, 
+    const newCoupon: Coupon = {
+      code,
+      discountType: newDiscountType,
+      discountAmount: amount,
+      discountPercent: percent,
       isExclusive: newCouponExclusive,
       usageLimit: limit > 0 ? limit : undefined,
       usageCount: 0,
@@ -344,7 +360,9 @@ export function AdminSettingsPage() {
 
     // Reset Form
     setNewCouponCode("");
+    setNewDiscountType("amount");
     setNewDiscountAmount("");
+    setNewDiscountPercent("");
     setNewUsageLimit("");
     setNewCouponExclusive(false);
     setNewApplyToSaleItems(true);
@@ -667,19 +685,71 @@ export function AdminSettingsPage() {
 
               <div>
                 <label className="block text-[10px] font-extrabold tracking-wider uppercase text-black/50 mb-1.5">
-                  Giá trị giảm (Bằng số tiền VNĐ)
+                  Loại giảm giá
                 </label>
-                <input
-                  type="number"
-                  required
-                  min={1000}
-                  step={1000}
-                  value={newDiscountAmount}
-                  onChange={(e) => setNewDiscountAmount(e.target.value)}
-                  placeholder="VÍ DỤ: 50000 (tương đương 50k)..."
-                  className="w-full rounded-xl border border-black/10 bg-stone-50 px-4 py-3 focus:bg-white focus:border-black/60 focus:outline-none focus:ring-0 transition-all font-bold"
-                />
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setNewDiscountType("amount")}
+                    className={`rounded-xl border px-4 py-3 text-[11px] font-extrabold uppercase tracking-wider transition-all ${
+                      newDiscountType === "amount"
+                        ? "border-black bg-black text-white"
+                        : "border-black/10 bg-stone-50 text-black/50 hover:border-black/30"
+                    }`}
+                  >
+                    Số tiền (₫)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setNewDiscountType("percent")}
+                    className={`rounded-xl border px-4 py-3 text-[11px] font-extrabold uppercase tracking-wider transition-all ${
+                      newDiscountType === "percent"
+                        ? "border-black bg-black text-white"
+                        : "border-black/10 bg-stone-50 text-black/50 hover:border-black/30"
+                    }`}
+                  >
+                    Phần trăm (%)
+                  </button>
+                </div>
               </div>
+
+              {newDiscountType === "amount" ? (
+                <div>
+                  <label className="block text-[10px] font-extrabold tracking-wider uppercase text-black/50 mb-1.5">
+                    Giá trị giảm (Bằng số tiền VNĐ)
+                  </label>
+                  <input
+                    type="number"
+                    required
+                    min={1000}
+                    step={1000}
+                    value={newDiscountAmount}
+                    onChange={(e) => setNewDiscountAmount(e.target.value)}
+                    placeholder="VÍ DỤ: 50000 (tương đương 50k)..."
+                    className="w-full rounded-xl border border-black/10 bg-stone-50 px-4 py-3 focus:bg-white focus:border-black/60 focus:outline-none focus:ring-0 transition-all font-bold"
+                  />
+                </div>
+              ) : (
+                <div>
+                  <label className="block text-[10px] font-extrabold tracking-wider uppercase text-black/50 mb-1.5">
+                    Phần trăm giảm (%)
+                  </label>
+                  <input
+                    type="number"
+                    required
+                    min={1}
+                    max={100}
+                    step={1}
+                    value={newDiscountPercent}
+                    onChange={(e) => setNewDiscountPercent(e.target.value)}
+                    placeholder="VÍ DỤ: 20 (tương đương giảm 20%)..."
+                    className="w-full rounded-xl border border-black/10 bg-stone-50 px-4 py-3 focus:bg-white focus:border-black/60 focus:outline-none focus:ring-0 transition-all font-bold"
+                  />
+                  <p className="text-[9px] text-black/40 mt-1.5 normal-case">
+                    Áp dụng trên tổng giá trị đơn hàng (subtotal), tối đa giảm bằng subtotal.
+                  </p>
+                </div>
+              )}
 
               <div>
                 <label className="block text-[10px] font-extrabold tracking-wider uppercase text-black/50 mb-1.5">
@@ -768,7 +838,7 @@ export function AdminSettingsPage() {
                           {coupon.code}
                         </p>
                         <p className="text-[10px] text-green-700 font-bold mt-0.5">
-                          Giảm: {coupon.discountAmount.toLocaleString("vi-VN")}₫ trên hóa đơn
+                          Giảm: {formatCouponDiscountLabel(coupon)} trên hóa đơn
                         </p>
                         <div className="flex gap-2 mt-1">
                           {coupon.isExclusive && (

@@ -3,6 +3,7 @@ import { createContext, useContext, useEffect, useMemo, useState, type ReactNode
 import { useProducts } from "@/features/products/context/product-context";
 import {
   fetchCouponsFromServer,
+  formatCouponDiscountLabel,
   getAllCouponsSnapshot,
 } from "@/features/promotions/services/coupon-service";
 import type { Coupon } from "@/types/coupon";
@@ -185,7 +186,11 @@ export function CartProvider({ children }: { children: ReactNode }) {
           return 0; // Hủy chiết khấu
         }
 
-        return Math.min(coupon.discountAmount, subtotal);
+        const resolvedAmount = coupon.discountType === "percent"
+          ? Math.round((subtotal * (coupon.discountPercent ?? 0)) / 100)
+          : coupon.discountAmount;
+
+        return Math.min(resolvedAmount, subtotal);
       })(),
       addToCart: ({ productId, size, color, quantity, priceAtAdd }) => {
         const product = products.find((p) => String(p.id) === String(productId));
@@ -298,7 +303,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
         persistCouponCode(coupon.code);
         return {
           success: true,
-          message: `Áp dụng mã ${coupon.code}: giảm ${coupon.discountAmount.toLocaleString("vi-VN")}₫.`,
+          message: `Áp dụng mã ${coupon.code}: giảm ${formatCouponDiscountLabel(coupon)}.`,
         };
       },
       clearCoupon: () => {

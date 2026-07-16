@@ -25,6 +25,7 @@ import { API_URL } from "@/config/api";
 import { safeLocalStorage } from "@/utils/safe-storage";
 import { getGiftEligibilityMessage, isGiftEligible, isGiftProduct } from "@/utils/gift-eligibility";
 import { getProductImageForColor } from "@/utils/product-image";
+import { formatCouponDiscountLabel } from "@/features/promotions/services/coupon-service";
 
 /* ── Shared input className ───────────────────────────────────────────── */
 const inputCls =
@@ -722,7 +723,7 @@ export function CheckoutPage() {
                                     : "border-black/15 bg-white text-black/75 hover:border-black"
                                 }`}
                               >
-                                {coupon.code} (-{formatPrice(coupon.discountAmount)})
+                                {coupon.code} (-{formatCouponDiscountLabel(coupon)})
                               </button>
                           ))}
                         </div>
@@ -732,7 +733,7 @@ export function CheckoutPage() {
                     {/* Active Coupon Feedback */}
                     {appliedCoupon && (
                       <div className="flex items-center justify-between rounded-lg bg-green-50 border border-green-200 px-3 py-2 text-xs text-green-800 font-semibold mt-2">
-                        <span>{t("✓ Đã áp dụng mã: ", "✓ Code applied: ")}<span className="font-black font-mono tracking-wider text-green-950 uppercase">{appliedCoupon.code}</span> (-{formatPrice(appliedCoupon.discountAmount)})</span>
+                        <span>{t("✓ Đã áp dụng mã: ", "✓ Code applied: ")}<span className="font-black font-mono tracking-wider text-green-950 uppercase">{appliedCoupon.code}</span> (-{formatPrice(discountAmount)})</span>
                         <button type="button" onClick={clearCoupon} className="text-[10px] font-black text-red-600 hover:text-red-800 hover:underline uppercase tracking-wider">{t("Hủy mã", "Remove code")}</button>
                       </div>
                     )}

@@ -10,6 +10,7 @@ import { useToast } from "@/components/common/toast";
 import { useStorefrontSettings } from "@/features/settings/context/storefront-settings-context";
 import { isGiftProduct } from "@/utils/gift-eligibility";
 import { getProductImageForColor } from "@/utils/product-image";
+import { formatCouponDiscountLabel } from "@/features/promotions/services/coupon-service";
 
 export function CartPage() {
   const { products } = useProducts();
@@ -202,7 +203,7 @@ export function CartPage() {
                               : "border-black/30 bg-white hover:border-black"
                           }`}
                         >
-                          {coupon.code} (-{formatPrice(coupon.discountAmount)})
+                          {coupon.code} (-{formatCouponDiscountLabel(coupon)})
                         </button>
                       ))}
                     </div>

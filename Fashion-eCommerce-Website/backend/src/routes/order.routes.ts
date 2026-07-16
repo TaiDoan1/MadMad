@@ -1016,9 +1016,14 @@ router.put("/:id/coupon", requireAdminAuth, async (req, res, next) => {
         continue;
       }
 
-      totalDiscount += Number(targetCoupon.discountAmount || 0);
+      const resolvedDiscount = targetCoupon.discountType === "percent"
+        ? Math.round((Number(order.subtotal) * Number(targetCoupon.discountPercent || 0)) / 100)
+        : Number(targetCoupon.discountAmount || 0);
+      totalDiscount += resolvedDiscount;
       appliedCodes.push(code);
     }
+
+    totalDiscount = Math.min(totalDiscount, Number(order.subtotal));
 
     if (invalidCodes.length > 0 && appliedCodes.length === 0) {
       return res.status(404).json({
