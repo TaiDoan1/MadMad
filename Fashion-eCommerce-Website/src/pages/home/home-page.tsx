@@ -9,26 +9,28 @@ import { useStorefrontSettings } from "@/features/settings/context/storefront-se
 import { useLanguage } from "@/features/settings/context/language-context";
 
 // ─── Countdown Timer ───────────────────────────────────────────────────────────
+// Ngày drop tiếp theo — đổi chuỗi này khi có drop mới.
+// Khi đã qua ngày drop, cả section countdown tự ẩn (không kẹt ở 00:00:00).
+const DROP_DATE_ISO = "2026-11-01T00:00:00";
+
+function makeTimeLeft(targetMs: number) {
+  const now = Date.now();
+  const diff = Math.max(0, targetMs - now);
+  return {
+    expired: targetMs <= now,
+    days: Math.floor(diff / 86_400_000),
+    hours: Math.floor((diff % 86_400_000) / 3_600_000),
+    minutes: Math.floor((diff % 3_600_000) / 60_000),
+    seconds: Math.floor((diff % 60_000) / 1_000),
+  };
+}
+
 function useCountdown(targetMs: number) {
-  const [timeLeft, setTimeLeft] = useState(() => {
-    const diff = Math.max(0, targetMs - Date.now());
-    return {
-      days: Math.floor(diff / 86_400_000),
-      hours: Math.floor((diff % 86_400_000) / 3_600_000),
-      minutes: Math.floor((diff % 3_600_000) / 60_000),
-      seconds: Math.floor((diff % 60_000) / 1_000),
-    };
-  });
+  const [timeLeft, setTimeLeft] = useState(() => makeTimeLeft(targetMs));
 
   useEffect(() => {
     const timer = window.setInterval(() => {
-      const diff = Math.max(0, targetMs - Date.now());
-      setTimeLeft({
-        days: Math.floor(diff / 86_400_000),
-        hours: Math.floor((diff % 86_400_000) / 3_600_000),
-        minutes: Math.floor((diff % 3_600_000) / 60_000),
-        seconds: Math.floor((diff % 60_000) / 1_000),
-      });
+      setTimeLeft(makeTimeLeft(targetMs));
     }, 1_000);
     return () => window.clearInterval(timer);
   }, [targetMs]);
@@ -92,8 +94,16 @@ export function HomePage() {
   );
 
   // ── Countdown ─────────────────────────────────────────────────────────────
-  const dropDate = useMemo(() => new Date("2026-07-01T00:00:00").getTime(), []);
+  const dropDate = useMemo(() => new Date(DROP_DATE_ISO).getTime(), []);
   const timeLeft = useCountdown(dropDate);
+
+  // Nhãn ngày drop hiển thị — tự sinh từ DROP_DATE_ISO để không lệch nhau
+  const dropDateLabel = useMemo(() => {
+    const d = new Date(DROP_DATE_ISO);
+    const dd = String(d.getDate()).padStart(2, "0");
+    const mm = String(d.getMonth() + 1).padStart(2, "0");
+    return `${dd} / ${mm} / ${d.getFullYear()}`;
+  }, []);
 
   // ── Editorial feed photos ──────────────────────────────────────────────────
   const editorialPhotos = [
@@ -318,12 +328,14 @@ export function HomePage() {
       </section>
 
       {/* ═══ DROP COUNTDOWN ═════════════════════════════════════════════════ */}
+      {/* Tự ẩn khi đã qua ngày drop — tránh kẹt ở 00:00:00 như shop bỏ hoang */}
+      {!timeLeft.expired && (
       <section className="bg-primary py-5">
         <ScrollReveal className="mx-auto max-w-7xl px-6 sm:px-10 lg:px-16">
           <div className="flex flex-col items-center justify-between gap-5 sm:flex-row">
             <div className="text-white text-center sm:text-left">
               <p className="text-xs uppercase tracking-[0.2em] opacity-70 mb-1">Next Drop</p>
-              <h3 className="text-lg sm:text-xl font-black uppercase tracking-wide">01 / 07 / 2026</h3>
+              <h3 className="text-lg sm:text-xl font-black uppercase tracking-wide">{dropDateLabel}</h3>
             </div>
 
             <div className="flex items-center gap-3 text-white">
@@ -356,6 +368,7 @@ export function HomePage() {
           </div>
         </ScrollReveal>
       </section>
+      )}
 
       {/* ═══ EDITORIAL FEED — @MADMAD (MARQUEE SLIDER) ══════════════════════ */}
       <section className="bg-white pt-14 pb-0 overflow-hidden">
