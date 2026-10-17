@@ -189,7 +189,7 @@ export function ShopPage() {
         {apiError && (
           <div className="mb-8 border border-red-200 bg-red-50 p-5 dark:border-red-900/30 dark:bg-red-950/20 text-red-700 dark:text-red-400">
             <h3 className="text-xs font-black uppercase tracking-wider flex items-center gap-1.5">
-              ⚠️ PHÁT HIỆN LỖI ĐỒNG BỘ ĐƯỜNG TRUYỀN API
+              ⚠️ {t("PHÁT HIỆN LỖI ĐỒNG BỘ ĐƯỜNG TRUYỀN API", "API SYNC ERROR DETECTED")}
             </h3>
             <p className="mt-2 text-xs font-mono break-all">{apiError}</p>
             <p className="mt-3 text-[10px] text-red-500 uppercase tracking-widest font-bold">
@@ -199,7 +199,7 @@ export function ShopPage() {
               onClick={() => refreshProducts()}
               className="mt-4 border border-red-300 hover:border-red-700 px-4 py-1.5 text-[10px] font-bold uppercase tracking-widest transition-colors bg-white hover:bg-red-50 text-red-700 cursor-pointer"
             >
-              🔄 Gửi Lại Yêu Cầu Kết Nối (Retry)
+              🔄 {t("Gửi Lại Yêu Cầu Kết Nối (Retry)", "Retry Connection")}
             </button>
           </div>
         )}

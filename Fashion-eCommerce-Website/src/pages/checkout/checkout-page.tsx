@@ -142,7 +142,8 @@ const SearchableDropdown = ({
 
 /* ── Progress Steps ── */
 const CheckoutProgressBar = ({ step }: { step: 1 | 2 | 3 }) => {
-  const steps = ["Giỏ hàng", "Thanh toán", "Hoàn tất"];
+  const { t } = useLanguage();
+  const steps = [t("Giỏ hàng", "Cart"), t("Thanh toán", "Checkout"), t("Hoàn tất", "Done")];
   return (
     <div className="hidden sm:flex items-center gap-0 justify-center">
       {steps.map((label, i) => {
@@ -767,7 +768,7 @@ export function CheckoutPage() {
                       <div className="bg-white p-2 rounded-xl border border-black/5 flex-shrink-0 shadow-sm">
                         <img
                           src={`https://img.vietqr.io/image/${settings.bankId || 'MB'}-${settings.bankAccount || '0999999999'}-compact.png?amount=${total}&addInfo=${encodeURIComponent(`MADMAD ${orderNumber}`)}&accountName=${encodeURIComponent(settings.bankAccountName || 'MADMAD STUDIO')}`}
-                          alt="VietQR Chuyển khoản"
+                          alt={t("VietQR Chuyển khoản", "VietQR Bank Transfer")}
                           className="h-32 w-32 object-contain"
                         />
                       </div>
@@ -799,7 +800,7 @@ export function CheckoutPage() {
                             <span className={`flex items-center gap-1 text-[9px] font-black uppercase tracking-wider transition-colors ${
                               copiedField === "bankAccount" ? "text-green-600" : "text-black/30"
                             }`}>
-                              {copiedField === "bankAccount" ? <><Check className="h-3 w-3" />Đã copy</> : <><Copy className="h-3 w-3" />Copy</>}
+                              {copiedField === "bankAccount" ? <><Check className="h-3 w-3" />{t("Đã copy", "Copied")}</> : <><Copy className="h-3 w-3" />Copy</>}
                             </span>
                           </button>
                         </div>
@@ -819,7 +820,7 @@ export function CheckoutPage() {
                             <span className={`flex items-center gap-1 text-[9px] font-black uppercase tracking-wider transition-colors ${
                               copiedField === "bankMemo" ? "text-green-600" : "text-black/30"
                             }`}>
-                              {copiedField === "bankMemo" ? <><Check className="h-3 w-3" />Đã copy</> : <><Copy className="h-3 w-3" />Copy</>}
+                              {copiedField === "bankMemo" ? <><Check className="h-3 w-3" />{t("Đã copy", "Copied")}</> : <><Copy className="h-3 w-3" />Copy</>}
                             </span>
                           </button>
                         </div>
@@ -839,7 +840,7 @@ export function CheckoutPage() {
                             <span className={`flex items-center gap-1 text-[9px] font-black uppercase tracking-wider transition-colors ${
                               copiedField === "bankTotal" ? "text-green-600" : "text-black/30"
                             }`}>
-                              {copiedField === "bankTotal" ? <><Check className="h-3 w-3" />Đã copy</> : <><Copy className="h-3 w-3" />Copy</>}
+                              {copiedField === "bankTotal" ? <><Check className="h-3 w-3" />{t("Đã copy", "Copied")}</> : <><Copy className="h-3 w-3" />Copy</>}
                             </span>
                           </button>
                         </div>
@@ -880,7 +881,7 @@ export function CheckoutPage() {
                             <span className={`flex items-center gap-1 text-[9px] font-black uppercase tracking-wider ${
                               copiedField === "momoPhone" ? "text-green-600" : "text-black/30"
                             }`}>
-                              {copiedField === "momoPhone" ? <><Check className="h-3 w-3" />Đã copy</> : <><Copy className="h-3 w-3" />Copy</>}
+                              {copiedField === "momoPhone" ? <><Check className="h-3 w-3" />{t("Đã copy", "Copied")}</> : <><Copy className="h-3 w-3" />Copy</>}
                             </span>
                           </button>
                         </div>
@@ -898,7 +899,7 @@ export function CheckoutPage() {
                             <span className={`flex items-center gap-1 text-[9px] font-black uppercase tracking-wider ${
                               copiedField === "momoMemo" ? "text-green-600" : "text-black/30"
                             }`}>
-                              {copiedField === "momoMemo" ? <><Check className="h-3 w-3" />Đã copy</> : <><Copy className="h-3 w-3" />Copy</>}
+                              {copiedField === "momoMemo" ? <><Check className="h-3 w-3" />{t("Đã copy", "Copied")}</> : <><Copy className="h-3 w-3" />Copy</>}
                             </span>
                           </button>
                         </div>
@@ -916,7 +917,7 @@ export function CheckoutPage() {
                             <span className={`flex items-center gap-1 text-[9px] font-black uppercase tracking-wider ${
                               copiedField === "momoTotal" ? "text-green-600" : "text-black/30"
                             }`}>
-                              {copiedField === "momoTotal" ? <><Check className="h-3 w-3" />Đã copy</> : <><Copy className="h-3 w-3" />Copy</>}
+                              {copiedField === "momoTotal" ? <><Check className="h-3 w-3" />{t("Đã copy", "Copied")}</> : <><Copy className="h-3 w-3" />Copy</>}
                             </span>
                           </button>
                         </div>
@@ -1045,7 +1046,7 @@ export function CheckoutPage() {
                           type="button"
                           onClick={() => removeFromCart(item.id)}
                           className="text-black/35 hover:text-red-600 transition-colors p-1"
-                          title="Xóa sản phẩm"
+                          title={t("Xóa sản phẩm", "Remove item")}
                         >
                           <Trash2 className="h-3.5 w-3.5" />
                         </button>
