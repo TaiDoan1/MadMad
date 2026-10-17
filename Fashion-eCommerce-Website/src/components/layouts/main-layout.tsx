@@ -13,11 +13,12 @@ import { useCart } from "@/features/cart/context/cart-context";
 import { useStorefrontSettings } from "@/features/settings/context/storefront-settings-context";
 import { useMembership } from "@/features/membership/context/membership-context";
 import { useLanguage } from "@/features/settings/context/language-context";
+import type { Language } from "@/features/settings/context/language-context";
 import { API_URL } from "@/config/api";
 
 export function MainLayout() {
   const { settings } = useStorefrontSettings();
-  const { t } = useLanguage();
+  const { t, language, setLanguageAndCurrency } = useLanguage();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [cartDrawerOpen, setCartDrawerOpen] = useState(false);
   const [showAdminLoginModal, setShowAdminLoginModal] = useState(false);
@@ -187,10 +188,29 @@ export function MainLayout() {
               />
             </Link>
 
-            {/* Right — Icons */}
+            {/* Right — Language toggle + Icons */}
             <div className={`flex flex-1 items-center justify-end gap-3 sm:gap-4 ${
               isTransparent ? "text-white" : "text-foreground"
             }`}>
+              {/* 🌐 Language toggle VI / EN */}
+              <button
+                onClick={() => {
+                  const next: Language = language === "vi" ? "en" : "vi";
+                  // VI ↔ VND, EN ↔ USD — đồng bộ ngôn ngữ và tiền tệ
+                  setLanguageAndCurrency(next, next === "vi" ? "VND" : "USD");
+                }}
+                aria-label={t("Chuyển ngôn ngữ / Switch language", "Switch language / Chuyển ngôn ngữ")}
+                title={t("Chuyển ngôn ngữ", "Switch language")}
+                className={`flex items-center rounded-full border px-2.5 py-1 text-[10px] font-black tracking-widest transition-all hover:scale-105 active:scale-95 ${
+                  isTransparent
+                    ? "border-white/40 text-white hover:border-white hover:bg-white/10"
+                    : "border-black/15 text-foreground hover:border-black hover:bg-black/5"
+                }`}
+              >
+                <span className={language === "vi" ? "opacity-100" : "opacity-40"}>VI</span>
+                <span className="mx-1 opacity-30">|</span>
+                <span className={language === "en" ? "opacity-100" : "opacity-40"}>EN</span>
+              </button>
               <button
                 className={`transition-colors ${
                   isTransparent ? "hover:text-white/70" : "hover:text-primary"

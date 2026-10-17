@@ -169,7 +169,7 @@ export function ProductCard({ product, variant = "shop" }: ProductCardProps) {
 
         {isPreOrder && !isSoldOut && !isGift && (
           <span className="mt-1 block text-[10px] font-black uppercase tracking-wider text-amber-700">
-            Có hàng sau {product.preOrderDays ?? 7} ngày
+            {t("Có hàng sau", "Available in")} {product.preOrderDays ?? 7} {t("ngày", "days")}
           </span>
         )}
 
