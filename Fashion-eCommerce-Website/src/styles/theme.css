@@ -1553,30 +1553,30 @@ input:focus {
 /* Biến màu: nền tối ấm, chữ sáng, viền cam nhạt — các utility dùng biến
    (bg-background, bg-card, text-foreground...) tự đổi theo. */
 .halloween-skin {
-  --background: #140f0d;
+  --background: #33261d;
   --foreground: #f5efe6;
-  --card: #1e1511;
+  --card: #453324;
   --card-foreground: #f5efe6;
-  --muted: #2b1e18;
-  --muted-foreground: #cbb9a6;
+  --muted: #55402e;
+  --muted-foreground: #d8c6b2;
   --border: rgba(255, 122, 26, 0.28);
-  --input-background: #241a15;
+  --input-background: #382a1e;
 }
-.halloween-skin main { background-color: #140f0d; }
+.halloween-skin main { background-color: #33261d; }
 /* Nút và điểm nhấn đỏ của brand chuyển sang cam bí ngô khi bật chủ đề. */
 .halloween-skin .bg-primary { background-color: #ff7a1a; }
 .halloween-skin .text-primary { color: #ff7a1a; }
 .halloween-skin .border-primary { border-color: #ff7a1a; }
 /* Các section và thẻ trắng của shop/sản phẩm/giỏ chuyển nền tối, chữ đen
    chuyển sáng để vẫn đọc được. Ảnh sản phẩm nền trắng giữ nguyên. */
-.halloween-skin [class*="bg-white"] { background-color: #1e1511; }
+.halloween-skin [class*="bg-white"] { background-color: #453324; }
 .halloween-skin [class*="text-black"] { color: #f5efe6; }
 .halloween-skin [class*="border-black"] { border-color: rgba(255, 122, 26, 0.28); }
-.halloween-skin .bg-background { background-color: #140f0d; }
-.halloween-skin .bg-card { background-color: #1e1511; }
-.halloween-skin .bg-muted { background-color: #2b1e18; }
+.halloween-skin .bg-background { background-color: #33261d; }
+.halloween-skin .bg-card { background-color: #453324; }
+.halloween-skin .bg-muted { background-color: #55402e; }
 .halloween-skin .text-foreground { color: #f5efe6; }
-.halloween-skin .text-muted-foreground { color: #cbb9a6; }
+.halloween-skin .text-muted-foreground { color: #d8c6b2; }
 /* Ngoại lệ: chấm chuyển slide ở hero phải giữ màu sáng trên nền đen. */
 .halloween-skin .h-\[3px\] { background-color: #f5efe6; }
 /* Logo đen trên header tối phải đảo trắng, nếu không sẽ chìm vào nền. */
