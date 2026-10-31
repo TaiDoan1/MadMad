@@ -4,6 +4,7 @@ import { Link } from "react-router";
 
 import { ImageUploadInput } from "../../components/common/image-upload-input";
 import { ImageWithFallback } from "../../components/common/image-with-fallback";
+import { SeasonalThemeOverlay } from "../../components/common/seasonal-theme-overlay";
 import { ProductCard } from "../../components/shared/product-card";
 import { useProducts } from "../../features/products/context/product-context";
 import {
@@ -39,7 +40,7 @@ export function AdminStorefrontPage() {
   const heroImages = heroImageDrafts.map((value) => value.trim()).filter(Boolean);
   const previewHeroImages = [settings.heroImage.trim(), ...heroImages].filter(Boolean);
   const [previewHeroIndex, setPreviewHeroIndex] = useState(0);
-  const [activeTab, setActiveTab] = useState<"hero" | "bestsellers" | "gallery" | "instagram" | "easter-egg">("hero");
+  const [activeTab, setActiveTab] = useState<"hero" | "bestsellers" | "gallery" | "instagram" | "easter-egg" | "season">("hero");
   
   const goToPrevPreviewHero = () => {
     if (previewHeroImages.length <= 1) return;
@@ -171,7 +172,7 @@ export function AdminStorefrontPage() {
 
       <div className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
         <div className="flex min-w-max gap-1 border-b border-border">
-        {(["hero", "bestsellers", "gallery", "instagram", "easter-egg"] as const).map((tab) => (
+        {(["hero", "bestsellers", "gallery", "instagram", "easter-egg", "season"] as const).map((tab) => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
@@ -181,7 +182,7 @@ export function AdminStorefrontPage() {
                 : "border-transparent text-muted-foreground hover:text-foreground"
             }`}
           >
-            {tab === "hero" ? "🖼 Banner" : tab === "bestsellers" ? "⭐ Nổi bật" : tab === "gallery" ? "🗂 Gallery" : tab === "instagram" ? "📷 Instagram" : "🐭 Easter Egg"}
+            {tab === "hero" ? "🖼 Banner" : tab === "bestsellers" ? "⭐ Nổi bật" : tab === "gallery" ? "🗂 Gallery" : tab === "instagram" ? "📷 Instagram" : tab === "season" ? "🎃 Chủ đề theo mùa" : "🐭 Easter Egg"}
           </button>
         ))}
         </div>
@@ -589,6 +590,56 @@ export function AdminStorefrontPage() {
             </div>
           )}
 
+          {/* SEASONAL THEME SETTINGS — công tắc chủ đề theo mùa */}
+          {activeTab === "season" && (
+            <div className="space-y-4">
+              <div>
+                <h3 className="font-bold text-lg text-foreground">🎃 Chủ đề theo mùa</h3>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Bật là hiệu ứng hiện ngay trên hero trang chủ, tắt là web về bình thường ngay, không cần deploy lại.
+                  Mùa sau muốn dùng lại chỉ cần bật lại công tắc này.
+                </p>
+              </div>
+
+              <label className="flex items-center gap-3 rounded border border-border p-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={settings.seasonalThemeEnabled ?? false}
+                  onChange={(e) => updateSettings({ seasonalThemeEnabled: e.target.checked })}
+                  className="accent-black h-4 w-4"
+                />
+                <span>
+                  <span className="block text-sm font-bold">Bật chủ đề theo mùa</span>
+                  <span className="block text-xs text-muted-foreground">Tắt là web về bình thường ngay, không cần deploy lại. Hết mùa thì tắt ở đây là xong.</span>
+                </span>
+              </label>
+
+              <div>
+                <label className="mb-1 block text-xs font-bold uppercase tracking-wider text-muted-foreground">Chọn chủ đề</label>
+                <select
+                  value={settings.seasonalTheme ?? "halloween"}
+                  onChange={(e) => updateSettings({ seasonalTheme: e.target.value as "none" | "halloween" })}
+                  className="w-full rounded border border-border bg-white px-2 py-1.5 text-sm outline-none focus:ring-1 focus:ring-black"
+                >
+                  <option value="halloween">Halloween — sương trôi, dơi bay, lá rơi, ánh cam</option>
+                  <option value="none">Không có hiệu ứng</option>
+                </select>
+                <p className="mt-1 text-[11px] text-muted-foreground">
+                  Hiệu ứng chỉ phủ hero trang chủ, không phủ trang sản phẩm, giỏ hàng hay checkout, và không chặn click mua hàng.
+                </p>
+              </div>
+
+              <div className="rounded bg-stone-50 border border-border p-3">
+                <p className="text-xs font-bold">Trạng thái hiện tại</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {settings.seasonalThemeEnabled && settings.seasonalTheme === "halloween"
+                    ? "Đang bật Halloween trên trang chủ."
+                    : "Đang tắt — khách chỉ thấy giao diện bình thường."}
+                </p>
+              </div>
+            </div>
+          )}
+
           {/* BORDER RUNNER EASTER EGG SETTINGS */}
           {activeTab === "easter-egg" && (
             <div className="space-y-4">
@@ -706,8 +757,10 @@ export function AdminStorefrontPage() {
                   background: `linear-gradient(to right, rgba(0,0,0,${overlayLeft}), rgba(0,0,0,${overlayMid}), rgba(0,0,0,${overlayRight}))` 
                 }} 
               />
+
+              <SeasonalThemeOverlay enabled={settings.seasonalThemeEnabled} theme={settings.seasonalTheme} />
               
-              <div className="absolute inset-0 flex items-center p-5 text-white">
+              <div className="absolute inset-0 z-10 flex items-center p-5 text-white">
                 <div className={`flex w-full ${heroJustifyClass}`}>
                   <div className={`max-w-xs space-y-2 ${heroTextAlignClass} ${heroFontClass}`}>
                     <p className="text-[8px] uppercase tracking-widest opacity-80">{settings.heroBadgeText}</p>
