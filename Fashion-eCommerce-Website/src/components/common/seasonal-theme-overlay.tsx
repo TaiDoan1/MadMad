@@ -1,8 +1,10 @@
 /**
- * Lớp hiệu ứng chủ đề theo mùa, chỉ phủ lên hero trang chủ.
- * Không chặn click (pointer-events: none), không dùng ảnh ngoài,
- * chỉ CSS thuần để nhẹ và tự tắt khi admin tắt công tắc.
+ * Lớp hiệu ứng chủ đề theo mùa, không chặn click (pointer-events: none),
+ * không dùng ảnh ngoài, chỉ CSS thuần để nhẹ và tự tắt khi admin tắt công tắc.
  * Hiện tại chỉ có "halloween": sương trôi + dơi bay + lá rơi + ánh cam.
+ * variant "hero": phủ lên hero trang chủ (dùng cho preview trong admin).
+ * variant "page": phủ cố định toàn trang khách (MainLayout) — hiệu ứng tràn
+ * ra toàn bộ trang, trừ trang thanh toán vì checkout không dùng MainLayout.
  * Thêm mùa mới: thêm một nhánh render tương tự, không sửa layout trang chủ.
  */
 
@@ -41,15 +43,21 @@ const LEAVES: React.CSSProperties[] = [
 export function SeasonalThemeOverlay({
   enabled,
   theme,
+  variant = "hero",
 }: {
   enabled?: boolean;
   theme?: string;
+  variant?: "hero" | "page";
 }) {
   if (!enabled || theme !== "halloween") return null;
 
   return (
     <div
-      className="seasonal-halloween pointer-events-none absolute inset-0 z-[5] overflow-hidden"
+      className={
+        variant === "page"
+          ? "seasonal-halloween seasonal-page pointer-events-none fixed inset-0 z-[40] overflow-hidden"
+          : "seasonal-halloween pointer-events-none absolute inset-0 z-[5] overflow-hidden"
+      }
       aria-hidden="true"
     >
       <div className="seasonal-fog seasonal-fog-1" />
