@@ -91,4 +91,9 @@ export interface StorefrontSettings {
   borderRunnerHintText?: string;
   borderRunnerHintIntervalSec?: number;
   borderRunnerPhrases?: string[];
+
+  // 🎃 Chủ đề theo mùa — công tắc ở admin, tắt là web về bình thường ngay,
+  // không cần deploy lại. Thêm mùa mới chỉ cần thêm lựa chọn ở đây + overlay.
+  seasonalThemeEnabled?: boolean;
+  seasonalTheme?: "none" | "halloween";
 }
