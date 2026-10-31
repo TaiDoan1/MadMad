@@ -110,10 +110,11 @@ export const DEFAULT_STOREFRONT_SETTINGS: StorefrontSettings = {
   intlShippingFee: 250000,
   intlMarkupPercent: 10,
 
-  // 🎃 Chủ đề theo mùa — Halloween đang là mùa hiện tại nên mặc định BẬT,
-  // admin tắt công tắc là web về bình thường ngay, không cần deploy lại
-  seasonalThemeEnabled: true,
-  seasonalTheme: "halloween",
+  // 🎃 Chủ đề theo mùa — Tài gỡ Halloween tối 31/10 nên mặc định TẮT,
+  // web về trắng bình thường. Code hiệu ứng và công tắc admin vẫn còn,
+  // mùa sau muốn dùng lại chỉ cần bật công tắc, không cần code lại.
+  seasonalThemeEnabled: false,
+  seasonalTheme: "none",
 
   // 🐭 Logo chạy vòng quanh viền màn hình (easter egg)
   borderRunnerHintText: "Hãy chạm vào tôi đi nè.",
