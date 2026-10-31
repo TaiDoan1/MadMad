@@ -110,6 +110,11 @@ export const DEFAULT_STOREFRONT_SETTINGS: StorefrontSettings = {
   intlShippingFee: 250000,
   intlMarkupPercent: 10,
 
+  // 🎃 Chủ đề theo mùa — Halloween đang là mùa hiện tại nên mặc định BẬT,
+  // admin tắt công tắc là web về bình thường ngay, không cần deploy lại
+  seasonalThemeEnabled: true,
+  seasonalTheme: "halloween",
+
   // 🐭 Logo chạy vòng quanh viền màn hình (easter egg)
   borderRunnerHintText: "Hãy chạm vào tôi đi nè.",
   borderRunnerHintIntervalSec: 5,
@@ -318,6 +323,10 @@ function readStoredSettings(): StorefrontSettings {
         Array.isArray(parsed.membershipTiers) ? parsed.membershipTiers : DEFAULT_STOREFRONT_SETTINGS.membershipTiers,
       sizeGuide: normalizeSizeGuideConfig(parsed.sizeGuide ?? DEFAULT_STOREFRONT_SETTINGS.sizeGuide),
 
+      seasonalThemeEnabled:
+        typeof parsed.seasonalThemeEnabled === "boolean" ? parsed.seasonalThemeEnabled : DEFAULT_STOREFRONT_SETTINGS.seasonalThemeEnabled,
+      seasonalTheme:
+        parsed.seasonalTheme === "halloween" || parsed.seasonalTheme === "none" ? parsed.seasonalTheme : DEFAULT_STOREFRONT_SETTINGS.seasonalTheme,
       borderRunnerHintText:
         typeof parsed.borderRunnerHintText === "string" ? parsed.borderRunnerHintText : DEFAULT_STOREFRONT_SETTINGS.borderRunnerHintText,
       borderRunnerHintIntervalSec:
