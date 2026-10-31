@@ -4,6 +4,7 @@ import { Link, Outlet, useLocation } from "react-router";
 
 import { brandLogo } from "@/assets/images";
 import { BorderRunner } from "@/components/common/border-runner";
+import { SeasonalThemeOverlay } from "@/components/common/seasonal-theme-overlay";
 import { CartDrawer } from "@/components/common/cart-drawer";
 import { LoadingBar } from "@/components/common/loading-bar";
 import { PageTransition, useTransitionTo } from "@/components/common/page-transition";
@@ -121,9 +122,14 @@ export function MainLayout() {
   // Reset về top khi đổi route
   useEffect(() => { setIsScrolled(window.scrollY > 30); }, [location.pathname]);
 
+  const seasonalActive = settings.seasonalThemeEnabled && settings.seasonalTheme === "halloween";
+
   return (
-    <div className="min-h-screen bg-background">
+    <div className={`min-h-screen bg-background ${seasonalActive ? "halloween-skin" : ""}`}>
       <BorderRunner />
+      {/* Hiệu ứng theo mùa tràn toàn trang khách — checkout không dùng layout
+          này nên tự động giữ sạch, admin cũng không bị ảnh hưởng. */}
+      <SeasonalThemeOverlay variant="page" enabled={settings.seasonalThemeEnabled} theme={settings.seasonalTheme} />
       <LoadingBar />
       {/* Header: fixed — overlay lên trên content, transparent ở top home page */}
       <header
