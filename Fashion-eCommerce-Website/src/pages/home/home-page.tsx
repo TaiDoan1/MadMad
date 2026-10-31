@@ -3,6 +3,7 @@ import { Link } from "react-router";
 
 import { ImageWithFallback } from "@/components/common/image-with-fallback";
 import { ScrollReveal } from "@/components/common/scroll-reveal";
+import { SeasonalThemeOverlay } from "@/components/common/seasonal-theme-overlay";
 import { ProductCard, ProductCardSkeleton } from "@/components/shared/product-card";
 import { useProducts } from "@/features/products/context/product-context";
 import { useStorefrontSettings } from "@/features/settings/context/storefront-settings-context";
@@ -191,6 +192,9 @@ export function HomePage() {
           <div className="absolute inset-x-0 bottom-0 h-80 bg-gradient-to-t from-black/80 to-transparent" />
         </div>
 
+        {/* Chủ đề theo mùa — chỉ hiện khi admin bật công tắc, chỉ phủ hero */}
+        <SeasonalThemeOverlay enabled={settings.seasonalThemeEnabled} theme={settings.seasonalTheme} />
+
         {/* Hero text — Protect.LDN style: condensed bold ALL CAPS, bottom-center */}
         <div className="absolute inset-x-0 bottom-20 z-10 flex flex-col items-center gap-4 px-4 text-center">
           <h1
@@ -206,7 +210,7 @@ export function HomePage() {
           </h1>
           <Link
             to="/shop"
-            className="text-xs uppercase tracking-[0.3em] text-white/70 transition-colors duration-300 hover:text-white"
+            className={`text-xs uppercase tracking-[0.3em] text-white/70 transition-colors duration-300 hover:text-white ${settings.seasonalThemeEnabled && settings.seasonalTheme === "halloween" ? "halloween-cta-glow rounded-full px-5 py-2 text-white" : ""}`}
           >
             shop now
           </Link>
