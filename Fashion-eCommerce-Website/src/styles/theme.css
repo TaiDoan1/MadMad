@@ -1562,7 +1562,16 @@ input:focus {
   --border: rgba(255, 122, 26, 0.28);
   --input-background: #382a1e;
 }
-.halloween-skin main { background-color: #33261d; }
+.halloween-skin main { background-color: #33261d; color: #f5efe6; }
+/* Nền xám nhạt duy nhất của trang giỏ cũng chuyển tối, nếu không tiêu đề
+   sáng trên nền sáng sẽ chìm. Trang thanh toán không dùng layout này nên
+   không bị ảnh hưởng. */
+.halloween-skin .bg-\[#f5f5f5\] { background-color: #33261d; }
+/* Ô nhập liệu giữ nền sáng, chữ tối để gõ vẫn đọc được trên nền tối. */
+.halloween-skin input, .halloween-skin textarea, .halloween-skin select {
+  background-color: #f5f0e8 !important;
+  color: #1a1a1a !important;
+}
 /* Nút và điểm nhấn đỏ của brand chuyển sang cam bí ngô khi bật chủ đề. */
 .halloween-skin .bg-primary { background-color: #ff7a1a; }
 .halloween-skin .text-primary { color: #ff7a1a; }
