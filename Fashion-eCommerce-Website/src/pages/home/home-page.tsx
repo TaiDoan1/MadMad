@@ -3,7 +3,6 @@ import { Link } from "react-router";
 
 import { ImageWithFallback } from "@/components/common/image-with-fallback";
 import { ScrollReveal } from "@/components/common/scroll-reveal";
-import { SeasonalThemeOverlay } from "@/components/common/seasonal-theme-overlay";
 import { ProductCard, ProductCardSkeleton } from "@/components/shared/product-card";
 import { useProducts } from "@/features/products/context/product-context";
 import { useStorefrontSettings } from "@/features/settings/context/storefront-settings-context";
@@ -192,8 +191,9 @@ export function HomePage() {
           <div className="absolute inset-x-0 bottom-0 h-80 bg-gradient-to-t from-black/80 to-transparent" />
         </div>
 
-        {/* Chủ đề theo mùa — chỉ hiện khi admin bật công tắc, chỉ phủ hero */}
-        <SeasonalThemeOverlay enabled={settings.seasonalThemeEnabled} theme={settings.seasonalTheme} />
+        {/* Chủ đề theo mùa giờ phủ toàn trang qua MainLayout nên không render
+            riêng ở hero nữa, tránh nhân đôi hiệu ứng. Nút Shop Now bên dưới
+            vẫn giữ ánh cam khi chủ đề bật. */}
 
         {/* Hero text — Protect.LDN style: condensed bold ALL CAPS, bottom-center */}
         <div className="absolute inset-x-0 bottom-20 z-10 flex flex-col items-center gap-4 px-4 text-center">
