@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { API_URL, markLocalBackendOffline, getAdminKey } from "@/config/api";
 
 import { products as initialProducts } from "@/features/products/data/products";
@@ -52,7 +52,14 @@ export function ProductProvider({ children }: { children: ReactNode }) {
   });
 
   // 📥 Tải danh sách sản phẩm từ máy chủ (Database Neon Postgres)
-  const loadProducts = async () => {
+  // Cache 5 phút ở tầng ứng dụng: trong 5 phút thì không gọi lại API khi
+  // provider mount lại hoặc trạng thái admin thay đổi; refreshProducts ép tải lại.
+  const lastLoadedAtRef = useRef(0);
+  const loadProducts = async (force = false) => {
+    if (!force && products.length > 0 && Date.now() - lastLoadedAtRef.current < 5 * 60 * 1000) {
+      setIsLoading(false);
+      return;
+    }
     setIsLoading(true);
     setApiError(null);
     try {
@@ -66,6 +73,7 @@ export function ProductProvider({ children }: { children: ReactNode }) {
         const data = await response.json();
         if (Array.isArray(data)) {
           setProducts(data.map((product: Product) => syncProductStock(product)));
+          lastLoadedAtRef.current = Date.now();
           setIsLoading(false);
           return;
         } else {
@@ -169,7 +177,7 @@ export function ProductProvider({ children }: { children: ReactNode }) {
       products,
       isLoading,
       apiError,
-      refreshProducts: loadProducts,
+      refreshProducts: () => loadProducts(true),
       addProduct: async (product) => {
         const tempId = `temp-${Date.now()}`;
         // Dùng timestamp để tạo SKU duy nhất, tránh trùng lặp với các sản phẩm đã có trong DB

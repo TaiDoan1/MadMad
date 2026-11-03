@@ -11,7 +11,7 @@ export function ImageWithFallback(props: ImgHTMLAttributes<HTMLImageElement>) {
     return (
       <div className={`inline-block bg-gray-100 text-center align-middle ${className ?? ""}`} style={style}>
         <div className="flex h-full w-full items-center justify-center">
-          <img src={ERROR_IMG_SRC} alt="Error loading image" data-original-url={src} {...rest} />
+          <img src={ERROR_IMG_SRC} alt={alt ?? ""} data-original-url={src} {...rest} />
         </div>
       </div>
     );

@@ -3,6 +3,7 @@ import { ShoppingCart } from "lucide-react";
 import { Link } from "react-router";
 
 import { ImageWithFallback } from "@/components/common/image-with-fallback";
+import { optimizeImageUrl } from "@/utils/cloudinary";
 import { useCart } from "@/features/cart/context/cart-context";
 import { useLanguage } from "@/features/settings/context/language-context";
 import type { Product } from "@/types/product";
@@ -72,14 +73,18 @@ export function ProductCard({ product, variant = "shop" }: ProductCardProps) {
         className={`relative block overflow-hidden ${imageFrameClass}`}
       >
         <ImageWithFallback
-          src={product.image}
+          src={optimizeImageUrl(product.image, 800)}
           alt={translate(product.name)}
+          loading="lazy"
+          decoding="async"
           className={`h-full w-full object-cover transition-all duration-700 group-hover:scale-105 ${secondaryImage ? "group-hover:opacity-0" : ""} ${touchActive ? "!opacity-0 !scale-105" : ""}`}
         />
         {secondaryImage && (
           <ImageWithFallback
-            src={secondaryImage}
+            src={optimizeImageUrl(secondaryImage, 800)}
             alt={`${translate(product.name)} hover`}
+            loading="lazy"
+            decoding="async"
             className={`absolute inset-0 h-full w-full object-cover transition-all duration-700 opacity-0 group-hover:opacity-100 group-hover:scale-105 ${touchActive ? "!opacity-100 !scale-105" : ""}`}
           />
         )}
