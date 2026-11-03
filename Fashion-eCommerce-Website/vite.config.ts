@@ -35,8 +35,19 @@ export default defineConfig({
   assetsInclude: ['**/*.svg', '**/*.csv'],
 
   // Cho phép Railway/domain custom truy cập preview server (chặn 403 Host lạ)
+  // Tiêu đề bảo mật cho bản chạy trên Railway: vite preview không đọc
+  // vercel.json nên các tiêu đề này phải đặt ở đây mới tới được web thật.
+  // Không đặt Content-Security-Policy ở đây vì trang có script nội tuyến
+  // tự tải lại khi chunk mới, CSP chặt sẽ làm vỡ script đó.
   preview: {
     host: true,
     allowedHosts: true,
+    headers: {
+      "X-Content-Type-Options": "nosniff",
+      "X-Frame-Options": "SAMEORIGIN",
+      "Referrer-Policy": "origin-when-cross-origin",
+      "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
+      "Strict-Transport-Security": "max-age=63072000; includeSubDomains",
+    },
   },
 })
