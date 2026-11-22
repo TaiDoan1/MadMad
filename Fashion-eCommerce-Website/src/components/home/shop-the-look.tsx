@@ -91,7 +91,6 @@ export function ShopTheLook() {
   const posRef = useRef(0);
   const targetRef = useRef(0);
   const rafRef = useRef<number | null>(null);
-  const [paused, setPaused] = useState(false);
   const draggingRef = useRef(false);
   const dragMovedRef = useRef(false);
   const dragStartXRef = useRef(0);
@@ -151,25 +150,14 @@ export function ShopTheLook() {
     [cancelTween],
   );
 
-  const goToIndex = useCallback(
-    (index: number) => {
-      const delta = wrapOffset(index - targetRef.current, count);
-      animateTo(targetRef.current + delta);
-    },
-    [animateTo, count],
-  );
-
-  const goNext = useCallback(() => animateTo(targetRef.current + 1), [animateTo]);
-  const goPrev = useCallback(() => animateTo(targetRef.current - 1), [animateTo]);
-
-  // Tự chạy 4 giây một lần, dừng khi bấm tạm dừng hoặc đang kéo.
+  // Tự chạy 4 giây một lần, dừng khi đang kéo.
   useEffect(() => {
-    if (paused || count === 0) return;
+    if (count === 0) return;
     const id = window.setInterval(() => {
       if (!draggingRef.current) animateTo(targetRef.current + 1);
     }, AUTOPLAY_MS);
     return () => window.clearInterval(id);
-  }, [paused, animateTo, count]);
+  }, [animateTo, count]);
 
   // ── Kéo / vuốt để đổi look ────────────────────────────────────────────────
   const onPointerDown = (e: PointerEvent<HTMLDivElement>) => {
@@ -291,59 +279,6 @@ export function ShopTheLook() {
         )}
       </div>
 
-      {/* Điều khiển: tên look — số thứ tự (số ô gốc) — tạm dừng / trước / sau */}
-      <div className="px-6 sm:px-10 lg:px-16">
-        <div className="mt-4 flex items-center justify-between">
-          <p className="font-serif text-lg italic text-black">{activeLook.label}</p>
-          <p className="text-sm tabular-nums text-black/60">
-            {String(activeLook.slot + 1).padStart(2, "0")} / 05
-          </p>
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setPaused((p) => !p)}
-              aria-label={paused ? t("Phát", "Play") : t("Tạm dừng", "Pause")}
-              className="flex h-10 w-10 items-center justify-center rounded-full border border-black/15 text-sm text-black transition-colors hover:bg-black hover:text-white"
-            >
-              {paused ? "▶" : "❚❚"}
-            </button>
-            <button
-              type="button"
-              onClick={goPrev}
-              aria-label={t("Look trước", "Previous look")}
-              className="flex h-10 w-10 items-center justify-center rounded-full border border-black/15 text-black transition-colors hover:bg-black hover:text-white"
-            >
-              ←
-            </button>
-            <button
-              type="button"
-              onClick={goNext}
-              aria-label={t("Look sau", "Next look")}
-              className="flex h-10 w-10 items-center justify-center rounded-full border border-black/15 text-black transition-colors hover:bg-black hover:text-white"
-            >
-              →
-            </button>
-          </div>
-        </div>
-
-        {/* Nhãn Look 1–5 để nhảy thẳng tới look */}
-        <div className="mt-3 flex items-center justify-center gap-4 sm:gap-6">
-          {looks.map((look, i) => (
-            <button
-              key={look.slot}
-              type="button"
-              onClick={() => goToIndex(i)}
-              className={`text-[11px] uppercase tracking-[0.2em] transition-colors ${
-                i === activeIndex
-                  ? "font-bold text-black underline underline-offset-4"
-                  : "text-black/40 hover:text-black"
-              }`}
-            >
-              {look.label}
-            </button>
-          ))}
-        </div>
-      </div>
     </section>
   );
 }

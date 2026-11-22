@@ -353,27 +353,55 @@ export function StorefrontSettingsProvider({ children }: { children: ReactNode }
   const [settings, setSettings] = useState<StorefrontSettings>(readStoredSettings);
   const [isSettingsLoaded, setIsSettingsLoaded] = useState(false);
 
-  const flushSettingsQueue = useCallback(async () => {
-    const items = peekQueue<Partial<StorefrontSettings>>(SETTINGS_OFFLINE_QUEUE_KEY);
-    if (items.length === 0) return;
-    // Merge payloads in order; last-write-wins
-    const merged = items.reduce((acc, it) => ({ ...acc, ...it.payload }), {} as Partial<StorefrontSettings>);
-    const cloudPayload = mapLocalPayloadToCloud(merged);
+  // Ref giữ bản settings mới nhất (đồng bộ trong setSettings updater) để các lệnh PUT
+  // luôn gửi giá trị mới nhất, không gửi lại mảng cũ.
+  const settingsRef = useRef<StorefrontSettings>(settings);
+  // Chuỗi PUT nối tiếp nhau: chỉ 1 lệnh PUT chạy tại 1 thời điểm, tránh các PUT hoàn thành
+  // lệch thứ tự rồi ghi đè mảng mới bằng mảng cũ (mỗi PUT đưa ảnh lên Cloudinary nên chạy vài giây).
+  const putChainRef = useRef<Promise<void>>(Promise.resolve());
+  // Số lệnh PUT đang chạy — fetchSettings sẽ bỏ qua lần đồng bộ khi > 0 để ảnh vừa up
+  // không bị dữ liệu cũ trên máy chủ ghi đè (nhấp nháy/mất ảnh trong admin).
+  const pendingPutRef = useRef(0);
+
+  // PUT settings có timeout 30 giây — tránh một lệnh PUT kẹt mạng làm tắc cả chuỗi lưu.
+  const putSettings = async (cloudPayload: Record<string, any>) => {
+    const controller = new AbortController();
+    const timer = window.setTimeout(() => controller.abort(), 30000);
     try {
-      const res = await fetch(`${API_URL}/settings`, {
+      return await fetch(`${API_URL}/settings`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
           "x-admin-key": getAdminKey()
         },
         body: JSON.stringify(cloudPayload),
+        signal: controller.signal,
       });
-      if (res.ok) {
-        removeFromQueue(SETTINGS_OFFLINE_QUEUE_KEY, items.map((i) => i.id));
-      }
-    } catch {
-      // keep queue
+    } finally {
+      window.clearTimeout(timer);
     }
+  };
+
+  const flushSettingsQueue = useCallback(async () => {
+    const items = peekQueue<Partial<StorefrontSettings>>(SETTINGS_OFFLINE_QUEUE_KEY);
+    if (items.length === 0) return;
+    // Merge payloads in order; last-write-wins
+    const merged = items.reduce((acc, it) => ({ ...acc, ...it.payload }), {} as Partial<StorefrontSettings>);
+    const cloudPayload = mapLocalPayloadToCloud(merged);
+    // Chạy qua cùng chuỗi PUT để không vượt lên trước lệnh PUT mới hơn.
+    putChainRef.current = putChainRef.current.then(async () => {
+      pendingPutRef.current += 1;
+      try {
+        const res = await putSettings(cloudPayload);
+        if (res.ok) {
+          removeFromQueue(SETTINGS_OFFLINE_QUEUE_KEY, items.map((i) => i.id));
+        }
+      } catch {
+        // keep queue
+      } finally {
+        pendingPutRef.current -= 1;
+      }
+    });
   }, []);
 
   // 📥 Tải đồng bộ cấu hình từ Postgres Cloud khi load app + auto-refresh mỗi 10 phút
@@ -395,11 +423,21 @@ export function StorefrontSettingsProvider({ children }: { children: ReactNode }
           const decryptedText = bytes.toString(CryptoJS.enc.Utf8);
           const cloudSettings = JSON.parse(decryptedText) as CloudSettings;
 
-          setSettings((current) => ({
-            ...current,
-            ...mapCloudToLocal(cloudSettings),
-            sizeGuide: normalizeSizeGuideConfig(cloudSettings.sizeGuide ?? current.sizeGuide),
-          }));
+          if (pendingPutRef.current > 0) {
+            // Đang có lệnh lưu chạy — bỏ qua lần đồng bộ này để dữ liệu cũ trên máy chủ
+            // không ghi đè ảnh vừa up (gây nhấp nháy/mất ảnh trong admin). Lần đồng bộ
+            // sau khi lưu xong sẽ lấy đúng dữ liệu mới.
+          } else {
+            setSettings((current) => {
+              const next = {
+                ...current,
+                ...mapCloudToLocal(cloudSettings),
+                sizeGuide: normalizeSizeGuideConfig(cloudSettings.sizeGuide ?? current.sizeGuide),
+              };
+              settingsRef.current = next;
+              return next;
+            });
+          }
 
           // If we have offline changes queued, try to flush now
           flushSettingsQueue();
@@ -465,33 +503,41 @@ export function StorefrontSettingsProvider({ children }: { children: ReactNode }
       settings,
       isSettingsLoaded,
       updateSettings: (payload) => {
+        // Lấy danh sách field mà lệnh này chạm tới (chỉ lấy key; giá trị sẽ đọc lại
+        // từ settingsRef lúc PUT chạy để luôn gửi giá trị mới nhất).
+        const payloadKeys = (typeof payload === "function"
+          ? Object.keys((payload as (c: StorefrontSettings) => Partial<StorefrontSettings>)(settingsRef.current))
+          : Object.keys(payload)) as (keyof StorefrontSettings)[];
         setSettings((currentSettings) => {
           const resolvedPayload = typeof payload === "function" ? (payload as (c: StorefrontSettings) => Partial<StorefrontSettings>)(currentSettings) : payload;
           const nextSettings = { ...currentSettings, ...resolvedPayload };
+          settingsRef.current = nextSettings;
           safeLocalStorage.setItem(STOREFRONT_SETTINGS_STORAGE_KEY, JSON.stringify(nextSettings));
-
-          // 📤 Tự động đồng bộ PUT lên Postgres DB
-          const cloudPayload = mapLocalPayloadToCloud(resolvedPayload);
-          fetch(`${API_URL}/settings`, {
-            method: "PUT",
-            headers: { 
-              "Content-Type": "application/json",
-              "x-admin-key": getAdminKey()
-            },
-            body: JSON.stringify(cloudPayload),
-          })
-            .then((res) => {
-              if (res.ok) {
-                flushSettingsQueue();
-                return;
-              }
-              enqueue(SETTINGS_OFFLINE_QUEUE_KEY, resolvedPayload);
-            })
-            .catch(() => {
-              enqueue(SETTINGS_OFFLINE_QUEUE_KEY, resolvedPayload);
-            });
-
           return nextSettings;
+        });
+        // 📤 Đồng bộ PUT lên Postgres DB — nối tiếp nhau (chỉ 1 PUT chạy tại 1 thời điểm).
+        // Mỗi PUT gửi giá trị MỚI NHẤT của các field nó chạm tới, tránh các PUT hoàn thành
+        // lệch thứ tự rồi ghi đè mảng mới bằng mảng cũ (mỗi PUT đưa ảnh lên Cloudinary
+        // nên chạy vài giây, cửa sổ lệch thứ tự rất lớn).
+        putChainRef.current = putChainRef.current.then(async () => {
+          pendingPutRef.current += 1;
+          const latestPayload = {} as Partial<StorefrontSettings>;
+          for (const key of payloadKeys) {
+            (latestPayload as Record<string, unknown>)[key] = (settingsRef.current as Record<string, unknown>)[key];
+          }
+          try {
+            const cloudPayload = mapLocalPayloadToCloud(latestPayload);
+            const res = await putSettings(cloudPayload);
+            if (res.ok) {
+              flushSettingsQueue();
+              return;
+            }
+            enqueue(SETTINGS_OFFLINE_QUEUE_KEY, latestPayload);
+          } catch {
+            enqueue(SETTINGS_OFFLINE_QUEUE_KEY, latestPayload);
+          } finally {
+            pendingPutRef.current -= 1;
+          }
         });
       },
     }),
