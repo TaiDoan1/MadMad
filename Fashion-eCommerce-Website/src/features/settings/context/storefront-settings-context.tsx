@@ -35,6 +35,7 @@ export const DEFAULT_STOREFRONT_SETTINGS: StorefrontSettings = {
     "/assets/categories/anh-pho-bien.jpg",
   ],
   topBannerImages: [],
+  newArrivalImages: [],
   bestSellerProductIds: [1, 2, 3, 4],
   bestSellerImageOverrides: {},
   productOptions: {
@@ -233,6 +234,12 @@ function readStoredSettings(): StorefrontSettings {
         Array.isArray(parsed.topBannerImages)
           ? parsed.topBannerImages.map((value) => String(value).trim()).filter(Boolean)
           : DEFAULT_STOREFRONT_SETTINGS.topBannerImages,
+      // Giữ nguyên chuỗi rỗng (không filter) để ô trống giữ đúng vị trí Look 1–5:
+      // nếu lọc bỏ ô trống thì các ảnh còn lại sẽ dồn lên và sai look khi tải lại trang.
+      newArrivalImages:
+        Array.isArray(parsed.newArrivalImages)
+          ? parsed.newArrivalImages.map((value) => String(value).trim())
+          : DEFAULT_STOREFRONT_SETTINGS.newArrivalImages,
       instagramImages:
         Array.isArray(parsed.instagramImages)
           ? parsed.instagramImages.map((value) => String(value).trim()).filter(Boolean)

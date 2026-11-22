@@ -3,6 +3,7 @@ import { Link } from "react-router";
 
 import { ImageWithFallback } from "@/components/common/image-with-fallback";
 import { ScrollReveal } from "@/components/common/scroll-reveal";
+import { ShopTheLook } from "@/components/home/shop-the-look";
 import { ProductCard, ProductCardSkeleton } from "@/components/shared/product-card";
 import { useProducts } from "@/features/products/context/product-context";
 import { useStorefrontSettings } from "@/features/settings/context/storefront-settings-context";
@@ -266,6 +267,9 @@ export function HomePage() {
           ))}
         </section>
       )}
+
+      {/* ═══ NEW ARRIVAL — Vòng xoay Shop the Look ═══════════════════════════ */}
+      <ShopTheLook />
 
       {/* ═══ FEATURED PRODUCTS — 3-col Protect.LDN grid ════════════════════ */}
       <section className="bg-white py-14 sm:py-20">

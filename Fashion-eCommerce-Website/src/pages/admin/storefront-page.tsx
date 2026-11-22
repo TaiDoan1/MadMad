@@ -13,6 +13,15 @@ import {
 } from "../../features/settings/context/storefront-settings-context";
 import { useToast } from "../../components/common/toast";
 
+// Nhãn cố định cho 5 ô ảnh New Arrival, theo đúng thứ tự Look 1–5.
+const NEW_ARRIVAL_LOOKS = [
+  { label: "Look 1", product: "MEMORIES T-SHIRT" },
+  { label: "Look 2", product: "DON'T JUST EXIST" },
+  { label: "Look 3", product: "MAKE YOUR MARK" },
+  { label: "Look 4", product: "MAKE YOUR MARK" },
+  { label: "Look 5", product: "STAY MAD. STAY REAL. (Sắp mở bán)" },
+];
+
 export function AdminStorefrontPage() {
   const { showToast } = useToast();
   const { products } = useProducts();
@@ -34,6 +43,9 @@ export function AdminStorefrontPage() {
   const heroImageDrafts = settings.heroImages ?? [];
   const popularCategoryImageDrafts = settings.popularCategoryImages ?? [];
   const topBannerImageDrafts = settings.topBannerImages ?? [];
+  const newArrivalImageDrafts = settings.newArrivalImages ?? [];
+  // Luôn đủ 5 ô theo thứ tự Look 1–5; ô chưa có ảnh là chuỗi rỗng.
+  const newArrivalSlots = [0, 1, 2, 3, 4].map((i) => newArrivalImageDrafts[i] ?? "");
   const instagramImageDrafts = settings.instagramImages ?? [];
   const borderRunnerPhraseDrafts = settings.borderRunnerPhrases ?? [];
   
@@ -535,6 +547,52 @@ export function AdminStorefrontPage() {
                   {popularCategoryImageDrafts.length === 0 && (
                     <p className="text-xs text-muted-foreground italic text-center py-6">Chưa có ảnh gallery nào được định cấu hình.</p>
                   )}
+                </div>
+              </div>
+
+              {/* New Arrival (Shop the Look) — 5 ô cố định theo thứ tự Look 1–5 */}
+              <div className="space-y-4 border-t border-border pt-6">
+                <div className="flex items-center justify-between">
+                  <h3 className="font-bold text-lg text-foreground">New Arrival (Shop the Look)</h3>
+                </div>
+                <p className="text-xs text-muted-foreground">Ảnh phải là ảnh đã tách nền (nền trong suốt), tỉ lệ dọc, cao khoảng 950px. Ảnh hiện ở mục NEW ARRIVAL trên trang chủ theo đúng thứ tự Look 1–5; để trống ô nào thì look đó không hiện.</p>
+
+                <div className="space-y-3 max-h-96 overflow-y-auto pr-1">
+                  {NEW_ARRIVAL_LOOKS.map((look, i) => {
+                    const url = newArrivalSlots[i];
+                    return (
+                      <div key={i} className="flex gap-2 items-start border border-border rounded-lg p-2 bg-stone-50">
+                        <div className="flex-shrink-0 w-28 pt-1.5">
+                          <p className="text-xs font-semibold text-foreground">{look.label}</p>
+                          <p className="text-[11px] leading-tight text-muted-foreground">{look.product}</p>
+                        </div>
+                        <div className="flex-shrink-0 w-10 h-12 rounded border border-border overflow-hidden bg-muted">
+                          {url.trim() && <img src={url.trim()} alt="" className="w-full h-full object-cover" />}
+                        </div>
+                        <ImageUploadInput
+                          value={url}
+                          onChange={(v) => {
+                            const n = [...newArrivalSlots];
+                            n[i] = v;
+                            updateSettings({ newArrivalImages: n });
+                          }}
+                          className="flex-1"
+                          placeholder={`Đường dẫn ảnh ${look.label}`}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const n = [...newArrivalSlots];
+                            n[i] = "";
+                            updateSettings({ newArrivalImages: n });
+                          }}
+                          className="px-2 py-1.5 text-sm text-red-500 hover:text-red-700 transition-colors"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             </div>

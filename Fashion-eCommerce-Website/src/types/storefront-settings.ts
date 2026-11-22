@@ -22,6 +22,9 @@ export interface StorefrontSettings {
   heroFontStyle: "default" | "serif" | "mono";
   popularCategoryImages: string[];
   topBannerImages: string[];
+  // Ảnh 5 look cho mục NEW ARRIVAL (Shop the Look) trên trang chủ, theo đúng
+  // thứ tự Look 1–5; phần tử rỗng nghĩa là ô đó chưa có ảnh.
+  newArrivalImages?: string[];
   bestSellerProductIds: (string | number)[];
   bestSellerImageOverrides: Record<string | number, string>;
   colorHexMap: Record<string, string>;
