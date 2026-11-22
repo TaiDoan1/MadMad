@@ -281,7 +281,7 @@ export function ShopTheLook() {
         )}
       </div>
 
-      {/* Tên bộ sưu tập của look đang ở giữa — chữ lớn, font Abril Fatface, đổi theo vòng xoay.
+      {/* Tên bộ sưu tập của look đang ở giữa — chữ lớn, font Bebas Neue kiểu poster streetwear, đổi theo vòng xoay.
           Nhấn vào tên thì vào trang chi tiết sản phẩm (trừ look chưa mở bán). */}
       <div className="mt-6 px-6 text-center">
         <button
@@ -294,9 +294,10 @@ export function ShopTheLook() {
           aria-label={activeLook.productId ? `${activeLook.name} — ${t("Xem chi tiết", "View details")}` : `${activeLook.name} — ${t("Sắp mở bán", "Coming soon")}`}
           className="animate-fadeIn text-black disabled:cursor-default"
           style={{
-            fontFamily: "'Abril Fatface', Georgia, serif",
-            fontSize: "clamp(1.9rem, 8vw, 4.2rem)",
-            lineHeight: 1.05,
+            fontFamily: "'Bebas Neue', 'Oswald', sans-serif",
+            fontSize: "clamp(2rem, 9vw, 5rem)",
+            lineHeight: 1,
+            letterSpacing: "0.04em",
           }}
         >
           {activeLook.name}
