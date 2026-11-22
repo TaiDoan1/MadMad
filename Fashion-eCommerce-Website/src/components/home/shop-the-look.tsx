@@ -12,17 +12,19 @@ import { useStorefrontSettings } from "@/features/settings/context/storefront-se
 
 interface ShopLookMeta {
   label: string;
+  /** Tên hiển thị lớn dưới vòng xoay (tên bộ sưu tập / sản phẩm của look). */
+  name: string;
   /** null = chưa có trên web (Sắp mở bán), không nhấn được */
   productId: string | null;
 }
 
 /** Thông tin cố định của từng ô, xác định bằng CHỈ SỐ Ô GỐC (không đánh lại số khi có ô trống). */
 const LOOK_META: ShopLookMeta[] = [
-  { label: "Look 1", productId: "9027b658-2f04-463f-991b-2dd804dd3af9" },
-  { label: "Look 2", productId: "c7faa1c9-8f96-4888-b501-324c7b56f8e6" },
-  { label: "Look 3", productId: "74a0abba-749b-415e-90f6-f2f7458d85df" },
-  { label: "Look 4", productId: "74a0abba-749b-415e-90f6-f2f7458d85df" },
-  { label: "Look 5", productId: null },
+  { label: "Look 1", name: "MEMORIES", productId: "9027b658-2f04-463f-991b-2dd804dd3af9" },
+  { label: "Look 2", name: "DON'T JUST EXIST", productId: "c7faa1c9-8f96-4888-b501-324c7b56f8e6" },
+  { label: "Look 3", name: "MAKE YOUR MARK", productId: "74a0abba-749b-415e-90f6-f2f7458d85df" },
+  { label: "Look 4", name: "MAKE YOUR MARK", productId: "74a0abba-749b-415e-90f6-f2f7458d85df" },
+  { label: "Look 5", name: "STAY MAD. STAY REAL.", productId: null },
 ];
 
 interface ShopLook extends ShopLookMeta {
@@ -279,6 +281,27 @@ export function ShopTheLook() {
         )}
       </div>
 
+      {/* Tên bộ sưu tập của look đang ở giữa — chữ lớn, font Abril Fatface, đổi theo vòng xoay.
+          Nhấn vào tên thì vào trang chi tiết sản phẩm (trừ look chưa mở bán). */}
+      <div className="mt-6 px-6 text-center">
+        <button
+          key={activeLook.slot}
+          type="button"
+          disabled={activeLook.productId === null}
+          onClick={() => {
+            if (activeLook.productId) navigate(`/product/${activeLook.productId}`);
+          }}
+          aria-label={activeLook.productId ? `${activeLook.name} — ${t("Xem chi tiết", "View details")}` : `${activeLook.name} — ${t("Sắp mở bán", "Coming soon")}`}
+          className="animate-fadeIn text-black disabled:cursor-default"
+          style={{
+            fontFamily: "'Abril Fatface', Georgia, serif",
+            fontSize: "clamp(1.9rem, 8vw, 4.2rem)",
+            lineHeight: 1.05,
+          }}
+        >
+          {activeLook.name}
+        </button>
+      </div>
     </section>
   );
 }
