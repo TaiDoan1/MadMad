@@ -132,6 +132,7 @@ model StorefrontSetting {
   heroFontStyle            String? @default("default")
   popularCategoryImagesJson      String? @default("[]")
   topBannerImagesJson            String? @default("[]")
+  newArrivalImagesJson           String? @default("[]")
   bestSellerProductIdsJson       String? @default("[]")
   bestSellerImageOverridesJson   String? @default("{}")
   colorHexMapJson                String? @default("{}")

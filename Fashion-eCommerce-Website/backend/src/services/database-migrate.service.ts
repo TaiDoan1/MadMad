@@ -14,6 +14,7 @@ const MIGRATION_FILES = [
   "add_top_banner_images.sql",
   "add_border_runner_hint.sql",
   "add_border_runner_phrases.sql",
+  "add_new_arrival_images.sql",
 ] as const;
 
 let migrationPromise: Promise<{ applied: string[] }> | null = null;

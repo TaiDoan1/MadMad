@@ -79,6 +79,7 @@ router.get("/", async (req, res, next) => {
     const heroImages = setting.heroImagesJson ? JSON.parse(setting.heroImagesJson) : [];
     const popularCategoryImages = setting.popularCategoryImagesJson ? JSON.parse(setting.popularCategoryImagesJson) : [];
     const topBannerImages = setting.topBannerImagesJson ? JSON.parse(setting.topBannerImagesJson) : [];
+    const newArrivalImages = setting.newArrivalImagesJson ? JSON.parse(setting.newArrivalImagesJson) : [];
     const bestSellerProductIds = setting.bestSellerProductIdsJson ? JSON.parse(setting.bestSellerProductIdsJson) : [];
     const bestSellerImageOverrides = setting.bestSellerImageOverridesJson ? JSON.parse(setting.bestSellerImageOverridesJson) : {};
     const colorHexMap = setting.colorHexMapJson ? JSON.parse(setting.colorHexMapJson) : {};
@@ -112,6 +113,7 @@ router.get("/", async (req, res, next) => {
         heroImages,
         popularCategoryImages,
         topBannerImages,
+        newArrivalImages,
         bestSellerProductIds,
         bestSellerImageOverrides,
         colorHexMap,
@@ -157,6 +159,7 @@ router.get("/", async (req, res, next) => {
         heroFontStyle: setting.heroFontStyle,
         popularCategoryImages,
         topBannerImages,
+        newArrivalImages,
         bestSellerProductIds,
         bestSellerImageOverrides,
         colorHexMap,
@@ -234,6 +237,7 @@ router.put("/", requireAdminAuth, async (req, res, next) => {
       heroFontStyle,
       popularCategoryImages,
       topBannerImages,
+      newArrivalImages,
       bestSellerProductIds,
       bestSellerImageOverrides,
       colorHexMap,
@@ -325,6 +329,10 @@ router.put("/", requireAdminAuth, async (req, res, next) => {
       heroImages !== undefined && Array.isArray(heroImages)
         ? await Promise.all(heroImages.map((item: string) => uploadToCloudinary(item)))
         : undefined;
+    const uploadedNewArrivalImages =
+      newArrivalImages !== undefined && Array.isArray(newArrivalImages)
+        ? await Promise.all(newArrivalImages.map((item: string) => uploadToCloudinary(item)))
+        : undefined;
 
     // 🖼️ Hero banner + danh mục phổ biến + best seller (lưu dạng JSON String)
     const heroImagesJson =
@@ -333,6 +341,8 @@ router.put("/", requireAdminAuth, async (req, res, next) => {
       popularCategoryImages !== undefined ? JSON.stringify(Array.isArray(popularCategoryImages) ? popularCategoryImages : []) : undefined;
     const topBannerImagesJson =
       topBannerImages !== undefined ? JSON.stringify(Array.isArray(topBannerImages) ? topBannerImages : []) : undefined;
+    const newArrivalImagesJson =
+      uploadedNewArrivalImages !== undefined ? JSON.stringify(uploadedNewArrivalImages) : undefined;
     const bestSellerProductIdsJson =
       bestSellerProductIds !== undefined ? JSON.stringify(Array.isArray(bestSellerProductIds) ? bestSellerProductIds : []) : undefined;
     const bestSellerImageOverridesJson =
@@ -385,6 +395,7 @@ router.put("/", requireAdminAuth, async (req, res, next) => {
         heroFontStyle,
         popularCategoryImagesJson,
         topBannerImagesJson,
+        newArrivalImagesJson,
         bestSellerProductIdsJson,
         bestSellerImageOverridesJson,
         colorHexMapJson,
@@ -486,6 +497,7 @@ router.put("/", requireAdminAuth, async (req, res, next) => {
         heroFontStyle: heroFontStyle || "default",
         popularCategoryImagesJson: popularCategoryImagesJson ?? "[]",
         topBannerImagesJson: topBannerImagesJson ?? "[]",
+        newArrivalImagesJson: newArrivalImagesJson ?? "[]",
         bestSellerProductIdsJson: bestSellerProductIdsJson ?? "[]",
         bestSellerImageOverridesJson: bestSellerImageOverridesJson ?? "{}",
         colorHexMapJson: colorHexMapJson ?? "{}",
@@ -570,6 +582,7 @@ router.put("/", requireAdminAuth, async (req, res, next) => {
       heroImages: updatedSetting.heroImagesJson ? JSON.parse(updatedSetting.heroImagesJson) : [],
       popularCategoryImages: updatedSetting.popularCategoryImagesJson ? JSON.parse(updatedSetting.popularCategoryImagesJson) : [],
       topBannerImages: updatedSetting.topBannerImagesJson ? JSON.parse(updatedSetting.topBannerImagesJson) : [],
+      newArrivalImages: updatedSetting.newArrivalImagesJson ? JSON.parse(updatedSetting.newArrivalImagesJson) : [],
       bestSellerProductIds: updatedSetting.bestSellerProductIdsJson ? JSON.parse(updatedSetting.bestSellerProductIdsJson) : [],
       bestSellerImageOverrides: updatedSetting.bestSellerImageOverridesJson ? JSON.parse(updatedSetting.bestSellerImageOverridesJson) : {},
       colorHexMap: updatedSetting.colorHexMapJson ? JSON.parse(updatedSetting.colorHexMapJson) : {},

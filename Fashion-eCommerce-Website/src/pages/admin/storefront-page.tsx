@@ -572,9 +572,11 @@ export function AdminStorefrontPage() {
                         <ImageUploadInput
                           value={url}
                           onChange={(v) => {
-                            const n = [...newArrivalSlots];
-                            n[i] = v;
-                            updateSettings({ newArrivalImages: n });
+                            updateSettings((current) => {
+                              const n = [0, 1, 2, 3, 4].map((idx) => current.newArrivalImages?.[idx] ?? "");
+                              n[i] = v;
+                              return { newArrivalImages: n };
+                            });
                           }}
                           className="flex-1"
                           placeholder={`Đường dẫn ảnh ${look.label}`}
@@ -582,9 +584,11 @@ export function AdminStorefrontPage() {
                         <button
                           type="button"
                           onClick={() => {
-                            const n = [...newArrivalSlots];
-                            n[i] = "";
-                            updateSettings({ newArrivalImages: n });
+                            updateSettings((current) => {
+                              const n = [0, 1, 2, 3, 4].map((idx) => current.newArrivalImages?.[idx] ?? "");
+                              n[i] = "";
+                              return { newArrivalImages: n };
+                            });
                           }}
                           className="px-2 py-1.5 text-sm text-red-500 hover:text-red-700 transition-colors"
                         >

@@ -133,7 +133,7 @@ export const DEFAULT_STOREFRONT_SETTINGS: StorefrontSettings = {
 interface StorefrontSettingsContextValue {
   settings: StorefrontSettings;
   isSettingsLoaded: boolean;
-  updateSettings: (payload: Partial<StorefrontSettings>) => void;
+  updateSettings: (payload: Partial<StorefrontSettings> | ((current: StorefrontSettings) => Partial<StorefrontSettings>)) => void;
 }
 
 const StorefrontSettingsContext = createContext<StorefrontSettingsContextValue | undefined>(undefined);
@@ -466,11 +466,12 @@ export function StorefrontSettingsProvider({ children }: { children: ReactNode }
       isSettingsLoaded,
       updateSettings: (payload) => {
         setSettings((currentSettings) => {
-          const nextSettings = { ...currentSettings, ...payload };
+          const resolvedPayload = typeof payload === "function" ? (payload as (c: StorefrontSettings) => Partial<StorefrontSettings>)(currentSettings) : payload;
+          const nextSettings = { ...currentSettings, ...resolvedPayload };
           safeLocalStorage.setItem(STOREFRONT_SETTINGS_STORAGE_KEY, JSON.stringify(nextSettings));
 
           // 📤 Tự động đồng bộ PUT lên Postgres DB
-          const cloudPayload = mapLocalPayloadToCloud(payload);
+          const cloudPayload = mapLocalPayloadToCloud(resolvedPayload);
           fetch(`${API_URL}/settings`, {
             method: "PUT",
             headers: { 
@@ -484,10 +485,10 @@ export function StorefrontSettingsProvider({ children }: { children: ReactNode }
                 flushSettingsQueue();
                 return;
               }
-              enqueue(SETTINGS_OFFLINE_QUEUE_KEY, payload);
+              enqueue(SETTINGS_OFFLINE_QUEUE_KEY, resolvedPayload);
             })
             .catch(() => {
-              enqueue(SETTINGS_OFFLINE_QUEUE_KEY, payload);
+              enqueue(SETTINGS_OFFLINE_QUEUE_KEY, resolvedPayload);
             });
 
           return nextSettings;
