@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent } 
 import { Link, useNavigate } from "react-router";
 import { useLanguage } from "@/features/settings/context/language-context";
 import { useStorefrontSettings } from "@/features/settings/context/storefront-settings-context";
+import { cloudinarySrcSet, optimizeImageUrl } from "@/utils/cloudinary";
 
 // ─── Shop the Look — mục NEW ARRIVAL trên trang chủ ──────────────────────────
 // Vòng xoay các look theo đúng bản test đã duyệt (hiệu ứng giống video Hades):
@@ -113,10 +114,11 @@ export function ShopTheLook() {
   }, []);
 
   // Tải trước các ảnh đang hiện để vòng xoay không bao giờ trống.
+  // Tải trước đúng URL đã tối ưu (khớp src render) để trình duyệt dùng lại cache.
   useEffect(() => {
     looks.forEach((look) => {
       const img = new Image();
-      img.src = look.image;
+      img.src = optimizeImageUrl(look.image, 800);
     });
   }, [looks]);
 
@@ -258,7 +260,9 @@ export function ShopTheLook() {
               }}
             >
               <img
-                src={look.image}
+                src={optimizeImageUrl(look.image, 800)}
+                srcSet={cloudinarySrcSet(look.image, [400, 800, 1200])}
+                sizes="(max-width: 640px) 80vw, 480px"
                 alt={look.label}
                 draggable={false}
                 className="h-full w-auto"

@@ -1,5 +1,7 @@
 import { Component, ErrorInfo, ReactNode } from "react";
 
+import { reportClientError } from "@/utils/telemetry";
+
 interface Props {
   children: ReactNode;
 }
@@ -27,6 +29,17 @@ export class ErrorBoundary extends Component<Props, State> {
       errorInfo,
     });
     console.error("Uncaught error:", error, errorInfo);
+    // Gửi lỗi về POST /api/client-errors — reportClientError không bao giờ throw
+    // nên không tạo vòng lặp lỗi trong Error Boundary.
+    try {
+      reportClientError(
+        error.message,
+        window.location.pathname,
+        `${error.stack ?? ""}\n${errorInfo.componentStack ?? ""}`,
+      );
+    } catch {
+      // Bỏ qua — trang lỗi vẫn phải hiển thị được.
+    }
   }
 
   public render() {

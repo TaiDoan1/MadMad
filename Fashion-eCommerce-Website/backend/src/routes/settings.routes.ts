@@ -2,7 +2,7 @@ import { Router } from "express";
 import { prisma } from "../config/prisma";
 import { sendManualCustomEmail } from "../services/email.service";
 import { requireAdminAuth } from "../utils/auth.middleware";
-import { uploadToCloudinary } from "../utils/cloudinary";
+import { createUploadSignature, uploadToCloudinary } from "../utils/cloudinary";
 
 const router = Router();
 
@@ -132,6 +132,7 @@ router.get("/", async (req, res, next) => {
       // vì khách hàng cần số tài khoản/momo để thực hiện chuyển khoản khi checkout
       rawData = {
         id: setting.id,
+        version: setting.version,
         brandName: setting.brandName,
         logoUrl: setting.logoUrl,
         manifestoSlogan: setting.manifestoSlogan,
@@ -309,6 +310,9 @@ router.put("/", requireAdminAuth, async (req, res, next) => {
       borderRunnerHintText,
       borderRunnerHintIntervalSec,
       borderRunnerPhrases,
+
+      // 🔢 Optimistic locking (nhóm 3): version client đã đọc từ GET
+      version,
     } = req.body;
 
     console.log("📥 [PUT /settings] Received request to update settings:");
@@ -318,11 +322,10 @@ router.put("/", requireAdminAuth, async (req, res, next) => {
     console.log("- enablePaypal:", enablePaypal);
     console.log("- bankAccount:", bankAccount);
 
-    const instagramImagesStr = Array.isArray(instagramImages)
-      ? JSON.stringify(instagramImages)
-      : (typeof instagramImages === "string" ? instagramImages : undefined);
-
-    // 🖼️ Hero banner (ảnh hoặc video): tải Base64 lên Cloudinary trước khi lưu URL vào DB
+    // 🖼️ Mọi trường ảnh: data URL (Base64) -> Cloudinary trước khi lưu URL vào DB.
+    // uploadToCloudinary giữ nguyên URL http(s) và giá trị không phải data URL, nên
+    // đường này vừa là đường chính cho ảnh mới, vừa là đường dự phòng khi frontend
+    // tải trực tiếp lên Cloudinary thất bại rồi gửi data URL lên như trước.
     const uploadedHeroImage =
       heroImage !== undefined ? await uploadToCloudinary(heroImage) : undefined;
     const uploadedHeroImages =
@@ -333,14 +336,31 @@ router.put("/", requireAdminAuth, async (req, res, next) => {
       newArrivalImages !== undefined && Array.isArray(newArrivalImages)
         ? await Promise.all(newArrivalImages.map((item: string) => uploadToCloudinary(item)))
         : undefined;
+    const uploadedTopBannerImages =
+      topBannerImages !== undefined && Array.isArray(topBannerImages)
+        ? await Promise.all(topBannerImages.map((item: string) => uploadToCloudinary(item)))
+        : undefined;
+    const uploadedPopularCategoryImages =
+      popularCategoryImages !== undefined && Array.isArray(popularCategoryImages)
+        ? await Promise.all(popularCategoryImages.map((item: string) => uploadToCloudinary(item)))
+        : undefined;
+    const uploadedInstagramImages =
+      instagramImages !== undefined && Array.isArray(instagramImages)
+        ? await Promise.all(instagramImages.map((item: string) => uploadToCloudinary(item)))
+        : undefined;
+
+    const instagramImagesStr =
+      uploadedInstagramImages !== undefined
+        ? JSON.stringify(uploadedInstagramImages)
+        : (typeof instagramImages === "string" ? instagramImages : undefined);
 
     // 🖼️ Hero banner + danh mục phổ biến + best seller (lưu dạng JSON String)
     const heroImagesJson =
       uploadedHeroImages !== undefined ? JSON.stringify(uploadedHeroImages) : undefined;
     const popularCategoryImagesJson =
-      popularCategoryImages !== undefined ? JSON.stringify(Array.isArray(popularCategoryImages) ? popularCategoryImages : []) : undefined;
+      uploadedPopularCategoryImages !== undefined ? JSON.stringify(uploadedPopularCategoryImages) : undefined;
     const topBannerImagesJson =
-      topBannerImages !== undefined ? JSON.stringify(Array.isArray(topBannerImages) ? topBannerImages : []) : undefined;
+      uploadedTopBannerImages !== undefined ? JSON.stringify(uploadedTopBannerImages) : undefined;
     const newArrivalImagesJson =
       uploadedNewArrivalImages !== undefined ? JSON.stringify(uploadedNewArrivalImages) : undefined;
     const bestSellerProductIdsJson =
@@ -364,6 +384,24 @@ router.put("/", requireAdminAuth, async (req, res, next) => {
 
     const borderRunnerPhrasesJson =
       borderRunnerPhrases !== undefined ? JSON.stringify(Array.isArray(borderRunnerPhrases) ? borderRunnerPhrases : []) : undefined;
+
+    // 🔢 Optimistic locking (nhóm 3): kiểm tra version NGAY TRƯỚC khi ghi để cửa
+    // sổ race nhỏ nhất. Version lệch (tab khác đã lưu trước) thì trả 409, không
+    // ghi gì. PUT không kèm version (client cũ, vd. lưu coupons trực tiếp ở trang
+    // admin) vẫn được chấp nhận để không vỡ luồng cũ — nhưng vẫn tăng version.
+    const expectedVersion = version === undefined ? undefined : Number(version);
+    if (expectedVersion !== undefined && !Number.isInteger(expectedVersion)) {
+      return res.status(400).json({ error: "version phải là số nguyên" });
+    }
+    if (expectedVersion !== undefined) {
+      const currentSetting = await prisma.storefrontSetting.findUnique({ where: { id: 1 } });
+      if (currentSetting && currentSetting.version !== expectedVersion) {
+        return res.status(409).json({
+          error: "Settings đã thay đổi ở nơi khác, vui lòng tải lại rồi lưu lại",
+          currentVersion: currentSetting.version,
+        });
+      }
+    }
 
     const updatedSetting = await prisma.storefrontSetting.upsert({
       where: { id: 1 },
@@ -467,6 +505,9 @@ router.put("/", requireAdminAuth, async (req, res, next) => {
         borderRunnerHintText,
         borderRunnerHintIntervalSec: borderRunnerHintIntervalSec !== undefined ? Number(borderRunnerHintIntervalSec) : undefined,
         borderRunnerPhrasesJson,
+
+        // 🔢 PUT thành công thì tăng version lên 1 (kể cả PUT không kèm version)
+        version: { increment: 1 },
       },
       create: {
         id: 1,
@@ -569,6 +610,8 @@ router.put("/", requireAdminAuth, async (req, res, next) => {
         borderRunnerHintText: borderRunnerHintText || "Hãy chạm vào tôi đi nè.",
         borderRunnerHintIntervalSec: borderRunnerHintIntervalSec !== undefined ? Number(borderRunnerHintIntervalSec) : 5,
         borderRunnerPhrasesJson: borderRunnerPhrasesJson ?? "[]",
+
+        version: 0,
       }
     });
 
@@ -654,6 +697,94 @@ router.post("/invalidate-cache", requireAdminAuth, async (req, res) => {
 // 11b. GET /api/settings/cache-version - Client checks if cache invalidated
 router.get("/cache-version", async (req, res) => {
   res.json({ timestamp: cacheInvalidationTimestamp });
+});
+
+// 12. POST /api/settings/upload-signature - Ký tải lên trực tiếp Cloudinary (Admin)
+// Frontend xin chữ ký rồi tải file THẲNG lên Cloudinary, không qua backend nữa.
+// Chỉ ký bằng api_secret ở máy chủ — KHÔNG trả api_secret ra ngoài.
+router.post("/upload-signature", requireAdminAuth, async (req, res, next) => {
+  try {
+    const requestedFolder = typeof req.body?.folder === "string" ? req.body.folder : "madmad-products";
+    // Chỉ cho 2 folder đã dùng trong hệ thống, tránh ký cho folder tùy ý.
+    const folder = requestedFolder === "madmad-hero-videos" ? requestedFolder : "madmad-products";
+    const signature = createUploadSignature(folder);
+    res.json(signature);
+  } catch (error: any) {
+    console.error("❌ [UPLOAD-SIGNATURE] Không tạo được chữ ký:", error?.message || error);
+    res.status(500).json({ success: false, message: error?.message || "Không tạo được chữ ký upload." });
+  }
+});
+
+// 13. POST /api/settings/migrate-images - Chuyển 1 lần ảnh Base64 trong DB thành link Cloudinary (Admin)
+// CHỈ VIẾT endpoint, KHÔNG tự chạy vào dữ liệu thật. Chạy lại được an toàn: bỏ qua mọi
+// giá trị đã là URL Cloudinary/http(s), chỉ chuyển data URL; chạy lại lần 2 không đổi gì.
+router.post("/migrate-images", requireAdminAuth, async (req, res, next) => {
+  try {
+    const setting = await prisma.storefrontSetting.findUnique({ where: { id: 1 } });
+    if (!setting) {
+      return res.status(404).json({ success: false, message: "Chưa có cấu hình storefront (id 1)." });
+    }
+
+    const isDataUrl = (v: unknown): v is string =>
+      typeof v === "string" && (v.startsWith("data:image/") || v.startsWith("data:video/"));
+    const parseJsonArray = (raw: string | null | undefined): string[] => {
+      try { const v = raw ? JSON.parse(raw) : []; return Array.isArray(v) ? v : []; } catch { return []; }
+    };
+
+    // field -> { kind, raw } — kind "single" là cột string, "json" là cột JSON-string mảng.
+    const fields: Record<string, { kind: "single" | "json"; raw: string | null | undefined }> = {
+      heroImage: { kind: "single", raw: setting.heroImage },
+      heroImages: { kind: "json", raw: setting.heroImagesJson },
+      topBannerImages: { kind: "json", raw: setting.topBannerImagesJson },
+      popularCategoryImages: { kind: "json", raw: setting.popularCategoryImagesJson },
+      instagramImages: { kind: "json", raw: setting.instagramImages },
+      newArrivalImages: { kind: "json", raw: setting.newArrivalImagesJson },
+    };
+
+    const summary: Record<string, { migrated: number; skipped: number; failed: number }> = {};
+    // Chỉ các cột ảnh mới được ghi — gõ rõ từng cột để khớp Prisma update input.
+    const updates: {
+      heroImage?: string;
+      heroImagesJson?: string;
+      topBannerImagesJson?: string;
+      popularCategoryImagesJson?: string;
+      instagramImages?: string;
+      newArrivalImagesJson?: string;
+    } = {};
+    let totalMigrated = 0;
+
+    for (const [field, { kind, raw }] of Object.entries(fields)) {
+      const values = kind === "single" ? [raw ?? ""] : parseJsonArray(raw);
+      const result = { migrated: 0, skipped: 0, failed: 0 };
+      const nextValues: string[] = [];
+      for (const value of values) {
+        if (!isDataUrl(value)) { result.skipped += 1; nextValues.push(value); continue; }
+        const uploaded = await uploadToCloudinary(value);
+        if (isDataUrl(uploaded)) { result.failed += 1; nextValues.push(value); continue; }
+        result.migrated += 1;
+        nextValues.push(uploaded);
+      }
+      summary[field] = result;
+      totalMigrated += result.migrated;
+      if (result.migrated > 0) {
+        const json = JSON.stringify(nextValues);
+        if (field === "heroImage") updates.heroImage = nextValues[0] ?? "";
+        else if (field === "heroImages") updates.heroImagesJson = json;
+        else if (field === "topBannerImages") updates.topBannerImagesJson = json;
+        else if (field === "popularCategoryImages") updates.popularCategoryImagesJson = json;
+        else if (field === "instagramImages") updates.instagramImages = json;
+        else if (field === "newArrivalImages") updates.newArrivalImagesJson = json;
+      }
+    }
+
+    if (totalMigrated > 0) {
+      await prisma.storefrontSetting.update({ where: { id: 1 }, data: updates });
+    }
+
+    res.json({ success: true, migrated: totalMigrated, changed: totalMigrated > 0, fields: summary });
+  } catch (error) {
+    next(error);
+  }
 });
 
 export default router;

@@ -1,6 +1,7 @@
 import { createBrowserRouter } from "react-router";
 
 import { MainLayout } from "@/components/layouts/main-layout";
+import { HomePage } from "@/pages/home/home-page";
 
 export const router = createBrowserRouter([
   {
@@ -9,10 +10,9 @@ export const router = createBrowserRouter([
     children: [
       {
         index: true,
-        lazy: async () => {
-          const module = await import("@/pages/home/home-page");
-          return { Component: module.HomePage };
-        },
+        // Trang chủ tải eager (import tĩnh ở đầu file): không thêm 1 vòng
+        // fetch chunk sau khi bundle chính load xong. Các route còn lại giữ lazy.
+        Component: HomePage,
       },
       {
         path: "shop",

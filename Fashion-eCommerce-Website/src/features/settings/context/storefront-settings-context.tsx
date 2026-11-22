@@ -362,23 +362,57 @@ export function StorefrontSettingsProvider({ children }: { children: ReactNode }
   // Số lệnh PUT đang chạy — fetchSettings sẽ bỏ qua lần đồng bộ khi > 0 để ảnh vừa up
   // không bị dữ liệu cũ trên máy chủ ghi đè (nhấp nháy/mất ảnh trong admin).
   const pendingPutRef = useRef(0);
+  // Version optimistic locking của settings trên server (đọc từ GET, giữ trong
+  // ref của context). KHÔNG tin version lưu ở localStorage vì có thể cũ.
+  // null = chưa tải được lần nào (PUT sẽ gửi không kèm version, server vẫn nhận).
+  const versionRef = useRef<number | null>(null);
 
   // PUT settings có timeout 30 giây — tránh một lệnh PUT kẹt mạng làm tắc cả chuỗi lưu.
   const putSettings = async (cloudPayload: Record<string, any>) => {
     const controller = new AbortController();
     const timer = window.setTimeout(() => controller.abort(), 30000);
     try {
-      return await fetch(`${API_URL}/settings`, {
+      // Mọi PUT đều gửi kèm version hiện biết để server kiểm tra 409.
+      const body: Record<string, any> = { ...cloudPayload };
+      if (versionRef.current !== null) body.version = versionRef.current;
+      const res = await fetch(`${API_URL}/settings`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
           "x-admin-key": getAdminKey()
         },
-        body: JSON.stringify(cloudPayload),
+        body: JSON.stringify(body),
         signal: controller.signal,
       });
+      if (res.ok) {
+        try {
+          const data = (await res.clone().json()) as { version?: unknown };
+          if (typeof data.version === "number") versionRef.current = data.version;
+        } catch {
+          // PUT trả về không phải JSON thì giữ version cũ — lần đồng bộ sau sẽ cập nhật.
+        }
+      }
+      return res;
     } finally {
       window.clearTimeout(timer);
+    }
+  };
+
+  // Chỉ tải lại VERSION mới từ server khi gặp 409 — KHÔNG đồng bộ giá trị
+  // settings (làm vậy sẽ ghi đè phần người dùng vừa sửa rồi gửi lại giá trị cũ).
+  const refreshVersionOnly = async () => {
+    try {
+      const response = await fetch(`${API_URL}/settings?t=${Date.now()}`, {
+        headers: { "x-admin-key": getAdminKey() }
+      });
+      if (!response.ok) return;
+      const resJson = await response.json();
+      const ENCRYPTION_KEY = "MADMAD_SECURE_PAYLOAD_KEY_2026";
+      const bytes = CryptoJS.AES.decrypt(resJson.encryptedPayload, ENCRYPTION_KEY);
+      const cloudSettings = JSON.parse(bytes.toString(CryptoJS.enc.Utf8)) as CloudSettings;
+      if (typeof cloudSettings.version === "number") versionRef.current = cloudSettings.version;
+    } catch {
+      // Giữ version cũ; lần thử lại sẽ gửi kèm version cũ hoặc không kèm version.
     }
   };
 
@@ -422,6 +456,13 @@ export function StorefrontSettingsProvider({ children }: { children: ReactNode }
           const bytes = CryptoJS.AES.decrypt(resJson.encryptedPayload, ENCRYPTION_KEY);
           const decryptedText = bytes.toString(CryptoJS.enc.Utf8);
           const cloudSettings = JSON.parse(decryptedText) as CloudSettings;
+
+          // Lưu version server trả về; xóa khỏi object trước khi trộn vào state
+          // để version không lọt vào settings state / localStorage.
+          if (typeof cloudSettings.version === "number") {
+            versionRef.current = cloudSettings.version;
+            delete cloudSettings.version;
+          }
 
           if (pendingPutRef.current > 0) {
             // Đang có lệnh lưu chạy — bỏ qua lần đồng bộ này để dữ liệu cũ trên máy chủ
@@ -527,7 +568,24 @@ export function StorefrontSettingsProvider({ children }: { children: ReactNode }
           }
           try {
             const cloudPayload = mapLocalPayloadToCloud(latestPayload);
-            const res = await putSettings(cloudPayload);
+            let res = await putSettings(cloudPayload);
+            if (res.status === 409) {
+              // Tab khác đã lưu trước — lấy version mới (từ body 409, nếu không
+              // có thì GET lại) rồi thử lại ĐÚNG 1 lần, vẫn gửi đúng payload lần
+              // này (giá trị người dùng vừa sửa), vẫn trong chuỗi PUT này.
+              let gotVersion = false;
+              try {
+                const data = (await res.clone().json()) as { currentVersion?: unknown };
+                if (typeof data.currentVersion === "number") {
+                  versionRef.current = data.currentVersion;
+                  gotVersion = true;
+                }
+              } catch {
+                // Bỏ qua, sẽ GET lại bên dưới.
+              }
+              if (!gotVersion) await refreshVersionOnly();
+              res = await putSettings(cloudPayload);
+            }
             if (res.ok) {
               flushSettingsQueue();
               return;

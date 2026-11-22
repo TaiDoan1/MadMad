@@ -10,6 +10,7 @@ import authRoutes    from "./routes/auth.routes";
 import logsRoutes    from "./routes/logs.routes";
 import marketingRoutes from "./routes/marketing.routes";
 import inventoryRoutes from "./routes/inventory.routes";
+import observabilityRoutes from "./routes/observability.routes";
 import { ensureDatabaseMigrations } from "./services/database-migrate.service";
 
 dotenv.config();
@@ -48,6 +49,17 @@ app.use(cors({
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ limit: "50mb", extended: true }));
 
+// 🩺 GET /api/health — Healthcheck cho Railway: trả 200 nhanh, KHÔNG chạm DB.
+// Đặt TRƯỚC middleware migration bên dưới để mỗi lần Railway ping không chạy
+// migration hay ghi log request.
+app.get("/api/health", (req, res) => {
+  res.json({
+    status: "ok",
+    timestamp: new Date().toISOString(),
+    uptimeSec: Math.round(process.uptime()),
+  });
+});
+
 // 📝 Middleware ghi nhận mọi yêu cầu HTTP để chuẩn đoán kết nối local
 app.use(async (req, res, next) => {
   try {
@@ -77,6 +89,7 @@ app.use("/api/auth",    authRoutes);
 app.use("/api/logs",    logsRoutes);
 app.use("/api/marketing", marketingRoutes);
 app.use("/api/inventory", inventoryRoutes);
+app.use("/api", observabilityRoutes); // POST/GET /api/client-errors, POST/GET /api/page-views
 
 // Global Error Handler Middleware — tự động ghi lối backend vào Database
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {

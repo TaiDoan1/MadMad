@@ -9,11 +9,38 @@ cloudinary.config({
 });
 
 /**
+ * Tạo chữ ký tải lên trực tiếp (signed upload) cho frontend.
+ * CHỈ ký tham số bằng api_secret ở máy chủ — api_secret KHÔNG bao giờ rời máy chủ.
+ * Frontend dùng chữ ký này để tải file thẳng lên Cloudinary, không qua backend.
+ * Trả về cloud_name / api_key (không phải secret) + timestamp + signature + folder.
+ */
+export function createUploadSignature(folder = "madmad-products") {
+  const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
+  const apiKey = process.env.CLOUDINARY_API_KEY;
+  const apiSecret = process.env.CLOUDINARY_API_SECRET;
+  if (!cloudName || !apiKey || !apiSecret) {
+    throw new Error("Cloudinary chưa được cấu hình (thiếu CLOUDINARY_CLOUD_NAME / API_KEY / API_SECRET).");
+  }
+  const timestamp = Math.round(Date.now() / 1000);
+  const paramsToSign: Record<string, string | number> = { timestamp, folder };
+  const signature = cloudinary.utils.api_sign_request(paramsToSign, apiSecret);
+  return {
+    cloud_name: cloudName,
+    api_key: apiKey,
+    timestamp,
+    signature,
+    folder,
+    upload_url: `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`,
+  };
+}
+
+/**
  * Tải ảnh hoặc video (dạng Base64 hoặc URL trực tiếp) lên Cloudinary.
  * Trả về link URL bảo mật (secure_url) từ Cloudinary CDN.
  * Nếu đã là URL sẵn (bắt đầu bằng http/https), giữ nguyên.
  */
 export async function uploadToCloudinary(imageStr: string): Promise<string> {
+
   if (!imageStr) return "";
 
   // Nếu đã là URL Cloudinary, trả về nguyên trạng

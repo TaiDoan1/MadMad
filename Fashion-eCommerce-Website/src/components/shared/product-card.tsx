@@ -3,7 +3,7 @@ import { ShoppingCart } from "lucide-react";
 import { Link } from "react-router";
 
 import { ImageWithFallback } from "@/components/common/image-with-fallback";
-import { optimizeImageUrl } from "@/utils/cloudinary";
+import { cloudinarySrcSet, optimizeImageUrl } from "@/utils/cloudinary";
 import { useCart } from "@/features/cart/context/cart-context";
 import { useLanguage } from "@/features/settings/context/language-context";
 import type { Product } from "@/types/product";
@@ -74,6 +74,8 @@ export function ProductCard({ product, variant = "shop" }: ProductCardProps) {
       >
         <ImageWithFallback
           src={optimizeImageUrl(product.image, 800)}
+          srcSet={cloudinarySrcSet(product.image, [400, 800, 1200])}
+          sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
           alt={translate(product.name)}
           loading="lazy"
           decoding="async"
@@ -82,6 +84,8 @@ export function ProductCard({ product, variant = "shop" }: ProductCardProps) {
         {secondaryImage && (
           <ImageWithFallback
             src={optimizeImageUrl(secondaryImage, 800)}
+            srcSet={cloudinarySrcSet(secondaryImage, [400, 800, 1200])}
+            sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
             alt={`${translate(product.name)} hover`}
             loading="lazy"
             decoding="async"

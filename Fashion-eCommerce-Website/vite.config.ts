@@ -16,9 +16,32 @@ function figmaAssetResolver() {
   }
 }
 
+function previewCacheHeaders() {
+  return {
+    name: 'preview-cache-headers',
+    // Cache theo đường dẫn cho `vite preview` (máy chạy thật trên Railway):
+    // - /assets/* có hash trong tên file -> cache dài + immutable.
+    // - index.html (route / và *.html) -> không cache, để bản deploy mới tới ngay.
+    // KHÔNG đặt cache dài cho HTML. preview.headers bên dưới vẫn giữ các
+    // tiêu đề bảo mật cho mọi response.
+    configurePreviewServer(server) {
+      server.middlewares.use((req, res, next) => {
+        const url = (req.url ?? '').split('?')[0];
+        if (url.startsWith('/assets/')) {
+          res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+        } else if (url === '/' || url.endsWith('.html')) {
+          res.setHeader('Cache-Control', 'no-cache');
+        }
+        next();
+      });
+    },
+  };
+}
+
 export default defineConfig({
   plugins: [
     figmaAssetResolver(),
+    previewCacheHeaders(),
     // The React and Tailwind plugins are both required for Make, even if
     // Tailwind is not being actively used – do not remove them
     react(),

@@ -8,6 +8,7 @@ import { ProductCard, ProductCardSkeleton } from "@/components/shared/product-ca
 import { useProducts } from "@/features/products/context/product-context";
 import { useStorefrontSettings } from "@/features/settings/context/storefront-settings-context";
 import { useLanguage } from "@/features/settings/context/language-context";
+import { cloudinarySrcSet, optimizeImageUrl } from "@/utils/cloudinary";
 
 // ─── Countdown Timer ───────────────────────────────────────────────────────────
 // Ngày drop tiếp theo — đổi chuỗi này khi có drop mới.
@@ -141,7 +142,9 @@ export function HomePage() {
           ) : (
             <img
               key={`sizer-${activeHeroMediaUrl}`}
-              src={activeHeroMediaUrl}
+              src={optimizeImageUrl(activeHeroMediaUrl, 1600)}
+              srcSet={cloudinarySrcSet(activeHeroMediaUrl, [800, 1200, 1600, 2400])}
+              sizes="100vw"
               alt=""
               aria-hidden="true"
               className="block w-full h-auto opacity-0 pointer-events-none sm:hidden"
@@ -173,7 +176,9 @@ export function HomePage() {
             ) : (
               <ImageWithFallback
                 key={`${mediaUrl}-${index}`}
-                src={mediaUrl}
+                src={optimizeImageUrl(mediaUrl, 1600)}
+                srcSet={cloudinarySrcSet(mediaUrl, [800, 1200, 1600, 2400])}
+                sizes="100vw"
                 alt={`MADMAD ${index + 1}`}
                 className={cls}
                 style={{ transform: `scale(${scale})` }}
@@ -259,7 +264,10 @@ export function HomePage() {
           {topBannerImages.map((imageUrl, index) => (
             <ScrollReveal key={`${imageUrl}-${index}`} className="w-full">
               <ImageWithFallback
-                src={imageUrl}
+                src={optimizeImageUrl(imageUrl, 1600)}
+                srcSet={cloudinarySrcSet(imageUrl, [800, 1200, 1600])}
+                sizes="100vw"
+                loading="lazy"
                 alt={`Banner ${index + 1}`}
                 className="h-auto w-full object-contain"
               />
@@ -315,7 +323,10 @@ export function HomePage() {
           {popularCategoryImages.map((imageUrl, index) => (
             <ScrollReveal key={`${imageUrl}-${index}`} className="w-full">
               <ImageWithFallback
-                src={imageUrl}
+                src={optimizeImageUrl(imageUrl, 1600)}
+                srcSet={cloudinarySrcSet(imageUrl, [800, 1200, 1600])}
+                sizes="100vw"
+                loading="lazy"
                 alt={`Featured ${index + 1}`}
                 className="h-auto w-full object-contain"
               />
@@ -412,7 +423,10 @@ export function HomePage() {
                   className="relative overflow-hidden w-[50vw] sm:w-[33.33vw] lg:w-[20vw] aspect-[2/3] group cursor-pointer bg-white"
                 >
                   <ImageWithFallback
-                    src={src}
+                    src={optimizeImageUrl(src, 800)}
+                    srcSet={cloudinarySrcSet(src, [400, 800, 1200])}
+                    sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
+                    loading="lazy"
                     alt={`MADMAD editorial ${index + 1}`}
                     className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
                   />

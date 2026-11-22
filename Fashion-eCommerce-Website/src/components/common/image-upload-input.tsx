@@ -1,9 +1,10 @@
-import { useMemo, useRef, type ChangeEvent } from "react";
+import { useMemo, useRef, useState, type ChangeEvent } from "react";
 import { Link2, Upload } from "lucide-react";
 
 import { ImageWithFallback } from "@/components/common/image-with-fallback";
 
 import { useToast } from "@/components/common/toast";
+import { compressImageToWebP, uploadBlobDirectToCloudinary } from "@/utils/cloudinary-upload";
 
 type ImageUploadInputProps = {
   value: string;
@@ -31,6 +32,8 @@ export function ImageUploadInput({
 }: ImageUploadInputProps) {
   const { showToast } = useToast();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
+  const isUploading = uploadProgress !== null;
   const previewSrc = value.trim();
   const isDataImage = useMemo(() => value.startsWith(BASE64_IMAGE_PREFIX), [value]);
   const isDataVideo = useMemo(() => value.startsWith(BASE64_VIDEO_PREFIX), [value]);
@@ -69,47 +72,36 @@ export function ImageUploadInput({
       return;
     }
 
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const img = new Image();
-      img.onload = () => {
-        // Cấu hình nén ảnh
-        const MAX_WIDTH = maxDimension;
-        const MAX_HEIGHT = maxDimension;
-        let width = img.width;
-        let height = img.height;
-
-        if (width > height) {
-          if (width > MAX_WIDTH) {
-            height = Math.round((height * MAX_WIDTH) / width);
-            width = MAX_WIDTH;
-          }
-        } else {
-          if (height > MAX_HEIGHT) {
-            width = Math.round((width * MAX_HEIGHT) / height);
-            height = MAX_HEIGHT;
-          }
+    // Ảnh: nén thành WebP qua canvas rồi tải TRỰC TIẾP lên Cloudinary (có thanh
+    // tiến trình). Chỉ gửi URL ngắn vào onChange — không còn nhét Base64 1,65MB
+    // vào settings nữa. Lỗi thì thử lại đúng ảnh này (bấm Upload lại); nếu tải
+    // trực tiếp thất bại thì gửi data URL đã nén như trước để backend PUT đưa
+    // lên Cloudinary (đường dự phòng), ảnh không bị mất.
+    const uploadOneFile = async () => {
+      setUploadProgress(0);
+      try {
+        const blob = await compressImageToWebP(file, maxDimension);
+        const secureUrl = await uploadBlobDirectToCloudinary(blob, {
+          onProgress: (percent) => setUploadProgress(percent),
+        });
+        setUploadProgress(null);
+        onChange(secureUrl);
+      } catch (error) {
+        setUploadProgress(null);
+        console.warn("[ImageUploadInput] Tải trực tiếp lên Cloudinary thất bại, dùng đường dự phòng qua backend:", error);
+        showToast("Tải trực tiếp lỗi, đang lưu ảnh qua máy chủ. Bấm Upload lại nếu ảnh không hiện.", "warning");
+        try {
+          const fallbackBlob = await compressImageToWebP(file, maxDimension);
+          const reader = new FileReader();
+          reader.onload = (e) => onChange(e.target?.result as string);
+          reader.readAsDataURL(fallbackBlob);
+        } catch {
+          showToast("Không tải được ảnh. Vui lòng thử lại.", "warning");
         }
-
-        const canvas = document.createElement("canvas");
-        canvas.width = width;
-        canvas.height = height;
-
-        const ctx = canvas.getContext("2d");
-        if (!ctx) {
-          onChange(e.target?.result as string); // Fallback to uncompressed
-          return;
-        }
-
-        ctx.drawImage(img, 0, 0, width, height);
-
-        // Nén thành WebP chất lượng cao (92%) - giữ chi tiết vải/đường may, vẫn nhẹ hơn ảnh gốc nhiều
-        const compressedDataUrl = canvas.toDataURL("image/webp", 0.92);
-        onChange(compressedDataUrl);
-      };
-      img.src = e.target?.result as string;
+      }
     };
-    reader.readAsDataURL(file);
+
+    void uploadOneFile();
     event.target.value = "";
   };
 
@@ -119,30 +111,41 @@ export function ImageUploadInput({
         <button
           type="button"
           onClick={() => fileInputRef.current?.click()}
-          disabled={disabled}
+          disabled={disabled || isUploading}
           className="inline-flex shrink-0 items-center gap-2 rounded border border-border bg-white px-3 py-2 text-sm transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-60"
         >
           <Upload className="h-4 w-4" />
-          Upload
+          {isUploading ? "Đang tải..." : "Upload"}
         </button>
         <div className="relative flex-1">
           <Link2 className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <input
             value={isDataImage || isDataVideo ? "" : value}
             onChange={(event) => onChange(event.target.value)}
-            disabled={disabled}
+            disabled={disabled || isUploading}
             className="w-full rounded border border-border px-4 py-2 pl-9 text-sm focus:outline-none focus:ring-2 focus:ring-primary disabled:cursor-not-allowed disabled:opacity-60"
             placeholder={placeholder}
           />
         </div>
       </div>
+      {isUploading && (
+        <div className="space-y-1">
+          <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
+            <div
+              className="h-full rounded-full bg-primary transition-all duration-200"
+              style={{ width: `${uploadProgress ?? 0}%` }}
+            />
+          </div>
+          <p className="text-xs text-muted-foreground">Đang tải ảnh lên... {uploadProgress ?? 0}%</p>
+        </div>
+      )}
       <input
         ref={fileInputRef}
         type="file"
         accept={acceptVideo ? "image/*,video/*" : "image/*"}
         onChange={handleFileUpload}
         className="hidden"
-        disabled={disabled}
+        disabled={disabled || isUploading}
       />
       <p className="text-xs text-muted-foreground">
         {isDataVideo

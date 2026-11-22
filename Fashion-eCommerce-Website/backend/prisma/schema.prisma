@@ -106,6 +106,7 @@ model VIPMember {
 // ⚙️ Bảng Cấu hình Storefront (StorefrontSetting)
 model StorefrontSetting {
   id                       Int     @id @default(1)
+  version                  Int     @default(0) // Optimistic locking: PUT phải gửi kèm version khớp, lệch thì 409
   brandName                String  @default("MADMAD STUDIO")
   logoUrl                  String?
   manifestoSlogan          String?
@@ -271,4 +272,26 @@ model SystemLog {
   ip        String?  // IP người dùng
   duration  Int?     // Thời gian xử lý (ms) - dùng cho log performance
   createdAt DateTime @default(now())
+}
+
+// 🚨 Lỗi client gần nhất (tối đa ~200 dòng, xem qua GET /api/client-errors, cần quyền admin)
+model ClientError {
+  id         Int      @id @default(autoincrement())
+  message    String
+  path       String?
+  occurredAt DateTime?
+  stack      String?
+  createdAt  DateTime @default(now())
+}
+
+// 📊 Lượt xem trang gom theo ngày + đường dẫn (không IP, không user agent, không id người dùng)
+model PageView {
+  id        Int      @id @default(autoincrement())
+  day       String   // YYYY-MM-DD (giờ Việt Nam, tính ở server)
+  path      String
+  count     Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([day, path])
 }
