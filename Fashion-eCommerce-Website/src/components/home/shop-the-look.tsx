@@ -59,10 +59,10 @@ function depthStyle(absOffset: number): { scale: number; blur: number; opacity: 
   return { scale: 0.6, blur: 4, opacity: Math.max(0.35, 0.45 - 0.1 * k) };
 }
 
-/** Bán kính vòng (px) theo bề rộng sân khấu: desktop 26%, điện thoại 35%. */
+/** Bán kính vòng (px) theo bề rộng sân khấu: desktop 29%, điện thoại 38%. */
 function spacingFor(stageWidth: number): number {
-  if (stageWidth < 480) return Math.min(215, Math.max(120, stageWidth * 0.35));
-  return Math.min(215, Math.max(88, stageWidth * 0.26));
+  if (stageWidth < 480) return Math.min(240, Math.max(130, stageWidth * 0.38));
+  return Math.min(240, Math.max(100, stageWidth * 0.29));
 }
 
 export function ShopTheLook() {
@@ -227,7 +227,7 @@ export function ShopTheLook() {
       <div
         ref={stageRef}
         className="relative w-full select-none overflow-hidden bg-white"
-        style={{ height: "min(470px, 92vw)", touchAction: "pan-y" }}
+        style={{ height: "min(560px, 108vw)", touchAction: "pan-y" }}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={endDrag}
