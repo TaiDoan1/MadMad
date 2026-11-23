@@ -63,12 +63,12 @@ function depthStyle(absOffset: number): { scale: number; blur: number; opacity: 
   return { scale: 0.68, blur: 4, opacity: Math.max(0.35, 0.45 - 0.1 * k) };
 }
 
-/** Bán kính vòng (px) theo bề rộng sân khấu: desktop 25%, điện thoại 30%.
-    Thu ngắn hơn trước (desktop 29%, điện thoại 38%) để look hai bên sát vào
-    look giữa, vòng xoay nhìn cân bằng như Hades thay vì trống hai bên. */
+/** Bán kính vòng (px) theo bề rộng sân khấu: desktop 27%, điện thoại 34%.
+    Giãn ngang hơn để 5 look xếp thành một hàng ngang (như Hades), look giữa
+    không còn chót vót một mình ở giữa. */
 function spacingFor(stageWidth: number): number {
-  if (stageWidth < 480) return Math.min(240, Math.max(100, stageWidth * 0.3));
-  return Math.min(200, Math.max(90, stageWidth * 0.25));
+  if (stageWidth < 480) return Math.min(240, Math.max(100, stageWidth * 0.34));
+  return Math.min(240, Math.max(90, stageWidth * 0.27));
 }
 
 export function ShopTheLook() {
@@ -230,11 +230,13 @@ export function ShopTheLook() {
         </div>
       </div>
 
-      {/* Sân khấu vòng xoay — full-bleed để đủ chỗ cho cả 5 mẫu trên điện thoại */}
+      {/* Sân khấu vòng xoay — full-bleed để đủ chỗ cho cả 5 mẫu trên điện thoại.
+          Cao 88vw (tối đa 480px) để look giữa thấp xuống, 5 look xếp thành
+          hàng ngang thay vì look giữa chót vót một mình. */}
       <div
         ref={stageRef}
         className="relative w-full select-none overflow-hidden bg-white"
-        style={{ height: "min(560px, 108vw)", touchAction: "pan-y" }}
+        style={{ height: "min(480px, 88vw)", touchAction: "pan-y" }}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={endDrag}
