@@ -10,6 +10,7 @@ import { cloudinarySrcSet, optimizeImageUrl } from "@/utils/cloudinary";
 // độ sâu chỉ thể hiện bằng to nhỏ / mờ / lớp trước che lớp sau.
 // Ảnh lấy từ settings (admin up ở tab Gallery, mục New Arrival), theo đúng
 // thứ tự ô Look 1–5; ô nào trống thì look đó không hiện.
+// Đẩy lại 23/11 13:22 để kích hoạt deploy Railway (bản trước không tự lên).
 
 interface ShopLookMeta {
   label: string;
