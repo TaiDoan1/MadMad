@@ -65,12 +65,12 @@ function depthStyle(absOffset: number): { scale: number; blur: number; opacity: 
   return { scale: 0.85, blur: 4, opacity: Math.max(0.35, 0.45 - 0.1 * k) };
 }
 
-/** Bán kính vòng (px) theo bề rộng sân khấu: desktop 27%, điện thoại 34%.
-    Giãn ngang hơn để 5 look xếp thành một hàng ngang (như Hades), look giữa
-    không còn chót vót một mình ở giữa. */
+/** Bán kính vòng (px) theo bề rộng sân khấu: desktop 30%, điện thoại 38%.
+    Giãn ngang thêm một chút để các look tách nhau rõ hơn, thành hàng ngang
+    thoáng thay vì chen chúc vào look giữa. */
 function spacingFor(stageWidth: number): number {
-  if (stageWidth < 480) return Math.min(240, Math.max(100, stageWidth * 0.34));
-  return Math.min(240, Math.max(90, stageWidth * 0.27));
+  if (stageWidth < 480) return Math.min(240, Math.max(100, stageWidth * 0.38));
+  return Math.min(280, Math.max(90, stageWidth * 0.3));
 }
 
 export function ShopTheLook() {
