@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent } 
 import { Link, useNavigate } from "react-router";
 import { useLanguage } from "@/features/settings/context/language-context";
 import { useStorefrontSettings } from "@/features/settings/context/storefront-settings-context";
+import { useProducts } from "@/features/products/context/product-context";
 import { cloudinarySrcSet, optimizeImageUrl } from "@/utils/cloudinary";
 
 // ─── Shop the Look — mục NEW ARRIVAL trên trang chủ ──────────────────────────
@@ -74,9 +75,10 @@ function spacingFor(stageWidth: number): number {
 }
 
 export function ShopTheLook() {
-  const { t } = useLanguage();
+  const { t, formatPrice } = useLanguage();
   const navigate = useNavigate();
   const { settings } = useStorefrontSettings();
+  const { products } = useProducts();
 
   // Chỉ render các look có ảnh; mỗi look giữ nguyên chỉ số ô gốc của nó.
   const looks = useMemo<ShopLook[]>(() => {
@@ -106,6 +108,11 @@ export function ShopTheLook() {
 
   const activeIndex = count === 0 ? 0 : ((Math.round(pos) % count) + count) % count;
   const activeLook = looks[activeIndex];
+  /** Sản phẩm đang bán của look ở giữa (lấy tên + giá thật từ web).
+      Look chưa có sản phẩm trên web thì không có dòng này. */
+  const activeProduct = activeLook?.productId
+    ? products.find((p) => String(p.id) === activeLook.productId)
+    : undefined;
 
   // Đo bề rộng sân khấu để tính bán kính vòng.
   useEffect(() => {
@@ -307,6 +314,27 @@ export function ShopTheLook() {
           {activeLook.name}
         </button>
       </div>
+
+      {/* Sản phẩm đang bán của look này — bấm vào xem chi tiết.
+          Chỉ hiện món đang bán (áo), không hiện quần/giày trong ảnh, để
+          khách biết đúng món nào mua được. Look chưa có sản phẩm thì ẩn. */}
+      {activeProduct && (
+        <div className="mt-4 px-6 text-center">
+          <button
+            type="button"
+            onClick={() => navigate(`/product/${activeProduct.id}`)}
+            className="inline-flex flex-wrap items-center justify-center gap-2 rounded-full border border-black/15 px-4 py-2 text-[12px] font-bold uppercase tracking-[0.15em] text-black transition-colors hover:border-black"
+          >
+            <span>{activeProduct.name}</span>
+            <span>{formatPrice(activeProduct.price)}</span>
+            {activeProduct.originalPrice && activeProduct.originalPrice > activeProduct.price && (
+              <span className="font-normal normal-case tracking-normal text-black/40 line-through">
+                {formatPrice(activeProduct.originalPrice)}
+              </span>
+            )}
+          </button>
+        </div>
+      )}
     </section>
   );
 }
