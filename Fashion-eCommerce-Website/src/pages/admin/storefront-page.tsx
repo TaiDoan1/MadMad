@@ -12,6 +12,7 @@ import {
   useStorefrontSettings,
 } from "../../features/settings/context/storefront-settings-context";
 import { useToast } from "../../components/common/toast";
+import { API_URL, getAdminKey } from "../../config/api";
 
 // Nhãn cố định cho 5 ô ảnh New Arrival, theo đúng thứ tự Look 1–5.
 const NEW_ARRIVAL_LOOKS = [
@@ -53,6 +54,36 @@ export function AdminStorefrontPage() {
   const previewHeroImages = [settings.heroImage.trim(), ...heroImages].filter(Boolean);
   const [previewHeroIndex, setPreviewHeroIndex] = useState(0);
   const [activeTab, setActiveTab] = useState<"hero" | "bestsellers" | "gallery" | "instagram" | "easter-egg" | "season">("hero");
+  const [migratingImages, setMigratingImages] = useState(false);
+  const [migrateResult, setMigrateResult] = useState<string | null>(null);
+
+  // Chuyển 1 lần ảnh cũ (đang lưu dạng nặng trong web) sang link Cloudinary để
+  // trang chủ tải nhanh hơn. Dùng token admin sẵn có trong trình duyệt, không
+  // cần nhập thêm gì. Chạy lại cũng không đổi gì (ảnh đã là link sẽ bị bỏ qua).
+  const migrateOldImages = async () => {
+    setMigratingImages(true);
+    setMigrateResult(null);
+    try {
+      const res = await fetch(`${API_URL}/settings/migrate-images`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-admin-key": getAdminKey() },
+        body: JSON.stringify({}),
+      });
+      const data = (await res.json()) as { success?: boolean; migrated?: number; fields?: Record<string, { migrated: number; skipped: number; failed: number }>; message?: string };
+      if (!res.ok || !data.success) throw new Error(data.message || `Lỗi HTTP ${res.status}`);
+      const total = data.migrated ?? 0;
+      const failed = Object.values(data.fields ?? {}).reduce((acc, f) => acc + (f.failed ?? 0), 0);
+      setMigrateResult(total > 0
+        ? `Đã chuyển ${total} ảnh cũ sang link Cloudinary, web sẽ tải nhanh hơn.${failed > 0 ? ` Còn ${failed} ảnh chuyển lỗi, giữ nguyên như cũ.` : ""} Bấm "Tải lại trang" để thấy ảnh mới.`
+        : "Không còn ảnh cũ cần chuyển — mọi ảnh đã là link Cloudinary rồi.");
+      showToast(total > 0 ? `Đã chuyển ${total} ảnh cũ sang Cloudinary.` : "Không còn ảnh cũ cần chuyển.", "success");
+    } catch {
+      setMigrateResult("Chuyển ảnh lỗi, thử lại sau.");
+      showToast("Chuyển ảnh cũ lỗi, thử lại sau.", "warning");
+    } finally {
+      setMigratingImages(false);
+    }
+  };
   
   const goToPrevPreviewHero = () => {
     if (previewHeroImages.length <= 1) return;
@@ -458,6 +489,31 @@ export function AdminStorefrontPage() {
           {/* HOME GALLERY SETTINGS */}
           {activeTab === "gallery" && (
             <div className="space-y-8">
+              {/* Chuyển ảnh cũ sang Cloudinary — chạy 1 lần để web tải nhanh hơn */}
+              <div className="rounded-lg border border-border bg-white p-3 space-y-2">
+                <p className="text-xs text-muted-foreground">Ảnh up từ trước vẫn lưu dạng nặng trong web, làm trang chủ tải chậm. Bấm nút dưới để chuyển hết ảnh cũ sang link Cloudinary (chỉ chạy 1 lần, chạy lại cũng không đổi gì).</p>
+                <div className="flex gap-2 items-center flex-wrap">
+                  <button
+                    type="button"
+                    onClick={migrateOldImages}
+                    disabled={migratingImages}
+                    className="text-xs border border-border rounded px-2.5 py-1.5 bg-white hover:bg-muted transition-colors disabled:opacity-60"
+                  >
+                    {migratingImages ? "Đang chuyển ảnh..." : "Chuyển ảnh cũ sang Cloudinary"}
+                  </button>
+                  {migrateResult && (
+                    <button
+                      type="button"
+                      onClick={() => window.location.reload()}
+                      className="text-xs border border-border rounded px-2.5 py-1.5 bg-white hover:bg-muted transition-colors"
+                    >
+                      Tải lại trang
+                    </button>
+                  )}
+                </div>
+                {migrateResult && <p className="text-xs text-foreground">{migrateResult}</p>}
+              </div>
+
               {/* Banner trên - ngay dưới Marquee */}
               <div className="space-y-4">
                 <div className="flex items-center justify-between">

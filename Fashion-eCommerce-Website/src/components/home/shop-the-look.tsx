@@ -48,24 +48,27 @@ function easeInOutCubic(t: number): number {
   return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
 }
 
-/** scale / blur / opacity theo |offset|: 0 = giữa, 1 = kề, 2 = xa, 2.5 = vòng sau. */
+/** scale / blur / opacity theo |offset|: 0 = giữa, 1 = kề, 2 = xa, 2.5 = vòng sau.
+    Look kề giữ to hơn (0.84 thay vì 0.78) để vòng xoay nhìn khít như Hades. */
 function depthStyle(absOffset: number): { scale: number; blur: number; opacity: number } {
   if (absOffset <= 1) {
     const k = absOffset;
-    return { scale: 1 - 0.22 * k, blur: 2 * k, opacity: 1 - 0.25 * k };
+    return { scale: 1 - 0.16 * k, blur: 2 * k, opacity: 1 - 0.25 * k };
   }
   if (absOffset <= 2) {
     const k = absOffset - 1;
-    return { scale: 0.78 - 0.18 * k, blur: 2 + 2 * k, opacity: 0.75 - 0.3 * k };
+    return { scale: 0.84 - 0.14 * k, blur: 2 + 2 * k, opacity: 0.75 - 0.3 * k };
   }
   const k = Math.min(1, (absOffset - 2) / 0.5);
-  return { scale: 0.6, blur: 4, opacity: Math.max(0.35, 0.45 - 0.1 * k) };
+  return { scale: 0.68, blur: 4, opacity: Math.max(0.35, 0.45 - 0.1 * k) };
 }
 
-/** Bán kính vòng (px) theo bề rộng sân khấu: desktop 29%, điện thoại 38%. */
+/** Bán kính vòng (px) theo bề rộng sân khấu: desktop 25%, điện thoại 30%.
+    Thu ngắn hơn trước (desktop 29%, điện thoại 38%) để look hai bên sát vào
+    look giữa, vòng xoay nhìn cân bằng như Hades thay vì trống hai bên. */
 function spacingFor(stageWidth: number): number {
-  if (stageWidth < 480) return Math.min(240, Math.max(130, stageWidth * 0.38));
-  return Math.min(240, Math.max(100, stageWidth * 0.29));
+  if (stageWidth < 480) return Math.min(240, Math.max(100, stageWidth * 0.3));
+  return Math.min(200, Math.max(90, stageWidth * 0.25));
 }
 
 export function ShopTheLook() {
