@@ -283,13 +283,6 @@ export function ShopTheLook() {
             </div>
           );
         })}
-
-        {/* Nhãn "Sắp mở bán" khi look ở giữa chưa có trên web */}
-        {activeLook.productId === null && (
-          <div className="pointer-events-none absolute bottom-4 left-1/2 -translate-x-1/2 rounded-full bg-black px-4 py-1.5 text-[11px] font-bold uppercase tracking-[0.2em] text-white">
-            {t("Sắp mở bán", "Coming soon")}
-          </div>
-        )}
       </div>
 
       {/* Tên bộ sưu tập của look đang ở giữa — chữ lớn, font Bebas Neue kiểu poster streetwear, đổi theo vòng xoay.
