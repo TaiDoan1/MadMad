@@ -1,6 +1,12 @@
 import { Router } from "express";
 import { prisma } from "../config/prisma";
-import { getVariantAvailable, resolveVariantColor, resolveVariantSize } from "../utils/product-stock";
+import {
+  INSUFFICIENT_STOCK_MESSAGE,
+  getVariantAvailable,
+  resolveVariantColor,
+  resolveVariantSize,
+} from "../utils/product-stock";
+import { requireAdminAuth } from "../utils/auth.middleware";
 import { getProductImageForColorFromDb, isStoredImageMismatch } from "../utils/product-image";
 import {
   deductProductStockWithLog,
@@ -14,16 +20,29 @@ import {
 
 const router = Router();
 
-const MARKETING_ADMIN_PASSWORD = process.env.MARKETING_ADMIN_PASSWORD || "050120";
+router.use(requireAdminAuth);
+
+const MARKETING_ADMIN_PASSWORD = process.env.MARKETING_ADMIN_PASSWORD;
 
 function verifyMarketingAdminPassword(password: unknown) {
+  if (!MARKETING_ADMIN_PASSWORD) return false;
   return String(password || "").trim() === MARKETING_ADMIN_PASSWORD;
 }
 
-const parseGift = (gift: any) => ({
-  ...gift,
-  items: Array.isArray(gift.items) ? gift.items : [],
-});
+// Phòng thủ: contactInfo chỉ trả về cho request admin. Router đã gắn
+// requireAdminAuth nên mọi request tới đây đều là admin, nhưng parseGift
+// vẫn kiểm tra cờ isAdmin để không lộ contactInfo nếu sau này có route
+// nào gọi mà chưa qua auth.
+const parseGift = (gift: any, isAdmin = false) => {
+  const parsed = {
+    ...gift,
+    items: Array.isArray(gift.items) ? gift.items : [],
+  };
+  if (!isAdmin) {
+    delete parsed.contactInfo;
+  }
+  return parsed;
+};
 
 const buildGiftNumber = () => {
   const now = new Date();
@@ -41,7 +60,7 @@ router.get("/", async (req, res, next) => {
       include: { items: true },
       orderBy: { createdAt: "desc" },
     });
-    res.json(gifts.map(parseGift));
+    res.json(gifts.map((gift) => parseGift(gift, true)));
   } catch (error) {
     next(error);
   }
@@ -178,7 +197,7 @@ router.post("/", async (req, res, next) => {
 
         const available = getVariantAvailable(product, color, size);
         if (available < quantity) {
-          throw new Error(`"${product.name}" [${color}/${size}] không đủ hàng (còn ${available})`);
+          throw new Error(INSUFFICIENT_STOCK_MESSAGE);
         }
 
         const unitPrice = Number(product.price) || 0;
@@ -234,7 +253,7 @@ router.post("/", async (req, res, next) => {
       });
     });
 
-    res.status(201).json(parseGift(gift));
+    res.status(201).json(parseGift(gift, true));
   } catch (error: any) {
     res.status(400).json({ message: error.message || "Không thể tạo phiếu tặng" });
   }
@@ -365,9 +384,9 @@ router.put("/:id/items/:itemId", async (req, res, next) => {
       });
     });
 
-    res.json(parseGift(updated));
+    res.json(parseGift(updated, true));
   } catch (error: any) {
-    if (error?.message?.includes("Không đủ tồn kho")) {
+    if (error?.message?.includes(INSUFFICIENT_STOCK_MESSAGE)) {
       return res.status(400).json({ message: error.message });
     }
     next(error);
@@ -418,7 +437,7 @@ router.post("/:id/items", async (req, res, next) => {
     const available = getVariantAvailable(product, nextColor, nextSize);
     if (available < nextQuantity) {
       return res.status(400).json({
-        message: `"${product.name}" [${nextColor}/${nextSize}] không đủ hàng (còn ${available})`,
+        message: INSUFFICIENT_STOCK_MESSAGE,
       });
     }
 
@@ -466,9 +485,9 @@ router.post("/:id/items", async (req, res, next) => {
       });
     });
 
-    res.status(201).json(parseGift(updated));
+    res.status(201).json(parseGift(updated, true));
   } catch (error: any) {
-    if (error?.message?.includes("Không đủ tồn kho")) {
+    if (error?.message?.includes(INSUFFICIENT_STOCK_MESSAGE)) {
       return res.status(400).json({ message: error.message });
     }
     next(error);
@@ -534,7 +553,7 @@ router.delete("/:id/items/:itemId", async (req, res, next) => {
       });
     });
 
-    res.json(parseGift(updated));
+    res.json(parseGift(updated, true));
   } catch (error) {
     next(error);
   }
@@ -580,9 +599,7 @@ router.put("/:id/status", async (req, res, next) => {
           const available = product ? getVariantAvailable(product, color, size) : 0;
 
           if (available < item.quantity) {
-            throw new Error(
-              `"${item.productName}" [${color}/${size}] không đủ hàng (còn ${available})`,
-            );
+            throw new Error(INSUFFICIENT_STOCK_MESSAGE);
           }
 
           if (!(await marketingItemHasStockMovement(tx, gift, item))) {
@@ -609,9 +626,9 @@ router.put("/:id/status", async (req, res, next) => {
       });
     });
 
-    res.json(parseGift(updated));
+    res.json(parseGift(updated, true));
   } catch (error: any) {
-    if (error?.message?.includes("Không đủ tồn kho") || error?.message?.includes("không đủ hàng")) {
+    if (error?.message?.includes(INSUFFICIENT_STOCK_MESSAGE)) {
       return res.status(400).json({ message: error.message });
     }
     next(error);
@@ -689,7 +706,7 @@ router.put("/:id/cancel", async (req, res, next) => {
       });
     });
 
-    res.json(parseGift(updated));
+    res.json(parseGift(updated, true));
   } catch (error) {
     next(error);
   }

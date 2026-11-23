@@ -6,6 +6,8 @@ type DbProduct = {
   inStock: boolean;
 };
 
+export const INSUFFICIENT_STOCK_MESSAGE = "Sản phẩm này hiện không đủ hàng.";
+
 export function parseVariantStock(raw: string | null | undefined): Record<string, number> {
   if (!raw) return {};
   try {
@@ -95,7 +97,7 @@ export function deductStockData(
   if (usesVariantStock(product)) {
     const current = Number(variantStock[key] ?? 0);
     if (current < quantity) {
-      throw new Error(`Không đủ tồn kho cho ${resolvedColor} / ${resolvedSize} (còn ${current}, cần ${quantity})`);
+      throw new Error(INSUFFICIENT_STOCK_MESSAGE);
     }
     variantStock[key] = current - quantity;
     const total = getTotalStock({
@@ -111,7 +113,7 @@ export function deductStockData(
 
   const current = Number(product.stock ?? 0);
   if (current < quantity) {
-    throw new Error(`Không đủ tồn kho (còn ${current}, cần ${quantity})`);
+    throw new Error(INSUFFICIENT_STOCK_MESSAGE);
   }
   const nextStock = current - quantity;
   return {

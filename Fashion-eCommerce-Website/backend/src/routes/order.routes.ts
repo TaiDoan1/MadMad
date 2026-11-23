@@ -6,7 +6,12 @@ import {
   restoreProductStockWithLog,
 } from "../services/stock-movement.service";
 import { getProductImageForColorFromDb, isStoredImageMismatch } from "../utils/product-image";
-import { resolveVariantColor, resolveVariantSize } from "../utils/product-stock";
+import {
+  INSUFFICIENT_STOCK_MESSAGE,
+  resolveVariantColor,
+  resolveVariantSize,
+} from "../utils/product-stock";
+import { createRateLimiter } from "../utils/rate-limit";
 import {
   deductOrderItemsIfNeeded,
   isInactiveOrderStatus,
@@ -64,6 +69,111 @@ async function processVipPoints(phone: string, email: string, orderTotal: number
     console.error("❌ Lỗi tích điểm VIP:", err);
     return null;
   }
+}
+
+// ---- Helpers dùng chung cho tính giá đơn công khai + validate-coupon ----
+
+type StorefrontCoupon = {
+  code: string;
+  discountType?: "amount" | "percent";
+  discountAmount?: number;
+  discountPercent?: number;
+  usageLimit?: number;
+  usageCount?: number;
+  applyToSaleItems?: boolean;
+};
+
+type MembershipTierConfig = {
+  tier: string;
+  minPoints?: number;
+  discountPercent?: number;
+  gifts?: string;
+};
+
+type GiftConditions = {
+  minOrderTotal?: number;
+  minProductCount?: number;
+};
+
+function parseJsonArray<T>(raw: string | null | undefined): T[] {
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? (parsed as T[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+// Tra cứu coupons từ StorefrontSetting.couponsJson (cùng logic với PUT /:id/coupon).
+function parseCouponsJson(raw: string | null | undefined): StorefrontCoupon[] {
+  return parseJsonArray<StorefrontCoupon>(raw);
+}
+
+function parseMembershipTiersJson(raw: string | null | undefined): MembershipTierConfig[] {
+  return parseJsonArray<MembershipTierConfig>(raw);
+}
+
+function parseGiftConditionsJson(raw: string | null | undefined): GiftConditions {
+  if (!raw) return {};
+  try {
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === "object" ? (parsed as GiftConditions) : {};
+  } catch {
+    return {};
+  }
+}
+
+// Điều kiện quà tặng, tính trên các món ĐÃ TRẢ (không tính quà).
+// Không có điều kiện nào thì đủ điều kiện.
+function isGiftEligible(conditions: GiftConditions, paidSubtotal: number, paidItemCount: number): boolean {
+  const minOrderTotal = Number(conditions.minOrderTotal || 0);
+  const minProductCount = Number(conditions.minProductCount || 0);
+  if (minOrderTotal > 0 && paidSubtotal < minOrderTotal) return false;
+  if (minProductCount > 0 && paidItemCount < minProductCount) return false;
+  return true;
+}
+
+type CouponCheckResult =
+  | { valid: true; coupon: StorefrontCoupon; computedDiscount: number }
+  | { valid: false; message: string };
+
+// Luật coupon dùng chung cho POST / (tạo đơn) và POST /validate-coupon.
+// Thứ tự kiểm tra: tồn tại + mức giảm > 0 -> chưa hết lượt -> không chặn hàng sale.
+function checkCoupon(
+  coupons: StorefrontCoupon[],
+  rawCode: string,
+  subtotal: number,
+  hasSaleItems: boolean,
+): CouponCheckResult {
+  const code = String(rawCode ?? "").trim().toUpperCase();
+  if (!code) return { valid: false, message: "Mã giảm giá không hợp lệ." };
+
+  const coupon = coupons.find((c) => String(c.code ?? "").trim().toUpperCase() === code);
+  if (!coupon) return { valid: false, message: "Mã giảm giá không hợp lệ." };
+
+  const rawDiscount =
+    coupon.discountType === "percent"
+      ? Math.round((subtotal * Number(coupon.discountPercent || 0)) / 100)
+      : Number(coupon.discountAmount || 0);
+  if (!(rawDiscount > 0)) return { valid: false, message: "Mã giảm giá không hợp lệ." };
+
+  if (
+    coupon.usageLimit !== undefined &&
+    coupon.usageLimit !== null &&
+    Number(coupon.usageCount ?? 0) >= Number(coupon.usageLimit)
+  ) {
+    return { valid: false, message: "Mã giảm giá đã hết lượt sử dụng." };
+  }
+
+  if (coupon.applyToSaleItems === false && hasSaleItems) {
+    return {
+      valid: false,
+      message: `Mã ${coupon.code} không thể áp dụng cho đơn hàng có chứa sản phẩm đang giảm giá.`,
+    };
+  }
+
+  return { valid: true, coupon, computedDiscount: Math.min(rawDiscount, subtotal) };
 }
 
 // 1. GET /api/orders - Lấy danh sách tất cả đơn hàng (có bộ lọc)
@@ -169,9 +279,48 @@ router.get("/:id", requireAdminAuth, async (req, res, next) => {
     next(error);
   }
 });
+// 3a0. POST /api/orders/validate-coupon - Kiểm tra mã giảm giá mà KHÔNG tạo đơn.
+// Đặt TRƯỚC các route /:id để không bị nuốt (khác số segment với POST /:id/items nên không trùng).
+router.post(
+  "/validate-coupon",
+  createRateLimiter({ windowMs: 60000, max: 10 }),
+  async (req, res, next) => {
+    try {
+      const { code, subtotal, hasSaleItems } = req.body || {};
+      const settings = await prisma.storefrontSetting.findUnique({ where: { id: 1 } });
+      const couponsList = parseCouponsJson(settings?.couponsJson);
+      const numericSubtotal = Math.max(0, Number(subtotal) || 0);
+      const checked = checkCoupon(couponsList, String(code ?? ""), numericSubtotal, !!hasSaleItems);
+
+      if (!checked.valid) {
+        return res.json({ valid: false, message: checked.message });
+      }
+
+      const coupon = checked.coupon;
+      return res.json({
+        valid: true,
+        code: coupon.code,
+        discountType: coupon.discountType || "amount",
+        discountPercent: Number(coupon.discountPercent || 0),
+        discountAmount: Number(coupon.discountAmount || 0),
+        applyToSaleItems: coupon.applyToSaleItems ?? true,
+        computedDiscount: checked.computedDiscount,
+        message: `Áp dụng mã ${coupon.code} thành công.`,
+      });
+    } catch (error) {
+      next(error);
+    }
+  },
+);
+
 // 3a. POST /api/orders - Tạo đơn hàng mới công khai từ khách hàng (Storefront)
 // Chặn giả mạo Admin params để đảm bảo an toàn tuyệt đối
-router.post("/", async (req, res, next) => {
+// Giá tiền do client gửi (subtotal/discount/shipping/total/price từng dòng) đều bị
+// bỏ qua hoàn toàn: server tự tính lại toàn bộ từ giá trong Database.
+router.post(
+  "/",
+  createRateLimiter({ windowMs: 60000, max: 20 }),
+  async (req, res, next) => {
   try {
     const {
       orderNumber,
@@ -182,15 +331,10 @@ router.post("/", async (req, res, next) => {
       ward,
       district,
       province,
-      subtotal,
-      discount,
-      shipping,
-      total,
       paymentMethod,
       shippingMethod,
       notes,
       couponCode,
-      containsPreOrder,
       items
     } = req.body;
 
@@ -205,11 +349,6 @@ router.post("/", async (req, res, next) => {
     }
 
     const normalizedItems = Array.isArray(items) ? items : [];
-    const computedContainsPreOrder =
-      typeof containsPreOrder === "boolean"
-        ? containsPreOrder
-        : normalizedItems.some((item: any) => !!item?.isPreOrder);
-
     const productIds = [
       ...new Set(
         normalizedItems
@@ -222,31 +361,143 @@ router.post("/", async (req, res, next) => {
       : [];
     const productMap = new Map(products.map((product) => [product.id, product]));
 
-    const itemsForCreate = normalizedItems.map((item: any) => {
+    // Đọc cấu hình Storefront MỘT lần trước transaction, dùng chung cho coupon + VIP + phí ship.
+    // Chưa có row thì dùng mặc định: ship thường 30.000đ, ship nhanh 60.000đ, freeship từ 500.000đ.
+    const settings = await prisma.storefrontSetting.findUnique({ where: { id: 1 } });
+    const couponsList = parseCouponsJson(settings?.couponsJson);
+    const tierConfigs = parseMembershipTiersJson(settings?.membershipTiersJson);
+    const shippingFeeStandard = settings?.shippingFeeStandard ?? 30000;
+    const shippingFeeExpress = settings?.shippingFeeExpress ?? 60000;
+    const shippingFreeThreshold = settings?.shippingFreeThreshold ?? 500000;
+
+    // Resolve từng dòng theo Database: giá + tên + isPreOrder/preOrderDays lấy từ Product,
+    // không tin client. Thiếu sản phẩm thì 400.
+    type ResolvedLine = {
+      productId: string;
+      productName: string;
+      productImage: string;
+      isPreOrder: boolean;
+      preOrderDays: number | null;
+      quantity: number;
+      size: any;
+      color: any;
+      price: number;
+      isGift: boolean;
+      discountPercent: number;
+    };
+    const lines: ResolvedLine[] = [];
+    for (const item of normalizedItems) {
       const productId = String(item.productId || item.product?.id || "");
       const product = productMap.get(productId);
+      if (!product) {
+        return res.status(400).json({ message: "Không tìm thấy sản phẩm" });
+      }
       const color = String(item.color || "");
       let productImage = String(item.productImage || item.product?.image || "");
-      if (product && color) {
+      if (color) {
         const resolvedImage = getProductImageForColorFromDb(product, color);
         if (resolvedImage) productImage = resolvedImage;
       }
-
-      return {
+      lines.push({
         productId,
-        productName: String(item.productName || item.product?.name || ""),
+        productName: product.name,
         productImage,
-        isPreOrder: !!item.isPreOrder,
-        preOrderDays:
-          item.preOrderDays !== undefined && item.preOrderDays !== null
-            ? Number(item.preOrderDays)
-            : null,
-        quantity: Number(item.quantity),
+        isPreOrder: !!product.isPreOrder,
+        preOrderDays: product.preOrderDays ?? null,
+        quantity: Math.max(1, Number(item.quantity) || 1),
         size: item.size,
         color: item.color,
-        price: Number(item.price),
-      };
-    });
+        price: Number(product.price),
+        isGift: !!product.isGiftProduct,
+        discountPercent: Number(product.discountPercent || 0),
+      });
+    }
+
+    // Quà tặng: điều kiện tính trên các món ĐÃ TRẢ (giá DB, không tính quà).
+    const paidSubtotal = lines.reduce(
+      (sum, line) => sum + (line.isGift ? 0 : line.price * line.quantity),
+      0,
+    );
+    const paidItemCount = lines.reduce(
+      (sum, line) => sum + (line.isGift ? 0 : line.quantity),
+      0,
+    );
+    for (const line of lines) {
+      if (!line.isGift) continue;
+      const product = productMap.get(line.productId);
+      const conditions = parseGiftConditionsJson(product?.giftConditionsJson);
+      if (!isGiftEligible(conditions, paidSubtotal, paidItemCount)) {
+        return res.status(400).json({ message: "Quà tặng không đủ điều kiện." });
+      }
+      line.price = 0;
+    }
+
+    const subtotal = lines.reduce((sum, line) => sum + line.price * line.quantity, 0);
+    const hasSaleItems = lines.some((line) => line.discountPercent > 0);
+    const nonSaleSubtotal = lines.reduce(
+      (sum, line) => sum + (line.discountPercent > 0 ? 0 : line.price * line.quantity),
+      0,
+    );
+
+    // Coupon: frontend gửi mã SẠCH (chỉ mã). Mã gửi lên mà không hợp lệ thì 400.
+    const rawCouponCode = typeof couponCode === "string" ? couponCode.trim() : "";
+    let couponDiscount = 0;
+    let appliedCouponCode: string | null = null;
+    if (rawCouponCode) {
+      const checked = checkCoupon(couponsList, rawCouponCode, subtotal, hasSaleItems);
+      if (!checked.valid) {
+        return res.status(400).json({ message: checked.message });
+      }
+      couponDiscount = checked.computedDiscount;
+      appliedCouponCode = checked.coupon.code;
+    }
+
+    // Giảm giá VIP: chỉ giảm trên món full-price (discountPercent bằng 0/null).
+    let vipDiscount = 0;
+    const cleanPhone = typeof customerPhone === "string" ? customerPhone.trim().replace(/\s+/g, "") : "";
+    const cleanEmail = typeof customerEmail === "string" ? customerEmail.trim().toLowerCase() : "";
+    const vipOrConditions: Array<{ phone: string } | { email: string }> = [];
+    if (cleanPhone) vipOrConditions.push({ phone: cleanPhone });
+    if (cleanEmail) vipOrConditions.push({ email: cleanEmail });
+    if (vipOrConditions.length > 0) {
+      const member = await prisma.vIPMember.findFirst({ where: { OR: vipOrConditions } });
+      if (member) {
+        const tierConfig = tierConfigs.find(
+          (t) => String(t.tier).trim().toUpperCase() === String(member.tier).trim().toUpperCase(),
+        );
+        const vipPercent = Number(tierConfig?.discountPercent || 0);
+        if (vipPercent > 0) {
+          vipDiscount = Math.round((nonSaleSubtotal * vipPercent) / 100);
+        }
+      }
+    }
+
+    // Tổng giảm chặn tối đa 35% subtotal.
+    const totalDiscount = Math.min(couponDiscount + vipDiscount, Math.round(subtotal * 0.35));
+
+    // Phí ship: express thì phí nhanh; còn lại freeship khi (subtotal - totalDiscount)
+    // đạt ngưỡng, không thì phí thường.
+    const shippingMethodValue = String(shippingMethod || "standard");
+    const shipping =
+      shippingMethodValue === "express"
+        ? shippingFeeExpress
+        : subtotal - totalDiscount >= shippingFreeThreshold
+          ? 0
+          : shippingFeeStandard;
+    const total = Math.max(0, subtotal - totalDiscount) + shipping;
+    const computedContainsPreOrder = lines.some((line) => line.isPreOrder);
+
+    const itemsForCreate = lines.map((line) => ({
+      productId: line.productId,
+      productName: line.productName,
+      productImage: line.productImage,
+      isPreOrder: line.isPreOrder,
+      preOrderDays: line.preOrderDays,
+      quantity: line.quantity,
+      size: line.size,
+      color: line.color,
+      price: line.price,
+    }));
 
     const newOrder = await prisma.$transaction(async (tx) => {
       const created = await tx.order.create({
@@ -259,17 +510,17 @@ router.post("/", async (req, res, next) => {
           ward: ward || "",
           district: district || "",
           province: province || "",
-          subtotal: Number(subtotal),
-          discount: Number(discount || 0),
-          shipping: Number(shipping || 0),
-          total: Number(total),
+          subtotal,
+          discount: totalDiscount,
+          shipping,
+          total,
           paymentMethod: paymentMethod || "cod",
-          shippingMethod: shippingMethod || "standard",
+          shippingMethod: shippingMethodValue,
           status: "pending", // Khách hàng công khai chỉ được tạo đơn ở trạng thái pending
           isPaid: false,      // Khách hàng công khai không được phép tự duyệt đã thanh toán
           containsPreOrder: computedContainsPreOrder,
           notes: notes || "",
-          couponCode: couponCode || "",
+          couponCode: appliedCouponCode,
           items: {
             create: itemsForCreate,
           },
@@ -308,7 +559,8 @@ router.post("/", async (req, res, next) => {
   } catch (error) {
     next(error);
   }
-});
+  },
+);
 
 // 3b. POST /api/orders/admin-create - Tạo đơn hàng mới từ Admin Dashboard (Ví dụ đơn POS hoặc đơn ghi tay từ Social)
 router.post("/admin-create", requireAdminAuth, async (req, res, next) => {
@@ -534,7 +786,7 @@ router.put("/:id/status", requireAdminAuth, async (req, res, next) => {
 
     res.json(updatedOrder);
   } catch (error: any) {
-    if (error?.message?.includes("Không đủ tồn kho")) {
+    if (error?.message?.includes(INSUFFICIENT_STOCK_MESSAGE)) {
       return res.status(400).json({ message: error.message });
     }
     next(error);
@@ -633,7 +885,7 @@ function buildEditMetaJson(
 }
 
 // 7. PUT /api/orders/:id/items/:itemId - Chỉnh sửa sản phẩm trong đơn (size/màu/mẫu)
-router.put("/:id/items/:itemId", async (req, res, next) => {
+router.put("/:id/items/:itemId", requireAdminAuth, async (req, res, next) => {
   try {
     const orderId = Number(req.params.id);
     const itemId = Number(req.params.itemId);
@@ -786,7 +1038,7 @@ router.put("/:id/items/:itemId", async (req, res, next) => {
 
     res.json(result);
   } catch (error: any) {
-    if (error?.message?.includes("Không đủ tồn kho")) {
+    if (error?.message?.includes(INSUFFICIENT_STOCK_MESSAGE)) {
       return res.status(400).json({ message: error.message });
     }
     next(error);
@@ -892,7 +1144,7 @@ router.post("/:id/items", requireAdminAuth, async (req, res, next) => {
 
     res.json(result);
   } catch (error: any) {
-    if (error?.message?.includes("Không đủ tồn kho")) {
+    if (error?.message?.includes(INSUFFICIENT_STOCK_MESSAGE)) {
       return res.status(400).json({ message: error.message });
     }
     next(error);
@@ -997,7 +1249,7 @@ router.put("/:id/coupon", requireAdminAuth, async (req, res, next) => {
 
     // Lấy cấu hình Storefront để tra cứu coupons
     const settings = await prisma.storefrontSetting.findUnique({ where: { id: 1 } });
-    const couponsList = settings?.couponsJson ? JSON.parse(settings.couponsJson) : [];
+    const couponsList = parseCouponsJson(settings?.couponsJson);
 
     let totalDiscount = 0;
     const appliedCodes: string[] = [];

@@ -4,22 +4,28 @@ import jwt from "jsonwebtoken";
 
 const router = Router();
 
-// JWT secret: dùng env var nếu có, fallback về giá trị mặc định kèm cảnh báo
-const getJwtSecret = (): string => {
+// JWT secret: BẮT BUỘC đặt qua biến môi trường, KHÔNG có giá trị mặc định.
+// Nếu thiếu, server vẫn chạy nhưng mọi xác thực JWT đều fail closed (trả 401),
+// không bao giờ ký/xác minh token bằng secret hardcode.
+const getJwtSecret = (): string | null => {
   const secret = process.env.ADMIN_JWT_SECRET || process.env.ADMIN_SECRET_KEY;
   if (!secret) {
-    console.warn("⚠️  [SECURITY WARNING] Không tìm thấy ADMIN_JWT_SECRET hay ADMIN_SECRET_KEY trong .env. Sử dụng mã bí mật dự phòng mặc định (Không an toàn trong môi trường Production!)");
-    return "MADMAD_DEFAULT_SECRET_KEY_2026";
+    console.warn("🚨 [SECURITY] ADMIN_JWT_SECRET / ADMIN_SECRET_KEY CHƯA ĐƯỢC ĐẶT! Mọi đăng nhập admin và xác thực JWT đều bị từ chối cho tới khi đặt biến môi trường. KHÔNG dùng secret mặc định.");
+    return null;
   }
   return secret;
 };
 
-const JWT_SECRET = getJwtSecret();
+const JWT_SECRET: string | null = getJwtSecret();
 const JWT_EXPIRES_IN = "90d"; // Token có hiệu lực 90 ngày
 const JWT_REFRESH_THRESHOLD_DAYS = 14; // Tự động gia hạn khi còn ít hơn 14 ngày
 
 // Xác minh JWT token - dùng được ở mọi nơi, không cần RAM store
+// Fail closed: chưa cấu hình secret thì mọi token đều không hợp lệ.
 export function verifyAdminToken(token: string): boolean {
+  if (!JWT_SECRET) {
+    return false;
+  }
   try {
     const decoded = jwt.verify(token, JWT_SECRET) as any;
     return decoded?.role === "admin";
@@ -33,8 +39,17 @@ router.post("/admin-login", async (req, res, next) => {
   try {
     const { username, password } = req.body;
 
-    const expectedUser = process.env.ADMIN_USERNAME || "admin";
-    const expectedPass = process.env.ADMIN_PASSWORD || "admin123";
+    // Tài khoản admin CHỈ lấy từ biến môi trường, không có mặc định.
+    // Chưa đặt env thì không tài khoản nào đăng nhập được (fail closed).
+    const expectedUser = process.env.ADMIN_USERNAME;
+    const expectedPass = process.env.ADMIN_PASSWORD;
+
+    // Chặn trước: thiếu secret, thiếu tài khoản admin, hoặc thiếu thông tin đăng nhập
+    // đều trả 401. (So sánh trực tiếp với undefined sẽ cho true nếu body cũng
+    // thiếu trường, nên phải chặn tường minh ở đây.)
+    if (!JWT_SECRET || !expectedUser || !expectedPass || !username || !password) {
+      return res.status(401).json({ success: false, message: "Tài khoản hoặc mật khẩu không chính xác!" });
+    }
 
     if (username === expectedUser && password === expectedPass) {
       // Sinh JWT token có hiệu lực 90 ngày - sống qua mọi lần server restart
@@ -62,6 +77,11 @@ router.post("/admin-login", async (req, res, next) => {
 // Không cần username/password — chỉ cần token hiện tại còn hợp lệ
 router.post("/admin-refresh", (req, res) => {
   try {
+    // Fail closed: chưa cấu hình secret thì không gia hạn token nào.
+    if (!JWT_SECRET) {
+      return res.status(401).json({ success: false, message: "Token không hợp lệ hoặc đã hết hạn!" });
+    }
+
     const authHeader = req.headers["x-admin-key"] as string;
     if (!authHeader) {
       return res.status(401).json({ success: false, message: "Thiếu token xác thực!" });
@@ -120,6 +140,12 @@ router.post("/google-login", async (req, res, next) => {
 
     if (!credential) {
       return res.status(400).json({ message: "Không tìm thấy thông tin xác thực Google (credential)!" });
+    }
+
+    // Fail closed: chưa cấu hình JWT secret thì không cấp token member.
+    // Chặn sớm trước khi tạo/cập nhật thành viên để tránh tạo tài khoản mà không trả token.
+    if (!JWT_SECRET) {
+      return res.status(500).json({ message: "Lỗi cấu hình server, vui lòng thử lại sau!" });
     }
 
     // 🔍 Gọi API Google để xác thực ID Token an toàn (Không cần cài thêm thư viện npm)
@@ -208,6 +234,11 @@ router.post("/google-login", async (req, res, next) => {
 // 2. GET /api/auth/my-orders - Tra cứu toàn bộ lịch sử đơn hàng của Member đang đăng nhập (Sử dụng JWT thực tế)
 router.get("/my-orders", async (req, res, next) => {
   try {
+    // Fail closed: chưa cấu hình secret thì không xác minh token nào.
+    if (!JWT_SECRET) {
+      return res.status(401).json({ message: "Token không hợp lệ hoặc đã hết hạn!" });
+    }
+
     const authHeader = req.headers["authorization"];
     if (!authHeader || !authHeader.startsWith("Bearer ")) {
       return res.status(401).json({ message: "Vui lòng cung cấp token xác thực!" });
@@ -243,6 +274,11 @@ router.get("/my-orders", async (req, res, next) => {
 // 3. PUT /api/auth/update-profile - Thành viên tự cập nhật Họ tên / Số điện thoại của mình
 router.put("/update-profile", async (req, res, next) => {
   try {
+    // Fail closed: chưa cấu hình secret thì không xác minh token nào.
+    if (!JWT_SECRET) {
+      return res.status(401).json({ message: "Token không hợp lệ hoặc đã hết hạn!" });
+    }
+
     const authHeader = req.headers["authorization"];
     if (!authHeader || !authHeader.startsWith("Bearer ")) {
       return res.status(401).json({ message: "Vui lòng cung cấp token xác thực!" });

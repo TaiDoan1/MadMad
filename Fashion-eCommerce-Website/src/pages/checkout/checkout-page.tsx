@@ -409,21 +409,22 @@ export function CheckoutPage() {
       id: 0, orderNumber, customerName: formData.fullName, customerEmail: formData.email,
       customerPhone: formData.phone, shippingAddress: { street: formData.address, ward: "", district: "", province: "" }, // ward/province filled below
       items: orderItems, subtotal, discount: totalDiscount,
-      couponCode: appliedCoupon?.code
-        ? `${appliedCoupon.code} + VIP ${currentMember?.tier || ""}`
-        : (currentMember ? `VIP ${currentMember.tier}` : undefined),
+      couponCode: appliedCoupon?.code,
       shipping, total, paymentMethod: paymentMethodText, shippingMethod: formData.shippingMethod, status: "pending",
       containsPreOrder: orderItems.some((item) => item.isPreOrder),
       createdAt: now.toISOString(), notes: formData.notes,
     };
 
     Promise.all([getWardNameByCode(formData.wardCode, formData.provinceCode), getProvinceNameByCode(formData.provinceCode)])
-      .then(([wardName, provinceName]) => {
-        addOrder({ ...newOrder, shippingAddress: { street: formData.address, ward: wardName, district: "", province: provinceName } });
-        
+      .then(async ([wardName, provinceName]) => {
+        const createdOrder = await addOrder({ ...newOrder, shippingAddress: { street: formData.address, ward: wardName, district: "", province: provinceName } });
+
+        // Tổng tiền server trả về (server tự tính lại); fallback tổng client khi lỗi mạng (đơn backup local)
+        const finalTotal = createdOrder?.total ?? total;
+
         // Hoàn điểm thành viên VIP dựa trên giá trị chi tiêu thực tế (1 điểm = 10.000 VNĐ)
         if (currentMember) {
-          const pointsEarned = Math.floor(total / 10000);
+          const pointsEarned = Math.floor(finalTotal / 10000);
           if (pointsEarned > 0) {
             addPointsToCurrentMember(pointsEarned);
           }
@@ -435,7 +436,7 @@ export function CheckoutPage() {
           open: true,
           orderNumber,
           customerName: formData.fullName,
-          total,
+          total: finalTotal,
         });
       });
   };

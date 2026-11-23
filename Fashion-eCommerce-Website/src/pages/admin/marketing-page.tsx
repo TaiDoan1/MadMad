@@ -30,7 +30,6 @@ import {
   buildMarketingMonthOptions,
   downloadMarketingCsv,
 } from "@/utils/marketing-export";
-import { MARKETING_DELETE_PASSWORD } from "@/config/marketing-admin";
 import {
   getProductImageForColor,
   resolveColorCodedItemImage,
@@ -424,10 +423,6 @@ export function AdminMarketingPage() {
       showToast("Vui lòng chọn một tháng cụ thể để xóa dữ liệu đã export", "warning");
       return;
     }
-    if (password.trim() !== MARKETING_DELETE_PASSWORD) {
-      showToast("Mật khẩu không đúng!", "error");
-      return;
-    }
     setIsDeleting(true);
     const deletedCount = await deleteExportedGifts(selectedMonth, password.trim());
     setIsDeleting(false);
@@ -440,10 +435,6 @@ export function AdminMarketingPage() {
 
   const handleConfirmDeleteGift = async () => {
     if (!selectedGift) return;
-    if (giftDeletePassword.trim() !== MARKETING_DELETE_PASSWORD) {
-      showToast("Mật khẩu không đúng!", "error");
-      return;
-    }
     setIsDeletingGift(true);
     try {
       const ok = await deleteGift(selectedGift.id, giftDeletePassword.trim());

@@ -200,6 +200,10 @@ export function MembershipProvider({ children }: { children: ReactNode }) {
       // Gọi API tra cứu khách hàng từ Database
       const response = await fetch(`${API_URL}/members/check?query=${encodeURIComponent(trimmed)}`);
       
+      if (response.status === 401) {
+        return { success: false, error: "Vui lòng đăng nhập bằng Google để xem thông tin thành viên." };
+      }
+
       if (!response.ok) {
         return { success: false, error: "Không tìm thấy thông tin thành viên với Email hoặc SĐT này!" };
       }

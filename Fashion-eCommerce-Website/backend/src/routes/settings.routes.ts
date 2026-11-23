@@ -50,7 +50,7 @@ router.get("/", async (req, res, next) => {
           smtpHost: "smtp.gmail.com",
           smtpPort: 587,
           smtpUser: "mmadmadstudio@gmail.com",
-          smtpPass: "yxmbctjhsxkyeznx",
+          smtpPass: "",
           smtpSenderName: "MADMAD STUDIO",
 
           couponsJson: "[]",
@@ -90,16 +90,16 @@ router.get("/", async (req, res, next) => {
     const adminKey = req.headers["x-admin-key"] as string;
     
     // Hỗ trợ kiểm tra cả Token phiên động và Khóa tĩnh bí mật
-    const expectedStaticKey = process.env.ADMIN_SECRET_KEY || "MADMAD_DEFAULT_SECRET_KEY_2026";
-    const isStaticValid = adminKey === expectedStaticKey;
+    const expectedStaticKey = process.env.ADMIN_SECRET_KEY;
+    // Guard: cả hai đều phải có giá trị thì mới so sánh — nếu env chưa đặt
+    // thì expectedStaticKey là undefined và request không header cũng có
+    // adminKey undefined, so sánh trần sẽ trả true và nhầm thành admin.
+    const isStaticValid = Boolean(adminKey && expectedStaticKey && adminKey === expectedStaticKey);
     
     const { verifyAdminToken } = require("./auth.routes");
     const isTokenValid = adminKey && typeof verifyAdminToken === "function" && verifyAdminToken(adminKey);
     
     const isAdmin = isStaticValid || isTokenValid;
-
-    const CryptoJS = require("crypto-js");
-    const ENCRYPTION_KEY = "MADMAD_SECURE_PAYLOAD_KEY_2026";
 
     let rawData: any;
     if (isAdmin) {
@@ -190,7 +190,6 @@ router.get("/", async (req, res, next) => {
         productOptions,
         membershipTiers,
         sizeGuide,
-        coupons,
 
         // 🐭 Logo chạy vòng quanh viền màn hình (easter egg)
         borderRunnerHintText: setting.borderRunnerHintText ?? undefined,
@@ -199,9 +198,8 @@ router.get("/", async (req, res, next) => {
       };
     }
 
-    // Thực hiện mã hóa AES toàn bộ dữ liệu trước khi phản hồi về Client
-    const cipherText = CryptoJS.AES.encrypt(JSON.stringify(rawData), ENCRYPTION_KEY).toString();
-    res.json({ encryptedPayload: cipherText });
+    // Trả thẳng dữ liệu JSON thường (không mã hóa AES nữa).
+    res.json(rawData);
   } catch (error) {
     next(error);
   }
@@ -562,7 +560,7 @@ router.put("/", requireAdminAuth, async (req, res, next) => {
         smtpHost: smtpHost || "smtp.gmail.com",
         smtpPort: smtpPort !== undefined ? Number(smtpPort) : 587,
         smtpUser: smtpUser || "mmadmadstudio@gmail.com",
-        smtpPass: smtpPass || "yxmbctjhsxkyeznx",
+        smtpPass: smtpPass || "",
         smtpSenderName: smtpSenderName || "MADMAD STUDIO",
 
         // 💳 Cổng Thanh Toán & Vận Chuyển

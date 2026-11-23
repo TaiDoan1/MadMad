@@ -2,9 +2,8 @@ import { createContext, useContext, useEffect, useMemo, useState, type ReactNode
 
 import { useProducts } from "@/features/products/context/product-context";
 import {
-  fetchCouponsFromServer,
   formatCouponDiscountLabel,
-  getAllCouponsSnapshot,
+  validateCoupon,
 } from "@/features/promotions/services/coupon-service";
 import type { Coupon } from "@/types/coupon";
 import type { CartItem } from "@/types/cart";
@@ -70,14 +69,38 @@ function readStoredCart(): CartItem[] {
   }
 }
 
+function readStoredCoupon(): Coupon | null {
+  if (typeof window === "undefined") return null;
+  const raw = safeLocalStorage.getItem(CART_COUPON_STORAGE_KEY);
+  if (!raw) return null;
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    // Định dạng mới: object coupon đầy đủ. Định dạng cũ chỉ lưu mã (chuỗi trần)
+    // nên không khôi phục được mức giảm -> bỏ, khách nhập lại mã (server xác thực lại lúc đặt hàng).
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return null;
+    const candidate = parsed as Partial<Coupon>;
+    if (typeof candidate.code !== "string" || !candidate.code.trim()) return null;
+    const discountType: Coupon["discountType"] =
+      candidate.discountType === "percent" ? "percent" : "amount";
+    const discountPercentRaw = Number(candidate.discountPercent ?? NaN);
+    return {
+      code: candidate.code.trim().toUpperCase(),
+      discountType,
+      discountAmount: Math.max(0, Number(candidate.discountAmount ?? 0) || 0),
+      discountPercent: Number.isFinite(discountPercentRaw)
+        ? Math.min(100, Math.max(0, discountPercentRaw))
+        : undefined,
+      applyToSaleItems: candidate.applyToSaleItems ?? true,
+    };
+  } catch {
+    return null;
+  }
+}
+
 export function CartProvider({ children }: { children: ReactNode }) {
   const { products } = useProducts();
   const [cartItems, setCartItems] = useState<CartItem[]>(readStoredCart);
-  const [appliedCouponCode, setAppliedCouponCode] = useState<string | null>(() => {
-    if (typeof window === "undefined") return null;
-    return safeLocalStorage.getItem(CART_COUPON_STORAGE_KEY);
-  });
-  const [availableCoupons, setAvailableCoupons] = useState<Coupon[]>(() => getAllCouponsSnapshot());
+  const [appliedCoupon, setAppliedCoupon] = useState<Coupon | null>(readStoredCoupon);
 
   const persist = (nextItems: CartItem[]) => {
     setCartItems(nextItems);
@@ -86,11 +109,13 @@ export function CartProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const persistCouponCode = (code: string | null) => {
-    setAppliedCouponCode(code);
+  // Lưu cả object coupon đã xác thực (không chỉ mã) để load lại trang vẫn tính
+  // được discountAmount theo subtotal hiện tại; server xác thực lại lúc đặt hàng.
+  const persistCoupon = (coupon: Coupon | null) => {
+    setAppliedCoupon(coupon);
     if (typeof window !== "undefined") {
-      if (!code) safeLocalStorage.removeItem(CART_COUPON_STORAGE_KEY);
-      else safeLocalStorage.setItem(CART_COUPON_STORAGE_KEY, code);
+      if (!coupon) safeLocalStorage.removeItem(CART_COUPON_STORAGE_KEY);
+      else safeLocalStorage.setItem(CART_COUPON_STORAGE_KEY, JSON.stringify(coupon));
     }
   };
 
@@ -116,20 +141,17 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   // Tự động hủy coupon nếu giỏ hàng phát sinh sản phẩm giảm giá và coupon đó cấu hình KHÔNG áp dụng cho sale items
   useEffect(() => {
-    if (!appliedCouponCode || products.length === 0) return;
-    const activeCoupon = availableCoupons.find((c) => c.code === appliedCouponCode);
-    if (!activeCoupon) return;
-
-    if (activeCoupon.applyToSaleItems === false) {
+    if (!appliedCoupon || products.length === 0) return;
+    if (appliedCoupon.applyToSaleItems === false) {
       const hasSaleItems = activeCartItems.some((item) => {
         const prod = products.find((p) => String(p.id) === String(item.productId));
         return prod && (prod.discountPercent ?? 0) > 0;
       });
       if (hasSaleItems) {
-        persistCouponCode(null);
+        persistCoupon(null);
       }
     }
-  }, [appliedCouponCode, activeCartItems, products]);
+  }, [appliedCoupon, activeCartItems, products]);
 
   // Tự động gỡ hàng tặng khi giỏ không còn đủ điều kiện
   useEffect(() => {
@@ -148,34 +170,21 @@ export function CartProvider({ children }: { children: ReactNode }) {
     }
   }, [cartItems, products]);
 
-  // Fetch coupons từ server (không dùng localStorage nữa - luôn lấy data mới nhất từ database)
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      const serverCoupons = await fetchCouponsFromServer();
-      if (cancelled) return;
-      setAvailableCoupons(serverCoupons);
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-
-
   const value = useMemo<CartContextValue>(
     () => {
       return {
       cartItems: activeCartItems,
       itemCount: activeCartItems.reduce((sum, item) => sum + item.quantity, 0),
       subtotal: activeCartItems.reduce((sum, item) => sum + item.priceAtAdd * item.quantity, 0),
-      availableCoupons,
-      appliedCoupon: availableCoupons.find((coupon) => coupon.code === appliedCouponCode) ?? null,
+      // Không fetch danh sách mã nữa: chỉ còn mã đang áp (nếu có) để shape
+      // context không đổi cho các component đang dùng availableCoupons.
+      availableCoupons: appliedCoupon ? [appliedCoupon] : [],
+      appliedCoupon,
       discountAmount: (() => {
         const subtotal = activeCartItems.reduce((sum, item) => sum + item.priceAtAdd * item.quantity, 0);
-        const coupon = availableCoupons.find((item) => item.code === appliedCouponCode);
+        const coupon = appliedCoupon;
         if (!coupon) return 0;
-        
+
         // Kiểm tra sale items trong giỏ hàng
         const hasSaleItemsInCart = activeCartItems.some((item) => {
           const prod = products.find((p) => String(p.id) === String(item.productId));
@@ -188,7 +197,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
         const resolvedAmount = coupon.discountType === "percent"
           ? Math.round((subtotal * (coupon.discountPercent ?? 0)) / 100)
-          : coupon.discountAmount;
+          : (coupon.discountAmount ?? 0);
 
         return Math.min(resolvedAmount, subtotal);
       })(),
@@ -271,51 +280,54 @@ export function CartProvider({ children }: { children: ReactNode }) {
         const normalized = code.trim().toUpperCase();
         if (!normalized) return { success: false, message: "Vui lòng nhập mã giảm giá." };
 
-        let coupon = availableCoupons.find((item) => item.code === normalized);
-
-        // Nếu không thấy mã trong danh sách đang có (có thể do cache cũ/phiên mở lâu),
-        // thử fetch lại danh sách mới nhất từ server trước khi kết luận mã không hợp lệ
-        if (!coupon) {
-          const freshCoupons = await fetchCouponsFromServer(true);
-          setAvailableCoupons(freshCoupons);
-          coupon = freshCoupons.find((item) => item.code === normalized);
-        }
-
-        if (!coupon) return { success: false, message: "Mã giảm giá không hợp lệ." };
-
-        if (coupon.usageLimit !== undefined && (coupon.usageCount ?? 0) >= coupon.usageLimit) {
-          return { success: false, message: "Rất tiếc, mã giảm giá này đã hết lượt sử dụng." };
-        }
-
-        // Kiểm tra xem giỏ hàng có chứa sản phẩm giảm giá không
-        const hasSaleItemsInCart = activeCartItems.some((item) => {
+        const subtotal = activeCartItems.reduce((sum, item) => sum + item.priceAtAdd * item.quantity, 0);
+        const hasSaleItems = activeCartItems.some((item) => {
           const prod = products.find((p) => String(p.id) === String(item.productId));
           return prod && (prod.discountPercent ?? 0) > 0;
         });
 
-        if (coupon.applyToSaleItems === false && hasSaleItemsInCart) {
-          return {
-            success: false,
-            message: `Mã ${coupon.code} không thể áp dụng cho đơn hàng có chứa sản phẩm đang giảm giá.`,
-          };
+        // Xác thực mã qua server (hết hạn / hết lượt / không áp cho sale items
+        // đều do server quyết, client không tự tra danh sách mã nữa).
+        let result: Awaited<ReturnType<typeof validateCoupon>>;
+        try {
+          result = await validateCoupon(normalized, subtotal, hasSaleItems);
+        } catch {
+          return { success: false, message: "Không kiểm tra được mã giảm giá, vui lòng thử lại." };
         }
-        
-        persistCouponCode(coupon.code);
+
+        if (!result?.valid) {
+          return { success: false, message: result?.message || "Mã giảm giá không hợp lệ." };
+        }
+
+        const discountPercentRaw = Number(result.discountPercent ?? NaN);
+        // discountType luôn được chốt ở đây để khớp chữ ký mới của
+        // formatCouponDiscountLabel (yêu cầu discountType bắt buộc).
+        const coupon: Coupon & { discountType: "percent" | "amount" } = {
+          code: (result.code ?? normalized).toUpperCase(),
+          discountType: result.discountType === "percent" ? "percent" : "amount",
+          discountAmount: Math.max(0, Number(result.discountAmount ?? 0) || 0),
+          discountPercent: Number.isFinite(discountPercentRaw)
+            ? Math.min(100, Math.max(0, discountPercentRaw))
+            : undefined,
+          applyToSaleItems: result.applyToSaleItems ?? true,
+        };
+
+        persistCoupon(coupon);
         return {
           success: true,
           message: `Áp dụng mã ${coupon.code}: giảm ${formatCouponDiscountLabel(coupon)}.`,
         };
       },
       clearCoupon: () => {
-        persistCouponCode(null);
+        persistCoupon(null);
       },
       clearCart: () => {
         persist([]);
-        persistCouponCode(null);
+        persistCoupon(null);
       },
       };
     },
-    [appliedCouponCode, activeCartItems, cartItems, availableCoupons, products],
+    [appliedCoupon, activeCartItems, cartItems, products],
   );
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;

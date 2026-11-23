@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
-import { API_URL } from "@/config/api";
+import { API_URL, getAdminKey } from "@/config/api";
 import type { CreateMarketingGiftInput, MarketingGift, MarketingStats } from "@/types/marketing-gift";
 import { useToast } from "@/components/common/toast";
 import { getCurrentMonthValue } from "@/utils/marketing-export";
@@ -60,8 +60,12 @@ export function MarketingProvider({ children }: { children: ReactNode }) {
     try {
       const monthQuery = month && month !== "all" ? `&month=${encodeURIComponent(month)}` : "";
       const [giftsRes, statsRes] = await Promise.all([
-        fetch(`${API_URL}/marketing?_cb=${Date.now()}${monthQuery}`),
-        fetch(`${API_URL}/marketing/stats?_cb=${Date.now()}${monthQuery}`),
+        fetch(`${API_URL}/marketing?_cb=${Date.now()}${monthQuery}`, {
+          headers: { "x-admin-key": getAdminKey() },
+        }),
+        fetch(`${API_URL}/marketing/stats?_cb=${Date.now()}${monthQuery}`, {
+          headers: { "x-admin-key": getAdminKey() },
+        }),
       ]);
 
       if (giftsRes.ok) {
@@ -89,6 +93,7 @@ export function MarketingProvider({ children }: { children: ReactNode }) {
   const syncMarketingItemImages = useCallback(async () => {
     const response = await fetch(`${API_URL}/marketing/sync-item-images`, {
       method: "POST",
+      headers: { "x-admin-key": getAdminKey() },
     });
 
     if (!response.ok) {
@@ -105,6 +110,7 @@ export function MarketingProvider({ children }: { children: ReactNode }) {
   const syncMarketingStockDeductions = useCallback(async () => {
     const response = await fetch(`${API_URL}/marketing/sync-stock-deductions`, {
       method: "POST",
+      headers: { "x-admin-key": getAdminKey() },
     });
 
     if (!response.ok) {
@@ -128,7 +134,7 @@ export function MarketingProvider({ children }: { children: ReactNode }) {
       try {
         const response = await fetch(`${API_URL}/marketing/${giftId}/items/${itemId}`, {
           method: "PUT",
-          headers: { "Content-Type": "application/json" },
+          headers: { "Content-Type": "application/json", "x-admin-key": getAdminKey() },
           body: JSON.stringify(input),
         });
         const data = await response.json();
@@ -155,7 +161,7 @@ export function MarketingProvider({ children }: { children: ReactNode }) {
       try {
         const response = await fetch(`${API_URL}/marketing/${giftId}/items`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: { "Content-Type": "application/json", "x-admin-key": getAdminKey() },
           body: JSON.stringify(input),
         });
         const data = await response.json();
@@ -179,6 +185,7 @@ export function MarketingProvider({ children }: { children: ReactNode }) {
       try {
         const response = await fetch(`${API_URL}/marketing/${giftId}/items/${itemId}`, {
           method: "DELETE",
+          headers: { "x-admin-key": getAdminKey() },
         });
         const data = await response.json();
         if (!response.ok) {
@@ -201,7 +208,7 @@ export function MarketingProvider({ children }: { children: ReactNode }) {
       try {
         const response = await fetch(`${API_URL}/marketing/${giftId}`, {
           method: "DELETE",
-          headers: { "Content-Type": "application/json" },
+          headers: { "Content-Type": "application/json", "x-admin-key": getAdminKey() },
           body: JSON.stringify({ password }),
         });
         const data = await response.json();
@@ -225,7 +232,7 @@ export function MarketingProvider({ children }: { children: ReactNode }) {
       try {
         const response = await fetch(`${API_URL}/marketing/${giftId}/status`, {
           method: "PUT",
-          headers: { "Content-Type": "application/json" },
+          headers: { "Content-Type": "application/json", "x-admin-key": getAdminKey() },
           body: JSON.stringify({ status }),
         });
         const data = await response.json();
@@ -252,7 +259,7 @@ export function MarketingProvider({ children }: { children: ReactNode }) {
       try {
         const response = await fetch(`${API_URL}/marketing`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: { "Content-Type": "application/json", "x-admin-key": getAdminKey() },
           body: JSON.stringify(input),
         });
         const data = await response.json();
@@ -276,6 +283,7 @@ export function MarketingProvider({ children }: { children: ReactNode }) {
       try {
         const response = await fetch(`${API_URL}/marketing/${id}/cancel`, {
           method: "PUT",
+          headers: { "x-admin-key": getAdminKey() },
         });
         const data = await response.json();
         if (!response.ok) {
@@ -298,7 +306,7 @@ export function MarketingProvider({ children }: { children: ReactNode }) {
       try {
         const response = await fetch(`${API_URL}/marketing/bulk`, {
           method: "DELETE",
-          headers: { "Content-Type": "application/json" },
+          headers: { "Content-Type": "application/json", "x-admin-key": getAdminKey() },
           body: JSON.stringify({ month, password }),
         });
         const data = await response.json();

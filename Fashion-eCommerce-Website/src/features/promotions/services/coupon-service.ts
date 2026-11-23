@@ -1,75 +1,47 @@
-import CryptoJS from "crypto-js";
-import type { Coupon } from "@/types/coupon";
 import { API_URL } from "@/config/api";
 
-// In-memory cache (not localStorage) - refreshes on every page load, always fresh from API
-let cachedCoupons: Coupon[] | null = null;
-let cacheTimestamp = 0;
-const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
-
-function normalizeCoupons(input: unknown): Coupon[] {
-  if (!Array.isArray(input)) return [];
-  return (input as Coupon[])
-    .map((coupon) => {
-      const discountType: Coupon["discountType"] = (coupon as any)?.discountType === "percent" ? "percent" : "amount";
-      return {
-        ...coupon,
-        code: (coupon?.code || "").toUpperCase(),
-        discountType,
-        discountAmount: Math.max(0, Number((coupon as any)?.discountAmount ?? (coupon as any)?.value ?? 0)),
-        discountPercent: Math.min(100, Math.max(0, Number((coupon as any)?.discountPercent ?? 0))),
-        usageLimit: (coupon as any)?.usageLimit !== undefined ? Number((coupon as any).usageLimit) : undefined,
-        usageCount: (coupon as any)?.usageCount !== undefined ? Number((coupon as any).usageCount) : undefined,
-        isExclusive: Boolean((coupon as any)?.isExclusive),
-        applyToSaleItems: (coupon as any)?.applyToSaleItems ?? true,
-      };
-    })
-    .filter((c) => c.code && (c.discountType === "percent" ? c.discountPercent > 0 : c.discountAmount > 0));
-}
-
-export async function fetchCouponsFromServer(forceRefresh = false): Promise<Coupon[]> {
-  if (typeof window === "undefined") return [];
-
-  // Return cached if still valid (5 min TTL) - bỏ qua cache nếu forceRefresh=true
-  // (vd: khi khách nhập mã không tìm thấy, luôn thử fetch mới trước khi báo "không hợp lệ")
-  if (!forceRefresh && cachedCoupons && Date.now() - cacheTimestamp < CACHE_TTL) {
-    return cachedCoupons;
-  }
-
+export async function validateCoupon(
+  code: string,
+  subtotal: number,
+  hasSaleItems: boolean,
+): Promise<{
+  valid: boolean;
+  code?: string;
+  discountType?: "percent" | "amount";
+  discountPercent?: number;
+  discountAmount?: number;
+  applyToSaleItems?: boolean;
+  computedDiscount?: number;
+  message: string;
+}> {
   try {
-    // Cache buster: Add timestamp to force fresh fetch from server
-    const timestamp = Date.now();
-    const res = await fetch(`${API_URL}/settings?t=${timestamp}`);
-    if (!res.ok) return [];
-    const response = (await res.json()) as { encryptedPayload?: string };
-
-    if (response.encryptedPayload) {
-      try {
-        const key = "MADMAD_SECURE_PAYLOAD_KEY_2026";
-        const decrypted = CryptoJS.AES.decrypt(response.encryptedPayload, key).toString(CryptoJS.enc.Utf8);
-        const data = JSON.parse(decrypted);
-        const coupons = normalizeCoupons(data?.coupons);
-        cachedCoupons = coupons;
-        cacheTimestamp = Date.now();
-        return coupons;
-      } catch {
-        return [];
-      }
-    }
-    return [];
+    const res = await fetch(`${API_URL}/orders/validate-coupon`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ code, subtotal, hasSaleItems }),
+    });
+    return (await res.json()) as {
+      valid: boolean;
+      code?: string;
+      discountType?: "percent" | "amount";
+      discountPercent?: number;
+      discountAmount?: number;
+      applyToSaleItems?: boolean;
+      computedDiscount?: number;
+      message: string;
+    };
   } catch {
-    return [];
+    return { valid: false, message: "Không thể kiểm tra mã giảm giá, vui lòng thử lại." };
   }
-}
-
-export function getAllCouponsSnapshot(): Coupon[] {
-  return cachedCoupons || [];
 }
 
 // Nhãn hiển thị mức giảm của mã (vd: "20%" hoặc "50.000₫") — dùng chung cho mọi nơi liệt kê coupon.
-export function formatCouponDiscountLabel(coupon: Coupon): string {
+export function formatCouponDiscountLabel(coupon: {
+  discountType?: "percent" | "amount";
+  discountPercent?: number;
+  discountAmount?: number;
+}): string {
   return coupon.discountType === "percent"
     ? `${coupon.discountPercent ?? 0}%`
-    : `${coupon.discountAmount.toLocaleString("vi-VN")}₫`;
+    : `${(coupon.discountAmount ?? 0).toLocaleString("vi-VN")}₫`;
 }
-

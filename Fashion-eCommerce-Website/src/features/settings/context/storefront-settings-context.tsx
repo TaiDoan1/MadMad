@@ -1,5 +1,4 @@
 import { createContext, useContext, useMemo, useState, useEffect, useCallback, useRef, type ReactNode } from "react";
-import CryptoJS from "crypto-js";
 
 import { brandLogo } from "@/assets/images";
 import type { StorefrontSettings } from "@/types/storefront-settings";
@@ -83,7 +82,7 @@ export const DEFAULT_STOREFRONT_SETTINGS: StorefrontSettings = {
   smtpHost: "smtp.gmail.com",
   smtpPort: 587,
   smtpUser: "mmadmadstudio@gmail.com",
-  smtpPass: "yxmbctjhsxkyeznx",
+  smtpPass: "",
   smtpSenderName: "MADMAD STUDIO",
   customerEmailSubject: "[{{brandName}}] ĐẶT HÀNG THÀNH CÔNG - ĐƠN HÀNG {{orderNumber}}",
   customerEmailTemplate: "Chào bạn <strong>{{customerName}}</strong>,<br><br>Cám ơn bạn đã lựa chọn nổi loạn và khẳng định cá tính cùng <strong>{{brandName}}</strong>. Chúng tôi xác nhận đã nhận được đơn hàng của bạn và đang tiến hành đóng gói siêu tốc!",
@@ -407,9 +406,7 @@ export function StorefrontSettingsProvider({ children }: { children: ReactNode }
       });
       if (!response.ok) return;
       const resJson = await response.json();
-      const ENCRYPTION_KEY = "MADMAD_SECURE_PAYLOAD_KEY_2026";
-      const bytes = CryptoJS.AES.decrypt(resJson.encryptedPayload, ENCRYPTION_KEY);
-      const cloudSettings = JSON.parse(bytes.toString(CryptoJS.enc.Utf8)) as CloudSettings;
+      const cloudSettings = resJson as CloudSettings;
       if (typeof cloudSettings.version === "number") versionRef.current = cloudSettings.version;
     } catch {
       // Giữ version cũ; lần thử lại sẽ gửi kèm version cũ hoặc không kèm version.
@@ -452,10 +449,7 @@ export function StorefrontSettingsProvider({ children }: { children: ReactNode }
         });
         if (response.ok) {
           const resJson = await response.json();
-          const ENCRYPTION_KEY = "MADMAD_SECURE_PAYLOAD_KEY_2026";
-          const bytes = CryptoJS.AES.decrypt(resJson.encryptedPayload, ENCRYPTION_KEY);
-          const decryptedText = bytes.toString(CryptoJS.enc.Utf8);
-          const cloudSettings = JSON.parse(decryptedText) as CloudSettings;
+          const cloudSettings = resJson as CloudSettings;
 
           // Lưu version server trả về; xóa khỏi object trước khi trộn vào state
           // để version không lọt vào settings state / localStorage.

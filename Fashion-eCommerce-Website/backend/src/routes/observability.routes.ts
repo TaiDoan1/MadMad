@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { prisma } from "../config/prisma";
 import { requireAdminAuth } from "../utils/auth.middleware";
+import { createRateLimiter } from "../utils/rate-limit";
 
 const router = Router();
 
@@ -11,7 +12,10 @@ const MAX_CLIENT_ERRORS = 200;
 // Nhận lỗi từ trình duyệt (window.onerror / unhandledrejection / Error Boundary).
 // Chỉ nhận message + đường dẫn + thời gian (+ stack tùy chọn). KHÔNG nhận IP,
 // user agent hay id người dùng — các trường đó không được lưu ở đây.
-router.post("/client-errors", async (req, res) => {
+router.post(
+  "/client-errors",
+  createRateLimiter({ windowMs: 60000, max: 30 }),
+  async (req, res) => {
   try {
     const body = (req.body ?? {}) as Record<string, unknown>;
     const { message, path, occurredAt, stack } = body;

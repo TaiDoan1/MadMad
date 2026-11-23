@@ -60,8 +60,8 @@ export default defineConfig({
   // Cho phép Railway/domain custom truy cập preview server (chặn 403 Host lạ)
   // Tiêu đề bảo mật cho bản chạy trên Railway: vite preview không đọc
   // vercel.json nên các tiêu đề này phải đặt ở đây mới tới được web thật.
-  // Không đặt Content-Security-Policy ở đây vì trang có script nội tuyến
-  // tự tải lại khi chunk mới, CSP chặt sẽ làm vỡ script đó.
+  // CSP giữ 'unsafe-inline' cho script/style nên script nội tuyến tải lại
+  // chunk vẫn chạy.
   preview: {
     host: true,
     allowedHosts: true,
@@ -71,6 +71,7 @@ export default defineConfig({
       "Referrer-Policy": "origin-when-cross-origin",
       "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
       "Strict-Transport-Security": "max-age=63072000; includeSubDomains",
+      "Content-Security-Policy": "default-src 'self'; script-src 'self' 'unsafe-inline' https://accounts.google.com https://apis.google.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: https:; connect-src 'self' https://madmad-production.up.railway.app http://localhost:5000 https://api.cloudinary.com https://accounts.google.com; frame-src 'self' https://accounts.google.com; object-src 'none'; base-uri 'self'; form-action 'self'",
     },
   },
 })
