@@ -50,18 +50,19 @@ function easeInOutCubic(t: number): number {
 }
 
 /** scale / blur / opacity theo |offset|: 0 = giữa, 1 = kề, 2 = xa, 2.5 = vòng sau.
-    Look kề giữ to hơn (0.84 thay vì 0.78) để vòng xoay nhìn khít như Hades. */
+    Các look gần ngang hàng nhau (kề 0.93, xa 0.85) — độ sâu chỉ còn thể hiện
+    bằng mờ + nhạt, không còn look cao look thấp như trước. */
 function depthStyle(absOffset: number): { scale: number; blur: number; opacity: number } {
   if (absOffset <= 1) {
     const k = absOffset;
-    return { scale: 1 - 0.16 * k, blur: 2 * k, opacity: 1 - 0.25 * k };
+    return { scale: 1 - 0.07 * k, blur: 2 * k, opacity: 1 - 0.25 * k };
   }
   if (absOffset <= 2) {
     const k = absOffset - 1;
-    return { scale: 0.84 - 0.14 * k, blur: 2 + 2 * k, opacity: 0.75 - 0.3 * k };
+    return { scale: 0.93 - 0.08 * k, blur: 2 + 2 * k, opacity: 0.75 - 0.3 * k };
   }
   const k = Math.min(1, (absOffset - 2) / 0.5);
-  return { scale: 0.68, blur: 4, opacity: Math.max(0.35, 0.45 - 0.1 * k) };
+  return { scale: 0.85, blur: 4, opacity: Math.max(0.35, 0.45 - 0.1 * k) };
 }
 
 /** Bán kính vòng (px) theo bề rộng sân khấu: desktop 27%, điện thoại 34%.
