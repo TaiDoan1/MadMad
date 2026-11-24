@@ -8,6 +8,9 @@ import { cloudinarySrcSet, optimizeImageUrl } from "@/utils/cloudinary";
 // Thay hẳn banner túi tote ở chỗ banner trên trang chủ (ngay dưới Marquee,
 // trên NEW ARRIVAL). Dải 5474×1824 (~3:1): desktop rộng khoảng 168% viewport,
 // mobile cao 74svh; ảnh cao 100%, rộng tự động, không cắt xén.
+// Lúc mới mở chỉ hiện hình 1, chừa trắng bên trái hình 1 (khoảng trắng đầu
+// dải: mobile 8vw, desktop 58vw — vừa đủ để hình 1 lấp đầy phần còn lại của
+// màn hình); kéo tự do qua mới tới hình 2, 3, 4, không snap.
 // Kéo/vuốt để lướt, lăn chuột thì lướt ngang, phím mũi tên chuyển,
 // vuốt cảm ứng dùng cuộn native. URL rỗng thì không hiện gì.
 
@@ -85,7 +88,7 @@ export function AccordionBanner() {
         tabIndex={0}
         role="region"
         aria-label={t("Banner bộ sưu tập — kéo để xem", "Collection banner — drag to explore")}
-        className="h-[74svh] w-full cursor-grab overflow-x-auto overscroll-x-contain select-none active:cursor-grabbing sm:h-[56vw] [&::-webkit-scrollbar]:hidden"
+        className="flex h-[74svh] w-full cursor-grab overflow-x-auto overscroll-x-contain select-none active:cursor-grabbing sm:h-[56vw] [&::-webkit-scrollbar]:hidden"
         style={{
           scrollbarWidth: "none",
           touchAction: "pan-x",
@@ -96,13 +99,15 @@ export function AccordionBanner() {
         onPointerCancel={endDrag}
         onKeyDown={onKeyDown}
       >
+        {/* Khoảng trắng bên trái hình 1 — lúc mới mở chỉ hiện hình 1 */}
+        <div aria-hidden="true" className="h-full w-[8vw] shrink-0 bg-white sm:w-[58vw]" />
         <img
           src={optimizeImageUrl(stripUrl, 3200)}
           srcSet={cloudinarySrcSet(stripUrl, STRIP_WIDTHS)}
           sizes="(max-width: 640px) 222svh, 168vw"
           alt={t("Banner bộ sưu tập MADMAD", "MADMAD collection banner")}
           draggable={false}
-          className="h-full w-auto max-w-none"
+          className="h-full w-auto max-w-none shrink-0"
         />
       </div>
 
