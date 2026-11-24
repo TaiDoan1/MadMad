@@ -3,6 +3,7 @@ import { Link } from "react-router";
 
 import { ImageWithFallback } from "@/components/common/image-with-fallback";
 import { ScrollReveal } from "@/components/common/scroll-reveal";
+import { AccordionBanner } from "@/components/home/accordion-banner";
 import { ShopTheLook } from "@/components/home/shop-the-look";
 import { ProductCard, ProductCardSkeleton } from "@/components/shared/product-card";
 import { useProducts } from "@/features/products/context/product-context";
@@ -87,12 +88,6 @@ export function HomePage() {
   const popularCategoryImages = useMemo(
     () => (settings.popularCategoryImages ?? []).map((v) => v.trim()).filter(Boolean),
     [settings.popularCategoryImages],
-  );
-
-  // ── Top banner images (ngay dưới Marquee) ──────────────────────────────────
-  const topBannerImages = useMemo(
-    () => (settings.topBannerImages ?? []).map((v) => v.trim()).filter(Boolean),
-    [settings.topBannerImages],
   );
 
   // ── Countdown ─────────────────────────────────────────────────────────────
@@ -258,23 +253,8 @@ export function HomePage() {
         ))}
       </div>
 
-      {/* ═══ TOP BANNER IMAGES (admin-configurable, ngay dưới Marquee) ═══════ */}
-      {topBannerImages.length > 0 && (
-        <section className="bg-background">
-          {topBannerImages.map((imageUrl, index) => (
-            <ScrollReveal key={`${imageUrl}-${index}`} className="w-full">
-              <ImageWithFallback
-                src={optimizeImageUrl(imageUrl, 1600)}
-                srcSet={cloudinarySrcSet(imageUrl, [800, 1200, 1600])}
-                sizes="100vw"
-                loading="lazy"
-                alt={`Banner ${index + 1}`}
-                className="h-auto w-full object-contain"
-              />
-            </ScrollReveal>
-          ))}
-        </section>
-      )}
+      {/* ═══ ACCORDION BANNER — 1 dải dài cuộn ngang (ngay dưới Marquee) ══ */}
+      <AccordionBanner />
 
       {/* ═══ NEW ARRIVAL — Vòng xoay Shop the Look ═══════════════════════════ */}
       <ShopTheLook />

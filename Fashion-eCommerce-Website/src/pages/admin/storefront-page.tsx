@@ -560,6 +560,25 @@ export function AdminStorefrontPage() {
                 </div>
               </div>
 
+              {/* Banner Accordion — 1 dải dài cuộn ngang, thay banner trên */}
+              <div className="space-y-4 border-t border-border pt-6">
+                <h3 className="font-bold text-lg text-foreground">Banner Accordion (dải dài cuộn ngang)</h3>
+                <p className="text-xs text-muted-foreground">1 dải duy nhất, hiển thị thay banner trên (ngay dưới dòng chạy Marquee, trước phần Hàng Mới). Tỷ lệ ~3:1 (5474×1824px), định dạng WebP. Khách kéo/vuốt hoặc lăn chuột để lướt ngang dải.</p>
+
+                <div className="flex gap-2 items-start border border-border rounded-lg p-2 bg-stone-50">
+                  <div className="flex-shrink-0 w-12 h-8 rounded border border-border overflow-hidden bg-muted">
+                    {settings.accordionBannerImage?.trim() && <img src={settings.accordionBannerImage.trim()} alt="" className="w-full h-full object-cover" />}
+                  </div>
+                  <ImageUploadInput
+                    value={settings.accordionBannerImage ?? ""}
+                    onChange={(v) => updateSettings({ accordionBannerImage: v })}
+                    className="flex-1"
+                    placeholder="Đường dẫn dải banner accordion"
+                    maxDimension={3200}
+                  />
+                </div>
+              </div>
+
               {/* Banner dưới - sau phần Nổi Bật (Gallery gốc) */}
               <div className="space-y-4 border-t border-border pt-6">
                 <div className="flex items-center justify-between">

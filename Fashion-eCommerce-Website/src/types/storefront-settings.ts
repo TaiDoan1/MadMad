@@ -22,6 +22,8 @@ export interface StorefrontSettings {
   heroFontStyle: "default" | "serif" | "mono";
   popularCategoryImages: string[];
   topBannerImages: string[];
+  // 1 dải accordion duy nhất cho banner trên trang chủ (dải dài cuộn ngang).
+  accordionBannerImage?: string;
   // Ảnh 5 look cho mục NEW ARRIVAL (Shop the Look) trên trang chủ, theo đúng
   // thứ tự Look 1–5; phần tử rỗng nghĩa là ô đó chưa có ảnh.
   newArrivalImages?: string[];

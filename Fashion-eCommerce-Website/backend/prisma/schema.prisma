@@ -118,6 +118,7 @@ model StorefrontSetting {
 
   // 🖼️ Ảnh & nội dung Banner trang chủ (Hero) + Danh mục phổ biến + Best seller
   heroImage                String?
+  accordionBannerImage     String?
   heroImagesJson           String? @default("[]")
   heroImageScalePercent    Int?    @default(100)
   heroSlideIntervalMs      Int?    @default(6000)

@@ -126,6 +126,7 @@ router.get("/", async (req, res, next) => {
         heroTitleLine2: setting.heroTitleLine2 ?? undefined,
         heroDescription: setting.heroDescription ?? undefined,
         heroButtonText: setting.heroButtonText ?? undefined,
+        accordionBannerImage: setting.accordionBannerImage ?? undefined,
       };
     } else {
       // Ẩn đi các trường nhạy cảm (SMTP, API keys...) nhưng vẫn giữ thông tin thanh toán
@@ -146,6 +147,7 @@ router.get("/", async (req, res, next) => {
         // Field text chưa từng set (record cũ) sẽ là null -> bỏ qua (undefined) để giữ default đẹp phía frontend
         heroImage: setting.heroImage ?? undefined,
         heroImages,
+        accordionBannerImage: setting.accordionBannerImage ?? undefined,
         heroImageScalePercent: setting.heroImageScalePercent,
         heroSlideIntervalMs: setting.heroSlideIntervalMs,
         heroBadgeText: setting.heroBadgeText ?? undefined,
@@ -221,6 +223,7 @@ router.put("/", requireAdminAuth, async (req, res, next) => {
 
       // 🖼️ Hero banner + danh mục phổ biến + best seller
       heroImage,
+      accordionBannerImage,
       heroImages,
       heroImageScalePercent,
       heroSlideIntervalMs,
@@ -326,6 +329,8 @@ router.put("/", requireAdminAuth, async (req, res, next) => {
     // tải trực tiếp lên Cloudinary thất bại rồi gửi data URL lên như trước.
     const uploadedHeroImage =
       heroImage !== undefined ? await uploadToCloudinary(heroImage) : undefined;
+    const uploadedAccordionBannerImage =
+      accordionBannerImage !== undefined ? await uploadToCloudinary(accordionBannerImage) : undefined;
     const uploadedHeroImages =
       heroImages !== undefined && Array.isArray(heroImages)
         ? await Promise.all(heroImages.map((item: string) => uploadToCloudinary(item)))
@@ -416,6 +421,7 @@ router.put("/", requireAdminAuth, async (req, res, next) => {
 
         // 🖼️ Hero banner + danh mục phổ biến + best seller
         heroImage: uploadedHeroImage,
+        accordionBannerImage: uploadedAccordionBannerImage,
         heroImagesJson,
         heroImageScalePercent: heroImageScalePercent !== undefined ? Number(heroImageScalePercent) : undefined,
         heroSlideIntervalMs: heroSlideIntervalMs !== undefined ? Number(heroSlideIntervalMs) : undefined,
@@ -521,6 +527,7 @@ router.put("/", requireAdminAuth, async (req, res, next) => {
 
         // 🖼️ Hero banner + danh mục phổ biến + best seller
         heroImage: uploadedHeroImage,
+        accordionBannerImage: uploadedAccordionBannerImage,
         heroImagesJson: heroImagesJson ?? "[]",
         heroImageScalePercent: heroImageScalePercent !== undefined ? Number(heroImageScalePercent) : 100,
         heroSlideIntervalMs: heroSlideIntervalMs !== undefined ? Number(heroSlideIntervalMs) : 6000,
@@ -621,6 +628,7 @@ router.put("/", requireAdminAuth, async (req, res, next) => {
       membershipTiers: updatedSetting.membershipTiersJson ? JSON.parse(updatedSetting.membershipTiersJson) : [],
       sizeGuide: updatedSetting.sizeGuideJson ? JSON.parse(updatedSetting.sizeGuideJson) : {},
       heroImages: updatedSetting.heroImagesJson ? JSON.parse(updatedSetting.heroImagesJson) : [],
+      accordionBannerImage: updatedSetting.accordionBannerImage ?? undefined,
       popularCategoryImages: updatedSetting.popularCategoryImagesJson ? JSON.parse(updatedSetting.popularCategoryImagesJson) : [],
       topBannerImages: updatedSetting.topBannerImagesJson ? JSON.parse(updatedSetting.topBannerImagesJson) : [],
       newArrivalImages: updatedSetting.newArrivalImagesJson ? JSON.parse(updatedSetting.newArrivalImagesJson) : [],
@@ -732,6 +740,7 @@ router.post("/migrate-images", requireAdminAuth, async (req, res, next) => {
     // field -> { kind, raw } — kind "single" là cột string, "json" là cột JSON-string mảng.
     const fields: Record<string, { kind: "single" | "json"; raw: string | null | undefined }> = {
       heroImage: { kind: "single", raw: setting.heroImage },
+      accordionBannerImage: { kind: "single", raw: setting.accordionBannerImage },
       heroImages: { kind: "json", raw: setting.heroImagesJson },
       topBannerImages: { kind: "json", raw: setting.topBannerImagesJson },
       popularCategoryImages: { kind: "json", raw: setting.popularCategoryImagesJson },
@@ -743,6 +752,7 @@ router.post("/migrate-images", requireAdminAuth, async (req, res, next) => {
     // Chỉ các cột ảnh mới được ghi — gõ rõ từng cột để khớp Prisma update input.
     const updates: {
       heroImage?: string;
+      accordionBannerImage?: string;
       heroImagesJson?: string;
       topBannerImagesJson?: string;
       popularCategoryImagesJson?: string;
@@ -767,6 +777,7 @@ router.post("/migrate-images", requireAdminAuth, async (req, res, next) => {
       if (result.migrated > 0) {
         const json = JSON.stringify(nextValues);
         if (field === "heroImage") updates.heroImage = nextValues[0] ?? "";
+        else if (field === "accordionBannerImage") updates.accordionBannerImage = nextValues[0] ?? "";
         else if (field === "heroImages") updates.heroImagesJson = json;
         else if (field === "topBannerImages") updates.topBannerImagesJson = json;
         else if (field === "popularCategoryImages") updates.popularCategoryImagesJson = json;
