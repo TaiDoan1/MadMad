@@ -131,8 +131,10 @@ export function HomePage() {
               src={activeHeroMediaUrl}
               muted
               playsInline
+              preload="auto"
               aria-hidden="true"
               className="block w-full h-auto opacity-0 pointer-events-none sm:hidden"
+              ref={(el) => { if (el) el.muted = true; }}
             />
           ) : (
             <img
@@ -166,7 +168,12 @@ export function HomePage() {
                 src={mediaUrl}
                 className={cls}
                 style={{ transform: `scale(${scale})` }}
-                autoPlay muted loop playsInline
+                autoPlay muted loop playsInline preload="auto"
+                ref={(el) => {
+                  if (!el) return;
+                  el.muted = true;
+                  if (isActive) el.play().catch(() => {});
+                }}
               />
             ) : (
               <ImageWithFallback
