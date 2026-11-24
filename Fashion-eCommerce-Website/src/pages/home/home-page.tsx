@@ -171,8 +171,21 @@ export function HomePage() {
                 autoPlay muted loop playsInline preload="auto"
                 ref={(el) => {
                   if (!el) return;
+                  el.setAttribute("muted", "");
                   el.muted = true;
                   if (isActive) el.play().catch(() => {});
+                }}
+                onCanPlay={(e) => {
+                  const v = e.currentTarget;
+                  v.setAttribute("muted", "");
+                  v.muted = true;
+                  if (isActive) v.play().catch(() => {});
+                }}
+                onLoadedMetadata={(e) => {
+                  const v = e.currentTarget;
+                  v.setAttribute("muted", "");
+                  v.muted = true;
+                  if (isActive) v.play().catch(() => {});
                 }}
               />
             ) : (
