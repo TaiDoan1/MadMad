@@ -10,7 +10,8 @@ import { cloudinarySrcSet, optimizeImageUrl } from "@/utils/cloudinary";
 // mobile cao 74svh; ảnh cao 100%, rộng tự động, không cắt xén.
 // Lúc mới mở chỉ hiện hình 1, chừa trắng bên trái hình 1: desktop là khoảng
 // trắng 58vw (vừa đủ để hình 1 lấp đầy phần còn lại), mobile là panel chữ
-// 75vw (hình 1 ló ra 25vw). Kéo tự do qua mới tới hình 2, 3, 4.
+// 55vw (hình 1 ló ra 45vw — vì ~14% đầu hình 1 là nền trắng nên panel
+// phải hẹp thì mẫu mới ló ra được). Kéo tự do qua mới tới hình 2, 3, 4.
 // Panel chữ có đoạn text giới thiệu bộ sưu tập (WINTER 2026) cho đỡ trống;
 // text nằm trong dải nên kéo thì chạy theo dải luôn.
 // Thả tay ra thì tự căn về vị trí chuẩn gần nhất (mỗi hình canh trái màn
@@ -170,17 +171,17 @@ export function AccordionBanner() {
       >
         {/* Panel chữ bên trái hình 1 — lúc mới mở chỉ hiện panel chữ + hình 1.
             Text nằm trong dải nên kéo thì chạy theo dải luôn. */}
-        <div ref={spacerRef} className="flex h-full w-[75vw] shrink-0 items-center bg-white sm:w-[58vw]">
+        <div ref={spacerRef} className="flex h-full w-[55vw] shrink-0 items-center bg-white sm:w-[58vw]">
           <div className="pl-[6vw] pr-[4vw]">
             <p
-              className="text-[17vw] leading-[0.85] tracking-wide text-black sm:text-[11vw]"
+              className="text-[15vw] leading-[0.85] tracking-wide text-black sm:text-[11vw]"
               style={{ fontFamily: "'Bebas Neue', 'Oswald', sans-serif" }}
             >
               WINTER
               <br />
               2026
             </p>
-            <p className="mt-[1.5vw] text-sm tracking-wide text-neutral-600">
+            <p className="mt-[1.5vw] text-xs tracking-wide text-neutral-600 sm:text-sm">
               {t("Bộ sưu tập mùa đông 2026", "The Winter 2026 collection")}
             </p>
             <p className="mt-[3vw] text-xs font-bold uppercase tracking-[0.25em] text-black">
