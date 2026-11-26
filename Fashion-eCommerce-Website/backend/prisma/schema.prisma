@@ -313,6 +313,7 @@ model DesignSample {
   pdfPrintUrl String?
   pdfFullUrl  String?
   pdfsJson    String?   // JSON lưu meta mỗi slot {name, size, uploadedAt} keyed by front/back/print/full
+  fabrics     String?   @default("[]") // JSON mảng dòng vải [{name, meters, rolls}] (cây vải)
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 }

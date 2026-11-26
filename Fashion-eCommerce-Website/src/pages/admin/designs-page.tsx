@@ -32,6 +32,22 @@ export type DesignPdf = {
 
 export type DesignPdfSlot = "front" | "back" | "print" | "full";
 
+// Một dòng vải dùng cho mẫu: tên vải + số mét + số cây.
+// Số mét / số cây để trống ở form được lưu thành 0 (backend validate >= 0).
+export type DesignFabric = {
+  name: string;
+  meters: number;
+  rolls: number;
+};
+
+// Bản nháp khi nhập trong popup: số mét / số cây giữ dạng chuỗi để cho phép
+// để trống, chỉ chuyển sang number lúc bấm Lưu.
+export type FabricDraft = {
+  name: string;
+  meters: string;
+  rolls: string;
+};
+
 export type Design = {
   id: string;
   code: string;
@@ -43,6 +59,7 @@ export type Design = {
   notes: string;
   steps: number;
   pdfs: Record<DesignPdfSlot, DesignPdf | null>;
+  fabrics: DesignFabric[];
   createdAt?: string;
   updatedAt?: string;
 };
@@ -118,6 +135,42 @@ function toDateInputValue(value: string | null | undefined): string {
   return `${year}-${month}-${day}`;
 }
 
+function normalizeFabric(raw: unknown): DesignFabric {
+  const item = (raw ?? {}) as Record<string, unknown>;
+  const meters = Number(item.meters ?? 0);
+  const rolls = Number(item.rolls ?? 0);
+  return {
+    name: String(item.name ?? ""),
+    meters: Number.isFinite(meters) && meters > 0 ? meters : 0,
+    rolls: Number.isFinite(rolls) && rolls > 0 ? rolls : 0,
+  };
+}
+
+// Dữ liệu vải từ backend (mảng JSON) -> bản nháp cho form trong popup.
+function toFabricDrafts(fabrics: DesignFabric[] | undefined): FabricDraft[] {
+  return (fabrics ?? []).map((fabric) => ({
+    name: fabric.name ?? "",
+    meters: fabric.meters ? String(fabric.meters) : "",
+    rolls: fabric.rolls ? String(fabric.rolls) : "",
+  }));
+}
+
+// Bản nháp -> payload gửi kèm PUT: bỏ dòng trống hoàn toàn, số để trống
+// thành 0, số âm kẹp về 0.
+function toFabricPayload(drafts: FabricDraft[]): DesignFabric[] {
+  return drafts
+    .filter((draft) => draft.name.trim() !== "" || draft.meters.trim() !== "" || draft.rolls.trim() !== "")
+    .map((draft) => {
+      const meters = Number.parseFloat(draft.meters);
+      const rolls = Number.parseFloat(draft.rolls);
+      return {
+        name: draft.name.trim(),
+        meters: Number.isFinite(meters) && meters > 0 ? meters : 0,
+        rolls: Number.isFinite(rolls) && rolls > 0 ? rolls : 0,
+      };
+    });
+}
+
 function normalizeDesign(raw: Record<string, unknown>): Design {
   const pdfs = (raw.pdfs ?? {}) as Record<string, DesignPdf | null | undefined>;
   return {
@@ -136,6 +189,7 @@ function normalizeDesign(raw: Record<string, unknown>): Design {
       print: pdfs.print ?? null,
       full: pdfs.full ?? null,
     },
+    fabrics: Array.isArray(raw.fabrics) ? raw.fabrics.map(normalizeFabric) : [],
     createdAt: raw.createdAt ? String(raw.createdAt) : undefined,
     updatedAt: raw.updatedAt ? String(raw.updatedAt) : undefined,
   };
@@ -232,6 +286,13 @@ export function AdminDesignsPage() {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
+  // Bản nháp "Cây vải" trong popup chi tiết. Chỉ lưu khi bấm "Lưu cây vải"
+  // (gửi kèm 1 lần PUT như các trường khác), không tự lưu khi gõ.
+  const [fabricDrafts, setFabricDrafts] = useState<FabricDraft[]>([]);
+  const [fabricsDirty, setFabricsDirty] = useState(false);
+  const [isSavingFabrics, setIsSavingFabrics] = useState(false);
+  const selectedFabricIdRef = useRef<string | null>(null);
+
   // Form thêm mẫu mới.
   const [formName, setFormName] = useState("");
   const [formType, setFormType] = useState(PRODUCT_TYPES[0]);
@@ -283,6 +344,49 @@ export function AdminDesignsPage() {
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [selected, showAddForm]);
+
+  // Đồng bộ bản nháp "Cây vải" khi mở popup của một mẫu khác. Chỉ chạy khi
+  // đổi mẫu (so id), để các lần PUT khác (PDF/trạng thái/bước) cập nhật
+  // `selected` không làm mất phần vải đang sửa dở.
+  useEffect(() => {
+    if (selected?.id !== selectedFabricIdRef.current) {
+      selectedFabricIdRef.current = selected?.id ?? null;
+      setFabricDrafts(toFabricDrafts(selected?.fabrics));
+      setFabricsDirty(false);
+    }
+  }, [selected]);
+
+  const fabricTotals = useMemo(() => {
+    let meters = 0;
+    let rolls = 0;
+    for (const draft of fabricDrafts) {
+      const m = Number.parseFloat(draft.meters);
+      const r = Number.parseFloat(draft.rolls);
+      if (Number.isFinite(m) && m > 0) meters += m;
+      if (Number.isFinite(r) && r > 0) rolls += r;
+    }
+    return { meters, rolls };
+  }, [fabricDrafts]);
+
+  const updateFabricDraft = useCallback((index: number, patch: Partial<FabricDraft>) => {
+    setFabricDrafts((prev) => prev.map((draft, i) => (i === index ? { ...draft, ...patch } : draft)));
+    setFabricsDirty(true);
+  }, []);
+
+  const handleAddFabricRow = useCallback(() => {
+    setFabricDrafts((prev) => [...prev, { name: "", meters: "", rolls: "" }]);
+    setFabricsDirty(true);
+  }, []);
+
+  const handleRemoveFabricRow = useCallback((index: number) => {
+    setFabricDrafts((prev) => prev.filter((_, i) => i !== index));
+    setFabricsDirty(true);
+  }, []);
+
+  const handleResetFabrics = useCallback(() => {
+    setFabricDrafts(toFabricDrafts(selected?.fabrics));
+    setFabricsDirty(false);
+  }, [selected]);
 
   const stats = useMemo(() => {
     const total = designs.length;
@@ -443,6 +547,24 @@ export function AdminDesignsPage() {
     [updateDesign, showToast],
   );
 
+  const handleSaveFabrics = useCallback(async () => {
+    if (!selected) return;
+    const fabrics = toFabricPayload(fabricDrafts);
+    setIsSavingFabrics(true);
+    try {
+      await updateDesign(selected, { fabrics });
+      // Đồng bộ lại bản nháp với dữ liệu đã lưu (dòng trống hoàn toàn đã
+      // bị lược, số để trống thành 0).
+      setFabricDrafts(toFabricDrafts(fabrics));
+      setFabricsDirty(false);
+      showToast("Đã lưu cây vải.");
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "Lưu cây vải thất bại.", "error");
+    } finally {
+      setIsSavingFabrics(false);
+    }
+  }, [selected, fabricDrafts, updateDesign, showToast]);
+
   const handleDelete = useCallback(async () => {
     if (!selected) return;
     setIsSaving(true);
@@ -505,6 +627,9 @@ export function AdminDesignsPage() {
 
   const openCard = (design: Design) => {
     setShowDeleteConfirm(false);
+    selectedFabricIdRef.current = design.id;
+    setFabricDrafts(toFabricDrafts(design.fabrics));
+    setFabricsDirty(false);
     setSelected(design);
   };
 
@@ -875,6 +1000,131 @@ export function AdminDesignsPage() {
                       </div>
                     );
                   })}
+                </div>
+              </div>
+
+              {/* Cây vải */}
+              <div className="mt-5">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-sm font-semibold">Cây vải</p>
+                  {fabricDrafts.length > 0 && (
+                    <p className="text-xs text-muted-foreground">
+                      Tổng: {fabricTotals.meters} m · {fabricTotals.rolls} cây
+                    </p>
+                  )}
+                </div>
+                {fabricDrafts.length === 0 ? (
+                  <p className="mt-2 text-sm text-muted-foreground">
+                    Chưa có dòng vải nào cho mẫu này.
+                  </p>
+                ) : (
+                  <div className="mt-2 space-y-2">
+                    <div
+                      aria-hidden="true"
+                      className="hidden grid-cols-[1fr_88px_88px_36px] gap-2 text-xs text-muted-foreground sm:grid"
+                    >
+                      <span>Tên vải</span>
+                      <span>Số mét</span>
+                      <span>Số cây</span>
+                      <span />
+                    </div>
+                    {fabricDrafts.map((draft, index) => (
+                      <div
+                        key={index}
+                        className="grid grid-cols-[1fr_88px_88px_36px] items-center gap-2"
+                      >
+                        <label className="sr-only" htmlFor={`fabric-name-${index}`}>
+                          Tên vải dòng {index + 1}
+                        </label>
+                        <input
+                          id={`fabric-name-${index}`}
+                          type="text"
+                          value={draft.name}
+                          onChange={(event) => updateFabricDraft(index, { name: event.target.value })}
+                          placeholder="Cotton 240gsm"
+                          className="w-full min-w-0 rounded-lg border border-border px-2.5 py-2 text-sm outline-none focus:border-primary"
+                        />
+                        <label className="sr-only" htmlFor={`fabric-meters-${index}`}>
+                          Số mét dòng {index + 1}
+                        </label>
+                        <input
+                          id={`fabric-meters-${index}`}
+                          type="number"
+                          min={0}
+                          step="any"
+                          inputMode="decimal"
+                          value={draft.meters}
+                          onChange={(event) => {
+                            const value = event.target.value;
+                            updateFabricDraft(index, {
+                              meters: value !== "" && Number(value) < 0 ? "0" : value,
+                            });
+                          }}
+                          placeholder="Số mét"
+                          className="w-full min-w-0 rounded-lg border border-border px-2.5 py-2 text-sm outline-none focus:border-primary"
+                        />
+                        <label className="sr-only" htmlFor={`fabric-rolls-${index}`}>
+                          Số cây dòng {index + 1}
+                        </label>
+                        <input
+                          id={`fabric-rolls-${index}`}
+                          type="number"
+                          min={0}
+                          step={1}
+                          inputMode="numeric"
+                          value={draft.rolls}
+                          onChange={(event) => {
+                            const value = event.target.value;
+                            updateFabricDraft(index, {
+                              rolls: value !== "" && Number(value) < 0 ? "0" : value,
+                            });
+                          }}
+                          placeholder="Số cây"
+                          className="w-full min-w-0 rounded-lg border border-border px-2.5 py-2 text-sm outline-none focus:border-primary"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveFabricRow(index)}
+                          aria-label={`Xóa dòng vải ${draft.name.trim() || index + 1}`}
+                          title="Xóa dòng vải này"
+                          className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-red-50 hover:text-red-600"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <div className="mt-3 flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={handleAddFabricRow}
+                    className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-sm font-medium hover:bg-muted"
+                  >
+                    <Plus className="h-4 w-4" />
+                    Thêm dòng vải
+                  </button>
+                  {fabricsDirty && (
+                    <>
+                      <button
+                        type="button"
+                        disabled={isSavingFabrics}
+                        onClick={() => void handleSaveFabrics()}
+                        className="rounded-lg bg-primary px-3 py-1.5 text-sm font-medium text-white disabled:opacity-50"
+                      >
+                        {isSavingFabrics ? "Đang lưu…" : "Lưu cây vải"}
+                      </button>
+                      <button
+                        type="button"
+                        disabled={isSavingFabrics}
+                        onClick={handleResetFabrics}
+                        className="rounded-lg border border-border px-3 py-1.5 text-sm font-medium hover:bg-muted disabled:opacity-50"
+                      >
+                        Hủy thay đổi
+                      </button>
+                      <span className="text-xs text-amber-700">Có thay đổi chưa lưu.</span>
+                    </>
+                  )}
                 </div>
               </div>
 

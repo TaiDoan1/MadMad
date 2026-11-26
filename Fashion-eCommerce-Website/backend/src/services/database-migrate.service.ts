@@ -20,6 +20,7 @@ const MIGRATION_FILES = [
   "create_client_error.sql",
   "create_page_view.sql",
   "create_design_samples.sql",
+  "add_design_fabrics.sql",
 ] as const;
 
 let migrationPromise: Promise<{ applied: string[] }> | null = null;

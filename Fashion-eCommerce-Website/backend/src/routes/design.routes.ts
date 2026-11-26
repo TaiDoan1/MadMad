@@ -40,6 +40,71 @@ function parsePdfsMeta(raw: string | null | undefined): Record<string, PdfSlotMe
   }
 }
 
+interface FabricRow {
+  name: string;
+  meters: number;
+  rolls: number;
+}
+
+// Đọc cột fabrics (TEXT chứa JSON string) thành mảng; dữ liệu cũ/hỏng -> [].
+function parseFabrics(raw: string | null | undefined): FabricRow[] {
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    const out: FabricRow[] = [];
+    for (const item of parsed) {
+      if (!item || typeof item !== "object" || Array.isArray(item)) continue;
+      const row = item as Record<string, unknown>;
+      const meters = typeof row.meters === "number" && Number.isFinite(row.meters) && row.meters >= 0 ? row.meters : 0;
+      const rolls = typeof row.rolls === "number" && Number.isFinite(row.rolls) && row.rolls >= 0 ? row.rolls : 0;
+      out.push({ name: typeof row.name === "string" ? row.name : "", meters, rolls });
+    }
+    return out;
+  } catch {
+    return [];
+  }
+}
+
+// Validate fabrics client gửi: phải là mảng, mỗi phần tử {name: string (được rỗng, thiếu -> ""), meters/rolls: số >= 0 (thiếu -> 0)}.
+function validateFabrics(value: unknown): { ok: true; value: FabricRow[] } | { ok: false; message: string } {
+  if (!Array.isArray(value)) {
+    return { ok: false, message: "fabrics phải là mảng các dòng vải [{name, meters, rolls}]" };
+  }
+  const out: FabricRow[] = [];
+  for (let i = 0; i < value.length; i++) {
+    const item = value[i];
+    if (!item || typeof item !== "object" || Array.isArray(item)) {
+      return { ok: false, message: `fabrics[${i}] phải là object {name, meters, rolls}` };
+    }
+    const row = item as Record<string, unknown>;
+    let name = "";
+    if (row.name === undefined) {
+      name = "";
+    } else if (typeof row.name === "string") {
+      name = row.name.trim();
+    } else {
+      return { ok: false, message: `fabrics[${i}].name phải là chuỗi` };
+    }
+    const meters = normalizeFabricNumber(row.meters, `fabrics[${i}].meters`);
+    if (typeof meters === "string") return { ok: false, message: meters };
+    const rolls = normalizeFabricNumber(row.rolls, `fabrics[${i}].rolls`);
+    if (typeof rolls === "string") return { ok: false, message: rolls };
+    out.push({ name, meters, rolls });
+  }
+  return { ok: true, value: out };
+}
+
+// Số mét / số cây: thiếu -> 0; chấp nhận số hoặc chuỗi số; còn lại trả về thông báo lỗi.
+function normalizeFabricNumber(value: unknown, label: string): number | string {
+  if (value === undefined || value === null || value === "") return 0;
+  const n = typeof value === "number" ? value : typeof value === "string" ? Number(value.trim()) : NaN;
+  if (typeof value === "boolean" || !Number.isFinite(n) || n < 0) {
+    return `${label} phải là số >= 0`;
+  }
+  return n;
+}
+
 // Gộp cột url + meta JSON thành dạng pdfs {front, back, print, full} cho API trả về.
 function serializeDesignSample(row: any) {
   const meta = parsePdfsMeta(row.pdfsJson);
@@ -59,6 +124,7 @@ function serializeDesignSample(row: any) {
   delete out.pdfPrintUrl;
   delete out.pdfFullUrl;
   delete out.pdfsJson;
+  out.fabrics = parseFabrics(row.fabrics);
   return { ...out, pdfs };
 }
 
@@ -201,13 +267,17 @@ router.get("/:id", requireAdminAuth, async (req, res, next) => {
 // POST /api/designs — Tạo mẫu mới (tự sinh code MM-NNN)
 router.post("/", requireAdminAuth, async (req, res, next) => {
   try {
-    const { name, type, assignee, deadline, status, steps, notes, pdfs } = req.body ?? {};
+    const { name, type, assignee, deadline, status, steps, notes, pdfs, fabrics } = req.body ?? {};
 
     if (!name || typeof name !== "string" || !name.trim()) {
       return res.status(400).json({ success: false, message: "Thiếu tên mẫu thiết kế (name)" });
     }
     if (status !== undefined && status !== null && status !== "" && !isValidStatus(status)) {
       return res.status(400).json({ success: false, message: "status không hợp lệ (CHUA_LAM / DANG_LAM / DONE)" });
+    }
+    const validatedFabrics = fabrics === undefined ? { ok: true as const, value: [] as FabricRow[] } : validateFabrics(fabrics);
+    if (!validatedFabrics.ok) {
+      return res.status(400).json({ success: false, message: validatedFabrics.message });
     }
     const parsedSteps = parseSteps(steps);
     if (steps !== undefined && steps !== null && steps !== "" && Number.isNaN(parsedSteps)) {
@@ -251,6 +321,7 @@ router.post("/", requireAdminAuth, async (req, res, next) => {
         pdfPrintUrl: merged.urls.print,
         pdfFullUrl: merged.urls.full,
         pdfsJson: Object.keys(merged.meta).length ? JSON.stringify(merged.meta) : null,
+        fabrics: JSON.stringify(validatedFabrics.value),
       },
     });
     res.status(201).json({ success: true, data: serializeDesignSample(created) });
@@ -267,13 +338,17 @@ router.put("/:id", requireAdminAuth, async (req, res, next) => {
       return res.status(404).json({ success: false, message: "Không tìm thấy mẫu thiết kế" });
     }
 
-    const { name, type, assignee, deadline, status, steps, notes, pdfs } = req.body ?? {};
+    const { name, type, assignee, deadline, status, steps, notes, pdfs, fabrics } = req.body ?? {};
 
     if (name !== undefined && (typeof name !== "string" || !name.trim())) {
       return res.status(400).json({ success: false, message: "name không được để trống" });
     }
     if (status !== undefined && status !== null && status !== "" && !isValidStatus(status)) {
       return res.status(400).json({ success: false, message: "status không hợp lệ (CHUA_LAM / DANG_LAM / DONE)" });
+    }
+    const validatedFabrics = fabrics === undefined ? null : validateFabrics(fabrics);
+    if (validatedFabrics && !validatedFabrics.ok) {
+      return res.status(400).json({ success: false, message: validatedFabrics.message });
     }
     const parsedSteps = parseSteps(steps);
     if (steps !== undefined && steps !== null && steps !== "" && Number.isNaN(parsedSteps)) {
@@ -310,6 +385,7 @@ router.put("/:id", requireAdminAuth, async (req, res, next) => {
     if (assignee !== undefined) data.assignee = typeof assignee === "string" ? assignee.trim() : "";
     if (deadline !== undefined) data.deadline = parsedDeadline ?? null;
     if (notes !== undefined) data.notes = typeof notes === "string" ? notes : "";
+    if (validatedFabrics) data.fabrics = JSON.stringify(validatedFabrics.value);
 
     const updated = await prisma.designSample.update({
       where: { id: req.params.id },
