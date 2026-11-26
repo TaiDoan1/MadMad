@@ -296,3 +296,23 @@ model PageView {
 
   @@unique([day, path])
 }
+
+// 🎨 Bảng Mẫu thiết kế (DesignSample)
+model DesignSample {
+  id          String    @id @default(uuid())
+  code        String    @unique // MM-001, MM-002...
+  name        String
+  type        String
+  assignee    String    // Text tự do: Design / Cả hai / tên người...
+  deadline    DateTime?
+  status      String    @default("CHUA_LAM") // CHUA_LAM, DANG_LAM, DONE
+  notes       String?   @default("")
+  steps       Int       @default(0) // Bước hiện tại 0-5; 5 = xong
+  pdfFrontUrl String?
+  pdfBackUrl  String?
+  pdfPrintUrl String?
+  pdfFullUrl  String?
+  pdfsJson    String?   // JSON lưu meta mỗi slot {name, size, uploadedAt} keyed by front/back/print/full
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}

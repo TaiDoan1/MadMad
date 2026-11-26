@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ClipboardList, LayoutDashboard, LogOut, Megaphone, Menu, Monitor, Package, Settings, ShoppingBag, ShieldCheck, X } from "lucide-react";
+import { ClipboardList, LayoutDashboard, LogOut, Megaphone, Menu, Monitor, Package, Palette, Settings, ShoppingBag, ShieldCheck, X } from "lucide-react";
 import { Link, Outlet, useLocation } from "react-router";
 
 import { brandLogo } from "@/assets/images";
@@ -11,6 +11,7 @@ const navItems = [
   { path: "/admin", icon: LayoutDashboard, label: "Tổng quan" },
   { path: "/admin/storefront", icon: Monitor, label: "Giao diện" },
   { path: "/admin/products", icon: Package, label: "Sản phẩm" },
+  { path: "/admin/designs", icon: Palette, label: "Mẫu thiết kế" },
   { path: "/admin/orders", icon: ShoppingBag, label: "Đơn hàng" },
   { path: "/admin/marketing", icon: Megaphone, label: "Marketing" },
   { path: "/admin/inventory", icon: ClipboardList, label: "Tồn kho" },

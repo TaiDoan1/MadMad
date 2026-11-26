@@ -10,6 +10,7 @@ import authRoutes    from "./routes/auth.routes";
 import logsRoutes    from "./routes/logs.routes";
 import marketingRoutes from "./routes/marketing.routes";
 import inventoryRoutes from "./routes/inventory.routes";
+import designRoutes from "./routes/design.routes";
 import observabilityRoutes from "./routes/observability.routes";
 import { ensureDatabaseMigrations } from "./services/database-migrate.service";
 
@@ -89,6 +90,7 @@ app.use("/api/auth",    authRoutes);
 app.use("/api/logs",    logsRoutes);
 app.use("/api/marketing", marketingRoutes);
 app.use("/api/inventory", inventoryRoutes);
+app.use("/api/designs", designRoutes);
 app.use("/api", observabilityRoutes); // POST/GET /api/client-errors, POST/GET /api/page-views
 
 // Global Error Handler Middleware — tự động ghi lối backend vào Database

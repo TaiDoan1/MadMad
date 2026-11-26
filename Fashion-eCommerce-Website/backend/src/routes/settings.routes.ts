@@ -711,9 +711,26 @@ router.get("/cache-version", async (req, res) => {
 router.post("/upload-signature", requireAdminAuth, async (req, res, next) => {
   try {
     const requestedFolder = typeof req.body?.folder === "string" ? req.body.folder : "madmad-products";
-    // Chỉ cho 2 folder đã dùng trong hệ thống, tránh ký cho folder tùy ý.
-    const folder = requestedFolder === "madmad-hero-videos" ? requestedFolder : "madmad-products";
-    const signature = createUploadSignature(folder);
+    const requestedResourceType = typeof req.body?.resource_type === "string" ? req.body.resource_type : "image";
+    // Folder madmad-designs CHỈ dùng để tải PDF (raw); 2 folder ảnh cũ CHỈ dùng với image.
+    // Folder khác hoặc resource_type khác thì 400.
+    if (requestedResourceType !== "image" && requestedResourceType !== "raw") {
+      return res.status(400).json({ success: false, message: "resource_type không hợp lệ (image / raw)" });
+    }
+    if (requestedFolder === "madmad-designs") {
+      if (requestedResourceType !== "raw") {
+        return res.status(400).json({ success: false, message: "Folder madmad-designs chỉ dùng để tải PDF (resource_type raw)." });
+      }
+      const signature = createUploadSignature("madmad-designs", { resourceType: "raw" });
+      return res.json(signature);
+    }
+    if (requestedFolder !== "madmad-products" && requestedFolder !== "madmad-hero-videos") {
+      return res.status(400).json({ success: false, message: "folder không hợp lệ." });
+    }
+    if (requestedResourceType !== "image") {
+      return res.status(400).json({ success: false, message: "Folder ảnh chỉ dùng với resource_type image." });
+    }
+    const signature = createUploadSignature(requestedFolder);
     res.json(signature);
   } catch (error: any) {
     console.error("❌ [UPLOAD-SIGNATURE] Không tạo được chữ ký:", error?.message || error);

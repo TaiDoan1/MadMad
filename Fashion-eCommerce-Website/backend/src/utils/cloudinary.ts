@@ -14,7 +14,10 @@ cloudinary.config({
  * Frontend dùng chữ ký này để tải file thẳng lên Cloudinary, không qua backend.
  * Trả về cloud_name / api_key (không phải secret) + timestamp + signature + folder.
  */
-export function createUploadSignature(folder = "madmad-products") {
+export function createUploadSignature(
+  folder = "madmad-products",
+  options?: { resourceType?: "image" | "raw" }
+) {
   const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
   const apiKey = process.env.CLOUDINARY_API_KEY;
   const apiSecret = process.env.CLOUDINARY_API_SECRET;
@@ -22,7 +25,11 @@ export function createUploadSignature(folder = "madmad-products") {
     throw new Error("Cloudinary chưa được cấu hình (thiếu CLOUDINARY_CLOUD_NAME / API_KEY / API_SECRET).");
   }
   const timestamp = Math.round(Date.now() / 1000);
+  // Mặc định "image" giữ nguyên hành vi ký ảnh cũ. "raw" dùng cho PDF thiết kế:
+  // resource_type phải có trong params ký VÀ trong request upload của frontend.
+  const resourceType = options?.resourceType === "raw" ? "raw" : "image";
   const paramsToSign: Record<string, string | number> = { timestamp, folder };
+  if (resourceType === "raw") paramsToSign.resource_type = "raw";
   const signature = cloudinary.utils.api_sign_request(paramsToSign, apiSecret);
   return {
     cloud_name: cloudName,
@@ -30,7 +37,8 @@ export function createUploadSignature(folder = "madmad-products") {
     timestamp,
     signature,
     folder,
-    upload_url: `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`,
+    ...(resourceType === "raw" ? { resource_type: "raw" as const } : {}),
+    upload_url: `https://api.cloudinary.com/v1_1/${cloudName}/${resourceType}/upload`,
   };
 }
 
