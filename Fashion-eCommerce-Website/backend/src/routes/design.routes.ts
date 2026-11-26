@@ -405,7 +405,7 @@ router.delete("/:id", requireAdminAuth, async (req, res, next) => {
       return res.status(404).json({ success: false, message: "Không tìm thấy mẫu thiết kế" });
     }
     await prisma.designSample.delete({ where: { id: req.params.id } });
-    res.json({ success: true, message: "Đã xóa mẫu thiết kế" });
+    res.json({ success: true, message: "Đã xóa mẫu thiết kế", data: { id: req.params.id } });
   } catch (error) {
     next(error);
   }

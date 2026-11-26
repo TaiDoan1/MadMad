@@ -12,6 +12,7 @@ import {
   FileUp,
   Palette,
   Plus,
+  RefreshCw,
   Search,
   Trash2,
   Upload,
@@ -316,8 +317,16 @@ export function AdminDesignsPage() {
       if (statusFilter !== "ALL") params.set("status", statusFilter);
       if (searchTerm.trim()) params.set("search", searchTerm.trim());
       const query = params.toString();
-      const data = await apiRequest<unknown>(`/designs${query ? `?${query}` : ""}`);
-      const list = Array.isArray(data) ? data : ((data as { designs?: unknown[] }).designs ?? []);
+      const res = await apiRequest<unknown>(`/designs${query ? `?${query}` : ""}`);
+      // apiRequest trả về toàn bộ JSON đã parse, không bóc envelope.
+      // Backend trả { success: true, data: [...], total } — bóc res.data
+      // trước, giữ res.designs / mảng trần làm phương án dự phòng.
+      const envelope = res as { data?: unknown; designs?: unknown[] };
+      const list = Array.isArray(res)
+        ? res
+        : Array.isArray(envelope.data)
+          ? envelope.data
+          : (envelope.designs ?? []);
       setDesigns((list as Record<string, unknown>[]).map(normalizeDesign));
     } catch (error) {
       setLoadError(error instanceof Error ? error.message : "Không tải được danh sách mẫu thiết kế.");
@@ -329,6 +338,22 @@ export function AdminDesignsPage() {
 
   useEffect(() => {
     loadDesigns();
+  }, [loadDesigns]);
+
+  // Load lại khi quay lại tab / cửa sổ: dữ liệu có thể đã đổi từ máy khác.
+  useEffect(() => {
+    const handleFocus = () => {
+      void loadDesigns();
+    };
+    const handleVisibilityChange = () => {
+      if (!document.hidden) void loadDesigns();
+    };
+    window.addEventListener("focus", handleFocus);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => {
+      window.removeEventListener("focus", handleFocus);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
   }, [loadDesigns]);
 
   // Đóng popup bằng phím Esc.
@@ -430,12 +455,20 @@ export function AdminDesignsPage() {
   const updateDesign = useCallback(
     async (design: Design, patch: Partial<Design>): Promise<Design> => {
       const body: Record<string, unknown> = { ...patch };
-      const data = await apiRequest<Record<string, unknown>>(`/designs/${design.id}`, {
+      const res = await apiRequest<Record<string, unknown>>(`/designs/${design.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       });
-      const updated = normalizeDesign({ ...design, ...patch, ...(data ?? {}) } as Record<string, unknown>);
+      // Backend trả envelope { success, data: {...} } — dùng bản ghi máy
+      // chủ trả về khi có id hợp lệ, chỉ fallback về giá trị local lạc
+      // quan khi máy chủ không trả bản ghi.
+      const raw = res as Record<string, unknown>;
+      const record = (raw?.data ?? (raw?.id ? raw : undefined)) as Record<string, unknown> | undefined;
+      const updated =
+        record && record.id
+          ? normalizeDesign(record)
+          : normalizeDesign({ ...design, ...patch } as Record<string, unknown>);
       applyDesignUpdate(updated);
       return updated;
     },
@@ -567,10 +600,16 @@ export function AdminDesignsPage() {
 
   const handleDelete = useCallback(async () => {
     if (!selected) return;
+    const deletedId = selected.id;
     setIsSaving(true);
     try {
-      await apiRequest(`/designs/${selected.id}`, { method: "DELETE" });
-      setDesigns((prev) => prev.filter((d) => d.id !== selected.id));
+      // apiRequest chỉ resolve khi response 2xx (không throw) — mọi 2xx
+      // đều coi là xóa thành công; lỗi thật từ máy chủ sẽ throw kèm đúng
+      // message của nó và rơi xuống catch bên dưới.
+      await apiRequest(`/designs/${deletedId}`, { method: "DELETE" });
+      // Load lại từ máy chủ rồi mới báo thành công + đóng popup, để danh
+      // sách không còn mẫu vừa xóa dù state local có lệch.
+      await loadDesigns();
       showToast("Đã xóa mẫu thiết kế.");
       setSelected(null);
       setShowDeleteConfirm(false);
@@ -579,7 +618,7 @@ export function AdminDesignsPage() {
     } finally {
       setIsSaving(false);
     }
-  }, [selected, showToast]);
+  }, [selected, loadDesigns, showToast]);
 
   const resetAddForm = () => {
     setFormName("");
@@ -599,7 +638,7 @@ export function AdminDesignsPage() {
       }
       setIsSaving(true);
       try {
-        const data = await apiRequest<Record<string, unknown>>("/designs", {
+        const res = await apiRequest<Record<string, unknown>>("/designs", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -611,8 +650,27 @@ export function AdminDesignsPage() {
             notes: formNotes.trim(),
           }),
         });
-        const created = normalizeDesign(data);
+        // Backend trả envelope { success, data: {...} } — bóc res.data
+        // trước khi normalize (normalize cả envelope sẽ ra id/code/name
+        // rỗng). Không có bản ghi trả về thì dùng giá trị form.
+        const raw = res as Record<string, unknown>;
+        const record = (raw?.data ?? (raw?.id ? raw : undefined)) as Record<string, unknown> | undefined;
+        const created =
+          record && record.id
+            ? normalizeDesign(record)
+            : normalizeDesign({
+                name: formName.trim(),
+                type: formType,
+                assignee: formAssignee.trim(),
+                deadline: formDeadline ? new Date(`${formDeadline}T00:00:00`).toISOString() : null,
+                steps: formSteps,
+                notes: formNotes.trim(),
+                status: "CHUA_LAM",
+              } as Record<string, unknown>);
         setDesigns((prev) => [created, ...prev]);
+        // Load lại từ máy chủ để danh sách khớp đúng bản ghi đã lưu
+        // (code MM-NNN do server sinh, id thật để xóa/sửa sau đó).
+        await loadDesigns();
         showToast(`Đã thêm mẫu mới${created.code ? ` ${created.code}` : ""}.`);
         resetAddForm();
         setShowAddForm(false);
@@ -622,7 +680,7 @@ export function AdminDesignsPage() {
         setIsSaving(false);
       }
     },
-    [formName, formType, formAssignee, formDeadline, formSteps, formNotes, showToast],
+    [formName, formType, formAssignee, formDeadline, formSteps, formNotes, loadDesigns, showToast],
   );
 
   const openCard = (design: Design) => {
@@ -704,17 +762,30 @@ export function AdminDesignsPage() {
             </button>
           ))}
         </div>
-        <label className="relative block w-full md:w-72">
-          <span className="sr-only">Tìm kiếm mẫu thiết kế</span>
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <input
-            type="search"
-            value={searchTerm}
-            onChange={(event) => setSearchTerm(event.target.value)}
-            placeholder="Tìm theo tên, loại, mã mẫu…"
-            className="w-full rounded-lg border border-border bg-white py-2 pl-9 pr-3 text-sm outline-none focus:border-primary"
-          />
-        </label>
+        <div className="flex items-center gap-2">
+          <label className="relative block w-full md:w-72">
+            <span className="sr-only">Tìm kiếm mẫu thiết kế</span>
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <input
+              type="search"
+              value={searchTerm}
+              onChange={(event) => setSearchTerm(event.target.value)}
+              placeholder="Tìm theo tên, loại, mã mẫu…"
+              className="w-full rounded-lg border border-border bg-white py-2 pl-9 pr-3 text-sm outline-none focus:border-primary"
+            />
+          </label>
+          <button
+            type="button"
+            onClick={() => void loadDesigns()}
+            disabled={isLoading}
+            aria-label="Làm mới danh sách mẫu thiết kế"
+            title="Làm mới danh sách"
+            className="flex shrink-0 items-center gap-2 rounded-lg border border-border bg-white px-3 py-2 text-sm font-medium hover:bg-muted disabled:opacity-50"
+          >
+            <RefreshCw className="h-4 w-4" />
+            Làm mới
+          </button>
+        </div>
       </div>
 
       {/* Lưới card mẫu */}
