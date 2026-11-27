@@ -131,8 +131,8 @@ function countPdfs(design: Design): number {
 // mở trình xem PDF. Thêm đuôi .pdf vào URL phân phối lúc hiển thị — Cloudinary
 // vẫn trả đúng file đó với Content-Type: application/pdf. Chỉ làm ở lúc hiển
 // thị, không sửa URL đã lưu trong database nên file PDF cũ vẫn xem/tải được.
-function withPdfExtension(url: string): string {
-  if (!url) return url;
+function withPdfExtension(url: string | null | undefined): string {
+  if (!url) return "";
   const [base, query] = url.split("?");
   const clean = base.replace(/\/$/, "");
   if (/\.pdf$/i.test(clean)) return url;
@@ -141,8 +141,11 @@ function withPdfExtension(url: string): string {
 
 // Link tải: chèn fl_attachment để Cloudinary ép tải file về kèm đúng tên file,
 // vì thuộc tính download của thẻ <a> bị trình duyệt bỏ qua với URL khác domain.
-function pdfDownloadUrl(url: string, filename: string): string {
+// URL null/rỗng thì trả về rỗng, KHÔNG gọi .indexOf (gọi trên null sẽ sập trang).
+function pdfDownloadUrl(url: string | null | undefined, filename: string): string {
+  if (!url) return "";
   const viewUrl = withPdfExtension(url);
+  if (!viewUrl) return "";
   const safeName = (filename || "file.pdf").replace(/[^\w.\-À-ỹà-ỹ ]+/g, "_");
   const marker = "/upload/";
   const idx = viewUrl.indexOf(marker);
@@ -197,6 +200,24 @@ function toFabricPayload(drafts: FabricDraft[]): DesignFabric[] {
     });
 }
 
+// Backend luôn trả 1 object cho mỗi slot PDF, kể cả ô trống
+// ({url: null, name: null, size: null, uploadedAt: null}). Ép ô không có URL
+// thật thành null để nút Xem/Tải chỉ hiện khi có file, và để đếm PDF
+// (countPdfs) không tính ô trống. Nếu không, 1 ô trống cũng render link và
+// pdfDownloadUrl sẽ gọi .indexOf trên null làm sập cả trang.
+function normalizePdf(raw: unknown): DesignPdf | null {
+  if (!raw || typeof raw !== "object") return null;
+  const pdf = raw as Record<string, unknown>;
+  const url = typeof pdf.url === "string" && pdf.url.trim() ? pdf.url.trim() : null;
+  if (!url) return null;
+  return {
+    url,
+    name: typeof pdf.name === "string" ? pdf.name : "",
+    size: typeof pdf.size === "number" ? pdf.size : 0,
+    uploadedAt: typeof pdf.uploadedAt === "string" ? pdf.uploadedAt : "",
+  };
+}
+
 function normalizeDesign(raw: Record<string, unknown>): Design {
   const pdfs = (raw.pdfs ?? {}) as Record<string, DesignPdf | null | undefined>;
   return {
@@ -210,10 +231,10 @@ function normalizeDesign(raw: Record<string, unknown>): Design {
     notes: String(raw.notes ?? ""),
     steps: Math.max(0, Math.min(5, Number(raw.steps ?? 0) || 0)),
     pdfs: {
-      front: pdfs.front ?? null,
-      back: pdfs.back ?? null,
-      print: pdfs.print ?? null,
-      full: pdfs.full ?? null,
+      front: normalizePdf(pdfs.front),
+      back: normalizePdf(pdfs.back),
+      print: normalizePdf(pdfs.print),
+      full: normalizePdf(pdfs.full),
     },
     fabrics: Array.isArray(raw.fabrics) ? raw.fabrics.map(normalizeFabric) : [],
     createdAt: raw.createdAt ? String(raw.createdAt) : undefined,
@@ -1014,7 +1035,7 @@ export function AdminDesignsPage() {
                           <FileText className="h-4 w-4 text-muted-foreground" />
                           {slot.label}
                         </p>
-                        {pdf ? (
+                        {pdf && pdf.url ? (
                           <div className="mt-2 space-y-2">
                             <p className="break-all text-sm font-medium">{pdf.name}</p>
                             <p className="text-xs text-muted-foreground">
