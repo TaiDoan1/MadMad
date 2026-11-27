@@ -25,11 +25,14 @@ export function createUploadSignature(
     throw new Error("Cloudinary chưa được cấu hình (thiếu CLOUDINARY_CLOUD_NAME / API_KEY / API_SECRET).");
   }
   const timestamp = Math.round(Date.now() / 1000);
-  // Mặc định "image" giữ nguyên hành vi ký ảnh cũ. "raw" dùng cho PDF thiết kế:
-  // resource_type phải có trong params ký VÀ trong request upload của frontend.
+  // Mặc định "image" giữ nguyên hành vi ký ảnh cũ. "raw" dùng cho PDF thiết kế.
+  // resource_type KHÔNG được đưa vào params ký: Cloudinary tính chữ ký chỉ trên
+  // timestamp + folder (chuỗi ký là "folder=...&timestamp=..."), vì resource_type
+  // đã nằm trong upload_url (https://api.cloudinary.com/v1_1/<cloud>/raw/upload).
+  // Đưa resource_type vào params ký sẽ làm chữ ký lệch và Cloudinary báo
+  // "Invalid Signature" khi up PDF.
   const resourceType = options?.resourceType === "raw" ? "raw" : "image";
   const paramsToSign: Record<string, string | number> = { timestamp, folder };
-  if (resourceType === "raw") paramsToSign.resource_type = "raw";
   const signature = cloudinary.utils.api_sign_request(paramsToSign, apiSecret);
   return {
     cloud_name: cloudName,
