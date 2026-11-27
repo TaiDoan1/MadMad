@@ -420,15 +420,26 @@ router.post("/:id/pdf", requireAdminAuth, async (req, res, next) => {
     }
     const slotKey = slot as PdfSlotKey;
 
-    if (typeof fileDataUrl !== "string" || !fileDataUrl.startsWith(PDF_DATA_URL_PREFIX)) {
+    // iPhone: FileReader.readAsDataURL lấy MIME từ file.type, có thể rỗng
+    // hoặc sai (vd application/octet-stream) dù file thật là .pdf — nên chỉ
+    // yêu cầu đúng dạng data URL base64, không ép tiền tố PDF. Xác nhận thật
+    // sự là PDF ở bước kiểm tra 4 byte đầu "%PDF" bên dưới.
+    const base64MarkerIndex = typeof fileDataUrl === "string" ? fileDataUrl.indexOf(";base64,") : -1;
+    if (
+      typeof fileDataUrl !== "string" ||
+      !fileDataUrl.startsWith("data:") ||
+      base64MarkerIndex === -1
+    ) {
       return res.status(400).json({ success: false, message: "fileDataUrl phải là data URL base64 của file PDF." });
     }
 
     // Giải mã base64 ra Buffer để chặn file rỗng / không phải PDF / quá lớn
     // TRƯỚC KHI up lên Cloudinary (file iCloud 0 byte trên iPhone là nguyên
     // nhân gốc của lỗi up "thành công" nhưng file không tồn tại).
-    const base64 = fileDataUrl.slice(PDF_DATA_URL_PREFIX.length);
+    const base64 = fileDataUrl.slice(base64MarkerIndex + ";base64,".length);
     const buffer = Buffer.from(base64, "base64");
+    // Chuẩn hóa về đúng MIME PDF để Cloudinary nhận đúng định dạng.
+    const normalizedFileDataUrl = PDF_DATA_URL_PREFIX + base64;
     if (buffer.length === 0) {
       return res.status(400).json({
         success: false,
@@ -447,7 +458,7 @@ router.post("/:id/pdf", requireAdminAuth, async (req, res, next) => {
     // Up qua backend bằng SDK; lỗi Cloudinary -> 502 với message của Cloudinary.
     let uploaded: { secure_url: string; bytes: number };
     try {
-      uploaded = await uploadPdfDataUrl(fileDataUrl);
+      uploaded = await uploadPdfDataUrl(normalizedFileDataUrl);
     } catch (error: any) {
       return res.status(502).json({
         success: false,

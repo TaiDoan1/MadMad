@@ -290,6 +290,11 @@ function uploadPdfViaBackend(
       reader.readAsDataURL(file);
     });
 
+    // file.type trên iPhone (nhất là file iCloud) có thể rỗng hoặc sai nên
+    // MIME trong data URL không đáng tin — ép lại tiền tố PDF, giữ nguyên
+    // phần base64. File đã được xác nhận là PDF ở handlePdfFile.
+    const normalizedFileDataUrl = `data:application/pdf;base64,${fileDataUrl.slice(fileDataUrl.indexOf(",") + 1)}`;
+
     return new Promise<Design>((resolve, reject) => {
       const xhr = new XMLHttpRequest();
       xhr.open("POST", `${API_URL}/designs/${designId}/pdf`);
@@ -315,7 +320,7 @@ function uploadPdfViaBackend(
         }
       };
       xhr.onerror = () => reject(new Error("Mất kết nối khi tải file PDF lên."));
-      xhr.send(JSON.stringify({ slot, fileName: file.name, fileDataUrl }));
+      xhr.send(JSON.stringify({ slot, fileName: file.name, fileDataUrl: normalizedFileDataUrl }));
     });
   })();
 }
