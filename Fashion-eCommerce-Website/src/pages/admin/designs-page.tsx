@@ -126,6 +126,31 @@ function countPdfs(design: Design): number {
   return PDF_SLOTS.filter((slot) => design.pdfs?.[slot.key]).length;
 }
 
+// Cloudinary trả secure_url cho file raw KHÔNG có đuôi .pdf (public_id tự sinh
+// không kèm đuôi), nên Safari trên iPhone không nhận ra đó là file PDF và không
+// mở trình xem PDF. Thêm đuôi .pdf vào URL phân phối lúc hiển thị — Cloudinary
+// vẫn trả đúng file đó với Content-Type: application/pdf. Chỉ làm ở lúc hiển
+// thị, không sửa URL đã lưu trong database nên file PDF cũ vẫn xem/tải được.
+function withPdfExtension(url: string): string {
+  if (!url) return url;
+  const [base, query] = url.split("?");
+  const clean = base.replace(/\/$/, "");
+  if (/\.pdf$/i.test(clean)) return url;
+  return `${clean}.pdf${query ? `?${query}` : ""}`;
+}
+
+// Link tải: chèn fl_attachment để Cloudinary ép tải file về kèm đúng tên file,
+// vì thuộc tính download của thẻ <a> bị trình duyệt bỏ qua với URL khác domain.
+function pdfDownloadUrl(url: string, filename: string): string {
+  const viewUrl = withPdfExtension(url);
+  const safeName = (filename || "file.pdf").replace(/[^\w.\-À-ỹà-ỹ ]+/g, "_");
+  const marker = "/upload/";
+  const idx = viewUrl.indexOf(marker);
+  if (idx === -1) return viewUrl;
+  const insertAt = idx + marker.length;
+  return `${viewUrl.slice(0, insertAt)}fl_attachment:${encodeURIComponent(safeName)}/${viewUrl.slice(insertAt)}`;
+}
+
 function toDateInputValue(value: string | null | undefined): string {
   if (!value) return "";
   const date = new Date(value);
@@ -997,7 +1022,7 @@ export function AdminDesignsPage() {
                             </p>
                             <div className="flex flex-wrap gap-2">
                               <a
-                                href={pdf.url}
+                                href={withPdfExtension(pdf.url)}
                                 target="_blank"
                                 rel="noreferrer"
                                 className="flex items-center gap-1 rounded-lg border border-border px-2.5 py-1.5 text-xs font-medium hover:bg-muted"
@@ -1006,7 +1031,7 @@ export function AdminDesignsPage() {
                                 Xem PDF
                               </a>
                               <a
-                                href={pdf.url}
+                                href={pdfDownloadUrl(pdf.url, pdf.name)}
                                 download={pdf.name}
                                 className="flex items-center gap-1 rounded-lg border border-border px-2.5 py-1.5 text-xs font-medium hover:bg-muted"
                               >
