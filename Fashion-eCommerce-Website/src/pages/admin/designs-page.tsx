@@ -1,7 +1,8 @@
 // Trang Quản trị — Quản lý mẫu thiết kế.
 // Dữ liệu thật từ backend (GET/POST/PUT/DELETE /api/designs, header x-admin-key).
-// File PDF up thẳng lên Cloudinary (signed upload, resource_type raw, folder
-// madmad-designs) rồi lưu secure_url về backend qua PUT /api/designs/:id.
+// File PDF up qua backend (POST /api/designs/:id/pdf, body JSON chứa data URL
+// base64); backend up lên Cloudinary (folder madmad-designs), kiểm chứng file
+// tồn tại rồi mới lưu URL về database và trả lại bản ghi đã cập nhật.
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import {
@@ -271,58 +272,50 @@ async function apiRequest<T>(path: string, init?: RequestInit): Promise<T> {
   return (await res.json()) as T;
 }
 
-type UploadSignature = {
-  cloud_name: string;
-  api_key: string;
-  timestamp: number;
-  signature: string;
-  folder: string;
-  resource_type?: string;
-  upload_url: string;
-};
-
-// Xin chữ ký up PDF (raw) rồi up thẳng lên Cloudinary bằng XHR để báo tiến trình.
-function uploadPdfToCloudinary(
+// Up PDF qua backend: đọc file thành data URL base64 rồi POST JSON tới
+// POST /api/designs/:id/pdf. Backend up lên Cloudinary, kiểm chứng file tồn
+// tại rồi mới lưu và trả lại bản ghi đã cập nhật (envelope { success, data }).
+// Dùng XHR để báo tiến trình up như luồng cũ.
+function uploadPdfViaBackend(
+  designId: string,
+  slot: DesignPdfSlot,
   file: File,
   onProgress?: (percent: number) => void,
-): Promise<{ secure_url: string; bytes: number }> {
+): Promise<Design> {
   return (async () => {
-    const sigRes = await fetch(`${API_URL}/settings/upload-signature`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "x-admin-key": getAdminKey() },
-      body: JSON.stringify({ folder: "madmad-designs", resource_type: "raw" }),
+    const fileDataUrl = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result));
+      reader.onerror = () => reject(new Error("Không đọc được file PDF."));
+      reader.readAsDataURL(file);
     });
-    if (!sigRes.ok) throw new Error(`Không xin được chữ ký upload (HTTP ${sigRes.status}).`);
-    const sig = (await sigRes.json()) as UploadSignature;
 
-    return new Promise<{ secure_url: string; bytes: number }>((resolve, reject) => {
-      const form = new FormData();
-      form.append("file", file);
-      form.append("api_key", sig.api_key);
-      form.append("timestamp", String(sig.timestamp));
-      form.append("signature", sig.signature);
-      form.append("folder", sig.folder);
-      form.append("resource_type", "raw");
-
+    return new Promise<Design>((resolve, reject) => {
       const xhr = new XMLHttpRequest();
-      xhr.open("POST", sig.upload_url);
+      xhr.open("POST", `${API_URL}/designs/${designId}/pdf`);
+      xhr.setRequestHeader("Content-Type", "application/json");
+      xhr.setRequestHeader("x-admin-key", getAdminKey());
       xhr.upload.onprogress = (event) => {
         if (event.lengthComputable && onProgress) onProgress(Math.round((event.loaded / event.total) * 100));
       };
       xhr.onload = () => {
         try {
-          const data = JSON.parse(xhr.responseText) as { secure_url?: string; bytes?: number; error?: { message?: string } };
-          if (xhr.status >= 200 && xhr.status < 300 && data.secure_url) {
-            resolve({ secure_url: data.secure_url, bytes: data.bytes ?? file.size });
+          const res = JSON.parse(xhr.responseText) as {
+            success?: boolean;
+            message?: string;
+            data?: Record<string, unknown>;
+          };
+          if (xhr.status >= 200 && xhr.status < 300 && res.success && res.data) {
+            resolve(normalizeDesign(res.data));
           } else {
-            reject(new Error(data.error?.message || `Tải file PDF thất bại (HTTP ${xhr.status}).`));
+            reject(new Error(res.message || "Tải file PDF thất bại."));
           }
         } catch {
-          reject(new Error(`Tải file PDF thất bại (HTTP ${xhr.status}).`));
+          reject(new Error("Tải file PDF thất bại."));
         }
       };
       xhr.onerror = () => reject(new Error("Mất kết nối khi tải file PDF lên."));
-      xhr.send(form);
+      xhr.send(JSON.stringify({ slot, fileName: file.name, fileDataUrl }));
     });
   })();
 }
@@ -556,6 +549,12 @@ export function AdminDesignsPage() {
   const handlePdfFile = useCallback(
     async (design: Design, slot: DesignPdfSlot, file: File | undefined) => {
       if (!file) return;
+      // File 0 byte (thường là file iCloud trên iPhone chưa tải về hết):
+      // chặn ngay, không up, không lưu mục file.
+      if (file.size === 0) {
+        showToast("File rỗng, vui lòng mở file trong app Tệp để tải về đầy đủ rồi chọn lại.", "error");
+        return;
+      }
       const isPdf =
         file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
       if (!isPdf) {
@@ -565,14 +564,9 @@ export function AdminDesignsPage() {
       setUploadingSlot(slot);
       setUploadProgress(0);
       try {
-        const uploaded = await uploadPdfToCloudinary(file, setUploadProgress);
-        const pdf: DesignPdf = {
-          url: uploaded.secure_url,
-          name: file.name,
-          size: uploaded.bytes,
-          uploadedAt: new Date().toISOString(),
-        };
-        const updated = await savePdfChange(design, slot, pdf);
+        // Backend đã lưu file + tính status rồi, chỉ áp dụng bản ghi trả về.
+        const updated = await uploadPdfViaBackend(design.id, slot, file, setUploadProgress);
+        applyDesignUpdate(updated);
         const pdfCount = countPdfs(updated);
         showToast(
           pdfCount === 4
@@ -586,7 +580,7 @@ export function AdminDesignsPage() {
         setUploadProgress(0);
       }
     },
-    [savePdfChange, showToast],
+    [applyDesignUpdate, showToast],
   );
 
   const handleRemovePdf = useCallback(

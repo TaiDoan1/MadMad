@@ -108,4 +108,35 @@ export async function uploadToCloudinary(imageStr: string): Promise<string> {
   }
 }
 
+/**
+ * Upload file PDF (data URL base64) lên Cloudinary QUA BACKEND.
+ * Dùng cho trang admin "Quản lý mẫu thiết kế": frontend gửi fileDataUrl về
+ * backend, backend tự up lên Cloudinary bằng SDK rồi kiểm chứng trước khi lưu.
+ * Khác uploadToCloudinary (nuốt lỗi, trả lại input khi lỗi), hàm này THROW lỗi
+ * rõ ràng khi Cloudinary lỗi hoặc không trả secure_url — caller phải bắt và
+ * trả 502, TUYỆT ĐỐI không lưu URL khi chưa chắc file tồn tại trên Cloudinary.
+ */
+export async function uploadPdfDataUrl(fileDataUrl: string): Promise<{ secure_url: string; bytes: number }> {
+  if (!fileDataUrl || typeof fileDataUrl !== "string") {
+    throw new Error("Thiếu dữ liệu file PDF.");
+  }
+  let result;
+  try {
+    result = await cloudinary.uploader.upload(fileDataUrl, {
+      folder: "madmad-designs",
+      resource_type: "raw",
+    });
+  } catch (error: any) {
+    // Chỉ lộ message lỗi của Cloudinary, không lộ secret.
+    throw new Error(`Cloudinary upload thất bại: ${error?.message || String(error)}`);
+  }
+  if (!result || typeof result.secure_url !== "string" || !result.secure_url) {
+    throw new Error("Cloudinary không trả về secure_url.");
+  }
+  return {
+    secure_url: result.secure_url,
+    bytes: typeof result.bytes === "number" ? result.bytes : 0,
+  };
+}
+
 

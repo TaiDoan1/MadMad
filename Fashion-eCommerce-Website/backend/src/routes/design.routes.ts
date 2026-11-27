@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { prisma } from "../config/prisma";
 import { requireAdminAuth } from "../utils/auth.middleware";
+import { uploadPdfDataUrl } from "../utils/cloudinary";
 
 const router = Router();
 
@@ -390,6 +391,106 @@ router.put("/:id", requireAdminAuth, async (req, res, next) => {
     const updated = await prisma.designSample.update({
       where: { id: req.params.id },
       data,
+    });
+    res.json({ success: true, data: serializeDesignSample(updated) });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// POST /api/designs/:id/pdf — Up 1 file PDF cho 1 slot, ĐI QUA BACKEND.
+// Frontend gửi { slot, fileName, fileDataUrl } (data URL base64); backend tự
+// up lên Cloudinary bằng SDK, kiểm chứng secure_url + bytes > 0 rồi MỚI lưu.
+// (Luồng up thẳng từ trình duyệt đã thất bại: Cloudinary trả secure_url nhưng
+// file 0 byte không tồn tại — 404 ở mọi dạng URL — nên không dùng nữa.)
+const MAX_PDF_BYTES = 20 * 1024 * 1024; // 20MB (giới hạn file PDF giải mã)
+const PDF_DATA_URL_PREFIX = "data:application/pdf;base64,";
+
+router.post("/:id/pdf", requireAdminAuth, async (req, res, next) => {
+  try {
+    const existing = await prisma.designSample.findUnique({ where: { id: req.params.id } });
+    if (!existing) {
+      return res.status(404).json({ success: false, message: "Không tìm thấy mẫu thiết kế" });
+    }
+
+    const { slot, fileName, fileDataUrl } = req.body ?? {};
+
+    if (typeof slot !== "string" || !(PDF_SLOTS as readonly string[]).includes(slot)) {
+      return res.status(400).json({ success: false, message: "slot không hợp lệ (front / back / print / full)" });
+    }
+    const slotKey = slot as PdfSlotKey;
+
+    if (typeof fileDataUrl !== "string" || !fileDataUrl.startsWith(PDF_DATA_URL_PREFIX)) {
+      return res.status(400).json({ success: false, message: "fileDataUrl phải là data URL base64 của file PDF." });
+    }
+
+    // Giải mã base64 ra Buffer để chặn file rỗng / không phải PDF / quá lớn
+    // TRƯỚC KHI up lên Cloudinary (file iCloud 0 byte trên iPhone là nguyên
+    // nhân gốc của lỗi up "thành công" nhưng file không tồn tại).
+    const base64 = fileDataUrl.slice(PDF_DATA_URL_PREFIX.length);
+    const buffer = Buffer.from(base64, "base64");
+    if (buffer.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "File rỗng, vui lòng mở file trong app Tệp để tải về đầy đủ rồi chọn lại.",
+      });
+    }
+    if (buffer.length > MAX_PDF_BYTES) {
+      return res.status(400).json({ success: false, message: "File PDF quá lớn (tối đa 20MB)." });
+    }
+    if (buffer.subarray(0, 4).toString("ascii") !== "%PDF") {
+      return res.status(400).json({ success: false, message: "File không phải định dạng PDF." });
+    }
+
+    const name = typeof fileName === "string" && fileName.trim() ? fileName.trim() : "file.pdf";
+
+    // Up qua backend bằng SDK; lỗi Cloudinary -> 502 với message của Cloudinary.
+    let uploaded: { secure_url: string; bytes: number };
+    try {
+      uploaded = await uploadPdfDataUrl(fileDataUrl);
+    } catch (error: any) {
+      return res.status(502).json({
+        success: false,
+        message: error?.message || "Cloudinary không lưu được file, vui lòng thử lại.",
+      });
+    }
+
+    // KIỂM CHỨNG: chỉ lưu khi secure_url không rỗng VÀ bytes > 0.
+    if (!uploaded.secure_url || uploaded.bytes <= 0) {
+      return res.status(502).json({
+        success: false,
+        message: "Cloudinary không lưu được file, vui lòng thử lại.",
+      });
+    }
+
+    // Chỉ khi kiểm chứng xong mới lưu — dùng đúng helper sẵn có, giữ nguyên
+    // luật tự động: đủ 4/4 -> DONE + steps 5.
+    const current = serializeDesignSample(existing).pdfs;
+    const merged = mergePdfs(
+      { [slotKey]: { url: uploaded.secure_url, name, size: uploaded.bytes, uploadedAt: new Date().toISOString() } },
+      current
+    );
+    const hasAllPdfs = PDF_SLOTS.every((s) => merged.urls[s]);
+    const { status: finalStatus, steps: finalSteps } = resolveStatusSteps({
+      clientStatus: undefined,
+      clientSteps: undefined,
+      hasAllPdfs,
+      wasDone: existing.status === "DONE",
+      currentStatus: existing.status,
+      currentSteps: existing.steps,
+    });
+
+    const updated = await prisma.designSample.update({
+      where: { id: req.params.id },
+      data: {
+        status: finalStatus,
+        steps: finalSteps,
+        pdfFrontUrl: merged.urls.front,
+        pdfBackUrl: merged.urls.back,
+        pdfPrintUrl: merged.urls.print,
+        pdfFullUrl: merged.urls.full,
+        pdfsJson: Object.keys(merged.meta).length ? JSON.stringify(merged.meta) : null,
+      },
     });
     res.json({ success: true, data: serializeDesignSample(updated) });
   } catch (error) {
