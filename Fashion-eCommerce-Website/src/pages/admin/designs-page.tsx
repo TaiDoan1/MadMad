@@ -154,6 +154,16 @@ function pdfDownloadUrl(url: string | null | undefined, filename: string): strin
   return `${viewUrl.slice(0, insertAt)}fl_attachment:${encodeURIComponent(safeName)}/${viewUrl.slice(insertAt)}`;
 }
 
+// Trình duyệt trong app của iPhone (WKWebView) không mở được trình xem PDF
+// khi bấm thẳng vào link file PDF trên Cloudinary (ra trang trắng có dấu "?").
+// Mở qua Google Docs Viewer để xem được PDF trên mọi trình duyệt.
+// URL rỗng thì trả "" (không tạo link viewer rỗng).
+function googleDocsViewerUrl(pdfUrl: string | null | undefined): string {
+  const viewUrl = withPdfExtension(pdfUrl);
+  if (!viewUrl) return "";
+  return `https://docs.google.com/viewer?url=${encodeURIComponent(viewUrl)}&embedded=true`;
+}
+
 function toDateInputValue(value: string | null | undefined): string {
   if (!value) return "";
   const date = new Date(value);
@@ -1043,7 +1053,7 @@ export function AdminDesignsPage() {
                             </p>
                             <div className="flex flex-wrap gap-2">
                               <a
-                                href={withPdfExtension(pdf.url)}
+                                href={googleDocsViewerUrl(pdf.url)}
                                 target="_blank"
                                 rel="noreferrer"
                                 className="flex items-center gap-1 rounded-lg border border-border px-2.5 py-1.5 text-xs font-medium hover:bg-muted"
