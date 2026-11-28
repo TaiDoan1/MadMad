@@ -3,10 +3,15 @@
 // File PDF up qua backend (POST /api/designs/:id/pdf, body JSON chứa data URL
 // base64); backend up lên Cloudinary (folder madmad-designs), kiểm chứng file
 // tồn tại rồi mới lưu URL về database và trả lại bản ghi đã cập nhật.
+// Xem PDF: render ngay trong trang bằng Mozilla PDF.js nạp động từ CDN
+// (pdfjs-dist 3.11.174), dùng đúng pdf.url gốc trên Cloudinary — KHÔNG thêm
+// đuôi .pdf (thêm .pdf vào URL raw của Cloudinary có thể trả 401).
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import {
   CalendarDays,
+  ChevronLeft,
+  ChevronRight,
   Download,
   Eye,
   FileText,
@@ -127,42 +132,76 @@ function countPdfs(design: Design): number {
   return PDF_SLOTS.filter((slot) => design.pdfs?.[slot.key]).length;
 }
 
-// Cloudinary trả secure_url cho file raw KHÔNG có đuôi .pdf (public_id tự sinh
-// không kèm đuôi), nên Safari trên iPhone không nhận ra đó là file PDF và không
-// mở trình xem PDF. Thêm đuôi .pdf vào URL phân phối lúc hiển thị — Cloudinary
-// vẫn trả đúng file đó với Content-Type: application/pdf. Chỉ làm ở lúc hiển
-// thị, không sửa URL đã lưu trong database nên file PDF cũ vẫn xem/tải được.
-function withPdfExtension(url: string | null | undefined): string {
-  if (!url) return "";
-  const [base, query] = url.split("?");
-  const clean = base.replace(/\/$/, "");
-  if (/\.pdf$/i.test(clean)) return url;
-  return `${clean}.pdf${query ? `?${query}` : ""}`;
-}
-
 // Link tải: chèn fl_attachment để Cloudinary ép tải file về kèm đúng tên file,
 // vì thuộc tính download của thẻ <a> bị trình duyệt bỏ qua với URL khác domain.
+// Dùng đúng URL gốc trên Cloudinary, KHÔNG gắn đuôi .pdf: gắn .pdf vào cuối URL
+// raw khiến Cloudinary trả 401 (x-cld-error: deny or ACL failure) trên tài
+// khoản này — đó cũng là lý do Google Docs Viewer báo "No preview available".
+// Tên file tải về vẫn có đuôi .pdf nhờ fl_attachment:<tên file>.
 // URL null/rỗng thì trả về rỗng, KHÔNG gọi .indexOf (gọi trên null sẽ sập trang).
 function pdfDownloadUrl(url: string | null | undefined, filename: string): string {
   if (!url) return "";
-  const viewUrl = withPdfExtension(url);
-  if (!viewUrl) return "";
   const safeName = (filename || "file.pdf").replace(/[^\w.\-À-ỹà-ỹ ]+/g, "_");
   const marker = "/upload/";
-  const idx = viewUrl.indexOf(marker);
-  if (idx === -1) return viewUrl;
+  const idx = url.indexOf(marker);
+  if (idx === -1) return url;
   const insertAt = idx + marker.length;
-  return `${viewUrl.slice(0, insertAt)}fl_attachment:${encodeURIComponent(safeName)}/${viewUrl.slice(insertAt)}`;
+  return `${url.slice(0, insertAt)}fl_attachment:${encodeURIComponent(safeName)}/${url.slice(insertAt)}`;
 }
 
-// Trình duyệt trong app của iPhone (WKWebView) không mở được trình xem PDF
-// khi bấm thẳng vào link file PDF trên Cloudinary (ra trang trắng có dấu "?").
-// Mở qua Google Docs Viewer để xem được PDF trên mọi trình duyệt.
-// URL rỗng thì trả "" (không tạo link viewer rỗng).
-function googleDocsViewerUrl(pdfUrl: string | null | undefined): string {
-  const viewUrl = withPdfExtension(pdfUrl);
-  if (!viewUrl) return "";
-  return `https://docs.google.com/viewer?url=${encodeURIComponent(viewUrl)}&embedded=true`;
+// Trình xem PDF trong trang — Mozilla PDF.js (pdfjs-dist 3.11.174) nạp động
+// từ cdnjs, KHÔNG cài npm. Script chỉ được nạp khi người dùng bấm "Xem PDF"
+// lần đầu, và chỉ nạp 1 lần cho cả phiên (promise dùng chung ở cấp module).
+// Worker trỏ tới file worker trên cùng CDN, cùng version.
+// LƯU Ý: trình xem dùng đúng pdf.url gốc trên Cloudinary (secure_url raw,
+// KHÔNG có đuôi .pdf). Thêm .pdf vào cuối URL raw của Cloudinary có thể trả
+// 401 (x-cld-error: deny or ACL failure). Cloudinary trả header
+// Access-Control-Allow-Origin: * nên PDF.js fetch được từ trình duyệt.
+// Google Docs Viewer cũ đã bỏ vì báo "No preview available" với file này.
+const PDFJS_VERSION = "3.11.174";
+const PDFJS_CDN_URL = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${PDFJS_VERSION}/pdf.min.js`;
+const PDFJS_WORKER_URL = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${PDFJS_VERSION}/pdf.worker.min.js`;
+
+// Kiểu tối thiểu cho PDF.js nạp từ CDN (chỉ dùng getDocument + render trang).
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type PdfJsLib = any;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type PdfJsDocument = any;
+
+declare global {
+  interface Window {
+    pdfjsLib?: PdfJsLib;
+  }
+}
+
+let pdfjsLoadPromise: Promise<PdfJsLib> | null = null;
+
+function loadPdfJs(): Promise<PdfJsLib> {
+  if (typeof window !== "undefined" && window.pdfjsLib) {
+    return Promise.resolve(window.pdfjsLib);
+  }
+  if (pdfjsLoadPromise) return pdfjsLoadPromise;
+  pdfjsLoadPromise = new Promise<PdfJsLib>((resolve, reject) => {
+    const script = document.createElement("script");
+    script.src = PDFJS_CDN_URL;
+    script.async = true;
+    script.onload = () => {
+      const lib = window.pdfjsLib;
+      if (!lib) {
+        pdfjsLoadPromise = null;
+        reject(new Error("Không tải được thư viện xem PDF (PDF.js)."));
+        return;
+      }
+      lib.GlobalWorkerOptions.workerSrc = PDFJS_WORKER_URL;
+      resolve(lib);
+    };
+    script.onerror = () => {
+      pdfjsLoadPromise = null;
+      reject(new Error("Không tải được thư viện xem PDF (PDF.js). Kiểm tra lại mạng rồi thử lại."));
+    };
+    document.head.appendChild(script);
+  });
+  return pdfjsLoadPromise;
 }
 
 function toDateInputValue(value: string | null | undefined): string {
@@ -341,6 +380,40 @@ export function AdminDesignsPage() {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
+  // Modal xem PDF trong trang (PDF.js). viewerPdf giữ URL GỐC trên
+  // Cloudinary (không thêm .pdf) + tên file + nhãn ô PDF để hiển thị.
+  const [viewerPdf, setViewerPdf] = useState<{ url: string; name: string; slotLabel: string } | null>(null);
+  const [viewerDoc, setViewerDoc] = useState<PdfJsDocument | null>(null);
+  const [viewerPage, setViewerPage] = useState(1);
+  const [viewerTotal, setViewerTotal] = useState(0);
+  const [viewerLoading, setViewerLoading] = useState(false);
+  const [viewerError, setViewerError] = useState("");
+  const viewerCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const viewerContainerRef = useRef<HTMLDivElement | null>(null);
+  const viewerRenderTaskRef = useRef<{ cancel: () => void } | null>(null);
+  const viewerLoadSeqRef = useRef(0);
+
+  const openPdfViewer = useCallback((pdf: DesignPdf, slotLabel: string) => {
+    setViewerPdf({ url: pdf.url, name: pdf.name || "file.pdf", slotLabel });
+    setViewerDoc(null);
+    setViewerPage(1);
+    setViewerTotal(0);
+    setViewerError("");
+    setViewerLoading(true);
+  }, []);
+
+  const closePdfViewer = useCallback(() => {
+    viewerLoadSeqRef.current += 1;
+    viewerRenderTaskRef.current?.cancel();
+    viewerRenderTaskRef.current = null;
+    setViewerPdf(null);
+    setViewerDoc(null);
+    setViewerPage(1);
+    setViewerTotal(0);
+    setViewerError("");
+    setViewerLoading(false);
+  }, []);
+
   // Bản nháp "Cây vải" trong popup chi tiết. Chỉ lưu khi bấm "Lưu cây vải"
   // (gửi kèm 1 lần PUT như các trường khác), không tự lưu khi gõ.
   const [fabricDrafts, setFabricDrafts] = useState<FabricDraft[]>([]);
@@ -410,11 +483,16 @@ export function AdminDesignsPage() {
     };
   }, [loadDesigns]);
 
-  // Đóng popup bằng phím Esc.
+  // Đóng popup bằng phím Esc. Modal xem PDF (nếu đang mở) được đóng trước,
+  // popup chi tiết bên dưới vẫn còn nguyên.
   useEffect(() => {
-    if (!selected && !showAddForm) return;
+    if (!selected && !showAddForm && !viewerPdf) return;
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
+        if (viewerPdf) {
+          closePdfViewer();
+          return;
+        }
         setSelected(null);
         setShowAddForm(false);
         setShowDeleteConfirm(false);
@@ -422,7 +500,87 @@ export function AdminDesignsPage() {
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [selected, showAddForm]);
+  }, [selected, showAddForm, viewerPdf, closePdfViewer]);
+
+  // Nạp PDF.js (lần đầu bấm Xem) rồi mở tài liệu từ URL GỐC trên Cloudinary.
+  // getDocument fetch trực tiếp pdf.url — Cloudinary cho phép CORS (*).
+  useEffect(() => {
+    if (!viewerPdf) return;
+    const seq = ++viewerLoadSeqRef.current;
+    setViewerLoading(true);
+    setViewerError("");
+    loadPdfJs()
+      .then((lib) => lib.getDocument({ url: viewerPdf.url }).promise)
+      .then((doc: PdfJsDocument) => {
+        if (viewerLoadSeqRef.current !== seq) return;
+        setViewerDoc(doc);
+        setViewerTotal(doc.numPages);
+        setViewerPage(1);
+        setViewerLoading(false);
+      })
+      .catch((error: unknown) => {
+        if (viewerLoadSeqRef.current !== seq) return;
+        setViewerLoading(false);
+        setViewerError(
+          error instanceof Error
+            ? `Không mở được file PDF: ${error.message}`
+            : "Không mở được file PDF. Thử bấm Tải xuống để kiểm tra file.",
+        );
+      });
+    return () => {
+      // Đổi file / đóng modal giữa chừng thì kết quả cũ bị bỏ (so seq).
+    };
+  }, [viewerPdf]);
+
+  // Render trang hiện tại ra canvas, vừa đúng chiều ngang khung modal.
+  // Vẽ ở độ phân giải cao hơn (devicePixelRatio, tối đa 2x) để chữ không mờ.
+  useEffect(() => {
+    if (!viewerDoc || !viewerPdf) return;
+    const canvas = viewerCanvasRef.current;
+    const container = viewerContainerRef.current;
+    if (!canvas || !container) return;
+    let cancelled = false;
+    viewerRenderTaskRef.current?.cancel();
+    viewerRenderTaskRef.current = null;
+    viewerDoc
+      .getPage(viewerPage)
+      .then((page: PdfJsDocument) => {
+        if (cancelled) return;
+        const containerWidth = container.clientWidth || 600;
+        const baseViewport = page.getViewport({ scale: 1 });
+        const scale = containerWidth / baseViewport.width;
+        const viewport = page.getViewport({ scale });
+        const dpr = Math.min(window.devicePixelRatio || 1, 2);
+        canvas.width = Math.floor(viewport.width * dpr);
+        canvas.height = Math.floor(viewport.height * dpr);
+        canvas.style.width = `${Math.floor(viewport.width)}px`;
+        canvas.style.height = `${Math.floor(viewport.height)}px`;
+        const context = canvas.getContext("2d");
+        if (!context) return;
+        const renderTask = page.render({
+          canvasContext: context,
+          viewport,
+          transform: [dpr, 0, 0, dpr, 0, 0],
+        });
+        viewerRenderTaskRef.current = renderTask;
+        return renderTask.promise;
+      })
+      .catch((error: unknown) => {
+        if (cancelled) return;
+        // Lỗi render (thường là trang lỗi) — chỉ báo khi chưa có lỗi mở file.
+        setViewerError((prev) =>
+          prev ||
+          (error instanceof Error
+            ? `Không vẽ được trang ${viewerPage}: ${error.message}`
+            : `Không vẽ được trang ${viewerPage}.`),
+        );
+      });
+    return () => {
+      cancelled = true;
+      viewerRenderTaskRef.current?.cancel();
+      viewerRenderTaskRef.current = null;
+    };
+  }, [viewerDoc, viewerPage, viewerPdf]);
 
   // Đồng bộ bản nháp "Cây vải" khi mở popup của một mẫu khác. Chỉ chạy khi
   // đổi mẫu (so id), để các lần PUT khác (PDF/trạng thái/bước) cập nhật
@@ -1051,15 +1209,14 @@ export function AdminDesignsPage() {
                               {formatFileSize(pdf.size)} · Up ngày {formatDateTime(pdf.uploadedAt)}
                             </p>
                             <div className="flex flex-wrap gap-2">
-                              <a
-                                href={googleDocsViewerUrl(pdf.url)}
-                                target="_blank"
-                                rel="noreferrer"
+                              <button
+                                type="button"
+                                onClick={() => openPdfViewer(pdf, slot.label)}
                                 className="flex items-center gap-1 rounded-lg border border-border px-2.5 py-1.5 text-xs font-medium hover:bg-muted"
                               >
                                 <Eye className="h-3.5 w-3.5" />
                                 Xem PDF
-                              </a>
+                              </button>
                               <a
                                 href={pdfDownloadUrl(pdf.url, pdf.name)}
                                 download={pdf.name}
@@ -1310,6 +1467,107 @@ export function AdminDesignsPage() {
                   </button>
                 )}
               </div>
+            </div>
+          </div>,
+          document.body,
+        )}
+
+      {/* Modal xem PDF trong trang (PDF.js) — nằm trên popup chi tiết mẫu.
+          Dùng đúng URL gốc trên Cloudinary (không thêm .pdf). Nút Tải xuống
+          dùng đúng helper pdfDownloadUrl như cũ. */}
+      {viewerPdf &&
+        createPortal(
+          <div
+            className="fixed inset-0 z-[60] flex items-end justify-center bg-black/60 p-0 sm:items-center sm:p-4"
+            onClick={closePdfViewer}
+            role="presentation"
+          >
+            <div
+              role="dialog"
+              aria-modal="true"
+              aria-label={`Xem PDF ${viewerPdf.name}`}
+              className="flex max-h-[92vh] w-full max-w-3xl flex-col overflow-hidden rounded-t-2xl bg-white shadow-xl sm:rounded-2xl"
+              onClick={(event) => event.stopPropagation()}
+            >
+              <div className="flex items-start justify-between gap-3 border-b border-border p-4">
+                <div className="min-w-0">
+                  <p className="text-xs font-medium text-muted-foreground">{viewerPdf.slotLabel}</p>
+                  <h2 className="mt-0.5 break-all text-base font-bold leading-snug">{viewerPdf.name}</h2>
+                </div>
+                <div className="flex shrink-0 items-center gap-2">
+                  <a
+                    href={pdfDownloadUrl(viewerPdf.url, viewerPdf.name)}
+                    download={viewerPdf.name}
+                    className="flex items-center gap-1 rounded-lg border border-border px-3 py-1.5 text-sm font-medium hover:bg-muted"
+                  >
+                    <Download className="h-4 w-4" />
+                    Tải xuống
+                  </a>
+                  <button
+                    type="button"
+                    onClick={closePdfViewer}
+                    aria-label="Đóng trình xem PDF"
+                    className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-muted"
+                  >
+                    <X className="h-5 w-5" />
+                  </button>
+                </div>
+              </div>
+
+              <div
+                ref={viewerContainerRef}
+                className="flex-1 overflow-y-auto bg-muted/50 p-3 sm:p-4"
+              >
+                {viewerLoading && (
+                  <p className="py-10 text-center text-sm text-muted-foreground">
+                    Đang tải file PDF…
+                  </p>
+                )}
+                {viewerError && !viewerLoading && (
+                  <div className="mx-auto max-w-md rounded-lg border border-red-200 bg-red-50 p-4 text-center">
+                    <p className="text-sm font-medium text-red-700">{viewerError}</p>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        openPdfViewer(
+                          { url: viewerPdf.url, name: viewerPdf.name, size: 0, uploadedAt: "" },
+                          viewerPdf.slotLabel,
+                        )
+                      }
+                      className="mt-3 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white"
+                    >
+                      Thử lại
+                    </button>
+                  </div>
+                )}
+                <canvas ref={viewerCanvasRef} className="mx-auto block bg-white shadow-sm" />
+              </div>
+
+              {viewerTotal > 0 && (
+                <div className="flex items-center justify-between gap-2 border-t border-border p-3">
+                  <button
+                    type="button"
+                    disabled={viewerPage <= 1 || viewerLoading}
+                    onClick={() => setViewerPage((page) => Math.max(1, page - 1))}
+                    className="flex items-center gap-1 rounded-lg border border-border px-3 py-1.5 text-sm font-medium hover:bg-muted disabled:opacity-50"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                    Trước
+                  </button>
+                  <p className="text-sm text-muted-foreground">
+                    Trang {viewerPage} / {viewerTotal}
+                  </p>
+                  <button
+                    type="button"
+                    disabled={viewerPage >= viewerTotal || viewerLoading}
+                    onClick={() => setViewerPage((page) => Math.min(viewerTotal, page + 1))}
+                    className="flex items-center gap-1 rounded-lg border border-border px-3 py-1.5 text-sm font-medium hover:bg-muted disabled:opacity-50"
+                  >
+                    Sau
+                    <ChevronRight className="h-4 w-4" />
+                  </button>
+                </div>
+              )}
             </div>
           </div>,
           document.body,
