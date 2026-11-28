@@ -365,6 +365,8 @@ export function AdminDesignsPage() {
   const [loadError, setLoadError] = useState("");
   const [statusFilter, setStatusFilter] = useState<"ALL" | DesignStatus>("ALL");
   const [searchTerm, setSearchTerm] = useState("");
+  // Lọc theo loại sản phẩm: "ALL" = tất cả loại.
+  const [typeFilter, setTypeFilter] = useState<string>("ALL");
 
   const [selected, setSelected] = useState<Design | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
@@ -850,12 +852,29 @@ export function AdminDesignsPage() {
     [designs.length, stats],
   );
 
+  // Các loại sản phẩm đang có: loại thật trong các mẫu đã tải + danh sách
+  // cố định, gộp trùng, xếp A-Z — dùng chung cho dropdown lọc loại và gợi
+  // ý khi gõ loại mới. Tính từ designs nên loại mới lưu xong xuất hiện ngay.
+  // Khai báo TRƯỚC visibleDesigns vì visibleDesigns dùng nó trong deps
+  // (bài học lỗi TDZ commit 33911ad: hàm/biến dùng trong deps phải khai
+  // báo trước hàm dùng nó).
+  const availableTypes = useMemo(() => {
+    const seen = new Set<string>(PRODUCT_TYPES);
+    for (const design of designs) {
+      const type = design.type.trim();
+      if (type) seen.add(type);
+    }
+    return [...seen].sort((a, b) => a.localeCompare(b, "vi"));
+  }, [designs]);
+
   // Lọc thêm ở client để tìm kiếm theo tên / loại / mã luôn đúng kể cả khi
-  // backend chưa hỗ trợ ?search=.
+  // backend chưa hỗ trợ ?search=. Lọc loại cũng làm ở client (không gửi
+  // ?type= lên backend) để không phụ thuộc backend.
   const visibleDesigns = useMemo(() => {
     const q = searchTerm.trim().toLowerCase();
     return designs.filter((design) => {
       if (statusFilter !== "ALL" && design.status !== statusFilter) return false;
+      if (typeFilter !== "ALL" && design.type.trim() !== typeFilter) return false;
       if (!q) return true;
       return (
         design.name.toLowerCase().includes(q) ||
@@ -863,7 +882,7 @@ export function AdminDesignsPage() {
         design.code.toLowerCase().includes(q)
       );
     });
-  }, [designs, statusFilter, searchTerm]);
+  }, [designs, statusFilter, searchTerm, typeFilter]);
 
   // Quy tắc tự động khi PDF thay đổi:
   // - Up file đầu tiên: Chưa làm -> Đang làm.
@@ -1153,7 +1172,21 @@ export function AdminDesignsPage() {
             </button>
           ))}
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <select
+            value={typeFilter}
+            onChange={(event) => setTypeFilter(event.target.value)}
+            aria-label="Lọc theo loại sản phẩm"
+            title="Lọc theo loại sản phẩm"
+            className="shrink-0 rounded-lg border border-border bg-white px-3 py-2 text-sm font-medium outline-none focus:border-primary"
+          >
+            <option value="ALL">Tất cả loại</option>
+            {availableTypes.map((type) => (
+              <option key={type} value={type}>
+                {type}
+              </option>
+            ))}
+          </select>
           <label className="relative block w-full md:w-72">
             <span className="sr-only">Tìm kiếm mẫu thiết kế</span>
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -1356,18 +1389,20 @@ export function AdminDesignsPage() {
                   <dt className="text-xs text-muted-foreground">Loại</dt>
                   {isEditingInfo ? (
                     <dd className="mt-0.5">
-                      <select
+                      <input
+                        type="text"
+                        list="design-type-suggestions-edit"
                         value={editType}
                         onChange={(event) => setEditType(event.target.value)}
+                        placeholder="Gõ loại mới hoặc chọn gợi ý…"
                         aria-label="Loại sản phẩm"
                         className="w-full rounded-lg border border-border bg-white px-2 py-1.5 text-sm font-medium outline-none focus:border-primary"
-                      >
-                        {(PRODUCT_TYPES.includes(editType) ? PRODUCT_TYPES : [editType, ...PRODUCT_TYPES]).map((type) => (
-                          <option key={type} value={type}>
-                            {type}
-                          </option>
+                      />
+                      <datalist id="design-type-suggestions-edit">
+                        {availableTypes.map((type) => (
+                          <option key={type} value={type} />
                         ))}
-                      </select>
+                      </datalist>
                     </dd>
                   ) : (
                     <dd className="mt-0.5 font-medium">{selected.type || "—"}</dd>
@@ -1970,17 +2005,19 @@ export function AdminDesignsPage() {
 
                 <label className="block">
                   <span className="text-sm font-medium">Loại sản phẩm</span>
-                  <select
+                  <input
+                    type="text"
+                    list="design-type-suggestions-add"
                     value={formType}
                     onChange={(event) => setFormType(event.target.value)}
+                    placeholder="Gõ loại mới hoặc chọn gợi ý…"
                     className="mt-1 w-full rounded-lg border border-border bg-white px-3 py-2 text-sm outline-none focus:border-primary"
-                  >
-                    {PRODUCT_TYPES.map((type) => (
-                      <option key={type} value={type}>
-                        {type}
-                      </option>
+                  />
+                  <datalist id="design-type-suggestions-add">
+                    {availableTypes.map((type) => (
+                      <option key={type} value={type} />
                     ))}
-                  </select>
+                  </datalist>
                 </label>
 
                 <label className="block">
