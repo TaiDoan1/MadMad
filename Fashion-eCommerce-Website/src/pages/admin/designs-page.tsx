@@ -135,22 +135,10 @@ function countPdfs(design: Design): number {
   return PDF_SLOTS.filter((slot) => design.pdfs?.[slot.key]).length;
 }
 
-// Link tải: chèn fl_attachment để Cloudinary ép tải file về kèm đúng tên file,
-// vì thuộc tính download của thẻ <a> bị trình duyệt bỏ qua với URL khác domain.
-// Dùng đúng URL gốc trên Cloudinary, KHÔNG gắn đuôi .pdf: gắn .pdf vào cuối URL
-// raw khiến Cloudinary trả 401 (x-cld-error: deny or ACL failure) trên tài
-// khoản này — đó cũng là lý do Google Docs Viewer báo "No preview available".
-// Tên file tải về vẫn có đuôi .pdf nhờ fl_attachment:<tên file>.
-// URL null/rỗng thì trả về rỗng, KHÔNG gọi .indexOf (gọi trên null sẽ sập trang).
-function pdfDownloadUrl(url: string | null | undefined, filename: string): string {
-  if (!url) return "";
-  const safeName = (filename || "file.pdf").replace(/[^\w.\-À-ỹà-ỹ ]+/g, "_");
-  const marker = "/upload/";
-  const idx = url.indexOf(marker);
-  if (idx === -1) return url;
-  const insertAt = idx + marker.length;
-  return `${url.slice(0, insertAt)}fl_attachment:${encodeURIComponent(safeName)}/${url.slice(insertAt)}`;
-}
+// Tải PDF: KHÔNG còn helper gắn fl_attachment vào URL — chèn fl_attachment
+// vào URL raw bị Cloudinary chặn (cùng cơ chế chặn đuôi .pdf trả 401 "deny or
+// ACL failure") nên nút Tải xuống không chạy. Cơ chế mới là handler downloadPdf
+// trong component: fetch URL gốc → blob → object URL → bấm thẻ <a> tạm.
 
 // Trình xem PDF trong trang — Mozilla PDF.js (pdfjs-dist 3.11.174) nạp động
 // từ cdnjs, KHÔNG cài npm. Script chỉ được nạp khi người dùng bấm "Xem PDF"
@@ -256,8 +244,8 @@ function toFabricPayload(drafts: FabricDraft[]): DesignFabric[] {
 // Backend luôn trả 1 object cho mỗi slot PDF, kể cả ô trống
 // ({url: null, name: null, size: null, uploadedAt: null}). Ép ô không có URL
 // thật thành null để nút Xem/Tải chỉ hiện khi có file, và để đếm PDF
-// (countPdfs) không tính ô trống. Nếu không, 1 ô trống cũng render link và
-// pdfDownloadUrl sẽ gọi .indexOf trên null làm sập cả trang.
+// (countPdfs) không tính ô trống. Nếu không, 1 ô trống cũng render nút
+// Xem/Tải với URL null.
 function normalizePdf(raw: unknown): DesignPdf | null {
   if (!raw || typeof raw !== "object") return null;
   const pdf = raw as Record<string, unknown>;
@@ -435,6 +423,42 @@ export function AdminDesignsPage() {
     setViewerPageSize(null);
     setViewerViewportSize(null);
   }, []);
+
+  // Tải PDF về máy qua JavaScript (fetch → blob → object URL), dùng đúng
+  // URL gốc trên Cloudinary mà PDF.js đang tải thành công. Cách cũ chèn
+  // fl_attachment vào URL bị Cloudinary chặn (cùng cơ chế chặn đuôi .pdf
+  // trả 401 "deny or ACL failure") nên nút Tải xuống không chạy. Object
+  // URL cùng nguồn nên thuộc tính download được trình duyệt tôn trọng và
+  // giữ đúng tên file. Fetch lỗi thì báo lỗi rõ + mở URL gốc trong tab mới
+  // để vẫn xem/lưu được file. Không bấm 2 lần cùng lúc.
+  const [downloadingPdf, setDownloadingPdf] = useState(false);
+  const downloadPdf = useCallback(
+    async (pdf: { url: string; name: string }) => {
+      if (!pdf?.url || downloadingPdf) return;
+      setDownloadingPdf(true);
+      try {
+        const res = await fetch(pdf.url);
+        if (!res.ok) throw new Error(`Không tải được file (mã ${res.status}).`);
+        const blob = await res.blob();
+        if (!blob || blob.size === 0) throw new Error("File tải về rỗng.");
+        const objectUrl = URL.createObjectURL(blob);
+        const fileName = pdf.name?.endsWith(".pdf") ? pdf.name : `${pdf.name || "file"}.pdf`;
+        const a = document.createElement("a");
+        a.href = objectUrl;
+        a.download = fileName;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+      } catch (error) {
+        showToast(error instanceof Error ? error.message : "Tải file PDF thất bại.", "error");
+        window.open(pdf.url, "_blank", "noopener,noreferrer");
+      } finally {
+        setDownloadingPdf(false);
+      }
+    },
+    [downloadingPdf, showToast],
+  );
 
   // Zoom +/− giữ nguyên chế độ vừa khung đang chọn, chỉ nhân hệ số.
   const viewerZoomIn = useCallback(() => {
@@ -1306,14 +1330,15 @@ export function AdminDesignsPage() {
                                 <Eye className="h-3.5 w-3.5" />
                                 Xem PDF
                               </button>
-                              <a
-                                href={pdfDownloadUrl(pdf.url, pdf.name)}
-                                download={pdf.name}
-                                className="flex items-center gap-1 rounded-lg border border-border px-2.5 py-1.5 text-xs font-medium hover:bg-muted"
+                              <button
+                                type="button"
+                                disabled={downloadingPdf}
+                                onClick={() => void downloadPdf(pdf)}
+                                className="flex items-center gap-1 rounded-lg border border-border px-2.5 py-1.5 text-xs font-medium hover:bg-muted disabled:opacity-50"
                               >
                                 <Download className="h-3.5 w-3.5" />
-                                Tải xuống
-                              </a>
+                                {downloadingPdf ? "Đang tải…" : "Tải xuống"}
+                              </button>
                               <button
                                 type="button"
                                 disabled={isUploading}
@@ -1563,7 +1588,8 @@ export function AdminDesignsPage() {
 
       {/* Modal xem PDF trong trang (PDF.js) — FULL MÀN HÌNH, nằm trên popup
           chi tiết mẫu. Dùng đúng URL gốc trên Cloudinary (không thêm .pdf).
-          Nút Tải xuống dùng đúng helper pdfDownloadUrl như cũ. Đóng bằng nút
+          Nút Tải xuống tải qua fetch → blob → object URL (dùng đúng URL gốc;
+          fl_attachment cũ bị Cloudinary chặn nên đã bỏ). Đóng bằng nút
           X hoặc Esc (bấm nền mờ không còn ý nghĩa khi panel chiếm toàn bộ
           màn hình, nhưng handler nền vẫn giữ lại cho an toàn).
           Pinch-to-zoom KHÔNG làm: vùng canvas dùng cuộn cảm ứng gốc
@@ -1589,14 +1615,15 @@ export function AdminDesignsPage() {
                   <h2 className="mt-0.5 break-all text-base font-bold leading-snug">{viewerPdf.name}</h2>
                 </div>
                 <div className="flex shrink-0 items-center gap-2">
-                  <a
-                    href={pdfDownloadUrl(viewerPdf.url, viewerPdf.name)}
-                    download={viewerPdf.name}
-                    className="flex items-center gap-1 rounded-lg border border-border px-3 py-1.5 text-sm font-medium hover:bg-muted"
+                  <button
+                    type="button"
+                    disabled={downloadingPdf}
+                    onClick={() => void downloadPdf(viewerPdf)}
+                    className="flex items-center gap-1 rounded-lg border border-border px-3 py-1.5 text-sm font-medium hover:bg-muted disabled:opacity-50"
                   >
                     <Download className="h-4 w-4" />
-                    Tải xuống
-                  </a>
+                    {downloadingPdf ? "Đang tải…" : "Tải xuống"}
+                  </button>
                   <button
                     type="button"
                     onClick={closePdfViewer}
