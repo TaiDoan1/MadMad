@@ -18,8 +18,10 @@ import {
   FileUp,
   Maximize,
   Palette,
+  Pencil,
   Plus,
   RefreshCw,
+  Save,
   Search,
   Trash2,
   Upload,
@@ -459,6 +461,63 @@ export function AdminDesignsPage() {
     },
     [downloadingPdf, showToast],
   );
+
+  // Sửa thông tin mẫu ngay trong popup chi tiết (tên, loại, phụ trách, hạn,
+  // ghi chú). Mã mẫu (MM-NNN) không cho sửa. Lưu qua updateDesign có sẵn
+  // (PUT /api/designs/:id) nên thẻ mẫu + popup cập nhật ngay sau khi lưu.
+  const [isEditingInfo, setIsEditingInfo] = useState(false);
+  const [editName, setEditName] = useState("");
+  const [editType, setEditType] = useState("");
+  const [editAssignee, setEditAssignee] = useState("");
+  const [editDeadline, setEditDeadline] = useState("");
+  const [editNotes, setEditNotes] = useState("");
+  const [isSavingInfo, setIsSavingInfo] = useState(false);
+
+  const startEditingInfo = useCallback(() => {
+    if (!selected) return;
+    setEditName(selected.name || "");
+    setEditType(selected.type || PRODUCT_TYPES[0]);
+    setEditAssignee(selected.assignee || "");
+    setEditDeadline(toDateInputValue(selected.deadline));
+    setEditNotes(selected.notes || "");
+    setIsEditingInfo(true);
+  }, [selected]);
+
+  const cancelEditingInfo = useCallback(() => {
+    setIsEditingInfo(false);
+  }, []);
+
+  const handleSaveInfo = useCallback(async () => {
+    if (!selected || isSavingInfo) return;
+    if (!editName.trim()) {
+      showToast("Tên mẫu không được để trống.", "error");
+      return;
+    }
+    setIsSavingInfo(true);
+    try {
+      await updateDesign(selected, {
+        name: editName.trim(),
+        type: editType,
+        assignee: editAssignee.trim(),
+        deadline: editDeadline ? new Date(`${editDeadline}T00:00:00`).toISOString() : null,
+        notes: editNotes.trim(),
+      });
+      setIsEditingInfo(false);
+      showToast("Đã lưu thông tin mẫu.");
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "Lưu thông tin thất bại.", "error");
+    } finally {
+      setIsSavingInfo(false);
+    }
+  }, [selected, isSavingInfo, editName, editType, editAssignee, editDeadline, editNotes, updateDesign, showToast]);
+
+  // Đổi sang mẫu khác thì thoát chế độ sửa (bản nháp thuộc về mẫu cũ).
+  // Chỉ theo dõi id, không theo dõi cả object selected (object đổi mỗi lần
+  // lưu PDF/vải thì không được thoát chế độ sửa giữa chừng).
+  useEffect(() => {
+    setIsEditingInfo(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selected?.id]);
 
   // Zoom +/− giữ nguyên chế độ vừa khung đang chọn, chỉ nhân hệ số.
   const viewerZoomIn = useCallback(() => {
@@ -1212,7 +1271,7 @@ export function AdminDesignsPage() {
               onClick={(event) => event.stopPropagation()}
             >
               <div className="flex items-start justify-between gap-3">
-                <div>
+                <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="text-sm font-bold">{selected.code || "—"}</span>
                     <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_BADGE_CLASS[selected.status]}`}>
@@ -1227,40 +1286,150 @@ export function AdminDesignsPage() {
                       </span>
                     )}
                   </div>
-                  <h2 className="mt-2 text-xl font-bold leading-snug">{selected.name}</h2>
+                  {isEditingInfo ? (
+                    <label className="mt-2 block">
+                      <span className="text-sm font-medium">
+                        Tên mẫu <span className="text-red-600">*</span>
+                      </span>
+                      <input
+                        type="text"
+                        value={editName}
+                        onChange={(event) => setEditName(event.target.value)}
+                        placeholder="Tên mẫu"
+                        className="mt-1 w-full rounded-lg border border-border px-3 py-2 text-sm outline-none focus:border-primary"
+                      />
+                    </label>
+                  ) : (
+                    <h2 className="mt-2 text-xl font-bold leading-snug">{selected.name}</h2>
+                  )}
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setSelected(null)}
-                  aria-label="Đóng"
-                  className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-muted"
-                >
-                  <X className="h-5 w-5" />
-                </button>
+                <div className="flex shrink-0 items-center gap-2">
+                  {isEditingInfo ? (
+                    <>
+                      <button
+                        type="button"
+                        disabled={isSavingInfo}
+                        onClick={() => void handleSaveInfo()}
+                        className="flex items-center gap-1 rounded-lg bg-primary px-3 py-1.5 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
+                      >
+                        <Save className="h-4 w-4" />
+                        {isSavingInfo ? "Đang lưu…" : "Lưu"}
+                      </button>
+                      <button
+                        type="button"
+                        disabled={isSavingInfo}
+                        onClick={cancelEditingInfo}
+                        className="rounded-lg border border-border px-3 py-1.5 text-sm font-medium hover:bg-muted disabled:opacity-50"
+                      >
+                        Hủy
+                      </button>
+                    </>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={startEditingInfo}
+                      className="flex items-center gap-1 rounded-lg border border-border px-3 py-1.5 text-sm font-medium hover:bg-muted"
+                    >
+                      <Pencil className="h-4 w-4" />
+                      Sửa thông tin
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => setSelected(null)}
+                    aria-label="Đóng"
+                    className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-muted"
+                  >
+                    <X className="h-5 w-5" />
+                  </button>
+                </div>
               </div>
 
               <dl className="mt-4 grid grid-cols-3 gap-3 rounded-lg bg-muted p-3 text-sm">
                 <div>
                   <dt className="text-xs text-muted-foreground">Loại</dt>
-                  <dd className="mt-0.5 font-medium">{selected.type || "—"}</dd>
+                  {isEditingInfo ? (
+                    <dd className="mt-0.5">
+                      <select
+                        value={editType}
+                        onChange={(event) => setEditType(event.target.value)}
+                        aria-label="Loại sản phẩm"
+                        className="w-full rounded-lg border border-border bg-white px-2 py-1.5 text-sm font-medium outline-none focus:border-primary"
+                      >
+                        {(PRODUCT_TYPES.includes(editType) ? PRODUCT_TYPES : [editType, ...PRODUCT_TYPES]).map((type) => (
+                          <option key={type} value={type}>
+                            {type}
+                          </option>
+                        ))}
+                      </select>
+                    </dd>
+                  ) : (
+                    <dd className="mt-0.5 font-medium">{selected.type || "—"}</dd>
+                  )}
                 </div>
                 <div>
                   <dt className="text-xs text-muted-foreground">Phụ trách</dt>
-                  <dd className="mt-0.5 font-medium">{selected.assignee || "—"}</dd>
+                  {isEditingInfo ? (
+                    <dd className="mt-0.5">
+                      <input
+                        type="text"
+                        list="design-assignee-suggestions-edit"
+                        value={editAssignee}
+                        onChange={(event) => setEditAssignee(event.target.value)}
+                        placeholder="Gõ tên người phụ trách…"
+                        aria-label="Người phụ trách"
+                        className="w-full rounded-lg border border-border bg-white px-2 py-1.5 text-sm font-medium outline-none focus:border-primary"
+                      />
+                      <datalist id="design-assignee-suggestions-edit">
+                        {ASSIGNEE_SUGGESTIONS.map((suggestion) => (
+                          <option key={suggestion} value={suggestion} />
+                        ))}
+                      </datalist>
+                    </dd>
+                  ) : (
+                    <dd className="mt-0.5 font-medium">{selected.assignee || "—"}</dd>
+                  )}
                 </div>
                 <div>
                   <dt className="text-xs text-muted-foreground">Hạn hoàn thành</dt>
-                  <dd className={`mt-0.5 font-medium ${isOverdue(selected) ? "text-red-600" : ""}`}>
-                    {formatDate(selected.deadline)}
-                  </dd>
+                  {isEditingInfo ? (
+                    <dd className="mt-0.5">
+                      <input
+                        type="date"
+                        value={editDeadline}
+                        onChange={(event) => setEditDeadline(event.target.value)}
+                        aria-label="Hạn hoàn thành"
+                        className="w-full rounded-lg border border-border bg-white px-2 py-1.5 text-sm font-medium outline-none focus:border-primary"
+                      />
+                    </dd>
+                  ) : (
+                    <dd className={`mt-0.5 font-medium ${isOverdue(selected) ? "text-red-600" : ""}`}>
+                      {formatDate(selected.deadline)}
+                    </dd>
+                  )}
                 </div>
               </dl>
 
-              {selected.notes && (
+              {isEditingInfo ? (
                 <div className="mt-4">
-                  <p className="text-sm font-semibold">Ghi chú</p>
-                  <p className="mt-1 whitespace-pre-wrap text-sm text-muted-foreground">{selected.notes}</p>
+                  <label className="block">
+                    <span className="text-sm font-semibold">Ghi chú</span>
+                    <textarea
+                      value={editNotes}
+                      onChange={(event) => setEditNotes(event.target.value)}
+                      rows={3}
+                      placeholder="Ghi chú về mẫu, hình in, thông số…"
+                      className="mt-1 w-full rounded-lg border border-border px-3 py-2 text-sm outline-none focus:border-primary"
+                    />
+                  </label>
                 </div>
+              ) : (
+                selected.notes && (
+                  <div className="mt-4">
+                    <p className="text-sm font-semibold">Ghi chú</p>
+                    <p className="mt-1 whitespace-pre-wrap text-sm text-muted-foreground">{selected.notes}</p>
+                  </div>
+                )
               )}
 
               {/* Tiến độ 5 bước */}
