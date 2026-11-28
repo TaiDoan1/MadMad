@@ -462,6 +462,40 @@ export function AdminDesignsPage() {
     [downloadingPdf, showToast],
   );
 
+  // Áp dụng bản ghi mẫu đã cập nhật vào danh sách + popup đang mở.
+  // PHẢI đặt ở đây, TRƯỚC handleSaveInfo: handleSaveInfo dùng updateDesign
+  // trong mảng deps của useCallback (đánh giá ngay lúc render), nên nếu
+  // updateDesign khai báo sau nó thì trang sập ngay lần render đầu với lỗi
+  // "Cannot access 'updateDesign' before initialization" (TDZ). Đừng dời
+  // 2 hàm này xuống dưới handleSaveInfo.
+  const applyDesignUpdate = useCallback((updated: Design) => {
+    setDesigns((prev) => prev.map((d) => (d.id === updated.id ? updated : d)));
+    setSelected((prev) => (prev && prev.id === updated.id ? updated : prev));
+  }, []);
+
+  const updateDesign = useCallback(
+    async (design: Design, patch: Partial<Design>): Promise<Design> => {
+      const body: Record<string, unknown> = { ...patch };
+      const res = await apiRequest<Record<string, unknown>>(`/designs/${design.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      // Backend trả envelope { success, data: {...} } — dùng bản ghi máy
+      // chủ trả về khi có id hợp lệ, chỉ fallback về giá trị local lạc
+      // quan khi máy chủ không trả bản ghi.
+      const raw = res as Record<string, unknown>;
+      const record = (raw?.data ?? (raw?.id ? raw : undefined)) as Record<string, unknown> | undefined;
+      const updated =
+        record && record.id
+          ? normalizeDesign(record)
+          : normalizeDesign({ ...design, ...patch } as Record<string, unknown>);
+      applyDesignUpdate(updated);
+      return updated;
+    },
+    [applyDesignUpdate],
+  );
+
   // Sửa thông tin mẫu ngay trong popup chi tiết (tên, loại, phụ trách, hạn,
   // ghi chú). Mã mẫu (MM-NNN) không cho sửa. Lưu qua updateDesign có sẵn
   // (PUT /api/designs/:id) nên thẻ mẫu + popup cập nhật ngay sau khi lưu.
@@ -830,34 +864,6 @@ export function AdminDesignsPage() {
       );
     });
   }, [designs, statusFilter, searchTerm]);
-
-  const applyDesignUpdate = useCallback((updated: Design) => {
-    setDesigns((prev) => prev.map((d) => (d.id === updated.id ? updated : d)));
-    setSelected((prev) => (prev && prev.id === updated.id ? updated : prev));
-  }, []);
-
-  const updateDesign = useCallback(
-    async (design: Design, patch: Partial<Design>): Promise<Design> => {
-      const body: Record<string, unknown> = { ...patch };
-      const res = await apiRequest<Record<string, unknown>>(`/designs/${design.id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
-      // Backend trả envelope { success, data: {...} } — dùng bản ghi máy
-      // chủ trả về khi có id hợp lệ, chỉ fallback về giá trị local lạc
-      // quan khi máy chủ không trả bản ghi.
-      const raw = res as Record<string, unknown>;
-      const record = (raw?.data ?? (raw?.id ? raw : undefined)) as Record<string, unknown> | undefined;
-      const updated =
-        record && record.id
-          ? normalizeDesign(record)
-          : normalizeDesign({ ...design, ...patch } as Record<string, unknown>);
-      applyDesignUpdate(updated);
-      return updated;
-    },
-    [applyDesignUpdate],
-  );
 
   // Quy tắc tự động khi PDF thay đổi:
   // - Up file đầu tiên: Chưa làm -> Đang làm.
