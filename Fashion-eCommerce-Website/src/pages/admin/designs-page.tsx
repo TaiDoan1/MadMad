@@ -16,6 +16,7 @@ import {
   Eye,
   FileText,
   FileUp,
+  Maximize,
   Palette,
   Plus,
   RefreshCw,
@@ -23,6 +24,8 @@ import {
   Trash2,
   Upload,
   X,
+  ZoomIn,
+  ZoomOut,
 } from "lucide-react";
 
 import { API_URL, getAdminKey } from "@/config/api";
@@ -393,6 +396,17 @@ export function AdminDesignsPage() {
   const viewerRenderTaskRef = useRef<{ cancel: () => void } | null>(null);
   const viewerLoadSeqRef = useRef(0);
 
+  // Zoom trình xem PDF: hệ số nhân trên tỉ lệ vừa khung đang chọn.
+  // 1 = vừa đúng khung (vừa rộng hoặc vừa trang tùy chế độ), bước 0.25,
+  // nút +/− kẹp 0.5–4. Đổi trang giữ nguyên zoom; mở file mới reset về 1
+  // và chế độ vừa rộng.
+  const [viewerZoom, setViewerZoom] = useState(1);
+  const [viewerFitMode, setViewerFitMode] = useState<"width" | "page">("width");
+  // Kích thước trang gốc (scale 1) + khung chứa, để tính % zoom hiển thị
+  // (khi vừa trang, % hiển thị so với vừa rộng) và render lại khi xoay màn hình.
+  const [viewerPageSize, setViewerPageSize] = useState<{ width: number; height: number } | null>(null);
+  const [viewerViewportSize, setViewerViewportSize] = useState<{ width: number; height: number } | null>(null);
+
   const openPdfViewer = useCallback((pdf: DesignPdf, slotLabel: string) => {
     setViewerPdf({ url: pdf.url, name: pdf.name || "file.pdf", slotLabel });
     setViewerDoc(null);
@@ -400,6 +414,10 @@ export function AdminDesignsPage() {
     setViewerTotal(0);
     setViewerError("");
     setViewerLoading(true);
+    setViewerZoom(1);
+    setViewerFitMode("width");
+    setViewerPageSize(null);
+    setViewerViewportSize(null);
   }, []);
 
   const closePdfViewer = useCallback(() => {
@@ -412,7 +430,40 @@ export function AdminDesignsPage() {
     setViewerTotal(0);
     setViewerError("");
     setViewerLoading(false);
+    setViewerZoom(1);
+    setViewerFitMode("width");
+    setViewerPageSize(null);
+    setViewerViewportSize(null);
   }, []);
+
+  // Zoom +/− giữ nguyên chế độ vừa khung đang chọn, chỉ nhân hệ số.
+  const viewerZoomIn = useCallback(() => {
+    setViewerZoom((zoom) => Math.min(4, Math.round((zoom + 0.25) * 100) / 100));
+  }, []);
+  const viewerZoomOut = useCallback(() => {
+    setViewerZoom((zoom) => Math.max(0.5, Math.round((zoom - 0.25) * 100) / 100));
+  }, []);
+  const viewerFitWidth = useCallback(() => {
+    setViewerFitMode("width");
+    setViewerZoom(1);
+  }, []);
+  const viewerFitPage = useCallback(() => {
+    setViewerFitMode("page");
+    setViewerZoom(1);
+  }, []);
+
+  // % zoom hiển thị: so với vừa chiều rộng. Ở chế độ vừa trang, tỉ lệ vừa
+  // trang so với vừa rộng là min(1, (cao khung/cao trang)/(rộng khung/rộng trang)).
+  const viewerZoomPercent = useMemo(() => {
+    if (viewerFitMode !== "page" || !viewerPageSize || !viewerViewportSize) {
+      return Math.round(viewerZoom * 100);
+    }
+    const ratio = Math.min(
+      1,
+      viewerViewportSize.height / viewerPageSize.height / (viewerViewportSize.width / viewerPageSize.width),
+    );
+    return Math.round(viewerZoom * ratio * 100);
+  }, [viewerZoom, viewerFitMode, viewerPageSize, viewerViewportSize]);
 
   // Bản nháp "Cây vải" trong popup chi tiết. Chỉ lưu khi bấm "Lưu cây vải"
   // (gửi kèm 1 lần PUT như các trường khác), không tự lưu khi gõ.
@@ -532,7 +583,9 @@ export function AdminDesignsPage() {
     };
   }, [viewerPdf]);
 
-  // Render trang hiện tại ra canvas, vừa đúng chiều ngang khung modal.
+  // Render trang hiện tại ra canvas. Tỉ lệ gốc theo chế độ vừa khung:
+  // "width" = vừa chiều rộng, "page" = vừa cả trang trong khung nhìn
+  // (min(vừa rộng, vừa cao)); nhân thêm hệ số zoom hiện tại.
   // Vẽ ở độ phân giải cao hơn (devicePixelRatio, tối đa 2x) để chữ không mờ.
   useEffect(() => {
     if (!viewerDoc || !viewerPdf) return;
@@ -547,8 +600,17 @@ export function AdminDesignsPage() {
       .then((page: PdfJsDocument) => {
         if (cancelled) return;
         const containerWidth = container.clientWidth || 600;
+        const containerHeight = container.clientHeight || 800;
         const baseViewport = page.getViewport({ scale: 1 });
-        const scale = containerWidth / baseViewport.width;
+        setViewerPageSize((prev) =>
+          prev && prev.width === baseViewport.width && prev.height === baseViewport.height
+            ? prev
+            : { width: baseViewport.width, height: baseViewport.height },
+        );
+        const fitWidthScale = containerWidth / baseViewport.width;
+        const fitHeightScale = containerHeight / baseViewport.height;
+        const fitScale = viewerFitMode === "page" ? Math.min(fitWidthScale, fitHeightScale) : fitWidthScale;
+        const scale = fitScale * viewerZoom;
         const viewport = page.getViewport({ scale });
         const dpr = Math.min(window.devicePixelRatio || 1, 2);
         canvas.width = Math.floor(viewport.width * dpr);
@@ -580,7 +642,34 @@ export function AdminDesignsPage() {
       viewerRenderTaskRef.current?.cancel();
       viewerRenderTaskRef.current = null;
     };
-  }, [viewerDoc, viewerPage, viewerPdf]);
+  }, [viewerDoc, viewerPage, viewerPdf, viewerZoom, viewerFitMode, viewerViewportSize]);
+
+  // Đo lại khung chứa khi mở modal và khi cửa sổ đổi kích thước (xoay màn
+  // hình / đổi cửa sổ): debounce ~150ms rồi render lại với khung mới.
+  // Ở chế độ vừa trang, tỉ lệ vừa khung được tính lại từ kích thước mới
+  // nên trang vẫn vừa khung mà không cần đổi hệ số zoom.
+  useEffect(() => {
+    if (!viewerPdf) return;
+    const measure = () => {
+      const container = viewerContainerRef.current;
+      if (!container) return;
+      setViewerViewportSize((prev) => {
+        const next = { width: container.clientWidth, height: container.clientHeight };
+        return prev && prev.width === next.width && prev.height === next.height ? prev : next;
+      });
+    };
+    measure();
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const handleResize = () => {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(measure, 150);
+    };
+    window.addEventListener("resize", handleResize);
+    return () => {
+      if (timer) clearTimeout(timer);
+      window.removeEventListener("resize", handleResize);
+    };
+  }, [viewerPdf]);
 
   // Đồng bộ bản nháp "Cây vải" khi mở popup của một mẫu khác. Chỉ chạy khi
   // đổi mẫu (so id), để các lần PUT khác (PDF/trạng thái/bước) cập nhật
@@ -1472,13 +1561,18 @@ export function AdminDesignsPage() {
           document.body,
         )}
 
-      {/* Modal xem PDF trong trang (PDF.js) — nằm trên popup chi tiết mẫu.
-          Dùng đúng URL gốc trên Cloudinary (không thêm .pdf). Nút Tải xuống
-          dùng đúng helper pdfDownloadUrl như cũ. */}
+      {/* Modal xem PDF trong trang (PDF.js) — FULL MÀN HÌNH, nằm trên popup
+          chi tiết mẫu. Dùng đúng URL gốc trên Cloudinary (không thêm .pdf).
+          Nút Tải xuống dùng đúng helper pdfDownloadUrl như cũ. Đóng bằng nút
+          X hoặc Esc (bấm nền mờ không còn ý nghĩa khi panel chiếm toàn bộ
+          màn hình, nhưng handler nền vẫn giữ lại cho an toàn).
+          Pinch-to-zoom KHÔNG làm: vùng canvas dùng cuộn cảm ứng gốc
+          (overflow-auto); bắt pinch bằng pointer events cần touch-action:
+          none, sẽ phá cuộn/pan cảm ứng — nên chỉ zoom bằng nút +/−. */}
       {viewerPdf &&
         createPortal(
           <div
-            className="fixed inset-0 z-[60] flex items-end justify-center bg-black/60 p-0 sm:items-center sm:p-4"
+            className="fixed inset-0 z-[60] flex bg-black/60 p-0"
             onClick={closePdfViewer}
             role="presentation"
           >
@@ -1486,7 +1580,7 @@ export function AdminDesignsPage() {
               role="dialog"
               aria-modal="true"
               aria-label={`Xem PDF ${viewerPdf.name}`}
-              className="flex max-h-[92vh] w-full max-w-3xl flex-col overflow-hidden rounded-t-2xl bg-white shadow-xl sm:rounded-2xl"
+              className="flex h-full max-h-none w-full max-w-none flex-col overflow-hidden rounded-none bg-white shadow-xl"
               onClick={(event) => event.stopPropagation()}
             >
               <div className="flex items-start justify-between gap-3 border-b border-border p-4">
@@ -1514,9 +1608,65 @@ export function AdminDesignsPage() {
                 </div>
               </div>
 
+              {/* Thanh công cụ zoom — hàng riêng dưới header, cho phép xuống
+                  dòng trên màn hình hẹp để không che tên file. */}
+              <div className="flex flex-wrap items-center gap-2 border-b border-border px-3 py-2">
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={viewerZoomOut}
+                    disabled={viewerZoom <= 0.5}
+                    aria-label="Thu nhỏ"
+                    className="rounded-lg border border-border p-2 hover:bg-muted disabled:opacity-50"
+                  >
+                    <ZoomOut className="h-4 w-4" />
+                  </button>
+                  <span
+                    className="min-w-14 text-center text-sm font-medium tabular-nums"
+                    aria-live="polite"
+                  >
+                    {viewerZoomPercent}%
+                  </span>
+                  <button
+                    type="button"
+                    onClick={viewerZoomIn}
+                    disabled={viewerZoom >= 4}
+                    aria-label="Phóng to"
+                    className="rounded-lg border border-border p-2 hover:bg-muted disabled:opacity-50"
+                  >
+                    <ZoomIn className="h-4 w-4" />
+                  </button>
+                </div>
+                <button
+                  type="button"
+                  onClick={viewerFitWidth}
+                  aria-pressed={viewerFitMode === "width"}
+                  className={`rounded-lg px-3 py-1.5 text-sm font-medium ${
+                    viewerFitMode === "width"
+                      ? "bg-primary text-white"
+                      : "border border-border hover:bg-muted"
+                  }`}
+                >
+                  Vừa rộng
+                </button>
+                <button
+                  type="button"
+                  onClick={viewerFitPage}
+                  aria-pressed={viewerFitMode === "page"}
+                  className={`flex items-center gap-1 rounded-lg px-3 py-1.5 text-sm font-medium ${
+                    viewerFitMode === "page"
+                      ? "bg-primary text-white"
+                      : "border border-border hover:bg-muted"
+                  }`}
+                >
+                  <Maximize className="h-4 w-4" />
+                  Vừa trang
+                </button>
+              </div>
+
               <div
                 ref={viewerContainerRef}
-                className="flex-1 overflow-y-auto bg-muted/50 p-3 sm:p-4"
+                className="flex-1 overflow-auto bg-muted/50 p-3 sm:p-4"
               >
                 {viewerLoading && (
                   <p className="py-10 text-center text-sm text-muted-foreground">
